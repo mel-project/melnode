@@ -4,7 +4,6 @@ use std::sync::{Arc, RwLock};
 
 // Internal nodes have 16 children and are identified by their 16-ary hash. Each child is 4 levels closer to the bottom.
 // Finger nodes represent subtrees that only have one element. They include a bitvec representing remaining steps and the value itself.
-#[derive(Clone)]
 pub enum DBNode<T: database::Database> {
     Internal(InternalNode<T>),
     Data(DataNode<T>),
@@ -19,6 +18,15 @@ fn path_to_idx(path: &[bool]) -> usize {
         idx <<= 1;
     }
     idx >> 1
+}
+
+impl<T: database::Database> Clone for DBNode<T> {
+    fn clone(&self) -> Self {
+        match self {
+            DBNode::Internal(int) => DBNode::Internal(int.clone()),
+            DBNode::Data(data) => DBNode::Data(data.clone()),
+        }
+    }
 }
 
 impl<T: database::Database> DBNode<T> {
@@ -69,7 +77,7 @@ impl<T: database::Database> DBNode<T> {
                         key,
                         data,
                         level,
-                        hashes: hashes,
+                        hashes: _,
                     } => DataNode {
                         db: db.clone(),
                         key: *key,
@@ -112,7 +120,7 @@ impl<T: database::Database> DBNode<T> {
     }
 
     pub fn get_by_path_rev(&self, path: &[bool]) -> (Vec<u8>, Vec<[u8; 32]>) {
-        let mut path = path;
+        let path = path;
         // go down the tree
         match self {
             DBNode::Data(dat) => (dat.data.clone(), dat.proof_frag()),
@@ -167,17 +175,17 @@ fn other(idx: usize) -> usize {
 }
 
 impl<T: database::Database> InternalNode<T> {
-    fn new_zero(db: Arc<RwLock<T>>, level: usize) -> Self {
-        InternalNode {
-            db: db,
-            my_hash: [0; 32],
-            ch_hashes: [[0; 32]; 2],
-            gc_hashes: [[0; 32]; 4],
-            ggc_hashes: [[0; 32]; 8],
-            gggc_hashes: [[0; 32]; 16],
-            level: level,
-        }
-    }
+    // fn new_zero(db: Arc<RwLock<T>>, level: usize) -> Self {
+    //     InternalNode {
+    //         db: db,
+    //         my_hash: [0; 32],
+    //         ch_hashes: [[0; 32]; 2],
+    //         gc_hashes: [[0; 32]; 4],
+    //         ggc_hashes: [[0; 32]; 8],
+    //         gggc_hashes: [[0; 32]; 16],
+    //         level: level,
+    //     }
+    // }
     pub fn new_from_hash(db: Arc<RwLock<T>>, level: usize, hash: [u8; 32]) -> Self {
         let dbm = db.read().unwrap();
         let rawval = dbm.read(hash).unwrap();
@@ -340,7 +348,7 @@ impl<T: database::Database> InternalNode<T> {
             self.my_hash = hash::node(self.ch_hashes[0], self.ch_hashes[1])
         }
     }
-    fn fix_hashes(&mut self, changed_idx: usize) {
+    fn fix_hashes(&mut self, _: usize) {
         self.my_hash = [0; 32];
         self.cache_hashes();
         // let ggci = changed_idx / 2;

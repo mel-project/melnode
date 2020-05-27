@@ -1,5 +1,5 @@
 [package]
-name = "smart_smt"
+name = "blkstructs"
 version = "0.1.0"
 authors = ["nullchinchilla <nullchinchilla@pm.me>"]
 edition = "2018"
@@ -7,12 +7,9 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-blake2b_simd = "0.5.10"
-lazy_static = "1"
-hex="0.4.2"
-blake3="0.3.3"
-bitvec="0.17.4"
-rand="0.5.0"
 rlp="0.4.5"
-lmdb="0.8.0"
-snap = "1"
+rlp-derive="0.1.0"
+tmelcrypt={path="../tmelcrypt"}
+autosmt={path="../autosmt"}
+num_enum = "0.5.0"
+hex="0.4.2"

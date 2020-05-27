@@ -1,13 +1,18 @@
 use crate::smt::*;
 use bitvec::prelude::*;
-use std::cell::RefCell;
 use std::fmt::Debug;
-use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
-#[derive(Clone)]
 pub struct Tree<T: database::Database> {
     root: dbnode::DBNode<T>,
+}
+
+impl<T: database::Database> Clone for Tree<T> {
+    fn clone(&self) -> Self {
+        Tree {
+            root: self.root.clone(),
+        }
+    }
 }
 
 impl<T: database::Database> Tree<T> {

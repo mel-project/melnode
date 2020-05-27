@@ -1,4 +1,3 @@
-use crate::smt::*;
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;

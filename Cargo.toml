@@ -7,6 +7,7 @@ edition = "2018"
 [workspace] 
 
 [dependencies]
-test_crate={path="libs/test_crate"}
-smart_smt={path="libs/smart_smt"}
+autosmt={path="libs/autosmt"}
+blkstructs={path="libs/blkstructs"}
+tmelcrypt={path="libs/tmelcrypt"}
 hex="0.4.2"

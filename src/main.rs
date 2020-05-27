@@ -1,6 +1,6 @@
 fn main() {
-    let db = smart_smt::TrivialDB::new();
-    let tree = smart_smt::Tree::new(&smart_smt::wrap_db(db));
-    let tree = tree.set(smart_smt::hash::datablock(b"hello"), b"world");
+    let db = autosmt::TrivialDB::new();
+    let tree = autosmt::Tree::new(&autosmt::wrap_db(db));
+    let tree = tree.set(autosmt::hash::index(b"hello"), b"world");
     println!("root has hash {}", hex::encode(tree.root_hash()));
 }
