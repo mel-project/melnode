@@ -3,6 +3,7 @@ mod melscript;
 mod state;
 mod transaction;
 pub use constants::*;
+pub use state::*;
 pub use transaction::*;
 
 #[cfg(test)]
@@ -12,6 +13,9 @@ mod tests {
     fn it_works() {
         assert_eq!(2 + 2, 4);
     }
+
+    #[test]
+    fn melscript_hash() {}
 
     #[test]
     fn smt_mapping() {

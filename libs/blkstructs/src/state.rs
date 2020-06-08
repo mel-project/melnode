@@ -1,9 +1,29 @@
 use crate::transaction as txn;
+use rayon::prelude::*;
 use rlp_derive::*;
+use std::collections::HashMap;
+use std::convert::TryInto;
 use std::marker::PhantomData;
+use std::sync::RwLock;
+use thiserror::Error;
 use tmelcrypt::HashVal;
 
-/// State represents the world state of the Themelio blockchain. It intentionally doesn't implement Clone.
+#[derive(Error, Debug)]
+/// A error that happens while applying a transaction to a state
+pub enum TxApplicationError {
+    #[error("malformed transaction")]
+    MalformedTx,
+    #[error("attempted to spend non-existent coin {:?}", .0)]
+    NonexistentCoin(txn::CoinID),
+    #[error("unbalanced inputs and outputs")]
+    UnbalancedInOut,
+    #[error("referenced non-existent script {:?}", .0)]
+    NonexistentScript(tmelcrypt::HashVal),
+    #[error("does not satisfy script {:?}", .0)]
+    ViolatesScript(tmelcrypt::HashVal),
+}
+
+/// World state of the Themelio blockchain
 pub struct State<T: autosmt::Database> {
     pub height: u64,
     pub history: SmtMapping<u64, Header, T>,
@@ -19,9 +39,124 @@ pub struct State<T: autosmt::Database> {
     pub mel_price: u64,
 
     pub stake_doc: SmtMapping<txn::CoinID, Vec<u8>, T>,
+    _private: (),
 }
 
-/// FinalizedState represents an immutable state at a finalized block height. It cannot be constructed except through finalizing a State.
+impl<T: autosmt::Database> Clone for State<T> {
+    fn clone(&self) -> Self {
+        State {
+            height: self.height,
+            history: self.history.clone(),
+            coins: self.coins.clone(),
+            transactions: self.transactions.clone(),
+            fee_pool: self.fee_pool,
+            fee_multiplier: self.fee_multiplier,
+            dosc_multiplier: self.dosc_multiplier,
+            auction_bids: self.auction_bids.clone(),
+            met_price: self.met_price,
+            mel_price: self.mel_price,
+            stake_doc: self.stake_doc.clone(),
+            _private: self._private,
+        }
+    }
+}
+
+impl<T: autosmt::Database> State<T> {
+    /// applies a single transaction.
+    pub fn apply_tx(&mut self, tx: &txn::Transaction) -> Result<(), TxApplicationError> {
+        self.apply_tx_batch(std::slice::from_ref(tx))
+    }
+    /// applies a batch of transactions. The order of the transactions in txx do not matter.
+    pub fn apply_tx_batch(&mut self, txx: &[txn::Transaction]) -> Result<(), TxApplicationError> {
+        // clone self first
+        let newself = self.clone();
+        // first ensure that all the transactions are well-formed
+        for tx in txx {
+            if !tx.is_well_formed() {
+                return Err(TxApplicationError::MalformedTx);
+            }
+        }
+        let lnewself = RwLock::new(newself);
+        // then we apply the outputs in parallel
+        let res: Result<Vec<()>, TxApplicationError> = txx
+            .par_iter()
+            .map(|tx| State::apply_tx_outputs(&lnewself, tx))
+            .collect();
+        res?;
+        // then we apply the inputs in parallel
+        let res: Result<Vec<()>, TxApplicationError> = txx
+            .par_iter()
+            .map(|tx| State::apply_tx_inputs(&lnewself, tx))
+            .collect();
+        res?;
+        // we commit the changes
+        *self = lnewself.read().unwrap().clone();
+        Ok(())
+    }
+    fn apply_tx_fees(
+        lself: &RwLock<Self>,
+        tx: &txn::Transaction,
+    ) -> Result<(), TxApplicationError> {
+        println!("skipping application of fees");
+        Ok(())
+    }
+    fn apply_tx_inputs(
+        lself: &RwLock<Self>,
+        tx: &txn::Transaction,
+    ) -> Result<(), TxApplicationError> {
+        let scripts = tx.script_as_map();
+        // build a map of input coins
+        let mut in_coins: HashMap<Vec<u8>, u64> = HashMap::new();
+        // iterate through the inputs
+        for coin_id in tx.inputs.iter() {
+            let (coin_data, _) = lself.read().unwrap().coins.get(coin_id);
+            match coin_data {
+                None => return Err(TxApplicationError::NonexistentCoin(*coin_id)),
+                Some(coin_data) => {
+                    let script = scripts
+                        .get(&coin_data.conshash)
+                        .ok_or(TxApplicationError::NonexistentScript(coin_data.conshash))?;
+                    if !script.check(tx) {
+                        return Err(TxApplicationError::ViolatesScript(coin_data.conshash));
+                    }
+                    // spend the coin by deleting
+                    lself.write().unwrap().coins.delete(coin_id);
+                    in_coins.insert(
+                        coin_data.cointype.clone(),
+                        in_coins.get(&coin_data.cointype).unwrap_or(&0) + coin_data.value,
+                    );
+                }
+            }
+        }
+        // balance inputs and outputs. ignore outputs with empty cointype (they create a new token kind)
+        let out_coins = tx.total_outputs();
+        if tx.kind != txn::TxKind::DoscMint {
+            for (currency, value) in out_coins.iter() {
+                if !currency.is_empty() && *value != *in_coins.get(currency).unwrap_or(&u64::MAX) {
+                    return Err(TxApplicationError::UnbalancedInOut);
+                }
+            }
+        }
+        Ok(())
+    }
+    fn apply_tx_outputs(
+        lself: &RwLock<Self>,
+        tx: &txn::Transaction,
+    ) -> Result<(), TxApplicationError> {
+        for (index, coin_data) in tx.outputs.iter().enumerate() {
+            lself.write().unwrap().coins.insert(
+                &txn::CoinID {
+                    txhash: tx.hash_nosigs(),
+                    index: index.try_into().unwrap(),
+                },
+                coin_data,
+            );
+        }
+        Ok(())
+    }
+}
+
+/// FinalizedState represents an immutable state at a finalized block height. It cannot be constructed except through finalizing a State or restoring from persistent storage.
 pub struct FinalizedState<T: autosmt::Database>(State<T>);
 
 impl<T: autosmt::Database> FinalizedState<T> {

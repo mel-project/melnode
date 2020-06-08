@@ -11,8 +11,8 @@ pub enum DBNode<T: database::Database> {
 
 fn path_to_idx(path: &[bool]) -> usize {
     let mut idx = 0;
-    for i in 0..4 {
-        if path[i] {
+    for &p in path {
+        if p {
             idx += 1;
         }
         idx <<= 1;
@@ -50,42 +50,33 @@ impl<T: database::Database> DBNode<T> {
         match self {
             DBNode::Data(dnode) => {
                 if dnode.key == key {
-                    let mut newself = match dnode {
-                        DataNode {
-                            db,
-                            key,
-                            data: _,
-                            level,
-                            hashes: _,
-                        } => DataNode {
-                            db: db.clone(),
-                            key: *key,
-                            data: data.to_vec(),
-                            level: *level,
-                            hashes: Vec::with_capacity(*level),
-                        },
-                    };
+                    let mut newself = dnode.clone();
+                    newself.data = data.to_vec();
+                    newself.hashes = Vec::with_capacity(dnode.level);
+                    // let mut newself = match dnode {
+                    //     DataNode {
+                    //         db,
+                    //         key,
+                    //         data: _,
+                    //         level,
+                    //         hashes: _,
+                    //     } => DataNode {
+                    //         db: db.clone(),
+                    //         key: *key,
+                    //         data: data.to_vec(),
+                    //         level: *level,
+                    //         hashes: Vec::with_capacity(*level),
+                    //     },
+                    // };
                     newself.write();
                     return DBNode::Data(newself);
                 }
                 let empty = InternalNode::new_from_hash(dnode.db.clone(), dnode.level, [0; 32]);
                 let old_key_idx =
                     path_to_idx(&merk::key_to_path(dnode.key)[(256 - dnode.level as usize)..]);
-                let mut newself = match dnode {
-                    DataNode {
-                        db,
-                        key,
-                        data,
-                        level,
-                        hashes: _,
-                    } => DataNode {
-                        db: db.clone(),
-                        key: *key,
-                        data: data.clone(),
-                        level: level - 4,
-                        hashes: Vec::with_capacity(*level),
-                    },
-                };
+                let mut newself = dnode.clone();
+                newself.level -= 4;
+                newself.hashes = Vec::new();
                 newself.write();
                 let newself = DBNode::Data(newself);
                 let new = empty.set_gggc(old_key_idx, &newself);
@@ -95,14 +86,13 @@ impl<T: database::Database> DBNode<T> {
                 //     hex::encode(new.my_hash),
                 //     hex::encode(newself.hash()),
                 // );
-                let toret = DBNode::Internal(new).set_by_path(key, path, data);
-                toret
+                DBNode::Internal(new).set_by_path(key, path, data)
             }
             DBNode::Internal(intnode) => {
                 if intnode.my_hash == [0; 32] {
                     let mut new_data = DataNode {
                         db: intnode.db.clone(),
-                        key: key,
+                        key,
                         data: data.to_vec(),
                         level: intnode.level,
                         hashes: Vec::with_capacity(intnode.level),
@@ -190,8 +180,7 @@ impl<T: database::Database> InternalNode<T> {
         let dbm = db.read().unwrap();
         let rawval = dbm.read(hash).unwrap();
         drop(dbm);
-        let node = InternalNode::new_from_bytes(db, level, &rawval, Some(hash));
-        node
+        InternalNode::new_from_bytes(db, level, &rawval, Some(hash))
     }
     fn new_from_bytes(
         db: Arc<RwLock<T>>,
@@ -206,13 +195,13 @@ impl<T: database::Database> InternalNode<T> {
             gggc_hashes[i] = bytes[i * 32..i * 32 + 32].try_into().unwrap();
         }
         let mut node = InternalNode {
-            db: db,
+            db,
             my_hash: if let Some(h) = given_hash { h } else { [0; 32] },
             ch_hashes: [[0; 32]; 2],
             gc_hashes: [[0; 32]; 4],
             ggc_hashes: [[0; 32]; 8],
-            gggc_hashes: gggc_hashes,
-            level: level,
+            gggc_hashes,
+            level,
         };
         node.write();
         node
@@ -321,7 +310,7 @@ impl<T: database::Database> InternalNode<T> {
     fn write(&mut self) {
         self.cache_hashes();
         let mut dbm = self.db.write().unwrap();
-        if let None = dbm.write(self.my_hash, &self.to_bytes()) {
+        if dbm.write(self.my_hash, &self.to_bytes()).is_none() {
             dbm.refc_incr(self.my_hash).unwrap();
         } else {
             for h in self.gggc_hashes.iter() {
@@ -421,10 +410,10 @@ impl<T: database::Database> DataNode<T> {
         assert_eq!(bytes[0], 1);
         let bytes = &bytes[1..];
         let mut node = DataNode {
-            db: db,
+            db,
             key: bytes[..32].try_into().unwrap(),
             data: bytes[32..].to_vec(),
-            level: level,
+            level,
             hashes: if let Some(x) = temp_hash {
                 vec![x]
             } else {
@@ -435,7 +424,7 @@ impl<T: database::Database> DataNode<T> {
         node
     }
     fn comp_hash(&mut self) {
-        if self.hashes.len() == 0 {
+        if self.hashes.is_empty() {
             let path = merk::key_to_path(self.key);
             let path = &path[256 - self.level as usize..];
             //assert_eq!(path.len(), self.level as usize);
@@ -454,7 +443,7 @@ impl<T: database::Database> DataNode<T> {
         }
     }
 
-    fn write(&mut self) -> () {
+    fn write(&mut self) {
         self.comp_hash();
         let mut dbm = self.db.write().unwrap();
         let hash = self.hashes[0];
@@ -467,7 +456,7 @@ impl<T: database::Database> DataNode<T> {
         val.push(1);
         val.append(&mut self.key.to_vec());
         val.append(&mut self.data.clone());
-        if let None = dbm.write(hash, &val) {
+        if dbm.write(hash, &val).is_none() {
             dbm.refc_incr(hash).unwrap();
         }
     }

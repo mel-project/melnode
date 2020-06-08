@@ -4,7 +4,7 @@ use std::fmt::Debug;
 use std::sync::{Arc, RwLock};
 
 pub struct Tree<T: database::Database> {
-    root: dbnode::DBNode<T>,
+    root: Arc<dbnode::DBNode<T>>,
 }
 
 impl<T: database::Database> Clone for Tree<T> {
@@ -24,10 +24,8 @@ impl<T: database::Database> Tree<T> {
     /// Creates a reference to the tree pointed to by the given hash, given a database.
     pub fn new_from_hash(db: &Arc<RwLock<T>>, hash: [u8; 32]) -> Self {
         Tree {
-            root: dbnode::DBNode::Internal(dbnode::InternalNode::new_from_hash(
-                Arc::clone(db),
-                256,
-                hash,
+            root: Arc::new(dbnode::DBNode::Internal(
+                dbnode::InternalNode::new_from_hash(Arc::clone(db), 256, hash),
             )),
         }
     }
@@ -35,16 +33,16 @@ impl<T: database::Database> Tree<T> {
     /// Sets the binding for a key, returning a new tree.
     pub fn set(&self, key: [u8; 32], value: &[u8]) -> Self {
         Tree {
-            root: self.root.set_by_path(key, &merk::key_to_path(key), value),
+            root: Arc::new(self.root.set_by_path(key, &merk::key_to_path(key), value)),
         }
     }
     /// Obtains the binding for a key, returning the proof.
     pub fn get(&self, key: [u8; 32]) -> (Option<Vec<u8>>, FullProof) {
         let path = merk::key_to_path(key);
         let (vec, proof) = self.root.get_by_path_rev(&path);
-        let vec = if vec.len() == 0 { vec![] } else { vec };
+        let vec = if vec.is_empty() { vec![] } else { vec };
         let proof = proof.into_iter().rev().collect();
-        if vec.len() == 0 {
+        if vec.is_empty() {
             (None, FullProof(proof))
         } else {
             (Some(vec), FullProof(proof))
@@ -82,7 +80,7 @@ impl FullProof {
 
 impl std::fmt::Display for FullProof {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let hexa: Vec<String> = self.0.iter().map(|x| hex::encode(x)).collect();
+        let hexa: Vec<String> = self.0.iter().map(hex::encode).collect();
         hexa.fmt(f)
     }
 }

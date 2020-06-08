@@ -4,7 +4,7 @@ use std::cell::RefCell;
 thread_local!(pub static HASH_COUNT: RefCell<u64> = RefCell::new(0));
 
 pub fn datablock(bytes: &[u8]) -> [u8; 32] {
-    if bytes.len() == 0 {
+    if bytes.is_empty() {
         return empty_hash();
     }
     HASH_COUNT.with(|hc| {
@@ -15,10 +15,7 @@ pub fn datablock(bytes: &[u8]) -> [u8; 32] {
 }
 
 pub fn index(bytes: &[u8]) -> [u8; 32] {
-    let hash = Params::new()
-        .hash_length(32)
-        .key("index".as_bytes())
-        .hash(bytes);
+    let hash = Params::new().hash_length(32).key(b"index").hash(bytes);
     let bytes = hash.as_bytes();
     let mut ret: [u8; 32] = [0; 32];
     ret.copy_from_slice(&bytes);

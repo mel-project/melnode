@@ -7,5 +7,12 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rlp="0.4.5"
-blake3="0.3.3"
+rlp="0.4"
+blake3="0.3"
+hex="0.4"
+sha2="0.8"
+rand="0.7"
+
+[dependencies.ed25519-dalek]
+features = ["legacy_compatibility"]
+version = "1.0.0-pre.3"

@@ -3,10 +3,10 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryInto;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 
 /// Database represents a backend for storing SMT nodes.
-pub trait Database {
+pub trait Database: Send + Sync {
     /// Writes a hash-value mapping into the database with refcount=1, returning the hash. Fails if the value already exists.
     fn write(&mut self, key: [u8; 32], val: &[u8]) -> Option<()>;
     /// Increments a reference count for a hash, returning the new refcount. Fails if no such key.
@@ -40,25 +40,32 @@ pub fn wrap_db<T: Database>(db: T) -> Arc<RwLock<T>> {
     Arc::new(RwLock::new(db))
 }
 
+type TdbMapEntry = (Vec<u8>, RefCell<usize>);
 pub struct TrivialDB {
-    mapping: HashMap<[u8; 32], (Vec<u8>, RefCell<usize>)>,
+    mapping: Mutex<HashMap<[u8; 32], TdbMapEntry>>,
+}
+
+impl Default for TrivialDB {
+    fn default() -> Self {
+        TrivialDB::new()
+    }
 }
 
 impl TrivialDB {
     pub fn new() -> Self {
-        return TrivialDB {
-            mapping: HashMap::new(),
-        };
+        TrivialDB {
+            mapping: Mutex::new(HashMap::new()),
+        }
     }
 
     pub fn count(&self) -> usize {
-        self.mapping.len()
+        self.mapping.lock().unwrap().len()
     }
 
     pub fn graphviz(&self) -> String {
         let mut toret = String::new();
         toret.push_str("digraph G{\n");
-        for (k, v) in self.mapping.iter() {
+        for (k, v) in self.mapping.lock().unwrap().iter() {
             let hk = hex::encode(&k[0..5]);
             let label = format!("[label = \"{}-[{}]\"]", hk, v.1.borrow());
             toret.push_str(&format!("\"{}\" {}\n", hk, label));
@@ -82,10 +89,11 @@ impl Database for TrivialDB {
         if key == [0; 32] {
             return Some(());
         }
-        if let Some((_, _)) = self.mapping.get(&key) {
+        let mut mapping = self.mapping.lock().unwrap();
+        if let Some((_, _)) = mapping.get(&key) {
             None
         } else {
-            self.mapping.insert(key, (val.to_vec(), RefCell::new(1)));
+            mapping.insert(key, (val.to_vec(), RefCell::new(1)));
             Some(())
         }
     }
@@ -94,9 +102,10 @@ impl Database for TrivialDB {
         if key == [0; 32] {
             return Some(1);
         }
-        if let Some((_, refcount)) = self.mapping.get(&key) {
+        let mapping = self.mapping.lock().unwrap();
+        if let Some((_, refcount)) = mapping.get(&key) {
             let mut mref = refcount.borrow_mut();
-            *mref = *mref + 1;
+            *mref += 1;
             Some(*mref)
         } else {
             println!("can't incr {}", hex::encode(&key[0..10]));
@@ -108,11 +117,12 @@ impl Database for TrivialDB {
         if key == [0; 32] {
             return Some(1);
         }
-        if let Entry::Occupied(mut occupied) = self.mapping.entry(key) {
+        let mut mapping = self.mapping.lock().unwrap();
+        if let Entry::Occupied(mut occupied) = mapping.entry(key) {
             let result = {
                 let ks = occupied.get_mut();
                 let mut mref = ks.1.borrow_mut();
-                *mref = *mref - 1;
+                *mref -= 1;
                 *mref
             };
             if result == 0 {
@@ -128,7 +138,8 @@ impl Database for TrivialDB {
         if key == [0; 32] {
             return Some([0; 32 * 16 + 1].to_vec());
         }
-        let v = self.mapping.get(&key)?;
+        let mapping = self.mapping.lock().unwrap();
+        let v = mapping.get(&key)?;
         Some(v.0.clone())
     }
 }
@@ -144,7 +155,7 @@ pub trait PersistentDatabase: Database {
 }
 
 /// RawKeyVal represents a raw key-value store, similar to that offered by key-value databases.
-pub trait RawKeyVal {
+pub trait RawKeyVal: Send + Sync {
     fn get(&self, key: &[u8]) -> Option<Vec<u8>>;
     fn set(&mut self, key: &[u8], val: Option<&[u8]>) {
         let mut vec = Vec::new();
@@ -185,7 +196,7 @@ impl<T: RawKeyVal> CacheDatabase<T> {
     }
 
     fn refc_load(&mut self, key: [u8; 32]) -> Option<()> {
-        if let Some(_) = self.refc_cache.get(&key) {
+        if self.refc_cache.get(&key).is_some() {
             return Some(());
         }
         let ri = u64::from_le_bytes(
@@ -214,8 +225,6 @@ fn to_nodekey(key: &[u8]) -> Vec<u8> {
     v
 }
 
-thread_local!(static DELETE_COUNT: RefCell<u64> = RefCell::new(0));
-
 impl<T: RawKeyVal> Database for CacheDatabase<T> {
     fn read(&self, key: [u8; 32]) -> Option<Vec<u8>> {
         if key == [0; 32] {
@@ -230,10 +239,10 @@ impl<T: RawKeyVal> Database for CacheDatabase<T> {
         }
     }
     fn write(&mut self, key: [u8; 32], val: &[u8]) -> Option<()> {
-        if let Some(_) = self.read(key) {
+        if self.read(key).is_some() {
             return None;
         }
-        if let None = self.bind_cache.insert(key, val.to_vec()) {
+        if self.bind_cache.insert(key, val.to_vec()).is_none() {
             self.refc_cache.insert(key, 1);
             self.ephem.insert(key);
         }
@@ -249,7 +258,7 @@ impl<T: RawKeyVal> Database for CacheDatabase<T> {
         }
         self.refc_load(key)?;
         let r = self.refc_cache.get_mut(&key).unwrap();
-        *r = *r + 1;
+        *r += 1;
         Some(*r as usize)
     }
     fn refc_decr(&mut self, key: [u8; 32]) -> Option<usize> {
@@ -258,10 +267,10 @@ impl<T: RawKeyVal> Database for CacheDatabase<T> {
         }
         self.refc_load(key)?;
         let r = self.refc_cache.get_mut(&key).unwrap();
-        *r = *r - 1;
+        *r -= 1;
         let r = *r;
         if r == 0 {
-            if let Some(_) = self.ephem.get(&key) {
+            if self.ephem.get(&key).is_some() {
                 self.ephem.remove(&key);
                 self.bind_cache.remove(&key);
                 self.refc_cache.remove(&key);

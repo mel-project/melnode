@@ -20,7 +20,7 @@ fn deerror<T>(res: lmdb::Result<T>) -> Option<T> {
 impl LMDB {
     pub fn new(env: lmdb::Environment, name: Option<&str>) -> Result<LMDB, Box<dyn Error>> {
         let db = env.open_db(name)?;
-        Ok(LMDB { env: env, db: db })
+        Ok(LMDB { env, db })
     }
 }
 

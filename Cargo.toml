@@ -11,3 +11,9 @@ autosmt={path="libs/autosmt"}
 blkstructs={path="libs/blkstructs"}
 tmelcrypt={path="libs/tmelcrypt"}
 hex="0.4.2"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"

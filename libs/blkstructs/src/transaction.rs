@@ -6,7 +6,7 @@ use rlp_derive::*;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 
-#[derive(Clone, Copy, IntoPrimitive, TryFromPrimitive)]
+#[derive(Clone, Copy, IntoPrimitive, TryFromPrimitive, Eq, PartialEq)]
 #[repr(u8)]
 pub enum TxKind {
     Normal = 0x00,
@@ -47,6 +47,22 @@ pub struct Transaction {
 }
 
 impl Transaction {
+    /// checks whether or not the transaction is well formed, respecting coin size bounds and such.
+    pub fn is_well_formed(&self) -> bool {
+        // check bounds
+        for out in self.outputs.iter() {
+            if out.value > MAX_COINVAL {
+                return false;
+            }
+        }
+        if self.fee > MAX_COINVAL {
+            return false;
+        }
+        if self.outputs.len() > 255 {
+            return false;
+        }
+        true
+    }
     /// hash_nosigs returns the hash of the transaction with a zeroed-out signature field. This is what signatures are computed against.
     pub fn hash_nosigs(&self) -> tmelcrypt::HashVal {
         let mut s = self.clone();
@@ -65,9 +81,17 @@ impl Transaction {
         toret.insert(COINTYPE_TMEL.to_vec(), old + self.fee);
         toret
     }
+    /// scripts_as_map returns a HashMap mapping the hash of each script in the transaction to the script itself.
+    pub fn script_as_map(&self) -> HashMap<tmelcrypt::HashVal, Script> {
+        let mut toret = HashMap::new();
+        for s in self.scripts.iter() {
+            toret.insert(tmelcrypt::hash_single(&rlp::encode(s)), s.clone());
+        }
+        toret
+    }
 }
 
-#[derive(RlpEncodable, RlpDecodable, Clone)]
+#[derive(RlpEncodable, RlpDecodable, Clone, Debug, Copy)]
 pub struct CoinID {
     pub txhash: tmelcrypt::HashVal,
     pub index: u8,
