@@ -5,6 +5,24 @@ use std::convert::TryInto;
 #[derive(RlpEncodable, RlpDecodable, Clone, Eq, PartialEq, Debug)]
 pub struct Script(pub Vec<u8>);
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn dontcrash(data: &[u8]) {
+        let script = Script(data.to_vec());
+        if let Some(ops) = script.disassemble() {
+            println!("{:?}", ops);
+            let redone = Script::assemble(&ops).unwrap();
+            assert_eq!(redone, script);
+        }
+    }
+
+    #[test]
+    fn fuzz_crash_0() {
+        dontcrash(&hex::decode("b000001010").unwrap())
+    }
+}
+
 impl Script {
     pub fn check(&self, tx: &txn::Transaction) -> bool {
         // TODO populate storage
@@ -64,7 +82,7 @@ impl Script {
             0xa0 => output.push(OpCode::JMP(u16arg(bcode)?)),
             0xa1 => output.push(OpCode::BEZ(u16arg(bcode)?)),
             0xa2 => output.push(OpCode::BNZ(u16arg(bcode)?)),
-            0xa3 => {
+            0xb0 => {
                 let iterations = u16arg(bcode)?;
                 let mut rec_output = Vec::new();
                 for _ in 0..iterations {

@@ -1,5 +1,5 @@
 mod constants;
-mod melscript;
+pub mod melscript;
 mod state;
 mod transaction;
 pub use constants::*;
