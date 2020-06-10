@@ -1,9 +1,10 @@
+use arbitrary::Arbitrary;
 use rlp::{Decodable, Encodable};
 use std::convert::TryInto;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Arbitrary)]
 pub struct HashVal(pub [u8; 32]);
 
 impl fmt::Debug for HashVal {
@@ -51,13 +52,18 @@ pub struct Ed25519PK(pub [u8; 32]);
 
 impl Ed25519PK {
     pub fn verify(&self, msg: &[u8], sig: &[u8]) -> bool {
-        let pk = ed25519_dalek::PublicKey::from_bytes(&self.0).unwrap();
-        pk.verify(msg, &ed25519_dalek::Signature::from_bytes(sig).unwrap())
-            .is_ok()
+        let pk = ed25519_dalek::PublicKey::from_bytes(&self.0);
+        match pk {
+            Ok(pk) => match ed25519_dalek::Signature::from_bytes(sig) {
+                Ok(sig) => pk.verify(msg, &sig).is_ok(),
+                Err(_) => false,
+            },
+            Err(_) => false,
+        }
     }
 
     pub fn from_bytes(bts: &[u8]) -> Option<Self> {
-        if bts.len() != 64 {
+        if bts.len() != 32 {
             None
         } else {
             let mut buf = [0; 32];
@@ -125,8 +131,13 @@ impl Ed25519SK {
             None
         } else {
             let mut buf = [0; 64];
-            buf.copy_from_slice(bts);
-            Some(Ed25519SK(buf))
+            let kp = ed25519_dalek::Keypair::from_bytes(&bts);
+            if kp.is_err() {
+                None
+            } else {
+                buf.copy_from_slice(bts);
+                Some(Ed25519SK(buf))
+            }
         }
     }
 }

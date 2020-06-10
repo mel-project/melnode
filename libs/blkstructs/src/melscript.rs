@@ -1,18 +1,22 @@
 use crate::transaction as txn;
+use arbitrary::Arbitrary;
+use rlp::Decodable;
 use rlp_derive::*;
 use std::collections::HashMap;
 use std::convert::TryInto;
-#[derive(RlpEncodable, RlpDecodable, Clone, Eq, PartialEq, Debug)]
+#[derive(RlpEncodable, RlpDecodable, Clone, Eq, PartialEq, Debug, Arbitrary)]
 pub struct Script(pub Vec<u8>);
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use quickcheck;
+    use quickcheck_macros::*;
     fn dontcrash(data: &[u8]) {
         let script = Script(data.to_vec());
-        if let Some(ops) = script.disassemble() {
+        if let Some(ops) = script.to_ops() {
             println!("{:?}", ops);
-            let redone = Script::assemble(&ops).unwrap();
+            let redone = Script::from_ops(&ops).unwrap();
             assert_eq!(redone, script);
         }
     }
@@ -21,20 +25,86 @@ mod tests {
     fn fuzz_crash_0() {
         dontcrash(&hex::decode("b000001010").unwrap())
     }
+
+    #[test]
+    fn stack_overflow() {
+        let mut data = Vec::new();
+        for _ in 0..100000 {
+            data.push(0xb0)
+        }
+        dontcrash(&data.to_vec())
+    }
+
+    #[test]
+    fn check_sig() {
+        let (pk, sk) = tmelcrypt::ed25519_keygen();
+        // (SIGEOK (LOAD 1) (PUSH pk) (VREF (VREF (LOAD 0) 6) 0))
+        let check_sig_script = Script::from_ops(&vec![
+            OpCode::PUSHI(0.into()),
+            OpCode::PUSHI(6.into()),
+            OpCode::PUSHI(0.into()),
+            OpCode::LOAD,
+            OpCode::VREF,
+            OpCode::VREF,
+            OpCode::PUSHB(pk.0.to_vec()),
+            OpCode::PUSHI(1.into()),
+            OpCode::LOAD,
+            OpCode::SIGEOK,
+        ])
+        .unwrap();
+        println!("script length is {}", check_sig_script.0.len());
+        let mut tx = txn::Transaction::empty_test();
+        tx.sign_ed25519(sk);
+        assert!(check_sig_script.check(&tx));
+    }
+
+    #[quickcheck]
+    fn loop_once_is_identity(bitcode: Vec<u8>) -> bool {
+        let ops = Script(bitcode.clone()).to_ops();
+        let tx = txn::Transaction::empty_test();
+        match ops {
+            None => true,
+            Some(ops) => {
+                let loop_ops = vec![OpCode::LOOP(1, ops.clone())];
+                let loop_script = Script::from_ops(&loop_ops).unwrap();
+                let orig_script = Script::from_ops(&ops).unwrap();
+                loop_script.check(&tx) == orig_script.check(&tx)
+            }
+        }
+    }
+
+    #[quickcheck]
+    fn deterministic_execution(bitcode: Vec<u8>) -> bool {
+        let ops = Script(bitcode.clone()).to_ops();
+        let tx = txn::Transaction::empty_test();
+        match ops {
+            None => true,
+            Some(ops) => {
+                let orig_script = Script::from_ops(&ops).unwrap();
+                let first = orig_script.check(&tx);
+                let second = orig_script.check(&tx);
+                first == second
+            }
+        }
+    }
 }
 
 impl Script {
     pub fn check(&self, tx: &txn::Transaction) -> bool {
-        // TODO populate storage
         self.check_opt(tx).is_some()
     }
 
     fn check_opt(&self, tx: &txn::Transaction) -> Option<()> {
-        let ops = self.disassemble()?;
-        Executor::default().run(&ops)
+        let txb = rlp::encode(tx);
+        let tx_val: Value = rlp::decode(&txb).unwrap();
+        let ops = self.to_ops()?;
+        let mut hm = HashMap::new();
+        hm.insert(0, tx_val);
+        hm.insert(1, Value::from_bytes(&tx.hash_nosigs().0));
+        Executor::new(hm).run_return(&ops)
     }
 
-    pub fn assemble(ops: &[OpCode]) -> Option<Self> {
+    pub fn from_ops(ops: &[OpCode]) -> Option<Self> {
         let mut output: Vec<u8> = Vec::new();
         // go through output
         for op in ops {
@@ -43,7 +113,14 @@ impl Script {
         Some(Script(output))
     }
 
-    fn disassemble_one(bcode: &mut Vec<u8>, output: &mut Vec<OpCode>) -> Option<()> {
+    fn disassemble_one(
+        bcode: &mut Vec<u8>,
+        output: &mut Vec<OpCode>,
+        rec_depth: usize,
+    ) -> Option<()> {
+        if rec_depth > 16 {
+            return None;
+        }
         let u16arg = |vec: &mut Vec<u8>| {
             let mut z = [0; 2];
             z[0] = vec.pop()?;
@@ -65,11 +142,13 @@ impl Script {
             0x24 => output.push(OpCode::EQL),
             // cryptography
             0x30 => output.push(OpCode::HASH),
-            0x31 => output.push(OpCode::SIGE),
+            //0x31 => output.push(OpCode::SIGE),
             0x32 => output.push(OpCode::SIGEOK),
             // storage
             0x40 => output.push(OpCode::LOAD),
             0x41 => output.push(OpCode::STORE),
+            0x42 => output.push(OpCode::LOADIMM(u16arg(bcode)?)),
+            0x43 => output.push(OpCode::STOREIMM(u16arg(bcode)?)),
             // vectors
             0x50 => output.push(OpCode::VREF),
             0x51 => output.push(OpCode::VAPPEND),
@@ -86,7 +165,7 @@ impl Script {
                 let iterations = u16arg(bcode)?;
                 let mut rec_output = Vec::new();
                 for _ in 0..iterations {
-                    Script::disassemble_one(bcode, &mut rec_output)?;
+                    Script::disassemble_one(bcode, &mut rec_output, rec_depth + 1)?;
                 }
                 output.push(OpCode::LOOP(iterations, rec_output));
             }
@@ -101,8 +180,8 @@ impl Script {
             }
             0xf1 => {
                 let mut buf = [0; 32];
-                for i in 0..32 {
-                    buf[i] = bcode.pop()?
+                for r in buf.iter_mut() {
+                    *r = bcode.pop()?
                 }
                 output.push(OpCode::PUSHI(bigint::U256::from_big_endian(&buf)))
             }
@@ -111,13 +190,13 @@ impl Script {
         Some(())
     }
 
-    pub fn disassemble(&self) -> Option<Vec<OpCode>> {
+    pub fn to_ops(&self) -> Option<Vec<OpCode>> {
         // reverse to make it a poppable stack
         let mut reversed = self.0.clone();
         reversed.reverse();
         let mut output = Vec::new();
         while !reversed.is_empty() {
-            Script::disassemble_one(&mut reversed, &mut output)?
+            Script::disassemble_one(&mut reversed, &mut output, 0)?
         }
         Some(output)
     }
@@ -138,11 +217,19 @@ impl Script {
             OpCode::EQL => output.push(0x24),
             // cryptography
             OpCode::HASH => output.push(0x30),
-            OpCode::SIGE => output.push(0x31),
+            //OpCode::SIGE => output.push(0x31),
             OpCode::SIGEOK => output.push(0x32),
             // storage
             OpCode::LOAD => output.push(0x40),
             OpCode::STORE => output.push(0x41),
+            OpCode::LOADIMM(idx) => {
+                output.push(0x42);
+                output.extend_from_slice(&idx.to_be_bytes());
+            }
+            OpCode::STOREIMM(idx) => {
+                output.push(0x43);
+                output.extend_from_slice(&idx.to_be_bytes());
+            }
             // vectors
             OpCode::VREF => output.push(0x50),
             OpCode::VAPPEND => output.push(0x51),
@@ -197,10 +284,10 @@ struct Executor {
 }
 
 impl Executor {
-    fn default() -> Self {
+    fn new(heap_init: HashMap<u16, Value>) -> Self {
         Executor {
             stack: Vec::new(),
-            heap: HashMap::new(),
+            heap: heap_init,
         }
     }
     fn do_triop(&mut self, op: impl Fn(Value, Value, Value) -> Option<Value>) -> Option<()> {
@@ -227,11 +314,29 @@ impl Executor {
     fn do_op(&mut self, op: &OpCode, pc: u32) -> Option<u32> {
         match op {
             // arithmetic
-            OpCode::ADD => self.do_binop(|x, y| Some(Value::Int(x.as_int()? + y.as_int()?)))?,
-            OpCode::SUB => self.do_binop(|x, y| Some(Value::Int(x.as_int()? - y.as_int()?)))?,
-            OpCode::MUL => self.do_binop(|x, y| Some(Value::Int(x.as_int()? * y.as_int()?)))?,
-            OpCode::DIV => self.do_binop(|x, y| Some(Value::Int(x.as_int()? / y.as_int()?)))?,
-            OpCode::REM => self.do_binop(|x, y| Some(Value::Int(x.as_int()? % y.as_int()?)))?,
+            OpCode::ADD => {
+                self.do_binop(|x, y| Some(Value::Int(x.as_int()?.overflowing_add(y.as_int()?).0)))?
+            }
+            OpCode::SUB => {
+                self.do_binop(|x, y| Some(Value::Int(x.as_int()?.overflowing_sub(y.as_int()?).0)))?
+            }
+            OpCode::MUL => {
+                self.do_binop(|x, y| Some(Value::Int(x.as_int()?.overflowing_mul(y.as_int()?).0)))?
+            }
+            OpCode::DIV => self.do_binop(|x, y| {
+                if y.as_int()? == bigint::U256::zero() {
+                    None
+                } else {
+                    Some(Value::Int(x.as_int()?.overflowing_div(y.as_int()?).0))
+                }
+            })?,
+            OpCode::REM => self.do_binop(|x, y| {
+                if y.as_int()? == bigint::U256::zero() {
+                    None
+                } else {
+                    Some(Value::Int(x.as_int()?.overflowing_rem(y.as_int()?).0))
+                }
+            })?,
             // logic
             OpCode::AND => self.do_binop(|x, y| Some(Value::Int(x.as_int()? & y.as_int()?)))?,
             OpCode::OR => self.do_binop(|x, y| Some(Value::Int(x.as_int()? | y.as_int()?)))?,
@@ -252,13 +357,6 @@ impl Executor {
                 let hash = tmelcrypt::hash_single(&to_hash);
                 Some(Value::from_bytes(&hash.0))
             })?,
-            OpCode::SIGE => self.do_binop(|secret_key, to_sign| {
-                let secret_key = secret_key.as_bytes()?;
-                let secret_key = tmelcrypt::Ed25519SK::from_bytes(&secret_key)?;
-                let to_sign = to_sign.as_bytes()?;
-                let signature = secret_key.sign(&to_sign);
-                Some(Value::from_bytes(&signature))
-            })?,
             OpCode::SIGEOK => self.do_triop(|message, public_key, signature| {
                 let public_key = tmelcrypt::Ed25519PK::from_bytes(&public_key.as_bytes()?)?;
                 Some(Value::from_bool(
@@ -276,12 +374,20 @@ impl Executor {
                 let res = self.heap.get(&addr)?.clone();
                 self.stack.push(res)
             }
+            OpCode::STOREIMM(idx) => {
+                let val = self.stack.pop()?;
+                self.heap.insert(*idx, val);
+            }
+            OpCode::LOADIMM(idx) => {
+                let res = self.heap.get(idx)?.clone();
+                self.stack.push(res)
+            }
             // vector operations
             OpCode::VREF => self.do_binop(|vec, idx| {
                 let idx = idx.as_u16()? as usize;
                 match vec {
-                    Value::Bytes(bts) => Some(Value::Int(bigint::U256::from(bts[idx]))),
-                    Value::Vector(elems) => Some(elems[idx].clone()),
+                    Value::Bytes(bts) => Some(Value::Int(bigint::U256::from(*bts.get(idx)?))),
+                    Value::Vector(elems) => Some(elems.get(idx)?.clone()),
                     _ => None,
                 }
             })?,
@@ -346,7 +452,7 @@ impl Executor {
             OpCode::JMP(jgap) => return Some(pc + 1 + *jgap as u32),
             OpCode::LOOP(iterations, ops) => {
                 for _ in 0..*iterations {
-                    self.run(&ops)?
+                    self.run_bare(&ops)?
                 }
             }
             // literals
@@ -354,16 +460,20 @@ impl Executor {
                 let bts = Value::from_bytes(bts);
                 self.stack.push(bts);
             }
-            OpCode::PUSHI(num) => self.stack.push(Value::Int(num.clone())),
+            OpCode::PUSHI(num) => self.stack.push(Value::Int(*num)),
         }
         Some(pc + 1)
     }
-    fn run(&mut self, ops: &[OpCode]) -> Option<()> {
+    fn run_bare(&mut self, ops: &[OpCode]) -> Option<()> {
         assert!(ops.len() < 512 * 1024);
         let mut pc = 0;
         while pc < ops.len() {
             pc = self.do_op(ops.get(pc)?, pc as u32)? as usize;
         }
+        Some(())
+    }
+    fn run_return(&mut self, ops: &[OpCode]) -> Option<()> {
+        self.run_bare(ops);
         match self.stack.pop()? {
             Value::Int(b) => {
                 if b == bigint::U256::zero() {
@@ -393,13 +503,15 @@ pub enum OpCode {
     EQL,
     // cryptographyy
     HASH,
-    SIGE,
+    //SIGE,
     //SIGQ,
     SIGEOK,
     //SIGQOK,
     // "heap" access
     STORE,
     LOAD,
+    STOREIMM(u16),
+    LOADIMM(u16),
     // vector operations
     VREF,
     VAPPEND,
@@ -419,7 +531,7 @@ pub enum OpCode {
     PUSHI(bigint::U256),
 }
 
-#[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 enum Value {
     Int(bigint::U256),
     Bytes(im_rc::Vector<u8>),
@@ -455,6 +567,7 @@ impl Value {
             Value::Int(bigint::U256::zero())
         }
     }
+
     fn as_bytes(&self) -> Option<Vec<u8>> {
         match self {
             Value::Int(bi) => {
@@ -464,6 +577,23 @@ impl Value {
             }
             Value::Bytes(bts) => Some(bts.iter().copied().collect()),
             Value::Vector(_) => None,
+        }
+    }
+}
+
+impl Decodable for Value {
+    fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
+        if rlp.is_list() {
+            let vec: Vec<Value> = rlp.as_list()?;
+            Ok(Value::Vector(vec.try_into().unwrap()))
+        } else if rlp.is_data() {
+            let vec: Vec<u8> = rlp.as_val()?;
+            Ok(Value::Bytes(vec.try_into().unwrap()))
+        } else if rlp.is_int() {
+            let int: u64 = rlp.as_val()?;
+            Ok(Value::Int(int.try_into().unwrap()))
+        } else {
+            Err(rlp::DecoderError::Custom("not int, list, or data"))
         }
     }
 }

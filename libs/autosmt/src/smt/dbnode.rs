@@ -10,6 +10,7 @@ pub enum DBNode<T: database::Database> {
 }
 
 fn path_to_idx(path: &[bool]) -> usize {
+    let path = &path[..4];
     let mut idx = 0;
     for &p in path {
         if p {
@@ -278,18 +279,6 @@ impl<T: database::Database> InternalNode<T> {
     pub fn set_gggc(&self, idx: usize, gggc: &DBNode<T>) -> Self {
         let db = self.db.read().unwrap();
         let ghash = gggc.hash();
-        if hex::encode(ghash) == "c3c58c296b49a3fcbe5d13ea32997ff19ba32daa4b114986ac32212eb39d2c51"
-        {
-            if let DBNode::Data(data) = gggc {
-                println!(
-                    "GOT DATA value={} level={} mylevel={}",
-                    String::from_utf8_lossy(&data.data),
-                    data.level,
-                    self.level,
-                );
-                //panic!("STACK")
-            }
-        }
         let mut newgg = self.gggc_hashes;
         newgg[idx] = ghash;
         let mut newnode = InternalNode {

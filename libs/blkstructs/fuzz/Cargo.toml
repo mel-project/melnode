@@ -11,6 +11,8 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.3"
+hex = "0.4.2"
+rlp="0.4.5"
 
 [dependencies.blkstructs]
 path = ".."
@@ -20,5 +22,9 @@ path = ".."
 members = ["."]
 
 [[bin]]
-name = "fuzz_target_1"
-path = "fuzz_targets/fuzz_target_1.rs"
+name = "melscript_reader"
+path = "fuzz_targets/melscript_reader.rs"
+
+[[bin]]
+name = "melscript_interpret"
+path = "fuzz_targets/melscript_interpret.rs"

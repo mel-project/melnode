@@ -1,12 +1,13 @@
 use crate::constants::*;
 use crate::melscript::*;
+use arbitrary::Arbitrary;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use rlp::{Decodable, Encodable};
 use rlp_derive::*;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 
-#[derive(Clone, Copy, IntoPrimitive, TryFromPrimitive, Eq, PartialEq)]
+#[derive(Clone, Copy, IntoPrimitive, TryFromPrimitive, Eq, PartialEq, Arbitrary, Debug)]
 #[repr(u8)]
 pub enum TxKind {
     Normal = 0x00,
@@ -35,7 +36,7 @@ impl Decodable for TxKind {
 }
 
 /// Transaction represents an individual, RLP-serializable Themelio transaction.
-#[derive(RlpEncodable, RlpDecodable, Clone)]
+#[derive(RlpEncodable, RlpDecodable, Clone, Arbitrary, Debug)]
 pub struct Transaction {
     pub kind: TxKind,
     pub inputs: Vec<CoinID>,
@@ -43,10 +44,23 @@ pub struct Transaction {
     pub fee: u64,
     pub scripts: Vec<Script>,
     pub data: Vec<u8>,
-    pub sigs: Vec<u8>,
+    pub sigs: Vec<Vecu8>,
 }
 
+type Vecu8 = Vec<u8>;
+
 impl Transaction {
+    pub fn empty_test() -> Self {
+        Transaction {
+            kind: TxKind::Normal,
+            inputs: Vec::new(),
+            outputs: Vec::new(),
+            fee: 0,
+            scripts: Vec::new(),
+            data: Vec::new(),
+            sigs: Vec::new(),
+        }
+    }
     /// checks whether or not the transaction is well formed, respecting coin size bounds and such.
     pub fn is_well_formed(&self) -> bool {
         // check bounds
@@ -70,6 +84,10 @@ impl Transaction {
         let self_bytes = rlp::encode(&s);
         tmelcrypt::hash_single(&self_bytes)
     }
+    /// sign_ed25519 appends an ed25519 signature to the transaction.
+    pub fn sign_ed25519(&mut self, sk: tmelcrypt::Ed25519SK) {
+        self.sigs.push(sk.sign(&self.hash_nosigs().0))
+    }
     /// total_outputs returns a HashMap mapping each type of coin to its total value. Fees will be included in COINTYPE_TMEL.
     pub fn total_outputs(&self) -> HashMap<Vec<u8>, u64> {
         let mut toret = HashMap::new();
@@ -91,13 +109,13 @@ impl Transaction {
     }
 }
 
-#[derive(RlpEncodable, RlpDecodable, Clone, Debug, Copy)]
+#[derive(RlpEncodable, RlpDecodable, Clone, Debug, Copy, Arbitrary)]
 pub struct CoinID {
     pub txhash: tmelcrypt::HashVal,
     pub index: u8,
 }
 
-#[derive(RlpEncodable, RlpDecodable, Clone)]
+#[derive(RlpEncodable, RlpDecodable, Clone, Arbitrary, Debug)]
 pub struct CoinData {
     pub conshash: tmelcrypt::HashVal,
     pub value: u64,

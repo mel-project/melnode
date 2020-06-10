@@ -24,6 +24,7 @@ pub enum TxApplicationError {
 }
 
 /// World state of the Themelio blockchain
+#[non_exhaustive]
 pub struct State<T: autosmt::Database> {
     pub height: u64,
     pub history: SmtMapping<u64, Header, T>,
@@ -39,7 +40,6 @@ pub struct State<T: autosmt::Database> {
     pub mel_price: u64,
 
     pub stake_doc: SmtMapping<txn::CoinID, Vec<u8>, T>,
-    _private: (),
 }
 
 impl<T: autosmt::Database> Clone for State<T> {
@@ -56,7 +56,6 @@ impl<T: autosmt::Database> Clone for State<T> {
             met_price: self.met_price,
             mel_price: self.mel_price,
             stake_doc: self.stake_doc.clone(),
-            _private: self._private,
         }
     }
 }

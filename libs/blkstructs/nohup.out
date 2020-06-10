@@ -1,0 +1,26 @@
+
+(budgie-panel:10485): Indicator-Applet-WARNING **: 16:05:25.015: unable to open indicator service file directory: Error opening directory “/usr/share/ayatana/indicators”: No such file or directory
+** Message: 16:05:26.623: libsession.vala:50: DESKTOP_AUTOSTART_ID not set, session registration may be broken (not running budgie-desktop?)
+
+(budgie-panel:10485): GLib-GIO-CRITICAL **: 16:49:42.662: g_desktop_app_info_has_key: assertion 'G_IS_DESKTOP_APP_INFO (info)' failed
+
+(budgie-panel:10485): GLib-GIO-CRITICAL **: 16:50:10.701: g_desktop_app_info_has_key: assertion 'G_IS_DESKTOP_APP_INFO (info)' failed
+
+(budgie-panel:10485): GLib-GIO-CRITICAL **: 17:24:05.892: g_desktop_app_info_has_key: assertion 'G_IS_DESKTOP_APP_INFO (info)' failed
+
+(budgie-panel:10485): GLib-GIO-CRITICAL **: 18:27:52.990: g_desktop_app_info_has_key: assertion 'G_IS_DESKTOP_APP_INFO (info)' failed
+
+(budgie-panel:10485): GLib-GIO-CRITICAL **: 18:28:32.695: g_desktop_app_info_has_key: assertion 'G_IS_DESKTOP_APP_INFO (info)' failed
+
+(budgie-panel:10485): Gtk-WARNING **: 18:28:41.729: Could not load a pixbuf from icon theme.
+This may indicate that pixbuf loaders or the mime database could not be found.
+
+(budgie-panel:10485): Gvc-CRITICAL **: 18:34:09.299: gvc_mixer_card_get_index: assertion 'GVC_IS_MIXER_CARD (card)' failed
+
+(budgie-panel:10485): Gvc-CRITICAL **: 18:34:09.299: gvc_mixer_card_get_index: assertion 'GVC_IS_MIXER_CARD (card)' failed
+
+(budgie-panel:10485): GLib-GIO-CRITICAL **: 18:47:51.889: g_desktop_app_info_has_key: assertion 'G_IS_DESKTOP_APP_INFO (info)' failed
+
+(budgie-panel:10485): GLib-GIO-CRITICAL **: 18:50:08.711: g_desktop_app_info_has_key: assertion 'G_IS_DESKTOP_APP_INFO (info)' failed
+
+(budgie-panel:10485): GLib-GIO-CRITICAL **: 18:51:54.619: g_desktop_app_info_has_key: assertion 'G_IS_DESKTOP_APP_INFO (info)' failed
