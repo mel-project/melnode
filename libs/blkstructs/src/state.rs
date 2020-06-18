@@ -1,12 +1,12 @@
 use crate::constants::*;
 use crate::transaction as txn;
+use parking_lot::RwLock;
 use rayon::prelude::*;
 use rlp_derive::*;
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::sync::Arc;
-use std::sync::RwLock;
 use thiserror::Error;
 use tmelcrypt::HashVal;
 
@@ -82,11 +82,11 @@ impl<T: autosmt::Database> State<T> {
             cointype: COINTYPE_TMEL.to_vec(),
         };
         empty.coins.insert(
-            &txn::CoinID {
+            txn::CoinID {
                 txhash: tmelcrypt::HashVal([0; 32]),
                 index: 0,
             },
-            &txn::CoinDataHeight {
+            txn::CoinDataHeight {
                 coin_data: init_coin,
                 height: 0,
             },
@@ -129,7 +129,7 @@ impl<T: autosmt::Database> State<T> {
             .collect();
         res?;
         // we commit the changes
-        *self = lnewself.read().unwrap().clone();
+        *self = lnewself.read().clone();
         Ok(())
     }
 
@@ -177,7 +177,7 @@ impl<T: autosmt::Database> State<T> {
         let mut in_coins: HashMap<Vec<u8>, u64> = HashMap::new();
         // iterate through the inputs
         for coin_id in tx.inputs.iter() {
-            let (coin_data, _) = lself.read().unwrap().coins.get(coin_id);
+            let (coin_data, _) = lself.read().coins.get(coin_id);
             match coin_data {
                 None => return Err(TxApplicationError::NonexistentCoin(*coin_id)),
                 Some(coin_data) => {
@@ -195,7 +195,7 @@ impl<T: autosmt::Database> State<T> {
                         ));
                     }
                     // spend the coin by deleting
-                    lself.write().unwrap().coins.delete(coin_id);
+                    lself.write().coins.delete(coin_id);
                     in_coins.insert(
                         coin_data.coin_data.cointype.clone(),
                         in_coins.get(&coin_data.coin_data.cointype).unwrap_or(&0)
@@ -221,16 +221,15 @@ impl<T: autosmt::Database> State<T> {
         tx: &txn::Transaction,
     ) -> Result<(), TxApplicationError> {
         for (index, coin_data) in tx.outputs.iter().enumerate() {
-            let mut lself = lself.write().unwrap();
-            let height = lself.height;
+            let height = lself.read().height;
             // if conshash is zero, this destroys the coins permanently
             if coin_data.conshash.0 != [0; 32] {
-                lself.coins.insert(
-                    &txn::CoinID {
+                lself.write().coins.insert(
+                    txn::CoinID {
                         txhash: tx.hash_nosigs(),
                         index: index.try_into().unwrap(),
                     },
-                    &txn::CoinDataHeight {
+                    txn::CoinDataHeight {
                         coin_data: coin_data.clone(),
                         height,
                     },
@@ -262,7 +261,7 @@ impl<T: autosmt::Database> State<T> {
         lself: &RwLock<Self>,
         tx: &txn::Transaction,
     ) -> Result<(), TxApplicationError> {
-        let lself = lself.read().unwrap();
+        let lself = lself.read();
         // construct puzzle seed
         let chi = tmelcrypt::hash_single(&rlp::encode(
             tx.inputs.get(0).ok_or(TxApplicationError::MalformedTx)?,
@@ -288,7 +287,7 @@ impl<T: autosmt::Database> State<T> {
         lself: &RwLock<Self>,
         tx: &txn::Transaction,
     ) -> Result<(), TxApplicationError> {
-        let mut lself = lself.write().unwrap();
+        let mut lself = lself.write();
         // must be in first half of auction
         if lself.height % 20 >= 10 {
             return Err(TxApplicationError::BidWrongTime);
@@ -307,7 +306,7 @@ impl<T: autosmt::Database> State<T> {
             return Err(TxApplicationError::MalformedTx);
         }
         // save transaction to auction list
-        lself.auction_bids.insert(&tx.hash_nosigs(), tx);
+        lself.auction_bids.insert(tx.hash_nosigs(), tx.clone());
         Ok(())
     }
     // auction buyout
@@ -315,7 +314,7 @@ impl<T: autosmt::Database> State<T> {
         lself: &RwLock<Self>,
         tx: &txn::Transaction,
     ) -> Result<(), TxApplicationError> {
-        let mut lself = lself.write().unwrap();
+        let mut lself = lself.write();
         // find the one and only ABID input
         let abid_txx: Vec<txn::Transaction> = tx
             .inputs
@@ -345,11 +344,11 @@ impl<T: autosmt::Database> State<T> {
 pub struct FinalizedState<T: autosmt::Database>(State<T>);
 
 impl<T: autosmt::Database> FinalizedState<T> {
-    /// inner_ref returns a reference to the State finalized within.
+    /// Returns a reference to the State finalized within.
     pub fn inner_ref(&self) -> &State<T> {
         &self.0
     }
-    /// header returns the block header represented by the finalized state.
+    /// Returns the block header represented by the finalized state.
     pub fn header(&self) -> Header {
         let inner = &self.0;
         Header {
@@ -366,9 +365,17 @@ impl<T: autosmt::Database> FinalizedState<T> {
             stake_doc_hash: inner.stake_doc.root_hash(),
         }
     }
+    /// Creates a new unfinalized state representing the next block.
+    pub fn next_state(&self) -> State<T> {
+        let mut new = self.0.clone();
+        // advance the numbers
+        new.history.insert(self.0.height, self.header());
+        new.height += 1;
+        new
+    }
 }
 
-#[derive(RlpEncodable, RlpDecodable, Copy, Clone)]
+#[derive(RlpEncodable, RlpDecodable, Copy, Clone, Debug)]
 pub struct Header {
     pub height: u64,
     pub history_hash: HashVal,
@@ -381,6 +388,12 @@ pub struct Header {
     pub met_price: u64,
     pub mel_price: u64,
     pub stake_doc_hash: HashVal,
+}
+
+impl Header {
+    pub fn hash(&self) -> tmelcrypt::HashVal {
+        tmelcrypt::hash_single(&rlp::encode(self))
+    }
 }
 
 /// SmtMapping is a type-safe, constant-time clonable, imperative-style interface to a sparse Merkle tree.
@@ -427,9 +440,9 @@ impl<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable, D: autosmt::Database
         }
     }
     /// insert inserts a mapping, replacing any existing mapping
-    pub fn insert(&mut self, key: &K, val: &V) {
-        let key = autosmt::hash::index(&rlp::encode(key));
-        let newmap = self.mapping.set(key, &rlp::encode(val));
+    pub fn insert(&mut self, key: K, val: V) {
+        let key = autosmt::hash::index(&rlp::encode(&key));
+        let newmap = self.mapping.set(key, &rlp::encode(&val));
         self.mapping = newmap
     }
     /// delete deletes a mapping, replacing the mapping with a mapping to the empty bytestring

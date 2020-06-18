@@ -4,7 +4,7 @@ use std::convert::TryInto;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Arbitrary)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Arbitrary, Ord, PartialOrd)]
 pub struct HashVal(pub [u8; 32]);
 
 impl fmt::Debug for HashVal {

@@ -21,3 +21,5 @@ bigint="4"
 arbitrary={version="0.4.4", features=["derive"]}
 quickcheck = "0.9"
 quickcheck_macros = "0.9"
+rand="0.7"
+parking_lot="0.10"

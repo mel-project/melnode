@@ -1,6 +1,7 @@
 use crate::smt::*;
+use parking_lot::RwLock;
 use std::convert::TryInto;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 // Internal nodes have 16 children and are identified by their 16-ary hash. Each child is 4 levels closer to the bottom.
 // Finger nodes represent subtrees that only have one element. They include a bitvec representing remaining steps and the value itself.
@@ -178,7 +179,7 @@ impl<T: database::Database> InternalNode<T> {
     //     }
     // }
     pub fn new_from_hash(db: Arc<RwLock<T>>, level: usize, hash: [u8; 32]) -> Self {
-        let dbm = db.read().unwrap();
+        let dbm = db.read();
         let rawval = dbm.read(hash).unwrap();
         drop(dbm);
         InternalNode::new_from_bytes(db, level, &rawval, Some(hash))
@@ -256,7 +257,7 @@ impl<T: database::Database> InternalNode<T> {
     }
 
     pub fn get_gggc(&self, idx: usize) -> DBNode<T> {
-        let bts = self.db.read().unwrap().read(self.gggc_hashes[idx]).unwrap();
+        let bts = self.db.read().read(self.gggc_hashes[idx]).unwrap();
         //println!("get_gggc read {}", hex::encode(&bts));
         if bts[0] == 0 {
             DBNode::Internal(InternalNode::new_from_bytes(
@@ -277,7 +278,7 @@ impl<T: database::Database> InternalNode<T> {
     }
 
     pub fn set_gggc(&self, idx: usize, gggc: &DBNode<T>) -> Self {
-        let db = self.db.read().unwrap();
+        let db = self.db.read();
         let ghash = gggc.hash();
         let mut newgg = self.gggc_hashes;
         newgg[idx] = ghash;
@@ -298,7 +299,7 @@ impl<T: database::Database> InternalNode<T> {
 
     fn write(&mut self) {
         self.cache_hashes();
-        let mut dbm = self.db.write().unwrap();
+        let mut dbm = self.db.write();
         if dbm.write(self.my_hash, &self.to_bytes()).is_none() {
             dbm.refc_incr(self.my_hash).unwrap();
         } else {
@@ -350,10 +351,7 @@ impl<T: database::Database> InternalNode<T> {
 
 impl<T: database::Database> Drop for InternalNode<T> {
     fn drop(&mut self) {
-        self.db
-            .write()
-            .unwrap()
-            .refc_decr_hex_recursive(self.my_hash);
+        self.db.write().refc_decr_hex_recursive(self.my_hash);
     }
 }
 // Subtree with only one element. Encoded as 1 || key || value
@@ -381,7 +379,7 @@ impl<T: database::Database> Clone for DataNode<T> {
 
 impl<T: database::Database> Drop for DataNode<T> {
     fn drop(&mut self) {
-        self.db.write().unwrap().refc_decr(self.hashes[0]).unwrap();
+        self.db.write().refc_decr(self.hashes[0]).unwrap();
     }
 }
 
@@ -434,7 +432,7 @@ impl<T: database::Database> DataNode<T> {
 
     fn write(&mut self) {
         self.comp_hash();
-        let mut dbm = self.db.write().unwrap();
+        let mut dbm = self.db.write();
         let hash = self.hashes[0];
         // println!(
         //     "writing out data with hash={}, level={}",

@@ -1,9 +1,10 @@
+use parking_lot::{Mutex, RwLock};
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryInto;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::Arc;
 
 /// Database represents a backend for storing SMT nodes.
 pub trait Database: Send + Sync {
@@ -59,13 +60,13 @@ impl TrivialDB {
     }
 
     pub fn count(&self) -> usize {
-        self.mapping.lock().unwrap().len()
+        self.mapping.lock().len()
     }
 
     pub fn graphviz(&self) -> String {
         let mut toret = String::new();
         toret.push_str("digraph G{\n");
-        for (k, v) in self.mapping.lock().unwrap().iter() {
+        for (k, v) in self.mapping.lock().iter() {
             let hk = hex::encode(&k[0..5]);
             let label = format!("[label = \"{}-[{}]\"]", hk, v.1.borrow());
             toret.push_str(&format!("\"{}\" {}\n", hk, label));
@@ -89,7 +90,7 @@ impl Database for TrivialDB {
         if key == [0; 32] {
             return Some(());
         }
-        let mut mapping = self.mapping.lock().unwrap();
+        let mut mapping = self.mapping.lock();
         if let Some((_, _)) = mapping.get(&key) {
             None
         } else {
@@ -102,7 +103,7 @@ impl Database for TrivialDB {
         if key == [0; 32] {
             return Some(1);
         }
-        let mapping = self.mapping.lock().unwrap();
+        let mapping = self.mapping.lock();
         if let Some((_, refcount)) = mapping.get(&key) {
             let mut mref = refcount.borrow_mut();
             *mref += 1;
@@ -117,7 +118,7 @@ impl Database for TrivialDB {
         if key == [0; 32] {
             return Some(1);
         }
-        let mut mapping = self.mapping.lock().unwrap();
+        let mut mapping = self.mapping.lock();
         if let Entry::Occupied(mut occupied) = mapping.entry(key) {
             let result = {
                 let ks = occupied.get_mut();
@@ -138,7 +139,7 @@ impl Database for TrivialDB {
         if key == [0; 32] {
             return Some([0; 32 * 16 + 1].to_vec());
         }
-        let mapping = self.mapping.lock().unwrap();
+        let mapping = self.mapping.lock();
         let v = mapping.get(&key)?;
         Some(v.0.clone())
     }

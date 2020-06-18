@@ -103,19 +103,21 @@ impl Transaction {
     pub fn script_as_map(&self) -> HashMap<tmelcrypt::HashVal, Script> {
         let mut toret = HashMap::new();
         for s in self.scripts.iter() {
-            toret.insert(tmelcrypt::hash_single(&rlp::encode(s)), s.clone());
+            toret.insert(s.hash(), s.clone());
         }
         toret
     }
 }
 
-#[derive(RlpEncodable, RlpDecodable, Clone, Debug, Copy, Arbitrary)]
+#[derive(
+    RlpEncodable, RlpDecodable, Clone, Debug, Copy, Arbitrary, Ord, PartialOrd, Eq, PartialEq,
+)]
 pub struct CoinID {
     pub txhash: tmelcrypt::HashVal,
     pub index: u8,
 }
 
-#[derive(RlpEncodable, RlpDecodable, Clone, Arbitrary, Debug)]
+#[derive(RlpEncodable, RlpDecodable, Clone, Arbitrary, Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub struct CoinData {
     pub conshash: tmelcrypt::HashVal,
     pub value: u64,

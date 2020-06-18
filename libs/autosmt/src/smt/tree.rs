@@ -1,7 +1,8 @@
 use crate::smt::*;
 use bitvec::prelude::*;
+use parking_lot::RwLock;
 use std::fmt::Debug;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 pub struct Tree<T: database::Database> {
     root: Arc<dbnode::DBNode<T>>,

@@ -1,10 +1,10 @@
 use crate::transaction as txn;
 use arbitrary::Arbitrary;
-use rlp::Decodable;
-use rlp_derive::*;
+use rlp::{Decodable, Encodable};
 use std::collections::HashMap;
 use std::convert::TryInto;
-#[derive(RlpEncodable, RlpDecodable, Clone, Eq, PartialEq, Debug, Arbitrary)]
+
+#[derive(Clone, Eq, PartialEq, Debug, Arbitrary)]
 pub struct Script(pub Vec<u8>);
 
 #[cfg(test)]
@@ -39,18 +39,19 @@ mod tests {
     fn check_sig() {
         let (pk, sk) = tmelcrypt::ed25519_keygen();
         // (SIGEOK (LOAD 1) (PUSH pk) (VREF (VREF (LOAD 0) 6) 0))
-        let check_sig_script = Script::from_ops(&vec![
-            OpCode::PUSHI(0.into()),
-            OpCode::PUSHI(6.into()),
-            OpCode::PUSHI(0.into()),
-            OpCode::LOAD,
-            OpCode::VREF,
-            OpCode::VREF,
-            OpCode::PUSHB(pk.0.to_vec()),
-            OpCode::PUSHI(1.into()),
-            OpCode::LOAD,
-            OpCode::SIGEOK,
-        ])
+        let check_sig_script = Script::from_ops(&[OpCode::LOOP(
+            5,
+            vec![
+                OpCode::PUSHI(0.into()),
+                OpCode::PUSHI(6.into()),
+                OpCode::LOADIMM(0),
+                OpCode::VREF,
+                OpCode::VREF,
+                OpCode::PUSHB(pk.0.to_vec()),
+                OpCode::LOADIMM(1),
+                OpCode::SIGEOK,
+            ],
+        )])
         .unwrap();
         println!("script length is {}", check_sig_script.0.len());
         let mut tx = txn::Transaction::empty_test();
@@ -94,6 +95,10 @@ impl Script {
         self.check_opt(tx).is_some()
     }
 
+    pub fn hash(&self) -> tmelcrypt::HashVal {
+        tmelcrypt::hash_single(&self.0)
+    }
+
     fn check_opt(&self, tx: &txn::Transaction) -> Option<()> {
         let txb = rlp::encode(tx);
         let tx_val: Value = rlp::decode(&txb).unwrap();
@@ -102,6 +107,20 @@ impl Script {
         hm.insert(0, tx_val);
         hm.insert(1, Value::from_bytes(&tx.hash_nosigs().0));
         Executor::new(hm).run_return(&ops)
+    }
+
+    pub fn std_ed25519_pk(pk: tmelcrypt::Ed25519PK) -> Self {
+        Script::from_ops(&[
+            OpCode::PUSHI(0.into()),
+            OpCode::PUSHI(6.into()),
+            OpCode::LOADIMM(0),
+            OpCode::VREF,
+            OpCode::VREF,
+            OpCode::PUSHB(pk.0.to_vec()),
+            OpCode::LOADIMM(1),
+            OpCode::SIGEOK,
+        ])
+        .unwrap()
     }
 
     pub fn from_ops(ops: &[OpCode]) -> Option<Self> {
@@ -167,8 +186,9 @@ impl Script {
             0xa2 => output.push(OpCode::BNZ(u16arg(bcode)?)),
             0xb0 => {
                 let iterations = u16arg(bcode)?;
+                let count = u16arg(bcode)?;
                 let mut rec_output = Vec::new();
-                for _ in 0..iterations {
+                for _ in 0..count {
                     Script::disassemble_one(bcode, &mut rec_output, rec_depth + 1)?;
                 }
                 output.push(OpCode::LOOP(iterations, rec_output));
@@ -258,6 +278,8 @@ impl Script {
             OpCode::LOOP(iterations, ops) => {
                 output.push(0xb0);
                 output.extend_from_slice(&iterations.to_be_bytes());
+                let op_cnt: u16 = ops.len().try_into().ok()?;
+                output.extend_from_slice(&op_cnt.to_be_bytes());
                 for op in ops {
                     Script::assemble_one(op, output)?
                 }
@@ -279,6 +301,19 @@ impl Script {
             }
         }
         Some(())
+    }
+}
+
+impl Encodable for Script {
+    fn rlp_append(&self, s: &mut rlp::RlpStream) {
+        (self.0).rlp_append(s)
+    }
+}
+
+impl Decodable for Script {
+    fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
+        let raw = Vec::decode(rlp)?;
+        Ok(Script(raw))
     }
 }
 
@@ -362,6 +397,7 @@ impl Executor {
                 Some(Value::from_bytes(&hash.0))
             })?,
             OpCode::SIGEOK => self.do_triop(|message, public_key, signature| {
+                //println!("SIGEOK({:?}, {:?}, {:?})", message, public_key, signature);
                 let public_key = tmelcrypt::Ed25519PK::from_bytes(&public_key.as_bytes()?)?;
                 Some(Value::from_bool(
                     public_key.verify(&message.as_bytes()?, &signature.as_bytes()?),
