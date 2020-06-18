@@ -38,6 +38,11 @@ pub fn hash_single(val: &[u8]) -> HashVal {
     HashVal((*b3h.as_bytes().as_ref()).try_into().unwrap())
 }
 
+pub fn hash_keyed(key: &[u8], val: &[u8]) -> HashVal {
+    let b3h = blake3::keyed_hash(&hash_single(key).0, val);
+    HashVal((*b3h.as_bytes().as_ref()).try_into().unwrap())
+}
+
 pub fn ed25519_keygen() -> (Ed25519PK, Ed25519SK) {
     let mut csprng = rand::thread_rng();
     let keypair = ed25519_dalek::Keypair::generate(&mut csprng);

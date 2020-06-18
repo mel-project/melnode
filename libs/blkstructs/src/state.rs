@@ -1,9 +1,11 @@
+use crate::constants::*;
 use crate::transaction as txn;
 use rayon::prelude::*;
 use rlp_derive::*;
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::marker::PhantomData;
+use std::sync::Arc;
 use std::sync::RwLock;
 use thiserror::Error;
 use tmelcrypt::HashVal;
@@ -21,6 +23,10 @@ pub enum TxApplicationError {
     NonexistentScript(tmelcrypt::HashVal),
     #[error("does not satisfy script {:?}", .0)]
     ViolatesScript(tmelcrypt::HashVal),
+    #[error("invalid sequential proof of work")]
+    InvalidMelPoW,
+    #[error("auction bid at wrong time")]
+    BidWrongTime,
 }
 
 /// World state of the Themelio blockchain
@@ -28,7 +34,7 @@ pub enum TxApplicationError {
 pub struct State<T: autosmt::Database> {
     pub height: u64,
     pub history: SmtMapping<u64, Header, T>,
-    pub coins: SmtMapping<txn::CoinID, txn::CoinData, T>,
+    pub coins: SmtMapping<txn::CoinID, txn::CoinDataHeight, T>,
     pub transactions: SmtMapping<HashVal, txn::Transaction, T>,
 
     pub fee_pool: u64,
@@ -61,11 +67,38 @@ impl<T: autosmt::Database> Clone for State<T> {
 }
 
 impl<T: autosmt::Database> State<T> {
-    /// applies a single transaction.
+    /// Generates a test genesis state, with a given starting coin.
+    pub fn test_genesis(
+        db: &Arc<RwLock<T>>,
+        start_micromels: u64,
+        start_conshash: tmelcrypt::HashVal,
+    ) -> Self {
+        assert!(start_micromels <= MAX_COINVAL);
+        let mut empty = State::new_empty(db);
+        // insert coin out of nowhere
+        let init_coin = txn::CoinData {
+            conshash: start_conshash,
+            value: start_micromels,
+            cointype: COINTYPE_TMEL.to_vec(),
+        };
+        empty.coins.insert(
+            &txn::CoinID {
+                txhash: tmelcrypt::HashVal([0; 32]),
+                index: 0,
+            },
+            &txn::CoinDataHeight {
+                coin_data: init_coin,
+                height: 0,
+            },
+        );
+        empty
+    }
+    /// Applies a single transaction.
     pub fn apply_tx(&mut self, tx: &txn::Transaction) -> Result<(), TxApplicationError> {
         self.apply_tx_batch(std::slice::from_ref(tx))
     }
-    /// applies a batch of transactions. The order of the transactions in txx do not matter.
+
+    /// Applies a batch of transactions. The order of the transactions in txx do not matter.
     pub fn apply_tx_batch(&mut self, txx: &[txn::Transaction]) -> Result<(), TxApplicationError> {
         // clone self first
         let newself = self.clone();
@@ -88,17 +121,53 @@ impl<T: autosmt::Database> State<T> {
             .map(|tx| State::apply_tx_inputs(&lnewself, tx))
             .collect();
         res?;
+        // then we apply the nondefault checks in parallel
+        let res: Result<Vec<()>, TxApplicationError> = txx
+            .par_iter()
+            .filter(|tx| tx.kind != txn::TxKind::Normal)
+            .map(|tx| State::apply_tx_special(&lnewself, tx))
+            .collect();
+        res?;
         // we commit the changes
         *self = lnewself.read().unwrap().clone();
         Ok(())
     }
-    fn apply_tx_fees(
-        lself: &RwLock<Self>,
-        tx: &txn::Transaction,
-    ) -> Result<(), TxApplicationError> {
-        println!("skipping application of fees");
-        Ok(())
+
+    /// Finalizes a state into a block. This consumes the state.
+    pub fn finalize(mut self) -> FinalizedState<T> {
+        // synthesize auction fill as needed
+        if self.height % AUCTION_INTERVAL == 0 && !self.auction_bids.is_empty() {
+            self.synthesize_afill()
+        }
+        // TODO stake stuff
+        // create the finalized state
+        FinalizedState(self)
     }
+
+    // ----------- helpers start here ------------
+
+    fn new_empty(db: &Arc<RwLock<T>>) -> Self {
+        let empty_tree = autosmt::Tree::new(db);
+        State {
+            height: 0,
+            history: SmtMapping::new(&empty_tree),
+            coins: SmtMapping::new(&empty_tree),
+            transactions: SmtMapping::new(&empty_tree),
+            fee_pool: 1000000,
+            fee_multiplier: 1000,
+            dosc_multiplier: 1,
+            auction_bids: SmtMapping::new(&empty_tree),
+            met_price: MICRO_CONVERTER,
+            mel_price: MICRO_CONVERTER,
+            stake_doc: SmtMapping::new(&empty_tree),
+        }
+    }
+
+    fn synthesize_afill(&mut self) {
+        todo!("synthesize afill")
+    }
+
+    // apply inputs
     fn apply_tx_inputs(
         lself: &RwLock<Self>,
         tx: &txn::Transaction,
@@ -112,17 +181,25 @@ impl<T: autosmt::Database> State<T> {
             match coin_data {
                 None => return Err(TxApplicationError::NonexistentCoin(*coin_id)),
                 Some(coin_data) => {
-                    let script = scripts
-                        .get(&coin_data.conshash)
-                        .ok_or(TxApplicationError::NonexistentScript(coin_data.conshash))?;
-                    if !script.check(tx) {
-                        return Err(TxApplicationError::ViolatesScript(coin_data.conshash));
+                    let script = scripts.get(&coin_data.coin_data.conshash).ok_or(
+                        TxApplicationError::NonexistentScript(coin_data.coin_data.conshash),
+                    )?;
+                    // we skip checking the script if it's ABID and the tx type is buyout or fill
+                    if !(coin_data.coin_data.conshash == tmelcrypt::hash_keyed(b"ABID", b"special")
+                        && (tx.kind == txn::TxKind::AuctionBuyout
+                            || tx.kind == txn::TxKind::AuctionFill))
+                        && !script.check(tx)
+                    {
+                        return Err(TxApplicationError::ViolatesScript(
+                            coin_data.coin_data.conshash,
+                        ));
                     }
                     // spend the coin by deleting
                     lself.write().unwrap().coins.delete(coin_id);
                     in_coins.insert(
-                        coin_data.cointype.clone(),
-                        in_coins.get(&coin_data.cointype).unwrap_or(&0) + coin_data.value,
+                        coin_data.coin_data.cointype.clone(),
+                        in_coins.get(&coin_data.coin_data.cointype).unwrap_or(&0)
+                            + coin_data.coin_data.value,
                     );
                 }
             }
@@ -138,19 +215,128 @@ impl<T: autosmt::Database> State<T> {
         }
         Ok(())
     }
+    // apply outputs
     fn apply_tx_outputs(
         lself: &RwLock<Self>,
         tx: &txn::Transaction,
     ) -> Result<(), TxApplicationError> {
         for (index, coin_data) in tx.outputs.iter().enumerate() {
-            lself.write().unwrap().coins.insert(
-                &txn::CoinID {
-                    txhash: tx.hash_nosigs(),
-                    index: index.try_into().unwrap(),
-                },
-                coin_data,
-            );
+            let mut lself = lself.write().unwrap();
+            let height = lself.height;
+            // if conshash is zero, this destroys the coins permanently
+            if coin_data.conshash.0 != [0; 32] {
+                lself.coins.insert(
+                    &txn::CoinID {
+                        txhash: tx.hash_nosigs(),
+                        index: index.try_into().unwrap(),
+                    },
+                    &txn::CoinDataHeight {
+                        coin_data: coin_data.clone(),
+                        height,
+                    },
+                );
+            }
         }
+        Ok(())
+    }
+    // apply special effects
+    fn apply_tx_special(
+        lself: &RwLock<Self>,
+        tx: &txn::Transaction,
+    ) -> Result<(), TxApplicationError> {
+        match tx.kind {
+            txn::TxKind::DoscMint => State::apply_tx_special_doscmint(lself, tx),
+            txn::TxKind::AuctionBid => State::apply_tx_special_auctionbid(lself, tx),
+            txn::TxKind::AuctionBuyout => State::apply_tx_special_auctionbuyout(lself, tx),
+            txn::TxKind::AuctionFill => {
+                panic!("auction fill transaction processed in normal pipeline")
+            }
+            txn::TxKind::Stake => unimplemented!("stake"),
+            txn::TxKind::Normal => {
+                panic!("tried to apply special effects of a non-special transaction")
+            }
+        }
+    }
+    // dosc minting
+    fn apply_tx_special_doscmint(
+        lself: &RwLock<Self>,
+        tx: &txn::Transaction,
+    ) -> Result<(), TxApplicationError> {
+        let lself = lself.read().unwrap();
+        // construct puzzle seed
+        let chi = tmelcrypt::hash_single(&rlp::encode(
+            tx.inputs.get(0).ok_or(TxApplicationError::MalformedTx)?,
+        ));
+        // compute difficulty
+        let new_dosc = *tx
+            .total_outputs()
+            .get(&cointype_dosc(lself.height))
+            .ok_or(TxApplicationError::MalformedTx)?;
+        let raw_difficulty = new_dosc * lself.dosc_multiplier;
+        let true_difficulty = 64 - raw_difficulty.leading_zeros() as usize;
+        // check the proof
+        let mp_proof =
+            melpow::Proof::from_bytes(&tx.data).ok_or(TxApplicationError::MalformedTx)?;
+        if !mp_proof.verify(&chi.0, true_difficulty) {
+            Err(TxApplicationError::InvalidMelPoW)
+        } else {
+            Ok(())
+        }
+    }
+    // auction bidding
+    fn apply_tx_special_auctionbid(
+        lself: &RwLock<Self>,
+        tx: &txn::Transaction,
+    ) -> Result<(), TxApplicationError> {
+        let mut lself = lself.write().unwrap();
+        // must be in first half of auction
+        if lself.height % 20 >= 10 {
+            return Err(TxApplicationError::BidWrongTime);
+        }
+        // data must be a 32-byte conshash
+        if tx.data.len() != 32 {
+            return Err(TxApplicationError::MalformedTx);
+        }
+        // first output stores the price bid for the mets
+        let first_output = tx.outputs.get(0).ok_or(TxApplicationError::MalformedTx)?;
+        if first_output.cointype != cointype_dosc(lself.height) {
+            return Err(TxApplicationError::MalformedTx);
+        }
+        // first output must have an empty script
+        if first_output.conshash != tmelcrypt::hash_keyed(b"ABID", b"special") {
+            return Err(TxApplicationError::MalformedTx);
+        }
+        // save transaction to auction list
+        lself.auction_bids.insert(&tx.hash_nosigs(), tx);
+        Ok(())
+    }
+    // auction buyout
+    fn apply_tx_special_auctionbuyout(
+        lself: &RwLock<Self>,
+        tx: &txn::Transaction,
+    ) -> Result<(), TxApplicationError> {
+        let mut lself = lself.write().unwrap();
+        // find the one and only ABID input
+        let abid_txx: Vec<txn::Transaction> = tx
+            .inputs
+            .iter()
+            .filter_map(|cid| lself.auction_bids.get(&cid.txhash).0)
+            .collect();
+        if abid_txx.len() != 1 {
+            return Err(TxApplicationError::MalformedTx);
+        }
+        let abid_txx = &abid_txx[0];
+        // validate that the first output fills the order
+        let first_output: &txn::CoinData =
+            tx.outputs.get(0).ok_or(TxApplicationError::MalformedTx)?;
+        if first_output.cointype != COINTYPE_TMET
+            || first_output.value < abid_txx.outputs[0].value
+            || first_output.conshash.0.to_vec() != abid_txx.data
+        {
+            return Err(TxApplicationError::MalformedTx);
+        }
+        // remove the order from the order book
+        lself.auction_bids.delete(&abid_txx.hash_nosigs());
         Ok(())
     }
 }
@@ -215,6 +401,10 @@ impl<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable, D: autosmt::Database
 impl<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable, D: autosmt::Database>
     SmtMapping<K, V, D>
 {
+    /// Returns true iff the mapping is empty.
+    pub fn is_empty(&self) -> bool {
+        self.root_hash().0 == [0; 32]
+    }
     /// new converts a type-unsafe SMT to a SmtMapping
     pub fn new(tree: &autosmt::Tree<D>) -> Self {
         let tree = tree.clone();

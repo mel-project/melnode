@@ -113,6 +113,10 @@ impl Script {
         Some(Script(output))
     }
 
+    pub fn always_true() -> Self {
+        Script::from_ops(&[OpCode::PUSHI(1.into())]).unwrap()
+    }
+
     fn disassemble_one(
         bcode: &mut Vec<u8>,
         output: &mut Vec<OpCode>,

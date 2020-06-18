@@ -72,7 +72,7 @@ impl Transaction {
         if self.fee > MAX_COINVAL {
             return false;
         }
-        if self.outputs.len() > 255 {
+        if self.outputs.len() > 255 || self.inputs.len() > 255 {
             return false;
         }
         true
@@ -120,4 +120,10 @@ pub struct CoinData {
     pub conshash: tmelcrypt::HashVal,
     pub value: u64,
     pub cointype: Vec<u8>,
+}
+
+#[derive(RlpEncodable, RlpDecodable, Clone, Arbitrary, Debug)]
+pub struct CoinDataHeight {
+    pub coin_data: CoinData,
+    pub height: u64,
 }

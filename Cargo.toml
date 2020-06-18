@@ -10,6 +10,7 @@ edition = "2018"
 autosmt={path="libs/autosmt"}
 blkstructs={path="libs/blkstructs"}
 tmelcrypt={path="libs/tmelcrypt"}
+melpow={path="libs/melpow"}
 hex="0.4.2"
 
 [profile.dev]
