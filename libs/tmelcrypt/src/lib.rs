@@ -52,7 +52,7 @@ pub fn ed25519_keygen() -> (Ed25519PK, Ed25519SK) {
     )
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct Ed25519PK(pub [u8; 32]);
 
 impl Ed25519PK {

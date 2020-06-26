@@ -11,6 +11,7 @@ autosmt={path="libs/autosmt"}
 blkstructs={path="libs/blkstructs"}
 tmelcrypt={path="libs/tmelcrypt"}
 melpow={path="libs/melpow"}
+symphonia={path="libs/symphonia"}
 hex="0.4.2"
 
 [profile.dev]

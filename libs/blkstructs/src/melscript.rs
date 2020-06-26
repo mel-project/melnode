@@ -7,89 +7,6 @@ use std::convert::TryInto;
 #[derive(Clone, Eq, PartialEq, Debug, Arbitrary)]
 pub struct Script(pub Vec<u8>);
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use quickcheck;
-    use quickcheck_macros::*;
-    fn dontcrash(data: &[u8]) {
-        let script = Script(data.to_vec());
-        if let Some(ops) = script.to_ops() {
-            println!("{:?}", ops);
-            let redone = Script::from_ops(&ops).unwrap();
-            assert_eq!(redone, script);
-        }
-    }
-
-    #[test]
-    fn fuzz_crash_0() {
-        dontcrash(&hex::decode("b000001010").unwrap())
-    }
-
-    #[test]
-    fn stack_overflow() {
-        let mut data = Vec::new();
-        for _ in 0..100000 {
-            data.push(0xb0)
-        }
-        dontcrash(&data.to_vec())
-    }
-
-    #[test]
-    fn check_sig() {
-        let (pk, sk) = tmelcrypt::ed25519_keygen();
-        // (SIGEOK (LOAD 1) (PUSH pk) (VREF (VREF (LOAD 0) 6) 0))
-        let check_sig_script = Script::from_ops(&[OpCode::LOOP(
-            5,
-            vec![
-                OpCode::PUSHI(0.into()),
-                OpCode::PUSHI(6.into()),
-                OpCode::LOADIMM(0),
-                OpCode::VREF,
-                OpCode::VREF,
-                OpCode::PUSHB(pk.0.to_vec()),
-                OpCode::LOADIMM(1),
-                OpCode::SIGEOK,
-            ],
-        )])
-        .unwrap();
-        println!("script length is {}", check_sig_script.0.len());
-        let mut tx = txn::Transaction::empty_test();
-        tx.sign_ed25519(sk);
-        assert!(check_sig_script.check(&tx));
-    }
-
-    #[quickcheck]
-    fn loop_once_is_identity(bitcode: Vec<u8>) -> bool {
-        let ops = Script(bitcode.clone()).to_ops();
-        let tx = txn::Transaction::empty_test();
-        match ops {
-            None => true,
-            Some(ops) => {
-                let loop_ops = vec![OpCode::LOOP(1, ops.clone())];
-                let loop_script = Script::from_ops(&loop_ops).unwrap();
-                let orig_script = Script::from_ops(&ops).unwrap();
-                loop_script.check(&tx) == orig_script.check(&tx)
-            }
-        }
-    }
-
-    #[quickcheck]
-    fn deterministic_execution(bitcode: Vec<u8>) -> bool {
-        let ops = Script(bitcode.clone()).to_ops();
-        let tx = txn::Transaction::empty_test();
-        match ops {
-            None => true,
-            Some(ops) => {
-                let orig_script = Script::from_ops(&ops).unwrap();
-                let first = orig_script.check(&tx);
-                let second = orig_script.check(&tx);
-                first == second
-            }
-        }
-    }
-}
-
 impl Script {
     pub fn check(&self, tx: &txn::Transaction) -> bool {
         self.check_opt(tx).is_some()
@@ -634,6 +551,89 @@ impl Decodable for Value {
             Ok(Value::Int(int.try_into().unwrap()))
         } else {
             Err(rlp::DecoderError::Custom("not int, list, or data"))
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use quickcheck;
+    use quickcheck_macros::*;
+    fn dontcrash(data: &[u8]) {
+        let script = Script(data.to_vec());
+        if let Some(ops) = script.to_ops() {
+            println!("{:?}", ops);
+            let redone = Script::from_ops(&ops).unwrap();
+            assert_eq!(redone, script);
+        }
+    }
+
+    #[test]
+    fn fuzz_crash_0() {
+        dontcrash(&hex::decode("b000001010").unwrap())
+    }
+
+    #[test]
+    fn stack_overflow() {
+        let mut data = Vec::new();
+        for _ in 0..100000 {
+            data.push(0xb0)
+        }
+        dontcrash(&data.to_vec())
+    }
+
+    #[test]
+    fn check_sig() {
+        let (pk, sk) = tmelcrypt::ed25519_keygen();
+        // (SIGEOK (LOAD 1) (PUSH pk) (VREF (VREF (LOAD 0) 6) 0))
+        let check_sig_script = Script::from_ops(&[OpCode::LOOP(
+            5,
+            vec![
+                OpCode::PUSHI(0.into()),
+                OpCode::PUSHI(6.into()),
+                OpCode::LOADIMM(0),
+                OpCode::VREF,
+                OpCode::VREF,
+                OpCode::PUSHB(pk.0.to_vec()),
+                OpCode::LOADIMM(1),
+                OpCode::SIGEOK,
+            ],
+        )])
+        .unwrap();
+        println!("script length is {}", check_sig_script.0.len());
+        let mut tx = txn::Transaction::empty_test();
+        tx.sign_ed25519(sk);
+        assert!(check_sig_script.check(&tx));
+    }
+
+    #[quickcheck]
+    fn loop_once_is_identity(bitcode: Vec<u8>) -> bool {
+        let ops = Script(bitcode.clone()).to_ops();
+        let tx = txn::Transaction::empty_test();
+        match ops {
+            None => true,
+            Some(ops) => {
+                let loop_ops = vec![OpCode::LOOP(1, ops.clone())];
+                let loop_script = Script::from_ops(&loop_ops).unwrap();
+                let orig_script = Script::from_ops(&ops).unwrap();
+                loop_script.check(&tx) == orig_script.check(&tx)
+            }
+        }
+    }
+
+    #[quickcheck]
+    fn deterministic_execution(bitcode: Vec<u8>) -> bool {
+        let ops = Script(bitcode.clone()).to_ops();
+        let tx = txn::Transaction::empty_test();
+        match ops {
+            None => true,
+            Some(ops) => {
+                let orig_script = Script::from_ops(&ops).unwrap();
+                let first = orig_script.check(&tx);
+                let second = orig_script.check(&tx);
+                first == second
+            }
         }
     }
 }
