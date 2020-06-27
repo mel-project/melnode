@@ -35,6 +35,13 @@ impl MachVars {
     }
 }
 
+#[derive(RlpEncodable)]
+struct PVN {
+    phase: Phase,
+    view_number: u64,
+    node: Node,
+}
+
 pub struct Machine {
     globals: MachVars,
     curr_phase: Phase,
@@ -146,7 +153,7 @@ impl Machine {
                                     Some(justify) => m.node.parent_hash == justify.node.hash(),
                                     None => curr_view == 0,
                                 })
-                                && self.is_safe_node(&m.node)
+                                && self.is_safe_node(&m.node, m.justify.as_ref())
                             {
                                 return Some(m);
                             }
@@ -201,9 +208,8 @@ impl Machine {
                             witnesses: vv,
                         });
                         trace!(
-                            "[V={}] PreCommit -> is_leader -> prepare_qc created {:?}",
-                            self.globals.curr_view,
-                            self.globals.prepare_qc
+                            "[V={}] PreCommit -> is_leader -> prepare_qc created",
+                            self.globals.curr_view
                         );
                         // broadcast
                         self.broadcast(
@@ -217,13 +223,13 @@ impl Machine {
                     }
                     let leader_msg = self.globals.msgs_in_curr_view().iter().cloned().find(|m| {
                         m.sender == leader_pk
-                            && m.phase == Phase::Prepare
+                            && m.phase == Phase::PreCommit
                             && matching_qc(&m.justify, Phase::Prepare, curr_view)
                     });
                     trace!(
                         "[V={}] PreCommit -> !is_leader -> leader_msg = {:?}",
                         self.globals.curr_view,
-                        leader_msg
+                        leader_msg.is_some()
                     );
                     if let Some(msg) = leader_msg {
                         self.globals.prepare_qc = msg.justify.clone();
@@ -265,9 +271,8 @@ impl Machine {
                             witnesses: vv,
                         };
                         trace!(
-                            "[V={}] Commit -> is_leader -> precommit_qc = {:?}",
-                            self.globals.curr_view,
-                            precommit_qc
+                            "[V={}] Commit -> is_leader -> precommit_qc",
+                            self.globals.curr_view
                         );
                         self.broadcast(
                             None,
@@ -290,9 +295,9 @@ impl Machine {
                     if let Some(leader_msg) = leader_msg {
                         self.globals.locked_qc = leader_msg.justify.clone();
                         trace!(
-                            "[V={}] Commit -> !is_leader -> locked_qc = {:?}",
+                            "[V={}] Commit -> !is_leader -> locked_qc = {}",
                             self.globals.curr_view,
-                            self.globals.locked_qc
+                            self.globals.locked_qc.is_some()
                         );
                         // send the vote back to the leader
                         self.broadcast(
@@ -329,6 +334,10 @@ impl Machine {
                             view_number: self.globals.curr_view,
                             witnesses: vv,
                         };
+                        trace!(
+                            "[V={}] PreCommit -> is_leader -> broadcasting decide with commit_qc",
+                            self.globals.curr_view
+                        );
                         self.broadcast(
                             None,
                             self.make_msg(
@@ -339,15 +348,19 @@ impl Machine {
                         )
                     }
                     // wait for message
-                    let view = self.globals.curr_view;
                     let leader_msg = self.globals.msgs_in_curr_view().iter().cloned().find(|m| {
                         m.sender == leader_pk
                             && m.phase == Phase::Decide
                             && m.justify.is_some()
                             && m.justify.as_ref().unwrap().phase == Phase::Commit
-                            && m.justify.as_ref().unwrap().view_number == view
+                            && m.justify.as_ref().unwrap().view_number == curr_view
                     });
                     if let Some(m) = leader_msg {
+                        trace!(
+                            "[V={}] DECIDE {:?}",
+                            curr_view,
+                            m.justify.as_ref().unwrap().node.prop
+                        );
                         self.decision = m.justify
                     }
                     return;
@@ -357,18 +370,35 @@ impl Machine {
         }
     }
 
-    fn make_msg(&self, kind: Phase, node: Node, qc: Option<QuorumCert>) -> Message {
+    fn make_msg(&self, phase: Phase, node: Node, justify: Option<QuorumCert>) -> Message {
         Message {
-            phase: kind,
+            phase,
             node,
-            justify: qc,
+            justify,
             view_number: self.globals.curr_view,
             sender: self.config.my_pk,
+            partial_sig: None,
+        }
+    }
+
+    fn make_vote_msg(&self, phase: Phase, node: Node, justify: Option<QuorumCert>) -> Message {
+        let sk = self.config.my_sk;
+        Message {
+            phase,
+            node: node.clone(),
+            justify,
+            view_number: self.globals.curr_view,
+            sender: self.config.my_pk,
+            partial_sig: Some(sk.sign(&rlp::encode(&PVN {
+                phase,
+                view_number: self.globals.curr_view,
+                node,
+            }))),
         }
     }
 
     fn broadcast(&mut self, dest: Option<tmelcrypt::Ed25519PK>, msg: Message) {
-        trace!("broadcast {:?}", msg);
+        //trace!("broadcast {:?}", msg);
         self.globals
             .output_msgs
             .push((dest, msg.clone().sign(self.config.my_sk)));
@@ -377,9 +407,18 @@ impl Machine {
         }
     }
 
-    fn is_safe_node(&self, node: &Node) -> bool {
-        // TODO
-        true
+    fn is_safe_node(&self, node: &Node, qc: Option<&QuorumCert>) -> bool {
+        let safetylive = match &self.globals.locked_qc {
+            Some(lqc) => {
+                node.parent_hash == lqc.node.hash()
+                    || (match qc {
+                        Some(qc) => qc.view_number > lqc.view_number,
+                        _ => true,
+                    })
+            }
+            None => true,
+        };
+        safetylive && (self.config.is_valid_prop)(&node.prop)
     }
 
     // main thread
@@ -410,7 +449,7 @@ fn matching_qc(qc: &Option<QuorumCert>, phase: Phase, view: u64) -> bool {
 pub struct Config {
     pub sender_weight: Arc<dyn Fn(tmelcrypt::Ed25519PK) -> f64>,
     pub view_leader: Arc<dyn Fn(u64) -> tmelcrypt::Ed25519PK>,
-    pub is_valid_prop: Arc<dyn Fn(Vec<u8>) -> bool>,
+    pub is_valid_prop: Arc<dyn Fn(&[u8]) -> bool>,
     pub gen_proposal: Arc<dyn Fn() -> Vec<u8>>,
     pub my_sk: tmelcrypt::Ed25519SK,
     pub my_pk: tmelcrypt::Ed25519PK,
@@ -423,6 +462,7 @@ pub struct Message {
     justify: Option<QuorumCert>,
     sender: tmelcrypt::Ed25519PK,
     view_number: u64,
+    partial_sig: Option<Vec<u8>>,
 }
 
 impl Message {
@@ -487,6 +527,14 @@ pub struct QuorumCert {
     node: Node,
     witnesses: Vec<Message>,
 }
+
+// impl QuorumCert {
+//     fn new(votes: &[Message]) -> Self {
+//         if votes.len() > 0 {
+//             // assert that all the votes vote for the same triple
+//         }
+//     }
+// }
 
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, RlpEncodable, RlpDecodable)]
 pub struct Node {
