@@ -4,7 +4,7 @@ use std::convert::TryInto;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Arbitrary, Ord, PartialOrd)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Arbitrary, Ord, PartialOrd, Default)]
 pub struct HashVal(pub [u8; 32]);
 
 impl fmt::Debug for HashVal {
@@ -80,7 +80,7 @@ impl Ed25519PK {
 
 impl fmt::Debug for Ed25519PK {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("Ed25519PK({})", hex::encode(&self.0)))
+        f.write_fmt(format_args!("EdPK({}..)", hex::encode(&self.0[..5])))
     }
 }
 
