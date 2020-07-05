@@ -32,7 +32,7 @@ mod tests {
     #[test]
     fn multi_party_pacemaker() {
         let _ = env_logger::try_init();
-        const PARTIES: usize = 3;
+        const PARTIES: usize = 5;
         // create a bunch of channels
         let (bus_send, bus_recv) = unbounded::<(Option<tmelcrypt::Ed25519PK>, SignedMessage)>();
         // create the keypairs
@@ -71,9 +71,8 @@ mod tests {
                             //     pair.1.msg.view_number,
                             //     pair.0
                             // );
-                            if rng.gen::<f64>() < 1.0 {
-                                bus_send.send(pair).unwrap();
-                            }
+
+                            bus_send.send(pair).unwrap();
                         }
                         if let Ok((dest, msg)) = bus_recv.try_recv() {
                             // trace!(

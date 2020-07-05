@@ -84,13 +84,18 @@ impl Decodable for Phase {
     }
 }
 
-type Vecu8 = Vec<u8>;
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, RlpEncodable, RlpDecodable)]
 pub struct QuorumCert {
     pub phase: Phase,
     pub view_number: u64,
     pub node: Node,
-    pub signatures: Vec<Vecu8>,
+    pub signatures: Vec<QCSig>,
+}
+
+#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, RlpEncodable, RlpDecodable)]
+pub struct QCSig {
+    pub sender: tmelcrypt::Ed25519PK,
+    pub signature: Vec<u8>,
 }
 
 impl QuorumCert {
@@ -103,7 +108,10 @@ impl QuorumCert {
             assert_eq!(v.view_number, votes[0].view_number);
             assert_eq!(v.node, votes[0].node);
             assert!(v.validate_vote());
-            sigs.push(v.partial_sig.clone().unwrap());
+            sigs.push(QCSig {
+                signature: v.partial_sig.clone().unwrap(),
+                sender: v.sender,
+            });
         }
         QuorumCert {
             phase: votes[0].phase,

@@ -56,6 +56,11 @@ impl Machine {
                         return;
                     }
                 }
+                if let Some(justify) = &msg.justify {
+                    if self.config.qc_tally(justify) < BFT_THRESHOLD {
+                        return;
+                    }
+                }
                 existing.insert(msg);
             }
             // then we react
@@ -335,9 +340,11 @@ impl Machine {
                     });
                     if let Some(m) = leader_msg {
                         trace!(
-                            "[V={}] DECIDE {:?}",
+                            "[V={}] DECIDE QC({:?}, {:?}, {:?})",
                             curr_view,
-                            m.justify.as_ref().unwrap().node.prop
+                            m.justify.as_ref().unwrap().phase,
+                            m.justify.as_ref().unwrap().view_number,
+                            m.justify.as_ref().unwrap().node.hash()
                         );
                         self.decision = m.justify
                     }
@@ -450,4 +457,13 @@ pub struct Config {
     pub gen_proposal: Arc<dyn Fn() -> Vec<u8> + Send + Sync>,
     pub my_sk: tmelcrypt::Ed25519SK,
     pub my_pk: tmelcrypt::Ed25519PK,
+}
+
+impl Config {
+    pub fn qc_tally(&self, qc: &QuorumCert) -> f64 {
+        qc.signatures
+            .iter()
+            .map(|sig| (self.sender_weight)(sig.sender))
+            .sum()
+    }
 }

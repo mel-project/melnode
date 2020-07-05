@@ -132,6 +132,7 @@ dependencies = [
  "arbitrary",
  "autosmt",
  "bigint",
+ "crossbeam-channel",
  "hex",
  "im-rc",
  "melpow",
@@ -167,6 +168,12 @@ checksum = "fa79dedbb091f449f1f39e53edf88d5dbe95f895dae6135a8d7b881fb5af73f5"
 dependencies = [
  "byte-tools",
 ]
+
+[[package]]
+name = "by_address"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e245704f60eb4eb45810d65cf14eb54d2eb50a6f3715fe2d7cd01ee905c2944f"
 
 [[package]]
 name = "byte-tools"
@@ -507,6 +514,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60302e4db3a61da70c0cb7991976248362f30319e88850c487b9b95bbf059e00"
 
 [[package]]
+name = "melnet"
+version = "0.1.0"
+dependencies = [
+ "by_address",
+ "crossbeam-channel",
+ "derivative",
+ "env_logger",
+ "log",
+ "min-max-heap",
+ "parking_lot",
+ "rlp",
+ "rlp-derive",
+ "thiserror",
+]
+
+[[package]]
 name = "melpow"
 version = "0.1.0"
 dependencies = [
@@ -528,6 +551,12 @@ checksum = "b4fc2c02a7e374099d4ee95a193111f72d2110197fe200272371758f6c3643d8"
 dependencies = [
  "autocfg",
 ]
+
+[[package]]
+name = "min-max-heap"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2687e6cf9c00f48e9284cf9fd15f2ef341d03cc7743abf9df4c5f07fdee50b18"
 
 [[package]]
 name = "num_cpus"
@@ -917,6 +946,7 @@ dependencies = [
  "autosmt",
  "blkstructs",
  "hex",
+ "melnet",
  "melpow",
  "symphonia",
  "tmelcrypt",

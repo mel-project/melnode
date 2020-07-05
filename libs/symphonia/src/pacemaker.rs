@@ -35,13 +35,13 @@ impl Pacemaker {
     }
 
     // Returns a channel of output messages.
-    pub fn output_chan(&self) -> Receiver<DestMsg> {
-        self.msg_output.clone()
+    pub fn output_chan(&self) -> &Receiver<DestMsg> {
+        &self.msg_output
     }
 
     // Returns a one-off channel that returns the decision.
-    pub fn decision(&self) -> Receiver<QuorumCert> {
-        self.decision.clone()
+    pub fn decision(&self) -> &Receiver<QuorumCert> {
+        &self.decision
     }
 
     // Processes an input message.
@@ -57,7 +57,7 @@ fn pacemaker_loop(
     send_dec: Sender<QuorumCert>,
 ) {
     trace!("pacemaker started");
-    let mut timeout = Duration::from_millis(1000);
+    let mut timeout = Duration::from_millis(5000);
     let mut timeout_chan = after(timeout);
     loop {
         //thread::sleep_ms(1000);
@@ -68,6 +68,7 @@ fn pacemaker_loop(
         }
         if let Some(dec) = machine.lock().decision() {
             send_dec.send(dec).unwrap();
+            trace!("pacemaker stopped because decision reached");
             return;
         }
         // wait for input, or timeout

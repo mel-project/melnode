@@ -1,0 +1,19 @@
+[package]
+name = "melnet"
+version = "0.1.0"
+authors = ["nullchinchilla <nullchinchilla@pm.me>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rlp="0.4"
+rlp-derive="0.1"
+thiserror="1"
+parking_lot="0.10"
+min-max-heap = "1"
+crossbeam-channel="0.4"
+by_address="1"
+log="0.4"
+env_logger="0.7"
+derivative="2"
