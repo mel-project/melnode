@@ -12,3 +12,9 @@ pub struct RawResponse {
     pub kind: String,
     pub body: Vec<u8>,
 }
+
+#[derive(RlpEncodable, RlpDecodable, Debug, Clone)]
+pub struct RoutingRequest {
+    pub proto: String,
+    pub addr: String,
+}

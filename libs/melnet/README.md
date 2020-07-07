@@ -33,7 +33,7 @@ Response is either `["Ok" response]` or `["Err" error]` or `["NoVerb" ""]`, pref
 
 ```
 verb = "new_peer"
-payload = addr as string
+payload = ["protocol" "addr"]
 ```
 
 ```
