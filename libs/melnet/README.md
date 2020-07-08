@@ -10,7 +10,7 @@ We chose not to use existing solutions, notably libp2p, since they tend to be un
 
 This crate doesn't implement any custom verbs; it just provides a basic tool to maintain network topology.
 
-Right now the crate just use synchronous threads. In the unlikely event that concurrency ends up being so high that async would give significant benefits, a backwards-compatible reimplementation that still exposes a sync API is very easy. There's almost certainly no scenario where the rest of Themelio needs to be pervasively async.
+`smol`-based async is used.
 
 ## Basic request format
 

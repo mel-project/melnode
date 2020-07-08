@@ -653,7 +653,6 @@ name = "melnet"
 version = "0.1.0"
 dependencies = [
  "by_address",
- "crossbeam-channel",
  "derivative",
  "env_logger",
  "futures",
@@ -661,11 +660,11 @@ dependencies = [
  "log",
  "min-max-heap",
  "parking_lot",
+ "rand 0.7.3",
  "rlp",
  "rlp-derive",
  "smol",
  "thiserror",
- "threadpool",
 ]
 
 [[package]]

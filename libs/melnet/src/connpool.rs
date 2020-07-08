@@ -22,16 +22,25 @@ impl ConnPool {
     // Connects to a given address, which may return either a new connection or an existing one.
     pub async fn connect(&self, addr: impl ToSocketAddrs) -> std::io::Result<Async<TcpStream>> {
         let addr = addr.to_socket_addrs()?.next().unwrap();
-        let pool = self.pool.read();
-        let existing = pool.get(&addr);
+        let existing = {
+            let pool = self.pool.read();
+            let existing = pool.get(&addr);
+            match existing {
+                Some(existing) => Some(existing.clone()),
+                None => None,
+            }
+        };
         match existing {
-            Some(existing) => match existing.get_conn().await {
-                Some(conn) => Ok(conn),
-                None => {
-                    trace!("connect({:?}) -> fresh", addr);
-                    Async::<TcpStream>::connect(&addr).await
+            Some(existing) => {
+                let existing = existing.clone();
+                match existing.get_conn().await {
+                    Some(conn) => Ok(conn),
+                    None => {
+                        trace!("connect({:?}) -> fresh", addr);
+                        Async::<TcpStream>::connect(&addr).await
+                    }
                 }
-            },
+            }
             None => {
                 // create a new connection
                 trace!("connect({:?}) -> fresh", addr);
@@ -42,7 +51,6 @@ impl ConnPool {
     // Takes ownership of and returns a given TCP connection back to the pool.
     pub fn recycle(&self, conn: Async<TcpStream>) {
         let addr = conn.get_ref().peer_addr().unwrap();
-        trace!("recycle({:?})", addr);
         self.pool
             .write()
             .entry(addr)
@@ -53,7 +61,7 @@ impl ConnPool {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct SingleHost {
     send_insertion: mpsc::UnboundedSender<Async<TcpStream>>,
     send_request: mpsc::UnboundedSender<oneshot::Sender<Option<Async<TcpStream>>>>,
@@ -86,19 +94,24 @@ async fn singlehost_monitor(
     let mut heap: MinMaxHeap<(Instant, ByAddress<Box<Async<TcpStream>>>)> = MinMaxHeap::new();
     loop {
         let deadline = if let Some((min, _)) = heap.peek_min() {
-            Timer::after(*min - Instant::now())
+            let now = Instant::now();
+            if now < *min {
+                Timer::after(*min - now)
+            } else {
+                Timer::after(Duration::from_secs(0))
+            }
         } else {
             Timer::after(Duration::from_secs(86400))
         };
 
         select! {
-            insertion = recv_insertion.next().fuse() => {
+            insertion = recv_insertion.next() => {
                 if let Some(insertion) = insertion {
-                    let inserted_deadline = Instant::now() + Duration::from_secs(60);
+                    let inserted_deadline = Instant::now() + Duration::from_secs(1);
                     heap.push((inserted_deadline, ByAddress(Box::new(insertion))));
                 }
             }
-            send_response = recv_request.next().fuse() => {
+            send_response = recv_request.next() => {
                 if let Some(send_response) = send_response {
                     send_response.send(match heap.pop_max() {
                         Some(max) => {
@@ -121,9 +134,7 @@ async fn singlehost_monitor(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::prelude::*;
     use std::net::TcpListener;
-    use std::thread;
     #[test]
     fn simple() {
         let _ = env_logger::try_init();
@@ -133,7 +144,7 @@ mod tests {
             let addr = listener.local_addr().unwrap();
             Task::blocking(async move {
                 let (mut cconn, _) = listener.accept().unwrap();
-                std::io::copy(&mut cconn.try_clone().unwrap(), &mut cconn);
+                std::io::copy(&mut cconn.try_clone().unwrap(), &mut cconn).unwrap();
             })
             .detach();
             println!("done here");

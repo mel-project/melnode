@@ -3,6 +3,7 @@ use rlp_derive::{RlpDecodable, RlpEncodable};
 #[derive(RlpEncodable, RlpDecodable, Debug, Clone)]
 pub struct RawRequest {
     pub proto_ver: u8,
+    pub netname: String,
     pub verb: String,
     pub payload: Vec<u8>,
 }

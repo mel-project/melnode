@@ -1,4 +1,4 @@
-use log::debug;
+use log::trace;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
@@ -24,13 +24,13 @@ impl RoutingTable {
             .filter(|(_, start)| *start < Instant::now() - Duration::from_secs(600))
             .collect();
         for (del, inst) in to_del {
-            debug!("removing {:?}:{:?}", del, inst);
+            trace!("removing {:?}:{:?}", del, inst);
             self.addr_last_seen.remove(&del);
         }
     }
 
-    /// Iterates over the routes.
-    pub fn iter(&self) -> impl Iterator<Item = (&SocketAddr, &Instant)> {
-        self.addr_last_seen.iter()
+    /// Gets all the routes out
+    pub fn to_vec(&self) -> Vec<(SocketAddr, Instant)> {
+        self.addr_last_seen.iter().map(|(k, v)| (*k, *v)).collect()
     }
 }
