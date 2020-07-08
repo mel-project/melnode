@@ -6,12 +6,12 @@ mod routingtable;
 use derivative::*;
 use log::debug;
 use routingtable::*;
-use std::convert::TryInto;
 use std::net::{TcpListener, TcpStream, ToSocketAddrs};
 use std::sync::Arc;
 mod reqs;
 use futures::prelude::*;
 use im::HashMap;
+use parking_lot::RwLock;
 use reqs::*;
 use smol::*;
 
@@ -37,7 +37,7 @@ pub enum MelnetError {
 /// A clonable structure representing a melnet state. All copies share the same routing table.
 pub struct NetState {
     conn_pool: Arc<ConnPool>,
-    routes: Arc<RoutingTable>,
+    routes: Arc<RwLock<RoutingTable>>,
     #[derivative(Debug = "ignore")]
     verbs: HashMap<String, VerbHandler>,
 }
@@ -141,9 +141,31 @@ impl NetState {
         // new_addr
         self.register_verb("new_addr", |state, rr: RoutingRequest| {
             debug!("got new_addr {:?}", rr);
-            // first we check the aliveness
-
-            Ok("")
+            // everything in smol
+            block_on(async move {
+                let unreach = || MelnetError::Custom(String::from("invalid"));
+                if rr.proto != "tcp" {
+                    debug!("new_addr unrecognizable proto = {:?}", rr.proto);
+                    return Err(unreach());
+                }
+                let resp: u64 = state
+                    .request(rr.addr.clone(), "ping", 814 as u64)
+                    .await
+                    .map_err(|_| unreach())?;
+                if resp != 814 as u64 {
+                    debug!("new_addr bad ping {:?}", rr.addr);
+                    return Err(unreach());
+                }
+                state.routes.write().add_route(
+                    rr.addr
+                        .to_socket_addrs()
+                        .map_err(|_| unreach())?
+                        .next()
+                        .ok_or_else(unreach)?,
+                );
+                debug!("new_addr processed {:?}", rr.addr);
+                Ok("")
+            })
         })
     }
 
