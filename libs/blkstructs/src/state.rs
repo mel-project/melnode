@@ -133,7 +133,7 @@ impl<T: autosmt::Database> State<T> {
         res?;
         // we commit the changes
         //panic!("COMMIT?!");
-        //*self = lnewself.read().clone();
+        *self = lnewself.read().clone();
         Ok(())
     }
 

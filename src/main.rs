@@ -62,9 +62,9 @@ async fn test_spam_txx(auditor: Arc<Auditor>) {
         &blkstructs::melscript::Script::always_true(),
     );
     log::info!("starting spamming with {} txx", txx.len());
-    let txx = &txx[1..];
+    //let txx = &txx[1..];
     for tx in txx {
-        Timer::after(Duration::from_millis(1000)).await;
-        auditor.send_tx(tx.clone()).await;
+        Timer::after(Duration::from_millis(100)).await;
+        auditor.send_tx(tx).await;
     }
 }

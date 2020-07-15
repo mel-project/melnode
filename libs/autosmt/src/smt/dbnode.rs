@@ -111,18 +111,25 @@ impl<T: database::Database> DBNode<T> {
         }
     }
 
-    pub fn get_by_path_rev(&self, path: &[bool]) -> (Vec<u8>, Vec<[u8; 32]>) {
+    pub fn get_by_path_rev(&self, path: &[bool], key: [u8; 32]) -> (Vec<u8>, Vec<[u8; 32]>) {
         let path = path;
         // go down the tree
         match self {
-            DBNode::Data(dat) => (dat.data.clone(), dat.proof_frag()),
+            DBNode::Data(dat) => (
+                if dat.key == key {
+                    dat.data.clone()
+                } else {
+                    vec![]
+                },
+                dat.proof_frag(),
+            ),
             DBNode::Internal(intnode) => {
                 if intnode.my_hash == [0; 32] {
                     (vec![], vec![[0; 32]; 256 - intnode.level as usize])
                 } else {
                     let (nextbind, mut nextvec) = intnode
                         .get_gggc(path_to_idx(path))
-                        .get_by_path_rev(&path[4..]);
+                        .get_by_path_rev(&path[4..], key);
                     nextvec.append(&mut intnode.proof_frag(path));
                     (nextbind, nextvec)
                 }

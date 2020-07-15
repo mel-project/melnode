@@ -40,7 +40,7 @@ impl<T: database::Database> Tree<T> {
     /// Obtains the binding for a key, returning the proof.
     pub fn get(&self, key: [u8; 32]) -> (Option<Vec<u8>>, FullProof) {
         let path = merk::key_to_path(key);
-        let (vec, proof) = self.root.get_by_path_rev(&path);
+        let (vec, proof) = self.root.get_by_path_rev(&path, key);
         let vec = if vec.is_empty() { vec![] } else { vec };
         let proof = proof.into_iter().rev().collect();
         if vec.is_empty() {
