@@ -1,7 +1,6 @@
 use rlp::{Decodable, Encodable};
-use thiserror::Error;
 mod connpool;
-use connpool::*;
+pub use connpool::gcp;
 mod routingtable;
 use derivative::*;
 use log::{debug, trace};
@@ -16,32 +15,19 @@ use parking_lot::RwLock;
 use rand::prelude::*;
 use reqs::*;
 use smol::*;
-use std::pin::Pin;
 use std::time::Duration;
+mod common;
+pub use common::*;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 
-const PROTO_VER: u8 = 1;
-const MAX_MSG_SIZE: u32 = 10 * 1024 * 1024;
-
-type Result<T> = std::result::Result<T, MelnetError>;
-pub type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
 type VerbHandler = Arc<dyn Fn(&NetState, &[u8]) -> BoxFuture<Result<Vec<u8>>> + Send + Sync>;
-
-#[derive(Error, Debug)]
-pub enum MelnetError {
-    #[error("custom error: `{0}`")]
-    Custom(String),
-    #[error("verb not found")]
-    VerbNotFound,
-    #[error("network error: `{0}`")]
-    Network(std::io::Error),
-}
 
 #[derive(Derivative, Clone, Default)]
 #[derivative(Debug)]
 /// A clonable structure representing a melnet state. All copies share the same routing table.
 pub struct NetState {
     network_name: String,
-    conn_pool: Arc<ConnPool>,
     routes: Arc<RwLock<RoutingTable>>,
     #[derivative(Debug = "ignore")]
     verbs: HashMap<String, VerbHandler>,
@@ -63,9 +49,10 @@ impl NetState {
                     if !routes.is_empty() {
                         let (rand_neigh, _) = routes[rng.gen::<usize>() % routes.len()];
                         let (rand_route, _) = routes[rng.gen::<usize>() % routes.len()];
-                        let to_wait = state
+                        let to_wait = gcp()
                             .request::<RoutingRequest, String>(
                                 rand_neigh,
+                                &state.network_name,
                                 "new_addr",
                                 RoutingRequest {
                                     proto: String::from("tcp"),
@@ -131,6 +118,11 @@ impl NetState {
             if cmd.netname != self.network_name {
                 return Err(Box::new(MelnetError::Custom("bad".to_string())));
             }
+            trace!(
+                "got command {:?} from {:?}",
+                cmd,
+                conn.get_ref().peer_addr()
+            );
             // respond to command
             let responder = self.verbs.get(&cmd.verb);
             match responder {
@@ -192,13 +184,14 @@ impl NetState {
                     debug!("new_addr unrecognizable proto = {:?}", rr.proto);
                     return Err(unreach());
                 }
-                let resp: u64 = state
+                let resp: u64 = gcp()
                     .request(
                         rr.addr
                             .to_socket_addrs()
                             .map_err(|_| unreach())?
                             .next()
                             .ok_or_else(unreach)?,
+                        &state.network_name,
                         "ping",
                         814 as u64,
                     )
@@ -227,60 +220,17 @@ impl NetState {
         debug!("registering verb {}", verb);
         self.verbs.insert(verb.to_owned(), erase_cback_types(cback));
     }
-    /// Returns a function that does a melnet request to any given endpoint.
-    pub async fn request<TInput: Encodable, TOutput: Decodable>(
-        &self,
-        addr: SocketAddr,
-        verb: &str,
-        req: TInput,
-    ) -> Result<TOutput> {
-        // grab a connection
-        let mut conn = self
-            .conn_pool
-            .connect(addr)
-            .await
-            .map_err(MelnetError::Network)?;
-        // send a request
-        let rr = rlp::encode(&RawRequest {
-            proto_ver: PROTO_VER,
-            netname: self.network_name.clone(),
-            verb: verb.to_owned(),
-            payload: rlp::encode(&req),
-        });
-        conn.get_ref()
-            .set_write_timeout(Some(std::time::Duration::from_secs(10)))
-            .map_err(MelnetError::Network)?;
-        conn.get_ref()
-            .set_read_timeout(Some(std::time::Duration::from_secs(60)))
-            .map_err(MelnetError::Network)?;
-        write_len_bts(&mut conn, &rr).await?;
-        // read the response length
-        let response: RawResponse = rlp::decode(&read_len_bts(&mut conn).await?).map_err(|e| {
-            MelnetError::Network(std::io::Error::new(std::io::ErrorKind::InvalidData, e))
-        })?;
-        let response = match response.kind.as_ref() {
-            "Ok" => rlp::decode::<TOutput>(&response.body)
-                .map_err(|_| MelnetError::Custom("rlp error".to_owned()))?,
-            "NoVerb" => return Err(MelnetError::VerbNotFound),
-            _ => {
-                return Err(MelnetError::Custom(
-                    String::from_utf8_lossy(&response.body).to_string(),
-                ))
-            }
-        };
-        // put the connection back
-        self.conn_pool.recycle(conn);
-        Ok(response)
-    }
 
     /// Adds a route to the routing table.
     pub fn add_route(&self, addr: SocketAddr) {
         self.routes.write().add_route(addr)
     }
 
-    /// Obtains a vector of routes.
+    /// Obtains a vector of routes. This is guaranteed to be uniformly shuffled, so taking the first N elements is always fair.
     pub fn routes(&self) -> Vec<SocketAddr> {
-        self.routes.read().to_vec().iter().map(|v| v.0).collect()
+        let mut rr: Vec<SocketAddr> = self.routes.read().to_vec().iter().map(|v| v.0).collect();
+        rr.shuffle(&mut thread_rng());
+        rr
     }
 
     /// Sets the name of the network state.
@@ -298,36 +248,6 @@ impl NetState {
 
 fn string_to_addr(s: &str) -> Option<SocketAddr> {
     s.to_socket_addrs().ok()?.next()
-}
-
-async fn read_len_bts<T: AsyncRead + Unpin>(conn: &mut T) -> Result<Vec<u8>> {
-    // read the response length
-    let mut response_len = [0; 4];
-    conn.read_exact(&mut response_len)
-        .await
-        .map_err(MelnetError::Network)?;
-    let response_len = u32::from_be_bytes(response_len);
-    if response_len > MAX_MSG_SIZE {
-        return Err(MelnetError::Network(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "response too big",
-        )));
-    }
-    // read the response
-    let mut response_buf = vec![0; response_len as usize];
-    conn.read_exact(&mut response_buf)
-        .await
-        .map_err(MelnetError::Network)?;
-    Ok(response_buf)
-}
-
-async fn write_len_bts<T: AsyncWrite + Unpin>(conn: &mut T, rr: &[u8]) -> Result<()> {
-    conn.write_all(&(rr.len() as u32).to_be_bytes())
-        .await
-        .map_err(MelnetError::Network)?;
-    conn.write_all(&rr).await.map_err(MelnetError::Network)?;
-    conn.flush().await.map_err(MelnetError::Network)?;
-    Ok(())
 }
 
 fn erase_cback_types<TInput: Decodable + Send, TOutput: Encodable + Send>(

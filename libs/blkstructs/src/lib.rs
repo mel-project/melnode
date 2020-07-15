@@ -9,14 +9,10 @@ pub use constants::*;
 pub use state::*;
 pub use transaction::*;
 
-#[cfg(test)]
-mod tests {
+pub mod testing {
     use super::*;
-    use rand::seq::SliceRandom;
     use std::collections::BinaryHeap;
-    use test::Bencher;
-
-    fn random_valid_txx(
+    pub fn random_valid_txx(
         rng: &mut impl rand::Rng,
         start_coin: CoinID,
         start_coindata: CoinData,
@@ -43,7 +39,7 @@ mod tests {
                 data: vec![],
                 sigs: vec![],
             };
-            new_tx.sign_ed25519(signer);
+            new_tx = new_tx.sign_ed25519(signer);
             for (i, out) in new_tx.outputs.iter().enumerate() {
                 let cin = CoinID {
                     txhash: new_tx.hash_nosigs(),
@@ -55,9 +51,17 @@ mod tests {
         }
         toret
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::testing::*;
+    use super::*;
+    use test::Bencher;
 
     #[bench]
     fn batch_insertion(b: &mut Bencher) {
+        let _ = env_logger::try_init();
         let db = autosmt::wrap_db(autosmt::TrivialDB::new());
         let (pk, sk) = tmelcrypt::ed25519_keygen();
         let scr = melscript::Script::std_ed25519_pk(pk);

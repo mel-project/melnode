@@ -9,7 +9,7 @@ pub struct HashVal(pub [u8; 32]);
 
 impl fmt::Debug for HashVal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("HashVal({})", hex::encode(&self.0)))
+        f.write_fmt(format_args!("#<{}>", hex::encode(&self.0[0..10])))
     }
 }
 
@@ -149,7 +149,7 @@ impl Ed25519SK {
 
 impl fmt::Debug for Ed25519SK {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("Ed25519PK({})", hex::encode(self.0.as_ref())))
+        f.write_fmt(format_args!("EdSK({})", hex::encode(self.0.as_ref())))
     }
 }
 

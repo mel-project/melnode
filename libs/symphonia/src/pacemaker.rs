@@ -1,92 +1,91 @@
 use crate::common::*;
 use crate::machine::Machine;
-use crossbeam_channel::*;
+use futures::channel::mpsc;
+use futures::lock;
+use futures::prelude::*;
+use futures::select;
 use log::trace;
 use parking_lot::Mutex;
-use std::sync::Arc;
-use std::thread;
+use smol::*;
+use std::ops::DerefMut;
 use std::time::Duration;
 
 type DestMsg = (Option<tmelcrypt::Ed25519PK>, SignedMessage);
 pub struct Pacemaker {
-    machine: Arc<Mutex<Machine>>,
-    msg_input: Sender<SignedMessage>,
-    msg_output: Receiver<DestMsg>,
-    decision: Receiver<QuorumCert>,
+    msg_input: Mutex<mpsc::UnboundedSender<SignedMessage>>,
+    msg_output: lock::Mutex<mpsc::Receiver<DestMsg>>,
+    decision_output: lock::Mutex<Task<QuorumCert>>,
 }
 
 impl Pacemaker {
-    // Creates a new Pacemaker from a Machine.
+    // Creates a new Pacemaker from a consumed Machine.
     pub fn new(machine: Machine) -> Self {
-        let (send_input, recv_input) = unbounded();
-        let (send_output, recv_output) = bounded(0);
-        let (send_dec, recv_desc) = unbounded();
-        let pace = Pacemaker {
-            machine: Arc::new(Mutex::new(machine)),
-            msg_input: send_input,
-            msg_output: recv_output,
-            decision: recv_desc,
-        };
-        let machine = Arc::clone(&pace.machine);
-        thread::spawn(move || {
-            pacemaker_loop(machine, recv_input, send_output, send_dec);
-        });
-        pace
+        let (send_input, recv_input) = mpsc::unbounded();
+        let (send_output, recv_output) = mpsc::channel(0);
+        Pacemaker {
+            msg_input: Mutex::new(send_input),
+            msg_output: lock::Mutex::new(recv_output),
+            decision_output: lock::Mutex::new(Task::spawn(async move {
+                pacemaker_loop(machine, recv_input, send_output).await
+            })),
+        }
     }
 
-    // Returns a channel of output messages.
-    pub fn output_chan(&self) -> &Receiver<DestMsg> {
-        &self.msg_output
+    // Next output message.
+    pub async fn next_output(&self) -> DestMsg {
+        match self.msg_output.lock().await.next().await {
+            Some(msg) => msg,
+            None => future::pending().await,
+        }
     }
 
-    // Returns a one-off channel that returns the decision.
-    pub fn decision(&self) -> &Receiver<QuorumCert> {
-        &self.decision
+    // Final decision, represented as a quorum certificate.
+    pub async fn decision(&self) -> QuorumCert {
+        let mut out = self.decision_output.lock().await;
+        out.deref_mut().await
     }
 
     // Processes an input message.
-    pub fn process_input(&mut self, msg: SignedMessage) {
-        let _ = self.msg_input.try_send(msg);
+    pub fn process_input(&self, msg: SignedMessage) {
+        let _ = self.msg_input.lock().unbounded_send(msg);
     }
 }
 
-fn pacemaker_loop(
-    machine: Arc<Mutex<Machine>>,
-    recv_input: Receiver<SignedMessage>,
-    send_output: Sender<DestMsg>,
-    send_dec: Sender<QuorumCert>,
-) {
+async fn pacemaker_loop(
+    mut machine: Machine,
+    mut recv_input: mpsc::UnboundedReceiver<SignedMessage>,
+    mut send_output: mpsc::Sender<DestMsg>,
+) -> QuorumCert {
     trace!("pacemaker started");
     let mut timeout = Duration::from_millis(5000);
-    let mut timeout_chan = after(timeout);
+    let mut timeout_chan = Timer::after(timeout).fuse();
     loop {
         //thread::sleep_ms(1000);
         // send outputs
-        for msg in machine.lock().drain_output() {
+        let outputs = machine.drain_output();
+        for msg in outputs {
             // trace!("machine send {:?}", msg.1.msg.phase);
-            send_output.send(msg).unwrap();
+            let _ = send_output.send(msg).await;
         }
-        if let Some(dec) = machine.lock().decision() {
-            send_dec.send(dec).unwrap();
+        if let Some(dec) = machine.decision() {
             trace!("pacemaker stopped because decision reached");
-            return;
+            return dec;
         }
         // wait for input, or timeout
         select! {
-            recv(recv_input) -> s_msg => {
-                if let Ok(s_msg) = s_msg {
+            s_msg = recv_input.next() => {
+                if let Some(s_msg) = s_msg {
                     //trace!("machine process {:?}", s_msg.msg.phase);
-                    machine.lock().process_input(s_msg.clone());
+                    machine.process_input(s_msg.clone());
                 } else {
-                    trace!("pacemaker stopped because recv_input dead");
-                    return
+                    panic!("pacemaker stopped because recv_input dead");
                 }
             }
-            recv(timeout_chan) -> _ => {
+         _ = timeout_chan => {
                 trace!("pacemaker forcing a new view after {:?}", timeout);
                 timeout = timeout * 10 / 9;
-                machine.lock().new_view();
-                timeout_chan = after(timeout);
+                machine.new_view();
+                timeout_chan = Timer::after(timeout).fuse();
             }
         }
     }

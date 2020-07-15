@@ -85,8 +85,9 @@ impl Transaction {
         tmelcrypt::hash_single(&self_bytes)
     }
     /// sign_ed25519 appends an ed25519 signature to the transaction.
-    pub fn sign_ed25519(&mut self, sk: tmelcrypt::Ed25519SK) {
-        self.sigs.push(sk.sign(&self.hash_nosigs().0))
+    pub fn sign_ed25519(mut self, sk: tmelcrypt::Ed25519SK) -> Self {
+        self.sigs.push(sk.sign(&self.hash_nosigs().0));
+        self
     }
     /// total_outputs returns a HashMap mapping each type of coin to its total value. Fees will be included in COINTYPE_TMEL.
     pub fn total_outputs(&self) -> HashMap<Vec<u8>, u64> {
@@ -110,14 +111,16 @@ impl Transaction {
 }
 
 #[derive(
-    RlpEncodable, RlpDecodable, Clone, Debug, Copy, Arbitrary, Ord, PartialOrd, Eq, PartialEq,
+    RlpEncodable, RlpDecodable, Clone, Debug, Copy, Arbitrary, Ord, PartialOrd, Eq, PartialEq, Hash,
 )]
 pub struct CoinID {
     pub txhash: tmelcrypt::HashVal,
     pub index: u8,
 }
 
-#[derive(RlpEncodable, RlpDecodable, Clone, Arbitrary, Debug, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(
+    RlpEncodable, RlpDecodable, Clone, Arbitrary, Debug, Ord, PartialOrd, Eq, PartialEq, Hash,
+)]
 pub struct CoinData {
     pub conshash: tmelcrypt::HashVal,
     pub value: u64,

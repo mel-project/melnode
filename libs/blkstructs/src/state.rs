@@ -1,12 +1,13 @@
 use crate::constants::*;
 use crate::transaction as txn;
+use im::HashMap;
 use parking_lot::RwLock;
 use rayon::prelude::*;
 use rlp_derive::*;
-use std::collections::HashMap;
 use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::sync::Arc;
+use std::time::Instant;
 use thiserror::Error;
 use tmelcrypt::HashVal;
 
@@ -101,14 +102,16 @@ impl<T: autosmt::Database> State<T> {
     /// Applies a batch of transactions. The order of the transactions in txx do not matter.
     pub fn apply_tx_batch(&mut self, txx: &[txn::Transaction]) -> Result<(), TxApplicationError> {
         // clone self first
-        let newself = self.clone();
+        let mut newself = self.clone();
         // first ensure that all the transactions are well-formed
         for tx in txx {
             if !tx.is_well_formed() {
                 return Err(TxApplicationError::MalformedTx);
             }
+            newself.transactions.insert(tx.hash_nosigs(), tx.clone());
         }
         let lnewself = RwLock::new(newself);
+        let start_time = Instant::now();
         // then we apply the outputs in parallel
         let res: Result<Vec<()>, TxApplicationError> = txx
             .par_iter()
@@ -129,7 +132,8 @@ impl<T: autosmt::Database> State<T> {
             .collect();
         res?;
         // we commit the changes
-        *self = lnewself.read().clone();
+        //panic!("COMMIT?!");
+        //*self = lnewself.read().clone();
         Ok(())
     }
 
@@ -150,16 +154,16 @@ impl<T: autosmt::Database> State<T> {
         let empty_tree = autosmt::Tree::new(db);
         State {
             height: 0,
-            history: SmtMapping::new(&empty_tree),
-            coins: SmtMapping::new(&empty_tree),
-            transactions: SmtMapping::new(&empty_tree),
+            history: SmtMapping::new(empty_tree.clone()),
+            coins: SmtMapping::new(empty_tree.clone()),
+            transactions: SmtMapping::new(empty_tree.clone()),
             fee_pool: 1000000,
             fee_multiplier: 1000,
             dosc_multiplier: 1,
-            auction_bids: SmtMapping::new(&empty_tree),
+            auction_bids: SmtMapping::new(empty_tree.clone()),
             met_price: MICRO_CONVERTER,
             mel_price: MICRO_CONVERTER,
-            stake_doc: SmtMapping::new(&empty_tree),
+            stake_doc: SmtMapping::new(empty_tree),
         }
     }
 
@@ -181,6 +185,12 @@ impl<T: autosmt::Database> State<T> {
             match coin_data {
                 None => return Err(TxApplicationError::NonexistentCoin(*coin_id)),
                 Some(coin_data) => {
+                    log::trace!(
+                        "coin_data {:?} => {:?} for txid {:?}",
+                        coin_id,
+                        coin_data,
+                        tx.hash_nosigs()
+                    );
                     let script = scripts.get(&coin_data.coin_data.conshash).ok_or(
                         TxApplicationError::NonexistentScript(coin_data.coin_data.conshash),
                     )?;
@@ -351,19 +361,20 @@ impl<T: autosmt::Database> FinalizedState<T> {
     /// Returns the block header represented by the finalized state.
     pub fn header(&self) -> Header {
         let inner = &self.0;
-        Header {
-            height: inner.height,
-            history_hash: inner.history.root_hash(),
-            coins_hash: inner.coins.root_hash(),
-            transactions_hash: inner.transactions.root_hash(),
-            fee_pool: inner.fee_pool,
-            fee_multiplier: inner.fee_multiplier,
-            dosc_multiplier: inner.dosc_multiplier,
-            auction_bids_hash: inner.auction_bids.root_hash(),
-            met_price: inner.met_price,
-            mel_price: inner.mel_price,
-            stake_doc_hash: inner.stake_doc.root_hash(),
-        }
+        panic!()
+        // Header {
+        //     height: inner.height,
+        //     history_hash: inner.history.root_hash(),
+        //     coins_hash: inner.coins.root_hash(),
+        //     transactions_hash: inner.transactions.root_hash(),
+        //     fee_pool: inner.fee_pool,
+        //     fee_multiplier: inner.fee_multiplier,
+        //     dosc_multiplier: inner.dosc_multiplier,
+        //     auction_bids_hash: inner.auction_bids.root_hash(),
+        //     met_price: inner.met_price,
+        //     mel_price: inner.mel_price,
+        //     stake_doc_hash: inner.stake_doc.root_hash(),
+        // }
     }
     /// Creates a new unfinalized state representing the next block.
     pub fn next_state(&self) -> State<T> {
@@ -407,7 +418,7 @@ impl<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable, D: autosmt::Database
     for SmtMapping<K, V, D>
 {
     fn clone(&self) -> Self {
-        SmtMapping::new(&self.mapping)
+        SmtMapping::new(self.mapping.clone())
     }
 }
 
@@ -419,8 +430,7 @@ impl<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable, D: autosmt::Database
         self.root_hash().0 == [0; 32]
     }
     /// new converts a type-unsafe SMT to a SmtMapping
-    pub fn new(tree: &autosmt::Tree<D>) -> Self {
-        let tree = tree.clone();
+    pub fn new(tree: autosmt::Tree<D>) -> Self {
         SmtMapping {
             mapping: tree,
             _phantom_k: PhantomData,

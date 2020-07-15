@@ -6,6 +6,21 @@ use std::collections::HashSet;
 use std::convert::TryInto;
 use std::sync::Arc;
 
+impl Database for Box<dyn Database> {
+    fn write(&mut self, key: [u8; 32], val: &[u8]) -> Option<()> {
+        self.as_mut().write(key, val)
+    }
+    fn read(&self, key: [u8; 32]) -> Option<Vec<u8>> {
+        self.as_ref().read(key)
+    }
+    fn refc_decr(&mut self, key: [u8; 32]) -> Option<usize> {
+        self.as_mut().refc_decr(key)
+    }
+    fn refc_incr(&mut self, key: [u8; 32]) -> Option<usize> {
+        self.as_mut().refc_incr(key)
+    }
+}
+
 /// Database represents a backend for storing SMT nodes.
 pub trait Database: Send + Sync {
     /// Writes a hash-value mapping into the database with refcount=1, returning the hash. Fails if the value already exists.

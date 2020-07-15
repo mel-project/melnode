@@ -602,8 +602,7 @@ mod tests {
         )])
         .unwrap();
         println!("script length is {}", check_sig_script.0.len());
-        let mut tx = txn::Transaction::empty_test();
-        tx.sign_ed25519(sk);
+        let mut tx = txn::Transaction::empty_test().sign_ed25519(sk);
         assert!(check_sig_script.check(&tx));
     }
 

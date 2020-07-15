@@ -1,16 +1,30 @@
+use crate::common::*;
+use crate::reqs::*;
 use by_address::ByAddress;
 use futures::channel::mpsc;
 use futures::channel::mpsc::unbounded;
 use futures::channel::oneshot;
 use futures::prelude::*;
 use futures::select;
+use lazy_static::lazy_static;
 use log::trace;
 use min_max_heap::MinMaxHeap;
 use parking_lot::RwLock;
+use rlp::{Decodable, Encodable};
 use smol::*;
 use std::collections::HashMap;
 use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
 use std::time::{Duration, Instant};
+
+
+lazy_static! {
+    static ref CONN_POOL: ConnPool = ConnPool::default();
+}
+
+/// Returns a reference to the global ConnPool instance.
+pub fn gcp() -> &'static ConnPool {
+    &CONN_POOL
+}
 
 /// Implements a thread-safe pool of connections to melnet, or any HTTP/1.1-style keepalive protocol, servers.
 #[derive(Debug, Default)]
@@ -19,7 +33,7 @@ pub struct ConnPool {
 }
 
 impl ConnPool {
-    // Connects to a given address, which may return either a new connection or an existing one.
+    /// Connects to a given address, which may return either a new connection or an existing one.
     pub async fn connect(&self, addr: impl ToSocketAddrs) -> std::io::Result<Async<TcpStream>> {
         let addr = addr.to_socket_addrs()?.next().unwrap();
         let existing = {
@@ -48,7 +62,7 @@ impl ConnPool {
             }
         }
     }
-    // Takes ownership of and returns a given TCP connection back to the pool.
+    /// Takes ownership of and returns a given TCP connection back to the pool.
     pub fn recycle(&self, conn: Async<TcpStream>) {
         let addr = conn.get_ref().peer_addr().unwrap();
         self.pool
@@ -58,6 +72,48 @@ impl ConnPool {
             .send_insertion
             .unbounded_send(conn)
             .unwrap();
+    }
+    /// Does a melnet request to any given endpoint.
+    pub async fn request<TInput: Encodable, TOutput: Decodable>(
+        &self,
+        addr: SocketAddr,
+        netname: &str,
+        verb: &str,
+        req: TInput,
+    ) -> Result<TOutput> {
+        // grab a connection
+        let mut conn = self.connect(addr).await.map_err(MelnetError::Network)?;
+        // send a request
+        let rr = rlp::encode(&RawRequest {
+            proto_ver: PROTO_VER,
+            netname: netname.to_owned(),
+            verb: verb.to_owned(),
+            payload: rlp::encode(&req),
+        });
+        conn.get_ref()
+            .set_write_timeout(Some(std::time::Duration::from_secs(10)))
+            .map_err(MelnetError::Network)?;
+        conn.get_ref()
+            .set_read_timeout(Some(std::time::Duration::from_secs(60)))
+            .map_err(MelnetError::Network)?;
+        write_len_bts(&mut conn, &rr).await?;
+        // read the response length
+        let response: RawResponse = rlp::decode(&read_len_bts(&mut conn).await?).map_err(|e| {
+            MelnetError::Network(std::io::Error::new(std::io::ErrorKind::InvalidData, e))
+        })?;
+        let response = match response.kind.as_ref() {
+            "Ok" => rlp::decode::<TOutput>(&response.body)
+                .map_err(|_| MelnetError::Custom("rlp error".to_owned()))?,
+            "NoVerb" => return Err(MelnetError::VerbNotFound),
+            _ => {
+                return Err(MelnetError::Custom(
+                    String::from_utf8_lossy(&response.body).to_string(),
+                ))
+            }
+        };
+        // put the connection back
+        self.recycle(conn);
+        Ok(response)
     }
 }
 
