@@ -104,11 +104,13 @@ dependencies = [
  "hex",
  "lazy_static",
  "lmdb",
+ "log",
  "parking_lot 0.10.2",
  "rand 0.5.6",
  "rlp",
  "snap",
  "threadpool",
+ "tmelcrypt",
 ]
 
 [[package]]
