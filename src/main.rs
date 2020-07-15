@@ -65,6 +65,6 @@ async fn test_spam_txx(auditor: Arc<Auditor>) {
     //let txx = &txx[1..];
     for tx in txx {
         Timer::after(Duration::from_millis(100)).await;
-        auditor.send_tx(tx).await;
+        auditor.send_tx(tx).await.unwrap();
     }
 }
