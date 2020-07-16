@@ -67,7 +67,7 @@ impl DBManager {
     }
 
     /// Helper function to load a node into memory.
-    fn read_cached(&self, hash: tmelcrypt::HashVal) -> DBNode {
+    pub(crate) fn read_cached(&self, hash: tmelcrypt::HashVal) -> DBNode {
         let mut cache = self.cache.write();
         cache
             .entry(hash)
@@ -76,7 +76,7 @@ impl DBManager {
     }
 
     /// Helper function to write a node into the cache.
-    fn write_cached(&self, hash: tmelcrypt::HashVal, value: DBNode) {
+    pub(crate) fn write_cached(&self, hash: tmelcrypt::HashVal, value: DBNode) {
         let mut cache = self.cache.write();
         cache.insert(hash, value);
     }
