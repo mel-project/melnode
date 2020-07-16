@@ -12,7 +12,7 @@ use std::sync::Arc;
 pub struct DBManager {
     raw: Arc<RwLock<dyn RawDB>>, // dynamic dispatch for ergonomics
     cache: Arc<RwLock<HashMap<tmelcrypt::HashVal, DBNode>>>,
-    trees: Arc<RwLock<HashSet<Tree>>>,
+    trees: Arc<RwLock<HashMap<tmelcrypt::HashVal, Tree>>>,
 }
 
 impl DBManager {
@@ -26,26 +26,77 @@ impl DBManager {
         DBManager {
             raw: Arc::new(RwLock::new(raw)),
             cache: Arc::new(RwLock::new(cache)),
-            trees: Arc::new(RwLock::new(HashSet::new())),
+            trees: Arc::new(RwLock::new(HashMap::new())),
         }
     }
     /// Syncs the information into the database. DBManager is guaranteed to only sync to database when sync is called.
     pub fn sync(&self) {
+        let mut trees = self.trees.write();
+        let mut raw = self.raw.write();
+        // sync cached info
         let mut kvv = Vec::new();
         for (k, v) in self.cache.write().drain() {
             kvv.push((k, v))
         }
-        self.raw.write().set_batch(kvv);
+        raw.set_batch(kvv);
+        // sync roots
+        let mut roots = Vec::new();
+        let mut newtrees = HashMap::new();
+        for (k, mut v) in trees.drain() {
+            if Arc::get_mut(&mut v.hack_ctr).is_none() {
+                roots.push(k)
+            } else {
+                newtrees.insert(k, v);
+            }
+        }
+        *trees = newtrees;
+        raw.set_gc_roots(&roots)
+    }
+    /// Spawns out a tree at the given hash.
+    pub fn get_tree(&self, root_hash: tmelcrypt::HashVal) -> Tree {
+        // ensure a consistent view of the tree hashes
+        let mut trees = self.trees.write();
+        trees
+            .entry(root_hash)
+            .or_insert_with(|| Tree {
+                dbm: self.clone(),
+                hash: root_hash,
+                hack_ctr: Arc::new(()),
+            })
+            .clone()
     }
 
-    /// 
+    /// Helper function to load a node into memory.
+    fn read_cached(&self, hash: tmelcrypt::HashVal) -> DBNode {
+        let mut cache = self.cache.write();
+        cache
+            .entry(hash)
+            .or_insert_with(|| self.raw.read().get(hash))
+            .clone()
+    }
+
+    /// Helper function to write a node into the cache.
+    fn write_cached(&self, hash: tmelcrypt::HashVal, value: DBNode) {
+        let mut cache = self.cache.write();
+        cache.insert(hash, value);
+    }
 }
 
-struct Tree {
+#[derive(Clone)]
+pub struct Tree {
     dbm: DBManager,
+    hash: tmelcrypt::HashVal,
+    hack_ctr: Arc<()>,
 }
 
-/// Represents a raw key-value store, similar to that offered by key-value databases. Interally manages garbage collection.
+impl Tree {
+    /// Helper function to get DBNode representation.
+    fn to_dbnode(&self) -> DBNode {
+        self.dbm.read_cached(self.hash)
+    }
+}
+
+/// Represents a raw key-value store, similar to that offered by key-value databases. Internally manages garbage collection.
 pub trait RawDB: Send + Sync {
     /// Gets a database node given its hash.
     fn get(&self, hash: tmelcrypt::HashVal) -> DBNode;
