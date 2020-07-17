@@ -5,6 +5,7 @@ use parking_lot::RwLock;
 use rayon::prelude::*;
 use rlp_derive::*;
 use std::convert::TryInto;
+use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::time::Instant;
@@ -32,7 +33,7 @@ pub enum TxApplicationError {
 
 /// World state of the Themelio blockchain
 #[non_exhaustive]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct State {
     pub height: u64,
     pub history: SmtMapping<u64, Header>,
@@ -116,7 +117,7 @@ impl State {
         res?;
         // we commit the changes
         //panic!("COMMIT?!");
-        //*self = lnewself.read().clone();
+        *self = lnewself.read().clone();
         Ok(())
     }
 
@@ -397,6 +398,12 @@ pub struct SmtMapping<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable> {
     _phantom_v: PhantomData<V>,
 }
 
+impl<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable> Debug for SmtMapping<K, V> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.mapping.root_hash().fmt(f)
+    }
+}
+
 impl<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable> Clone for SmtMapping<K, V> {
     fn clone(&self) -> Self {
         SmtMapping::new(self.mapping.clone())
@@ -432,11 +439,11 @@ impl<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable> SmtMapping<K, V> {
     pub fn insert(&mut self, key: K, val: V) {
         let key = tmelcrypt::hash_single(&rlp::encode(&key));
         let newmap = self.mapping.set(key, &rlp::encode(&val));
-        eprintln!(
-            "{:?} ==insert=> {:?}",
-            self.mapping.root_hash(),
-            newmap.root_hash()
-        );
+        // eprintln!(
+        //     "{:?} ==insert=> {:?}",
+        //     self.mapping.root_hash(),
+        //     newmap.root_hash()
+        // );
         self.mapping = newmap
     }
     /// delete deletes a mapping, replacing the mapping with a mapping to the empty bytestring

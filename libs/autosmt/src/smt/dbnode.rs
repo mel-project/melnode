@@ -4,7 +4,7 @@ use std::convert::TryInto;
 
 // Internal nodes have 16 children and are identified by their 16-ary hash. Each child is 4 levels closer to the bottom.
 // Data nodes represent subtrees that only have one element. They include a bitvec representing remaining steps and the value itself.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DBNode {
     Internal(InternalNode),
     Data(DataNode),
@@ -80,9 +80,6 @@ impl DBNode {
         data: &[u8],
         db: &DBManager,
     ) -> Self {
-        if data.is_empty() {
-            return Zero;
-        }
         match self {
             Internal(int) => int.set_by_path(path, key, data, db),
             Data(dat) => dat.set_by_path(path, key, data, db),
@@ -112,7 +109,7 @@ fn path_to_idx(path: &[bool]) -> usize {
 }
 
 // Hexary database node. Encoded as 0 || first GGGC || ... || 16th GGGC
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, Eq, PartialEq)]
 pub struct InternalNode {
     my_hash: tmelcrypt::HashVal,
     ch_hashes: [tmelcrypt::HashVal; 2],
@@ -159,19 +156,28 @@ impl InternalNode {
     }
 
     fn cache_hashes(&mut self) {
-        if self.my_hash == tmelcrypt::HashVal::default() {
-            for i in 0..8 {
-                self.ggc_hashes[i] =
-                    hash::node(self.gggc_hashes[i * 2], self.gggc_hashes[i * 2 + 1])
-            }
-            for i in 0..4 {
-                self.gc_hashes[i] = hash::node(self.ggc_hashes[i * 2], self.ggc_hashes[i * 2 + 1])
-            }
-            for i in 0..2 {
-                self.ch_hashes[i] = hash::node(self.gc_hashes[i * 2], self.gc_hashes[i * 2 + 1])
-            }
-            self.my_hash = hash::node(self.ch_hashes[0], self.ch_hashes[1])
+        assert_eq!(self.my_hash, tmelcrypt::HashVal::default());
+        for i in 0..8 {
+            self.ggc_hashes[i] = hash::node(self.gggc_hashes[i * 2], self.gggc_hashes[i * 2 + 1])
         }
+        for i in 0..4 {
+            self.gc_hashes[i] = hash::node(self.ggc_hashes[i * 2], self.ggc_hashes[i * 2 + 1])
+        }
+        for i in 0..2 {
+            self.ch_hashes[i] = hash::node(self.gc_hashes[i * 2], self.gc_hashes[i * 2 + 1])
+        }
+        self.my_hash = hash::node(self.ch_hashes[0], self.ch_hashes[1])
+    }
+
+    fn fix_hashes(&mut self, idx: usize) {
+        let ggci = idx / 2;
+        self.ggc_hashes[ggci] =
+            hash::node(self.gggc_hashes[ggci * 2], self.gggc_hashes[ggci * 2 + 1]);
+        let gci = ggci / 2;
+        self.gc_hashes[gci] = hash::node(self.ggc_hashes[gci * 2], self.ggc_hashes[gci * 2 + 1]);
+        let ci = gci / 2;
+        self.ch_hashes[ci] = hash::node(self.gc_hashes[ci * 2], self.gc_hashes[ci * 2 + 1]);
+        self.my_hash = hash::node(self.ch_hashes[0], self.ch_hashes[1]);
     }
 
     fn get_by_path_rev(
@@ -200,7 +206,7 @@ impl InternalNode {
             .set_by_path(&path[4..], key, data, db);
         let mut newself = self.clone();
         newself.gggc_hashes[idx] = newgggc.hash();
-        newself.cache_hashes();
+        newself.fix_hashes(idx);
         db.write_cached(newself.my_hash, Internal(newself.clone()));
         Internal(newself)
     }
@@ -222,7 +228,7 @@ impl InternalNode {
 }
 
 /// Subtree with only one element. Encoded as 1 || level || key || value
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DataNode {
     pub(crate) level: usize,
     pub(crate) key: tmelcrypt::HashVal,
@@ -278,6 +284,13 @@ impl DataNode {
         db: &DBManager,
     ) -> DBNode {
         if self.key == key {
+            // eprintln!(
+            //     "overwriting key {:?} with data {:?} (prev {:?})",
+            //     key, data, self.data
+            // );
+            // if data.is_empty() {
+            //     return Zero;
+            // }
             let mut newself = self.clone();
             newself.data = data.to_vec();
             db.write_cached(newself.calc_hash(), Data(newself.clone()));
@@ -297,7 +310,7 @@ impl DataNode {
         let mut newint = InternalNode::default();
         let old_key_idx = path_to_idx(&merk::key_to_path(self.key)[(256 - self.level as usize)..]);
         newint.gggc_hashes[old_key_idx] = newhash;
-        newint.cache_hashes();
+        newint.fix_hashes(old_key_idx);
         db.write_cached(newint.my_hash, Internal(newint.clone()));
         Internal(newint).set_by_path(path, key, data, db)
     }

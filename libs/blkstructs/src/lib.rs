@@ -57,6 +57,7 @@ pub mod testing {
 mod tests {
     use super::testing::*;
     use super::*;
+    use std::collections::HashSet;
     use test::Bencher;
 
     #[bench]
@@ -140,15 +141,15 @@ mod tests {
         );
         println!("transactions generated");
         let seq_copy = {
-            let mut state = first_block.next_state();
+            let mut state = dbg!(first_block.next_state());
             for tx in txx.iter() {
                 state.apply_tx(tx).expect("failed application");
             }
             state.finalize().header().hash()
         };
         let copies: Vec<tmelcrypt::HashVal> = (0..2)
-            .map(|_| {
-                let mut state = first_block.next_state();
+            .map(|i| {
+                let mut state = dbg!(first_block.next_state());
                 txx.shuffle(&mut trng);
                 state.apply_tx_batch(&txx).expect("failed application");
                 state.finalize().header().hash()
@@ -161,9 +162,9 @@ mod tests {
 
     #[test]
     fn smt_mapping() {
-        let tree = autosmt::DBManager::load(autosmt::MemDB::default())
-            .get_tree(tmelcrypt::HashVal::default());
-        let mut map: state::SmtMapping<u64, u64> = state::SmtMapping::new(tree);
+        let db = autosmt::DBManager::load(autosmt::MemDB::default());
+        let tree = db.get_tree(tmelcrypt::HashVal::default());
+        let mut map: state::SmtMapping<u64, u64> = state::SmtMapping::new(tree.clone());
         for i in 0..10 {
             map.insert(i, i);
         }
@@ -171,6 +172,9 @@ mod tests {
         //     hex::encode(&map.mapping.root_hash()),
         //     "c817ba6ba9cadabb754ed5195232be8d22dbd98a1eeca0379921c3cc0b414110"
         // );
+        dbg!(&map);
+        let mut mapbak = map.clone();
+        dbg!(&mapbak);
         for i in 0..10 {
             assert_eq!(Some(i), map.get(&i).0);
         }
@@ -178,6 +182,11 @@ mod tests {
         assert_eq!(None, map.get(&5).0);
         for i in 0..10 {
             map.delete(&i);
+        }
+        dbg!(&mapbak);
+        eprintln!("{}", db.debug_graphviz());
+        for i in 0..10 {
+            assert_eq!(Some(i), mapbak.get(&i).0);
         }
         // assert_eq!(&map.mapping.root_hash(), [0; 32]);
     }

@@ -76,10 +76,12 @@ impl DBManager {
             return DBNode::Zero;
         }
         let mut cache = self.cache.write();
-        cache
+        let out = cache
             .entry(hash)
             .or_insert_with(|| self.raw.read().get(hash))
-            .clone()
+            .clone();
+        debug_assert_eq!(out.hash(), hash);
+        out
     }
 
     /// Helper function to write a node into the cache.
@@ -115,6 +117,7 @@ impl DBManager {
             };
             let ptrs = dbn.out_ptrs();
             let curr_hash = dbn.hash();
+            println!("{:#?}", dbn);
             output.push_str(&format!(
                 "\"{:?}\" [style=filled label=\"{}-{:?}\" fillcolor={} shape=rectangle]\n",
                 curr_hash, kind, curr_hash, color
