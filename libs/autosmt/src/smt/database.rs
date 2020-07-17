@@ -1,9 +1,7 @@
 use crate::smt::dbnode::*;
-use parking_lot::{Mutex, RwLock};
-use std::cell::RefCell;
-use std::collections::hash_map::Entry;
+use crate::smt::*;
+use parking_lot::RwLock;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::convert::TryInto;
 use std::sync::Arc;
 
@@ -38,6 +36,7 @@ impl DBManager {
         for (k, v) in self.cache.write().drain() {
             kvv.push((k, v))
         }
+        log::debug!("sync cache of {}", kvv.len());
         raw.set_batch(kvv);
         // sync roots
         let mut roots = Vec::new();
@@ -50,24 +49,32 @@ impl DBManager {
             }
         }
         *trees = newtrees;
+        log::debug!("sync roots of {}", roots.len());
         raw.set_gc_roots(&roots)
     }
     /// Spawns out a tree at the given hash.
     pub fn get_tree(&self, root_hash: tmelcrypt::HashVal) -> Tree {
         // ensure a consistent view of the tree hashes
         let mut trees = self.trees.write();
-        trees
+        let tree = trees
             .entry(root_hash)
             .or_insert_with(|| Tree {
                 dbm: self.clone(),
                 hash: root_hash,
                 hack_ctr: Arc::new(()),
             })
-            .clone()
+            .clone();
+        debug_assert_eq!(root_hash, tree.root_hash());
+        // load into cache
+        tree.to_dbnode();
+        tree
     }
 
     /// Helper function to load a node into memory.
     pub(crate) fn read_cached(&self, hash: tmelcrypt::HashVal) -> DBNode {
+        if hash == tmelcrypt::HashVal::default() {
+            return DBNode::Zero;
+        }
         let mut cache = self.cache.write();
         cache
             .entry(hash)
@@ -79,6 +86,65 @@ impl DBManager {
     pub(crate) fn write_cached(&self, hash: tmelcrypt::HashVal, value: DBNode) {
         let mut cache = self.cache.write();
         cache.insert(hash, value);
+    }
+
+    /// Draws a debug GraphViz representation of the tree.
+    pub fn debug_graphviz(&self) -> String {
+        let mut output = String::new();
+        let mut traversal_stack: Vec<_> = self
+            .trees
+            .read()
+            .iter()
+            .filter_map(|(k, v)| {
+                if Arc::strong_count(&v.hack_ctr) != 1 {
+                    Some(k)
+                } else {
+                    None
+                }
+            })
+            .cloned()
+            .collect();
+        output.push_str("digraph G {\n");
+        let mut draw_dbn = |dbn: &DBNode, color: &str| {
+            let kind = match dbn {
+                DBNode::Internal(_) => String::from("I"),
+                DBNode::Data(DataNode { level: l, .. }) => format!("D-{}", l),
+                DBNode::Zero => String::from("Z"),
+            };
+            let ptrs = dbn.out_ptrs();
+            let curr_hash = dbn.hash();
+            output.push_str(&format!(
+                "\"{:?}\" [style=filled label=\"{}-{:?}\" fillcolor={} shape=rectangle]\n",
+                curr_hash, kind, curr_hash, color
+            ));
+            for (i, p) in ptrs.into_iter().enumerate() {
+                if p != tmelcrypt::HashVal::default() {
+                    output.push_str(&format!(
+                        "\"{:?}\" -> \"{:?}\" [label={}]\n",
+                        curr_hash, p, i
+                    ));
+                }
+            }
+        };
+        while !traversal_stack.is_empty() {
+            let curr = traversal_stack.pop().unwrap();
+            if curr == tmelcrypt::HashVal::default() {
+                continue;
+            }
+            match self.cache.read().get(&curr) {
+                Some(dbn) => {
+                    draw_dbn(dbn, "azure");
+                    traversal_stack.extend_from_slice(&dbn.out_ptrs());
+                }
+                None => {
+                    let dbn = self.raw.read().get(curr);
+                    draw_dbn(&dbn, "white");
+                    traversal_stack.extend_from_slice(&dbn.out_ptrs());
+                }
+            }
+        }
+        output.push_str("}\n");
+        output
     }
 }
 
@@ -93,6 +159,27 @@ impl Tree {
     /// Helper function to get DBNode representation.
     fn to_dbnode(&self) -> DBNode {
         self.dbm.read_cached(self.hash)
+    }
+
+    /// Gets a binding and its proof.
+    pub fn get(&self, key: tmelcrypt::HashVal) -> (Vec<u8>, FullProof) {
+        let dbn = self.to_dbnode();
+        let (bind, mut proof) = dbn.get_by_path_rev(&merk::key_to_path(key), key, &self.dbm);
+        proof.reverse();
+        (bind, FullProof(proof))
+    }
+
+    /// Sets a binding, obtaining a new tree.
+    pub fn set(&self, key: tmelcrypt::HashVal, val: &[u8]) -> Tree {
+        let dbn = self
+            .to_dbnode()
+            .set_by_path(&merk::key_to_path(key), key, val, &self.dbm);
+        self.dbm.get_tree(dbn.hash())
+    }
+
+    /// Root hash.
+    pub fn root_hash(&self) -> tmelcrypt::HashVal {
+        self.to_dbnode().hash()
     }
 }
 
@@ -114,6 +201,7 @@ pub trait RawDB: Send + Sync {
 }
 
 /// A trivial, in-memory RawDB.
+#[derive(Default)]
 pub struct MemDB {
     mapping: HashMap<tmelcrypt::HashVal, DBNode>,
     roots: Vec<tmelcrypt::HashVal>,
@@ -122,7 +210,7 @@ pub struct MemDB {
 
 impl RawDB for MemDB {
     fn get(&self, hash: tmelcrypt::HashVal) -> DBNode {
-        self.mapping.get(&hash).unwrap_or(&DBNode::Zero).clone()
+        self.mapping.get(&hash).unwrap().clone()
     }
 
     fn set_batch(&mut self, kvv: Vec<(tmelcrypt::HashVal, DBNode)>) {

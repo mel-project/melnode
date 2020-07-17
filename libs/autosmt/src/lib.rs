@@ -8,30 +8,29 @@ mod tests {
     use super::*;
     #[test]
     fn empty_tree() {
-        let db = wrap_db(TrivialDB::new());
-        let empty_tree = Tree::new(&db);
-        assert_eq!(empty_tree.root_hash(), [0; 32]);
+        let db = MemDB::default();
+        let db = DBManager::load(db);
+        let tree = db.get_tree(tmelcrypt::HashVal::default());
+        assert_eq!(tree.root_hash(), tmelcrypt::HashVal::default());
     }
 
     #[test]
     fn simple_tree() {
-        let db = wrap_db(TrivialDB::new());
+        let db = DBManager::load(MemDB::default());
         {
-            let mut tree = Tree::new(&db);
+            let mut tree = db.get_tree(tmelcrypt::HashVal::default());
             for i in 0..10 {
+                let key = tmelcrypt::hash_single(format!("key-{}", i).as_bytes());
+                let val = tmelcrypt::hash_single(format!("val-{}", i).as_bytes()).to_vec();
                 tree = tree.set(
-                    hash::index(format!("key-{}", i).as_bytes()),
-                    &hash::index(format!("val-{}", i).as_bytes()),
+                    tmelcrypt::hash_single(format!("key-{}", i).as_bytes()),
+                    &val,
                 );
+                dbg!(tree.get(key));
+                assert_eq!(tree.get(key).0, val);
             }
             // successfully built tree
-            assert_eq!(
-                tree.root_hash().to_vec(),
-                hex::decode("90822fba8e6113467241091a14fc3eb359d0815dd64d1b091c573215f2a621dc")
-                    .unwrap()
-            );
+            dbg!(tree.root_hash());
         }
-        // everything is freed at the end
-        assert_eq!(db.read().unwrap().count(), 0);
     }
 }

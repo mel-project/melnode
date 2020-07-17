@@ -3,13 +3,22 @@ use rlp::{Decodable, Encodable};
 use std::convert::TryInto;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::ops::Deref;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Arbitrary, Ord, PartialOrd, Default)]
 pub struct HashVal(pub [u8; 32]);
 
+impl Deref for HashVal {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 impl fmt::Debug for HashVal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("#<{}>", hex::encode(&self.0[0..10])))
+        f.write_fmt(format_args!("#<{}>", hex::encode(&self.0[0..5])))
     }
 }
 

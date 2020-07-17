@@ -4,8 +4,8 @@ use std::convert::TryInto;
 
 // Internal nodes have 16 children and are identified by their 16-ary hash. Each child is 4 levels closer to the bottom.
 // Data nodes represent subtrees that only have one element. They include a bitvec representing remaining steps and the value itself.
-#[derive(Clone)]
-pub(crate) enum DBNode {
+#[derive(Clone, Debug)]
+pub enum DBNode {
     Internal(InternalNode),
     Data(DataNode),
     Zero,
@@ -54,6 +54,46 @@ impl DBNode {
             Zero => tmelcrypt::HashVal::default(),
         }
     }
+
+    /// Get by path rev
+    pub fn get_by_path_rev(
+        &self,
+        path: &[bool],
+        key: tmelcrypt::HashVal,
+        db: &DBManager,
+    ) -> (Vec<u8>, Vec<tmelcrypt::HashVal>) {
+        let level = path.len() - 1;
+        match self {
+            Internal(int) => int.get_by_path_rev(path, key, db),
+            Data(dat) => dat.get_by_path_rev(path, key, db),
+            Zero => (
+                vec![],
+                path.iter().map(|_| tmelcrypt::HashVal::default()).collect(),
+            ),
+        }
+    }
+
+    pub fn set_by_path(
+        &self,
+        path: &[bool],
+        key: tmelcrypt::HashVal,
+        data: &[u8],
+        db: &DBManager,
+    ) -> Self {
+        match self {
+            Internal(int) => int.set_by_path(path, key, data, db),
+            Data(dat) => dat.set_by_path(path, key, data, db),
+            Zero => {
+                let d = Data(DataNode {
+                    key,
+                    level: path.len(),
+                    data: data.to_vec(),
+                });
+                db.write_cached(d.hash(), d.clone());
+                d
+            }
+        }
+    }
 }
 
 fn path_to_idx(path: &[bool]) -> usize {
@@ -69,7 +109,7 @@ fn path_to_idx(path: &[bool]) -> usize {
 }
 
 // Hexary database node. Encoded as 0 || first GGGC || ... || 16th GGGC
-#[derive(Clone)]
+#[derive(Clone, Default, Debug)]
 pub struct InternalNode {
     my_hash: tmelcrypt::HashVal,
     ch_hashes: [tmelcrypt::HashVal; 2],
@@ -131,15 +171,57 @@ impl InternalNode {
         }
     }
 
-    fn get_by_path_rev(&self, path: &[bool], key: tmelcrypt::HashVal, db: ) -> (Vec<u8>, Vec<[u8; 32]>) {
+    fn get_by_path_rev(
+        &self,
+        path: &[bool],
+        key: tmelcrypt::HashVal,
+        db: &DBManager,
+    ) -> (Vec<u8>, Vec<tmelcrypt::HashVal>) {
+        let (nextbind, mut nextvec) =
+            self.get_gggc(path_to_idx(path), db)
+                .get_by_path_rev(&path[4..], key, db);
+        nextvec.extend_from_slice(&self.proof_frag(path));
+        (nextbind, nextvec)
+    }
 
+    fn set_by_path(
+        &self,
+        path: &[bool],
+        key: tmelcrypt::HashVal,
+        data: &[u8],
+        db: &DBManager,
+    ) -> DBNode {
+        let idx = path_to_idx(path);
+        let newgggc = self
+            .get_gggc(idx, db)
+            .set_by_path(&path[4..], key, data, db);
+        let mut newself = self.clone();
+        newself.gggc_hashes[idx] = newgggc.hash();
+        newself.cache_hashes();
+        db.write_cached(newself.my_hash, Internal(newself.clone()));
+        Internal(newself)
+    }
+
+    fn proof_frag(&self, path: &[bool]) -> Vec<tmelcrypt::HashVal> {
+        let idx = path_to_idx(path);
+        let mut vec = Vec::new();
+        vec.push(self.ch_hashes[other(idx / 8)]);
+        vec.push(self.gc_hashes[other(idx / 4)]);
+        vec.push(self.ggc_hashes[other(idx / 2)]);
+        vec.push(self.gggc_hashes[other(idx)]);
+        vec.reverse();
+        vec
+    }
+
+    fn get_gggc(&self, idx: usize, db: &DBManager) -> DBNode {
+        db.read_cached(self.gggc_hashes[idx])
     }
 }
 
 /// Subtree with only one element. Encoded as 1 || level || key || value
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DataNode {
-    level: u8,
+    pub(crate) level: usize,
     key: tmelcrypt::HashVal,
     data: Vec<u8>,
 }
@@ -147,10 +229,10 @@ pub struct DataNode {
 impl DataNode {
     fn from_bytes(bts: &[u8]) -> Self {
         assert_eq!(bts[0], 1);
-        let level = bts[1];
-        let bytes = &bts[2..];
+        let level = u16::from_be_bytes(bts[1..3].try_into().unwrap());
+        let bytes = &bts[3..];
         DataNode {
-            level,
+            level: level as usize,
             key: tmelcrypt::HashVal(bytes[..32].try_into().unwrap()),
             data: bytes[32..].to_vec(),
         }
@@ -159,7 +241,7 @@ impl DataNode {
     fn to_bytes(&self) -> Vec<u8> {
         let mut toret = Vec::with_capacity(256);
         toret.push(1);
-        toret.push(self.level);
+        toret.extend_from_slice(&self.level.to_be_bytes());
         toret.extend_from_slice(&self.key.0);
         toret.extend_from_slice(&self.data);
         toret
@@ -167,5 +249,57 @@ impl DataNode {
 
     fn calc_hash(&self) -> tmelcrypt::HashVal {
         merk::data_hashes(self.key, &self.data)[self.level as usize]
+    }
+
+    fn get_by_path_rev(
+        &self,
+        path: &[bool],
+        key: tmelcrypt::HashVal,
+        db: &DBManager,
+    ) -> (Vec<u8>, Vec<tmelcrypt::HashVal>) {
+        (
+            if self.key == key {
+                self.data.clone()
+            } else {
+                vec![]
+            },
+            self.proof_frag(),
+        )
+    }
+
+    fn set_by_path(
+        &self,
+        path: &[bool],
+        key: tmelcrypt::HashVal,
+        data: &[u8],
+        db: &DBManager,
+    ) -> DBNode {
+        if self.key == key {
+            let mut newself = self.clone();
+            newself.data = data.to_vec();
+            db.write_cached(newself.calc_hash(), Data(newself.clone()));
+            return Data(newself);
+        }
+        // general case: we move ourselves down 4 levels, set that as a grandchild of a new internal node, and insert the key into that internal node
+        let mut newself = self.clone();
+        eprintln!(
+            "moving {:?} from {} to {}",
+            newself.key,
+            newself.level,
+            newself.level - 4
+        );
+        newself.level -= 4;
+        let newhash = newself.calc_hash();
+        db.write_cached(newhash, Data(newself));
+        let mut newint = InternalNode::default();
+        let old_key_idx = path_to_idx(&merk::key_to_path(self.key)[(256 - self.level as usize)..]);
+        newint.gggc_hashes[old_key_idx] = newhash;
+        newint.cache_hashes();
+        db.write_cached(newint.my_hash, Internal(newint.clone()));
+        Internal(newint).set_by_path(path, key, data, db)
+    }
+
+    fn proof_frag(&self) -> Vec<tmelcrypt::HashVal> {
+        vec![tmelcrypt::HashVal::default(); self.level as usize]
     }
 }

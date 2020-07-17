@@ -32,45 +32,28 @@ pub enum TxApplicationError {
 
 /// World state of the Themelio blockchain
 #[non_exhaustive]
-pub struct State<T: autosmt::Database> {
+#[derive(Clone)]
+pub struct State {
     pub height: u64,
-    pub history: SmtMapping<u64, Header, T>,
-    pub coins: SmtMapping<txn::CoinID, txn::CoinDataHeight, T>,
-    pub transactions: SmtMapping<HashVal, txn::Transaction, T>,
+    pub history: SmtMapping<u64, Header>,
+    pub coins: SmtMapping<txn::CoinID, txn::CoinDataHeight>,
+    pub transactions: SmtMapping<HashVal, txn::Transaction>,
 
     pub fee_pool: u64,
     pub fee_multiplier: u64,
 
     pub dosc_multiplier: u64,
-    pub auction_bids: SmtMapping<HashVal, txn::Transaction, T>,
+    pub auction_bids: SmtMapping<HashVal, txn::Transaction>,
     pub met_price: u64,
     pub mel_price: u64,
 
-    pub stake_doc: SmtMapping<txn::CoinID, Vec<u8>, T>,
+    pub stake_doc: SmtMapping<txn::CoinID, Vec<u8>>,
 }
 
-impl<T: autosmt::Database> Clone for State<T> {
-    fn clone(&self) -> Self {
-        State {
-            height: self.height,
-            history: self.history.clone(),
-            coins: self.coins.clone(),
-            transactions: self.transactions.clone(),
-            fee_pool: self.fee_pool,
-            fee_multiplier: self.fee_multiplier,
-            dosc_multiplier: self.dosc_multiplier,
-            auction_bids: self.auction_bids.clone(),
-            met_price: self.met_price,
-            mel_price: self.mel_price,
-            stake_doc: self.stake_doc.clone(),
-        }
-    }
-}
-
-impl<T: autosmt::Database> State<T> {
+impl State {
     /// Generates a test genesis state, with a given starting coin.
     pub fn test_genesis(
-        db: &Arc<RwLock<T>>,
+        db: autosmt::DBManager,
         start_micromels: u64,
         start_conshash: tmelcrypt::HashVal,
     ) -> Self {
@@ -138,7 +121,7 @@ impl<T: autosmt::Database> State<T> {
     }
 
     /// Finalizes a state into a block. This consumes the state.
-    pub fn finalize(mut self) -> FinalizedState<T> {
+    pub fn finalize(mut self) -> FinalizedState {
         // synthesize auction fill as needed
         if self.height % AUCTION_INTERVAL == 0 && !self.auction_bids.is_empty() {
             self.synthesize_afill()
@@ -150,8 +133,8 @@ impl<T: autosmt::Database> State<T> {
 
     // ----------- helpers start here ------------
 
-    fn new_empty(db: &Arc<RwLock<T>>) -> Self {
-        let empty_tree = autosmt::Tree::new(db);
+    fn new_empty(db: autosmt::DBManager) -> Self {
+        let empty_tree = db.get_tree(tmelcrypt::HashVal::default());
         State {
             height: 0,
             history: SmtMapping::new(empty_tree.clone()),
@@ -351,33 +334,33 @@ impl<T: autosmt::Database> State<T> {
 }
 
 /// FinalizedState represents an immutable state at a finalized block height. It cannot be constructed except through finalizing a State or restoring from persistent storage.
-pub struct FinalizedState<T: autosmt::Database>(State<T>);
+pub struct FinalizedState(State);
 
-impl<T: autosmt::Database> FinalizedState<T> {
+impl FinalizedState {
     /// Returns a reference to the State finalized within.
-    pub fn inner_ref(&self) -> &State<T> {
+    pub fn inner_ref(&self) -> &State {
         &self.0
     }
     /// Returns the block header represented by the finalized state.
     pub fn header(&self) -> Header {
         let inner = &self.0;
-        panic!()
-        // Header {
-        //     height: inner.height,
-        //     history_hash: inner.history.root_hash(),
-        //     coins_hash: inner.coins.root_hash(),
-        //     transactions_hash: inner.transactions.root_hash(),
-        //     fee_pool: inner.fee_pool,
-        //     fee_multiplier: inner.fee_multiplier,
-        //     dosc_multiplier: inner.dosc_multiplier,
-        //     auction_bids_hash: inner.auction_bids.root_hash(),
-        //     met_price: inner.met_price,
-        //     mel_price: inner.mel_price,
-        //     stake_doc_hash: inner.stake_doc.root_hash(),
-        // }
+        // panic!()
+        Header {
+            height: inner.height,
+            history_hash: inner.history.root_hash(),
+            coins_hash: inner.coins.root_hash(),
+            transactions_hash: inner.transactions.root_hash(),
+            fee_pool: inner.fee_pool,
+            fee_multiplier: inner.fee_multiplier,
+            dosc_multiplier: inner.dosc_multiplier,
+            auction_bids_hash: inner.auction_bids.root_hash(),
+            met_price: inner.met_price,
+            mel_price: inner.mel_price,
+            stake_doc_hash: inner.stake_doc.root_hash(),
+        }
     }
     /// Creates a new unfinalized state representing the next block.
-    pub fn next_state(&self) -> State<T> {
+    pub fn next_state(&self) -> State {
         let mut new = self.0.clone();
         // advance the numbers
         new.history.insert(self.0.height, self.header());
@@ -408,29 +391,25 @@ impl Header {
 }
 
 /// SmtMapping is a type-safe, constant-time clonable, imperative-style interface to a sparse Merkle tree.
-pub struct SmtMapping<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable, D: autosmt::Database> {
-    pub mapping: autosmt::Tree<D>,
+pub struct SmtMapping<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable> {
+    pub mapping: autosmt::Tree,
     _phantom_k: PhantomData<K>,
     _phantom_v: PhantomData<V>,
 }
 
-impl<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable, D: autosmt::Database> Clone
-    for SmtMapping<K, V, D>
-{
+impl<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable> Clone for SmtMapping<K, V> {
     fn clone(&self) -> Self {
         SmtMapping::new(self.mapping.clone())
     }
 }
 
-impl<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable, D: autosmt::Database>
-    SmtMapping<K, V, D>
-{
+impl<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable> SmtMapping<K, V> {
     /// Returns true iff the mapping is empty.
     pub fn is_empty(&self) -> bool {
         self.root_hash().0 == [0; 32]
     }
     /// new converts a type-unsafe SMT to a SmtMapping
-    pub fn new(tree: autosmt::Tree<D>) -> Self {
+    pub fn new(tree: autosmt::Tree) -> Self {
         SmtMapping {
             mapping: tree,
             _phantom_k: PhantomData,
@@ -439,30 +418,35 @@ impl<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable, D: autosmt::Database
     }
     /// get obtains a mapping
     pub fn get(&self, key: &K) -> (Option<V>, autosmt::FullProof) {
-        let key = autosmt::hash::index(&rlp::encode(key));
+        let key = tmelcrypt::hash_single(&rlp::encode(key));
         let (v_bytes, proof) = self.mapping.get(key);
-        match v_bytes {
-            Some(v_bytes) => {
+        match v_bytes.len() {
+            0 => (None, proof),
+            _ => {
                 let res: V = rlp::decode(&v_bytes).expect("SmtMapping saw invalid data");
                 (Some(res), proof)
             }
-            None => (None, proof),
         }
     }
     /// insert inserts a mapping, replacing any existing mapping
     pub fn insert(&mut self, key: K, val: V) {
-        let key = autosmt::hash::index(&rlp::encode(&key));
+        let key = tmelcrypt::hash_single(&rlp::encode(&key));
         let newmap = self.mapping.set(key, &rlp::encode(&val));
+        eprintln!(
+            "{:?} ==insert=> {:?}",
+            self.mapping.root_hash(),
+            newmap.root_hash()
+        );
         self.mapping = newmap
     }
     /// delete deletes a mapping, replacing the mapping with a mapping to the empty bytestring
     pub fn delete(&mut self, key: &K) {
-        let key = autosmt::hash::index(&rlp::encode(key));
+        let key = tmelcrypt::hash_single(&rlp::encode(key));
         let newmap = self.mapping.set(key, b"");
         self.mapping = newmap
     }
     /// root_hash returns the root hash
     pub fn root_hash(&self) -> HashVal {
-        HashVal(self.mapping.root_hash())
+        self.mapping.root_hash()
     }
 }
