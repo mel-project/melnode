@@ -16,6 +16,12 @@ impl Deref for HashVal {
     }
 }
 
+impl AsRef<[u8]> for HashVal {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
 impl fmt::Debug for HashVal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("#<{}>", hex::encode(&self.0[0..5])))

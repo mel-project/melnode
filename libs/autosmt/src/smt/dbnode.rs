@@ -39,11 +39,13 @@ impl DBNode {
 
     /// To bytes.
     pub fn to_bytes(&self) -> Vec<u8> {
-        match self {
+        let out = match self {
             Internal(int) => int.to_bytes(),
             Data(dat) => dat.to_bytes(),
             Zero => vec![],
-        }
+        };
+        assert_eq!(self, &DBNode::from_bytes(&out));
+        out
     }
 
     /// Root-hash.
@@ -250,7 +252,7 @@ impl DataNode {
     fn to_bytes(&self) -> Vec<u8> {
         let mut toret = Vec::with_capacity(256);
         toret.push(1);
-        toret.extend_from_slice(&self.level.to_be_bytes());
+        toret.extend_from_slice(&(self.level as u16).to_be_bytes());
         toret.extend_from_slice(&self.key.0);
         toret.extend_from_slice(&self.data);
         toret

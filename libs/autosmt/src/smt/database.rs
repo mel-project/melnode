@@ -29,6 +29,7 @@ impl DBManager {
     }
     /// Syncs the information into the database. DBManager is guaranteed to only sync to database when sync is called.
     pub fn sync(&self) {
+        self.local_gc();
         let mut trees = self.trees.write();
         let mut raw = self.raw.write();
         // sync cached info
@@ -36,7 +37,7 @@ impl DBManager {
         for (k, v) in self.cache.write().drain() {
             kvv.push((k, v))
         }
-        log::debug!("sync cache of {}", kvv.len());
+        //log::debug!("sync cache of {}", kvv.len());
         raw.set_batch(kvv);
         // sync roots
         let mut roots = Vec::new();
@@ -44,12 +45,11 @@ impl DBManager {
         for (k, mut v) in trees.drain() {
             if Arc::get_mut(&mut v.hack_ctr).is_none() {
                 roots.push(k)
-            } else {
-                newtrees.insert(k, v);
             }
+            newtrees.insert(k, v);
         }
         *trees = newtrees;
-        log::debug!("sync roots of {}", roots.len());
+        //log::debug!("sync roots of {}", roots.len());
         raw.set_gc_roots(&roots)
     }
     /// Spawns out a tree at the given hash.
@@ -90,6 +90,35 @@ impl DBManager {
         cache.insert(hash, value);
     }
 
+    /// Helper function to "garbage collect" the cache.
+    fn local_gc(&self) {
+        let trees = self.trees.read();
+        let mut cache = self.cache.write();
+        let mut stack: Vec<_> = trees
+            .iter()
+            .filter_map(|(h, v)| {
+                if Arc::strong_count(&v.hack_ctr) > 1 {
+                    Some(*h)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        // rewrite the cache
+        let mut newcache: HashMap<tmelcrypt::HashVal, DBNode> = HashMap::new();
+        while !stack.is_empty() {
+            let top = stack.pop().unwrap();
+            if top == tmelcrypt::HashVal::default() {
+                continue;
+            }
+            if let Some(topval) = cache.get(&top) {
+                newcache.insert(top, topval.clone());
+                stack.extend_from_slice(&topval.out_ptrs());
+            }
+        }
+        *cache = newcache;
+    }
+
     /// Draws a debug GraphViz representation of the tree.
     pub fn debug_graphviz(&self) -> String {
         let mut output = String::new();
@@ -117,7 +146,6 @@ impl DBManager {
             };
             let ptrs = dbn.out_ptrs();
             let curr_hash = dbn.hash();
-            println!("{:#?}", dbn);
             output.push_str(&format!(
                 "\"{:?}\" [style=filled label=\"{}-{:?}\" fillcolor={} shape=rectangle]\n",
                 curr_hash, kind, curr_hash, color
@@ -192,10 +220,6 @@ impl Tree {
 pub trait RawDB: Send + Sync {
     /// Gets a database node given its hash.
     fn get(&self, hash: tmelcrypt::HashVal) -> DBNode;
-    /// Stores a database node.
-    fn set(&mut self, hash: tmelcrypt::HashVal, val: DBNode) {
-        self.set_batch(vec![(hash, val)]);
-    }
     /// Sets a batch of database nodes.
     fn set_batch(&mut self, kvv: Vec<(tmelcrypt::HashVal, DBNode)>);
     /// Sets roots for garbage collection. For correctness, garbage collection *must* only occur while this function is running. This is because, nodes pointed to by the roots might be written before the roots are set.
@@ -237,6 +261,11 @@ impl RawDB for MemDB {
 impl MemDB {
     fn gc(&mut self) {
         if self.mapping.len() > self.gc_mark {
+            log::debug!(
+                "len {} > gc_mark {}, gcing",
+                self.mapping.len(),
+                self.gc_mark
+            );
             // trivial copying GC
             let mut new_mapping = HashMap::new();
             let mut stack = self.roots.clone();

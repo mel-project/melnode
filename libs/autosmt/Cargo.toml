@@ -21,3 +21,5 @@ parking_lot="0.10"
 tmelcrypt={path="../tmelcrypt"}
 log="0.4"
 enum_dispatch="0.3"
+env_logger = "0.7"
+bloomfilter="1"

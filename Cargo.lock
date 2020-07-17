@@ -101,7 +101,9 @@ dependencies = [
  "bitvec",
  "blake2b_simd",
  "blake3",
+ "bloomfilter",
  "enum_dispatch",
+ "env_logger",
  "hex",
  "lazy_static",
  "lmdb",
@@ -123,6 +125,12 @@ dependencies = [
  "byteorder",
  "crunchy",
 ]
+
+[[package]]
+name = "bit-vec"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f0dc55f2d8a1a85650ac47858bb001b4c0dd73d79e3c455a842925e68d29cd3"
 
 [[package]]
 name = "bitflags"
@@ -234,6 +242,17 @@ dependencies = [
  "once_cell",
  "parking",
  "waker-fn",
+]
+
+[[package]]
+name = "bloomfilter"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6437fb0cbb35301d1ca48d584e7e035823a4b34163924a35cd80d12ec3358a7"
+dependencies = [
+ "bit-vec",
+ "rand 0.7.3",
+ "siphasher",
 ]
 
 [[package]]
@@ -1400,6 +1419,12 @@ dependencies = [
  "fake-simd",
  "opaque-debug",
 ]
+
+[[package]]
+name = "siphasher"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa8f3741c7372e75519bd9346068370c9cdaabcc1f9599cbcf2a2719352286b7"
 
 [[package]]
 name = "sized-chunks"

@@ -6,21 +6,25 @@ use std::path::Path;
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Instant;
-fn main() {
-    let mut top_hash: [u8; 32] = [0; 32];
-    hex::decode_to_slice(
-        "db2e646567c3c90d0a029efa31e5c60b9bade1340501b3072d12e71018552d7b",
-        &mut top_hash,
-    )
-    .unwrap();
 
-    benchmark("MEMO", DBManager::load(MemDB::default()));
+fn main() {
+    env_logger::init();
+    let db = {
+        let lmdb_env = lmdb::Environment::new()
+            .set_max_dbs(1)
+            .set_map_size(1 << 40)
+            .open(Path::new("LMDB_TEST"))
+            .unwrap();
+        ondisk::LMDB::new(lmdb_env, None).unwrap()
+    };
+    benchmark("LMDB", DBManager::load(db));
 }
 
 fn benchmark(name: &str, db: DBManager) {
     let mut tree = db.get_tree(tmelcrypt::HashVal::default());
+    dbg!(tree.root_hash());
 
-    let iterations = 10000;
+    let iterations = 100000;
     let kvv: Vec<(tmelcrypt::HashVal, Vec<u8>)> = {
         let mut kvv = Vec::new();
         for i in 0..iterations {
@@ -32,18 +36,22 @@ fn benchmark(name: &str, db: DBManager) {
 
     println!("*** INSERT ***");
     let insert_start = Instant::now();
-    for (_, (k, v)) in kvv.iter().enumerate() {
+    for (i, (k, v)) in kvv.iter().enumerate() {
         tree = tree.set(*k, v);
         // println!("set {:?}", k);
-        assert!(!tree.get(*k).0.is_empty())
+        assert!(!tree.get(*k).0.is_empty());
+        if i % 10000 == 0 {
+            db.sync();
+        }
     }
+    db.sync();
     println!("time: {:.2} sec", insert_start.elapsed().as_secs_f64());
     println!(
         "speed: {:.2} inserts/sec",
         iterations as f64 / insert_start.elapsed().as_secs_f64()
     );
     println!("");
-    println!("{}", db.debug_graphviz());
+    //println!("{}", db.debug_graphviz());
 
     println!("*** READ ***");
     let mut proof_sizes = 0;
