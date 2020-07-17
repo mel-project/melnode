@@ -108,7 +108,9 @@ impl DBManager {
         let mut draw_dbn = |dbn: &DBNode, color: &str| {
             let kind = match dbn {
                 DBNode::Internal(_) => String::from("I"),
-                DBNode::Data(DataNode { level: l, .. }) => format!("D-{}", l),
+                DBNode::Data(DataNode {
+                    level: l, key: k, ..
+                }) => format!("D-({}, {:?})", l, k),
                 DBNode::Zero => String::from("Z"),
             };
             let ptrs = dbn.out_ptrs();

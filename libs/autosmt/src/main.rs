@@ -20,7 +20,7 @@ fn main() {
 fn benchmark(name: &str, db: DBManager) {
     let mut tree = db.get_tree(tmelcrypt::HashVal::default());
 
-    let iterations = 9;
+    let iterations = 10000;
     let kvv: Vec<(tmelcrypt::HashVal, Vec<u8>)> = {
         let mut kvv = Vec::new();
         for i in 0..iterations {
@@ -34,6 +34,7 @@ fn benchmark(name: &str, db: DBManager) {
     let insert_start = Instant::now();
     for (_, (k, v)) in kvv.iter().enumerate() {
         tree = tree.set(*k, v);
+        // println!("set {:?}", k);
         assert!(!tree.get(*k).0.is_empty())
     }
     println!("time: {:.2} sec", insert_start.elapsed().as_secs_f64());
@@ -48,7 +49,6 @@ fn benchmark(name: &str, db: DBManager) {
     let mut proof_sizes = 0;
     let retrieval_start = Instant::now();
     for (i, (k, v)) in kvv.iter().enumerate() {
-        println!("{}", i);
         let (vv, p) = tree.get(*k);
         assert_eq!(vv, v.clone());
         proof_sizes += p.compress().0.len();

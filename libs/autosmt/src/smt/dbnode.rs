@@ -80,6 +80,9 @@ impl DBNode {
         data: &[u8],
         db: &DBManager,
     ) -> Self {
+        if data.is_empty() {
+            return Zero;
+        }
         match self {
             Internal(int) => int.set_by_path(path, key, data, db),
             Data(dat) => dat.set_by_path(path, key, data, db),
@@ -222,7 +225,7 @@ impl InternalNode {
 #[derive(Clone, Debug)]
 pub struct DataNode {
     pub(crate) level: usize,
-    key: tmelcrypt::HashVal,
+    pub(crate) key: tmelcrypt::HashVal,
     data: Vec<u8>,
 }
 
@@ -248,7 +251,7 @@ impl DataNode {
     }
 
     fn calc_hash(&self) -> tmelcrypt::HashVal {
-        merk::data_hashes(self.key, &self.data)[self.level as usize]
+        merk::data_hashes(self.key, &self.data)[256 - self.level as usize]
     }
 
     fn get_by_path_rev(
@@ -282,12 +285,12 @@ impl DataNode {
         }
         // general case: we move ourselves down 4 levels, set that as a grandchild of a new internal node, and insert the key into that internal node
         let mut newself = self.clone();
-        eprintln!(
-            "moving {:?} from {} to {}",
-            newself.key,
-            newself.level,
-            newself.level - 4
-        );
+        // eprintln!(
+        //     "moving {:?} from {} to {}",
+        //     newself.key,
+        //     newself.level,
+        //     newself.level - 4
+        // );
         newself.level -= 4;
         let newhash = newself.calc_hash();
         db.write_cached(newhash, Data(newself));
