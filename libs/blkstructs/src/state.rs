@@ -361,20 +361,20 @@ impl<T: autosmt::Database> FinalizedState<T> {
     /// Returns the block header represented by the finalized state.
     pub fn header(&self) -> Header {
         let inner = &self.0;
-        panic!()
-        // Header {
-        //     height: inner.height,
-        //     history_hash: inner.history.root_hash(),
-        //     coins_hash: inner.coins.root_hash(),
-        //     transactions_hash: inner.transactions.root_hash(),
-        //     fee_pool: inner.fee_pool,
-        //     fee_multiplier: inner.fee_multiplier,
-        //     dosc_multiplier: inner.dosc_multiplier,
-        //     auction_bids_hash: inner.auction_bids.root_hash(),
-        //     met_price: inner.met_price,
-        //     mel_price: inner.mel_price,
-        //     stake_doc_hash: inner.stake_doc.root_hash(),
-        // }
+        // panic!()
+        Header {
+            height: inner.height,
+            history_hash: inner.history.root_hash(),
+            coins_hash: inner.coins.root_hash(),
+            transactions_hash: inner.transactions.root_hash(),
+            fee_pool: inner.fee_pool,
+            fee_multiplier: inner.fee_multiplier,
+            dosc_multiplier: inner.dosc_multiplier,
+            auction_bids_hash: inner.auction_bids.root_hash(),
+            met_price: inner.met_price,
+            mel_price: inner.mel_price,
+            stake_doc_hash: inner.stake_doc.root_hash(),
+        }
     }
     /// Creates a new unfinalized state representing the next block.
     pub fn next_state(&self) -> State<T> {

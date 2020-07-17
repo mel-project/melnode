@@ -114,6 +114,8 @@ mod tests {
         })
     }
 
+    use rand::prelude::*;
+
     #[test]
     fn state_simple_order_independence() {
         let db = autosmt::wrap_db(autosmt::TrivialDB::new());
@@ -160,8 +162,7 @@ mod tests {
     #[test]
     fn smt_mapping() {
         let tree = autosmt::Tree::new(&autosmt::wrap_db(autosmt::TrivialDB::new()));
-        let mut map: state::SmtMapping<u64, u64, autosmt::TrivialDB> =
-            state::SmtMapping::new(&tree);
+        let mut map: state::SmtMapping<u64, u64, autosmt::TrivialDB> = state::SmtMapping::new(tree);
         for i in 0..10 {
             map.insert(i, i);
         }
