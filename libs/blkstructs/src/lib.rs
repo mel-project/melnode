@@ -57,12 +57,12 @@ pub mod testing {
 mod tests {
     use super::testing::*;
     use super::*;
+    use std::collections::HashSet;
     use test::Bencher;
 
     #[bench]
     fn batch_insertion(b: &mut Bencher) {
         let _ = env_logger::try_init();
-        let db = autosmt::wrap_db(autosmt::TrivialDB::new());
         let (pk, sk) = tmelcrypt::ed25519_keygen();
         let scr = melscript::Script::std_ed25519_pk(pk);
         let mut trng = rand::thread_rng();
@@ -81,14 +81,14 @@ mod tests {
             &scr,
         );
         b.iter(|| {
-            let mut genesis = State::test_genesis(&db, MICRO_CONVERTER * 1000, scr.hash());
+            let db = autosmt::DBManager::load(autosmt::MemDB::default());
+            let mut genesis = State::test_genesis(db, MICRO_CONVERTER * 1000, scr.hash());
             genesis.apply_tx_batch(&txx).unwrap();
         })
     }
 
     #[bench]
     fn single_insertion(b: &mut Bencher) {
-        let db = autosmt::wrap_db(autosmt::TrivialDB::new());
         let (pk, sk) = tmelcrypt::ed25519_keygen();
         let scr = melscript::Script::std_ed25519_pk(pk);
         let mut trng = rand::thread_rng();
@@ -107,7 +107,8 @@ mod tests {
             &scr,
         );
         b.iter(|| {
-            let mut genesis = State::test_genesis(&db, MICRO_CONVERTER * 1000, scr.hash());
+            let db = autosmt::DBManager::load(autosmt::MemDB::default());
+            let mut genesis = State::test_genesis(db, MICRO_CONVERTER * 1000, scr.hash());
             for tx in txx.iter() {
                 genesis.apply_tx(tx).unwrap();
             }
@@ -118,10 +119,10 @@ mod tests {
 
     #[test]
     fn state_simple_order_independence() {
-        let db = autosmt::wrap_db(autosmt::TrivialDB::new());
+        let db = autosmt::DBManager::load(autosmt::MemDB::default());
         let (pk, sk) = tmelcrypt::ed25519_keygen();
         let scr = melscript::Script::std_ed25519_pk(pk);
-        let genesis = State::test_genesis(&db, MICRO_CONVERTER * 1000, scr.hash());
+        let genesis = State::test_genesis(db, MICRO_CONVERTER * 1000, scr.hash());
         let first_block = genesis.finalize();
         let mut trng = rand::thread_rng();
         let mut txx = random_valid_txx(
@@ -140,15 +141,15 @@ mod tests {
         );
         println!("transactions generated");
         let seq_copy = {
-            let mut state = first_block.next_state();
+            let mut state = dbg!(first_block.next_state());
             for tx in txx.iter() {
                 state.apply_tx(tx).expect("failed application");
             }
             state.finalize().header().hash()
         };
         let copies: Vec<tmelcrypt::HashVal> = (0..2)
-            .map(|_| {
-                let mut state = first_block.next_state();
+            .map(|i| {
+                let mut state = dbg!(first_block.next_state());
                 txx.shuffle(&mut trng);
                 state.apply_tx_batch(&txx).expect("failed application");
                 state.finalize().header().hash()
@@ -161,15 +162,19 @@ mod tests {
 
     #[test]
     fn smt_mapping() {
-        let tree = autosmt::Tree::new(&autosmt::wrap_db(autosmt::TrivialDB::new()));
-        let mut map: state::SmtMapping<u64, u64, autosmt::TrivialDB> = state::SmtMapping::new(tree);
+        let db = autosmt::DBManager::load(autosmt::MemDB::default());
+        let tree = db.get_tree(tmelcrypt::HashVal::default());
+        let mut map: state::SmtMapping<u64, u64> = state::SmtMapping::new(tree.clone());
         for i in 0..10 {
             map.insert(i, i);
         }
-        assert_eq!(
-            hex::encode(map.mapping.root_hash()),
-            "c817ba6ba9cadabb754ed5195232be8d22dbd98a1eeca0379921c3cc0b414110"
-        );
+        // assert_eq!(
+        //     hex::encode(&map.mapping.root_hash()),
+        //     "c817ba6ba9cadabb754ed5195232be8d22dbd98a1eeca0379921c3cc0b414110"
+        // );
+        dbg!(&map);
+        let mut mapbak = map.clone();
+        dbg!(&mapbak);
         for i in 0..10 {
             assert_eq!(Some(i), map.get(&i).0);
         }
@@ -178,6 +183,11 @@ mod tests {
         for i in 0..10 {
             map.delete(&i);
         }
-        assert_eq!(map.mapping.root_hash(), [0; 32]);
+        dbg!(&mapbak);
+        eprintln!("{}", db.debug_graphviz());
+        for i in 0..10 {
+            assert_eq!(Some(i), mapbak.get(&i).0);
+        }
+        // assert_eq!(&map.mapping.root_hash(), [0; 32]);
     }
 }

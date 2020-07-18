@@ -1,6 +1,5 @@
 use crate::common::*;
 use anyhow::Result;
-use autosmt::Database;
 use futures::channel::oneshot;
 use futures::prelude::*;
 use futures::select;
@@ -91,17 +90,16 @@ fn spawn_auditor_actor(
 
 /// AuditorState represents the internal state of an Auditor. This is consumed when an Auditor is constructed.
 pub struct AuditorState {
-    mempool: blkstructs::State<Box<dyn Database>>,
+    mempool: blkstructs::State,
     recent: lru::LruCache<tmelcrypt::HashVal, bool>,
 }
 
 impl AuditorState {
     /// Creates an AuditorState for testing, with an in-memory genesis state that puts 1000 mel at the zero-zero coin, unlockable by the always_true script.
     pub fn new_test() -> Self {
-        let db: Box<dyn Database> = Box::new(autosmt::TrivialDB::new());
-        let db = autosmt::wrap_db(db);
+        let db = autosmt::DBManager::load(autosmt::MemDB::default());
         let state = blkstructs::State::test_genesis(
-            &db,
+            db,
             blkstructs::MICRO_CONVERTER * 1000,
             blkstructs::melscript::Script::always_true().hash(),
         );

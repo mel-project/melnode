@@ -1,365 +1,289 @@
-use parking_lot::{Mutex, RwLock};
-use std::cell::RefCell;
-use std::collections::hash_map::Entry;
+use crate::smt::dbnode::*;
+use crate::smt::*;
+use parking_lot::RwLock;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::convert::TryInto;
 use std::sync::Arc;
 
-impl Database for Box<dyn Database> {
-    fn write(&mut self, key: [u8; 32], val: &[u8]) -> Option<()> {
-        self.as_mut().write(key, val)
-    }
-    fn read(&self, key: [u8; 32]) -> Option<Vec<u8>> {
-        self.as_ref().read(key)
-    }
-    fn refc_decr(&mut self, key: [u8; 32]) -> Option<usize> {
-        self.as_mut().refc_decr(key)
-    }
-    fn refc_incr(&mut self, key: [u8; 32]) -> Option<usize> {
-        self.as_mut().refc_incr(key)
-    }
+/// Wraps around a raw key-value store and produces trees. The main interface to the library.
+#[derive(Clone)]
+pub struct DBManager {
+    raw: Arc<RwLock<dyn RawDB>>, // dynamic dispatch for ergonomics
+    cache: Arc<RwLock<HashMap<tmelcrypt::HashVal, DBNode>>>,
+    trees: Arc<RwLock<HashMap<tmelcrypt::HashVal, Tree>>>,
 }
 
-/// Database represents a backend for storing SMT nodes.
-pub trait Database: Send + Sync {
-    /// Writes a hash-value mapping into the database with refcount=1, returning the hash. Fails if the value already exists.
-    fn write(&mut self, key: [u8; 32], val: &[u8]) -> Option<()>;
-    /// Increments a reference count for a hash, returning the new refcount. Fails if no such key.
-    fn refc_incr(&mut self, key: [u8; 32]) -> Option<usize>;
-    /// Decrements a reference count for a hash, returning the new refcount. If the refcount reaches zero, then delete the key-value binding. Fails if no such key.
-    fn refc_decr(&mut self, key: [u8; 32]) -> Option<usize>;
-    /// Recursively decrements reference counts, going down children for all 513-byte hexary nodes if the root dies.
-    fn refc_decr_hex_recursive(&mut self, root_key: [u8; 32]) -> Option<usize> {
-        if root_key == [0; 32] {
-            return Some(0);
+impl DBManager {
+    /// Loads a DBManager from a RawDB, while not changing the GC roots. To get the roots out, *immediately* query them with get_tree. Otherwise, they'll be lost on the next sync.
+    pub fn load(raw: impl RawDB + 'static) -> Self {
+        let roots = raw.get_gc_roots();
+        let mut cache = HashMap::new();
+        for r in roots {
+            cache.insert(r, raw.get(r));
         }
-        let root_data = self.read(root_key)?;
-        match self.refc_decr(root_key)? {
-            0 => {
-                if root_data.len() == 513 && root_data[0] == 0 {
-                    for child_i in 0..16 {
-                        let child_hash = root_data[child_i * 32 + 1..][..32].try_into().unwrap();
-                        self.refc_decr_hex_recursive(child_hash);
-                    }
-                }
-                Some(0)
+        DBManager {
+            raw: Arc::new(RwLock::new(raw)),
+            cache: Arc::new(RwLock::new(cache)),
+            trees: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+    /// Syncs the information into the database. DBManager is guaranteed to only sync to database when sync is called.
+    pub fn sync(&self) {
+        self.local_gc();
+        let mut trees = self.trees.write();
+        let mut raw = self.raw.write();
+        // sync cached info
+        let mut kvv = Vec::new();
+        for (k, v) in self.cache.write().drain() {
+            kvv.push((k, v))
+        }
+        //log::debug!("sync cache of {}", kvv.len());
+        raw.set_batch(kvv);
+        // sync roots
+        let mut roots = Vec::new();
+        let mut newtrees = HashMap::new();
+        for (k, mut v) in trees.drain() {
+            if Arc::get_mut(&mut v.hack_ctr).is_none() {
+                roots.push(k)
             }
-            x => Some(x),
+            newtrees.insert(k, v);
         }
+        *trees = newtrees;
+        //log::debug!("sync roots of {}", roots.len());
+        raw.set_gc_roots(&roots)
     }
-    /// Reads a mapping.
-    fn read(&self, key: [u8; 32]) -> Option<Vec<u8>>;
-}
-
-pub fn wrap_db<T: Database>(db: T) -> Arc<RwLock<T>> {
-    Arc::new(RwLock::new(db))
-}
-
-type TdbMapEntry = (Vec<u8>, RefCell<usize>);
-pub struct TrivialDB {
-    mapping: Mutex<HashMap<[u8; 32], TdbMapEntry>>,
-}
-
-impl Default for TrivialDB {
-    fn default() -> Self {
-        TrivialDB::new()
-    }
-}
-
-impl TrivialDB {
-    pub fn new() -> Self {
-        TrivialDB {
-            mapping: Mutex::new(HashMap::new()),
-        }
+    /// Spawns out a tree at the given hash.
+    pub fn get_tree(&self, root_hash: tmelcrypt::HashVal) -> Tree {
+        // ensure a consistent view of the tree hashes
+        let mut trees = self.trees.write();
+        let tree = trees
+            .entry(root_hash)
+            .or_insert_with(|| Tree {
+                dbm: self.clone(),
+                hash: root_hash,
+                hack_ctr: Arc::new(()),
+            })
+            .clone();
+        debug_assert_eq!(root_hash, tree.root_hash());
+        // load into cache
+        tree.to_dbnode();
+        tree
     }
 
-    pub fn count(&self) -> usize {
-        self.mapping.lock().len()
+    /// Helper function to load a node into memory.
+    pub(crate) fn read_cached(&self, hash: tmelcrypt::HashVal) -> DBNode {
+        if hash == tmelcrypt::HashVal::default() {
+            return DBNode::Zero;
+        }
+        let mut cache = self.cache.write();
+        let out = cache
+            .entry(hash)
+            .or_insert_with(|| self.raw.read().get(hash))
+            .clone();
+        debug_assert_eq!(out.hash(), hash);
+        out
     }
 
-    pub fn graphviz(&self) -> String {
-        let mut toret = String::new();
-        toret.push_str("digraph G{\n");
-        for (k, v) in self.mapping.lock().iter() {
-            let hk = hex::encode(&k[0..5]);
-            let label = format!("[label = \"{}-[{}]\"]", hk, v.1.borrow());
-            toret.push_str(&format!("\"{}\" {}\n", hk, label));
-            let vec = &v.0[1..];
-            if vec.len() % 32 == 0 {
-                for i in 0..vec.len() / 32 {
-                    let ptr = hex::encode(&vec[i * 32..i * 32 + 5]);
-                    if ptr != "0000000000" {
-                        toret.push_str(&format!("\"{}\" -> \"{}\" [label=\"{}\"]\n", hk, ptr, i));
-                    }
-                }
-            }
-        }
-        toret.push_str("}");
-        toret
-    }
-}
-
-impl Database for TrivialDB {
-    fn write(&mut self, key: [u8; 32], val: &[u8]) -> Option<()> {
-        if key == [0; 32] {
-            return Some(());
-        }
-        let mut mapping = self.mapping.lock();
-        if let Some((_, _)) = mapping.get(&key) {
-            None
-        } else {
-            mapping.insert(key, (val.to_vec(), RefCell::new(1)));
-            Some(())
-        }
+    /// Helper function to write a node into the cache.
+    pub(crate) fn write_cached(&self, hash: tmelcrypt::HashVal, value: DBNode) {
+        let mut cache = self.cache.write();
+        cache.insert(hash, value);
     }
 
-    fn refc_incr(&mut self, key: [u8; 32]) -> Option<usize> {
-        if key == [0; 32] {
-            return Some(1);
-        }
-        let mapping = self.mapping.lock();
-        if let Some((_, refcount)) = mapping.get(&key) {
-            let mut mref = refcount.borrow_mut();
-            *mref += 1;
-            Some(*mref)
-        } else {
-            println!("can't incr {}", hex::encode(&key[0..10]));
-            None
-        }
-    }
-
-    fn refc_decr(&mut self, key: [u8; 32]) -> Option<usize> {
-        if key == [0; 32] {
-            return Some(1);
-        }
-        let mut mapping = self.mapping.lock();
-        if let Entry::Occupied(mut occupied) = mapping.entry(key) {
-            let result = {
-                let ks = occupied.get_mut();
-                let mut mref = ks.1.borrow_mut();
-                *mref -= 1;
-                *mref
-            };
-            if result == 0 {
-                occupied.remove();
-            }
-            Some(result)
-        } else {
-            None
-        }
-    }
-
-    fn read(&self, key: [u8; 32]) -> Option<Vec<u8>> {
-        if key == [0; 32] {
-            return Some([0; 32 * 16 + 1].to_vec());
-        }
-        let mapping = self.mapping.lock();
-        let v = mapping.get(&key)?;
-        Some(v.0.clone())
-    }
-}
-
-/// PersistentDatabase represents a persistent database, and it's a supertrait for Database.
-pub trait PersistentDatabase: Database {
-    // Sets a persistent node at a certain index
-    fn set_persist(&mut self, idx: usize, key: [u8; 32]);
-    // Gets a persistent node at a certain index
-    fn get_persist(&self, idx: usize) -> Option<[u8; 32]>;
-    // Sync to disk, returning only when data is durable
-    fn sync(&mut self);
-}
-
-/// RawKeyVal represents a raw key-value store, similar to that offered by key-value databases.
-pub trait RawKeyVal: Send + Sync {
-    fn get(&self, key: &[u8]) -> Option<Vec<u8>>;
-    fn set(&mut self, key: &[u8], val: Option<&[u8]>) {
-        let mut vec = Vec::new();
-        vec.push((
-            key.to_vec(),
-            match val {
-                Some(x) => Some(x.to_vec()),
-                None => None,
-            },
-        ));
-        self.set_batch(vec);
-    }
-    fn set_batch<T>(&mut self, kvv: T)
-    where
-        T: IntoIterator<Item = (Vec<u8>, Option<Vec<u8>>)>;
-}
-
-/// CacheDatabase is a PersistentDatabase that wraps a RawKeyVal, providing caching functionality.
-pub struct CacheDatabase<T: RawKeyVal> {
-    diskdb: T,
-    refc_cache: HashMap<[u8; 32], u64>,
-    refc_orig: HashMap<[u8; 32], u64>,
-    bind_cache: HashMap<[u8; 32], Vec<u8>>,
-    persist_cache: HashMap<usize, [u8; 32]>,
-    ephem: HashSet<[u8; 32]>,
-}
-
-impl<T: RawKeyVal> CacheDatabase<T> {
-    pub fn new(db: T) -> Self {
-        CacheDatabase {
-            diskdb: db,
-            refc_cache: HashMap::new(),
-            bind_cache: HashMap::new(),
-            persist_cache: HashMap::new(),
-            ephem: HashSet::new(),
-            refc_orig: HashMap::new(),
-        }
-    }
-
-    fn refc_load(&mut self, key: [u8; 32]) -> Option<()> {
-        if self.refc_cache.get(&key).is_some() {
-            return Some(());
-        }
-        let ri = u64::from_le_bytes(
-            self.diskdb
-                .get(&to_refkey(&key))?
-                .as_slice()
-                .try_into()
-                .unwrap(),
-        );
-        self.refc_cache.insert(key, ri);
-        self.refc_orig.insert(key, ri);
-        Some(())
-    }
-}
-
-fn to_refkey(key: &[u8]) -> Vec<u8> {
-    let mut v = Vec::with_capacity(key.len() + 1);
-    v.extend_from_slice(key);
-    v.push(1);
-    v
-}
-fn to_nodekey(key: &[u8]) -> Vec<u8> {
-    let mut v = Vec::with_capacity(key.len() + 1);
-    v.extend_from_slice(key);
-    v.push(0);
-    v
-}
-
-impl<T: RawKeyVal> Database for CacheDatabase<T> {
-    fn read(&self, key: [u8; 32]) -> Option<Vec<u8>> {
-        if key == [0; 32] {
-            return Some([0; 32 * 16 + 1].to_vec());
-        }
-        if let Some(vec) = self.bind_cache.get(&key) {
-            Some(vec.clone())
-        } else {
-            let fresh_vec = self.diskdb.get(&to_nodekey(&key))?.to_vec();
-            //bind_cache.insert(key, fresh_vec.clone());
-            Some(fresh_vec)
-        }
-    }
-    fn write(&mut self, key: [u8; 32], val: &[u8]) -> Option<()> {
-        if self.read(key).is_some() {
-            return None;
-        }
-        if self.bind_cache.insert(key, val.to_vec()).is_none() {
-            self.refc_cache.insert(key, 1);
-            self.ephem.insert(key);
-        }
-        if self.bind_cache.len() > 20000 {
-            self.sync()
-        }
-        Some(())
-    }
-
-    fn refc_incr(&mut self, key: [u8; 32]) -> Option<usize> {
-        if key == [0; 32] {
-            return Some(1);
-        }
-        self.refc_load(key)?;
-        let r = self.refc_cache.get_mut(&key).unwrap();
-        *r += 1;
-        Some(*r as usize)
-    }
-    fn refc_decr(&mut self, key: [u8; 32]) -> Option<usize> {
-        if key == [0; 32] {
-            return Some(1);
-        }
-        self.refc_load(key)?;
-        let r = self.refc_cache.get_mut(&key).unwrap();
-        *r -= 1;
-        let r = *r;
-        if r == 0 {
-            if self.ephem.get(&key).is_some() {
-                self.ephem.remove(&key);
-                self.bind_cache.remove(&key);
-                self.refc_cache.remove(&key);
-            } else {
-                self.refc_cache.insert(key, 0);
-            }
-        }
-        Some(r as usize)
-    }
-}
-
-impl<T: RawKeyVal> PersistentDatabase for CacheDatabase<T> {
-    fn set_persist(&mut self, idx: usize, key: [u8; 32]) {
-        let old = self.get_persist(idx);
-        self.persist_cache.insert(idx, key);
-        self.refc_incr(key);
-        // recursively drop
-        if let Some(old) = old {
-            self.refc_decr_hex_recursive(old).unwrap();
-        }
-    }
-    fn get_persist(&self, idx: usize) -> Option<[u8; 32]> {
-        if let Some(v) = self.persist_cache.get(&idx) {
-            Some(*v)
-        } else {
-            let idx = idx as u64;
-            let fresh: [u8; 32] = self
-                .diskdb
-                .get(&idx.to_le_bytes().to_vec())?
-                .as_slice()
-                .try_into()
-                .unwrap();
-            Some(fresh)
-        }
-    }
-    fn sync(&mut self) {
-        // println!(
-        //     "sync with {} in bind_cache, {} in refc_cache",
-        //     self.bind_cache.len(),
-        //     self.refc_cache.len()
-        // );
-        let mut to_batch: Vec<(Vec<u8>, Option<Vec<u8>>)> = Vec::new();
-        // iterate through dirty keys
-        for (k, v) in self.bind_cache.iter() {
-            to_batch.push((to_nodekey(k), Some(v.clone())));
-        }
-        for (k, v) in self.refc_cache.iter() {
-            let origv = *self.refc_orig.get(k).unwrap_or(&0);
-            if *v != origv {
-                //println!("new {}, old {}", *v, origv);
-                if *v == 0 {
-                    to_batch.push((to_nodekey(k), None));
-                    to_batch.push((to_refkey(k), None));
+    /// Helper function to "garbage collect" the cache.
+    fn local_gc(&self) {
+        let trees = self.trees.read();
+        let mut cache = self.cache.write();
+        let mut stack: Vec<_> = trees
+            .iter()
+            .filter_map(|(h, v)| {
+                if Arc::strong_count(&v.hack_ctr) > 1 {
+                    Some(*h)
                 } else {
-                    to_batch.push((to_refkey(k), Some((*v as u64).to_le_bytes().to_vec())));
+                    None
+                }
+            })
+            .collect();
+        // rewrite the cache
+        let mut newcache: HashMap<tmelcrypt::HashVal, DBNode> = HashMap::new();
+        while !stack.is_empty() {
+            let top = stack.pop().unwrap();
+            if top == tmelcrypt::HashVal::default() {
+                continue;
+            }
+            if let Some(topval) = cache.get(&top) {
+                newcache.insert(top, topval.clone());
+                stack.extend_from_slice(&topval.out_ptrs());
+            }
+        }
+        *cache = newcache;
+    }
+
+    /// Draws a debug GraphViz representation of the tree.
+    pub fn debug_graphviz(&self) -> String {
+        let mut output = String::new();
+        let mut traversal_stack: Vec<_> = self
+            .trees
+            .read()
+            .iter()
+            .filter_map(|(k, v)| {
+                if Arc::strong_count(&v.hack_ctr) != 1 {
+                    Some(k)
+                } else {
+                    None
+                }
+            })
+            .cloned()
+            .collect();
+        output.push_str("digraph G {\n");
+        let mut draw_dbn = |dbn: &DBNode, color: &str| {
+            let kind = match dbn {
+                DBNode::Internal(_) => String::from("I"),
+                DBNode::Data(DataNode {
+                    level: l, key: k, ..
+                }) => format!("D-({}, {:?})", l, k),
+                DBNode::Zero => String::from("Z"),
+            };
+            let ptrs = dbn.out_ptrs();
+            let curr_hash = dbn.hash();
+            output.push_str(&format!(
+                "\"{:?}\" [style=filled label=\"{}-{:?}\" fillcolor={} shape=rectangle]\n",
+                curr_hash, kind, curr_hash, color
+            ));
+            for (i, p) in ptrs.into_iter().enumerate() {
+                if p != tmelcrypt::HashVal::default() {
+                    output.push_str(&format!(
+                        "\"{:?}\" -> \"{:?}\" [label={}]\n",
+                        curr_hash, p, i
+                    ));
+                }
+            }
+        };
+        while !traversal_stack.is_empty() {
+            let curr = traversal_stack.pop().unwrap();
+            if curr == tmelcrypt::HashVal::default() {
+                continue;
+            }
+            match self.cache.read().get(&curr) {
+                Some(dbn) => {
+                    draw_dbn(dbn, "azure");
+                    traversal_stack.extend_from_slice(&dbn.out_ptrs());
+                }
+                None => {
+                    let dbn = self.raw.read().get(curr);
+                    draw_dbn(&dbn, "white");
+                    traversal_stack.extend_from_slice(&dbn.out_ptrs());
                 }
             }
         }
-        for (k, v) in self.persist_cache.iter() {
-            to_batch.push(((*k as u64).to_le_bytes().to_vec(), Some(v.to_vec())));
-        }
-        // commit
-        self.diskdb.set_batch(to_batch);
-        // clear ephemeral
-        self.ephem.clear();
-        self.refc_orig.clear();
-        self.bind_cache.clear();
-        self.refc_cache.clear();
+        output.push_str("}\n");
+        output
     }
 }
 
-impl<T: RawKeyVal> Drop for CacheDatabase<T> {
-    fn drop(&mut self) {
-        self.sync()
+#[derive(Clone)]
+pub struct Tree {
+    dbm: DBManager,
+    hash: tmelcrypt::HashVal,
+    hack_ctr: Arc<()>,
+}
+
+impl Tree {
+    /// Helper function to get DBNode representation.
+    fn to_dbnode(&self) -> DBNode {
+        self.dbm.read_cached(self.hash)
+    }
+
+    /// Gets a binding and its proof.
+    pub fn get(&self, key: tmelcrypt::HashVal) -> (Vec<u8>, FullProof) {
+        let dbn = self.to_dbnode();
+        let (bind, mut proof) = dbn.get_by_path_rev(&merk::key_to_path(key), key, &self.dbm);
+        proof.reverse();
+        (bind, FullProof(proof))
+    }
+
+    /// Sets a binding, obtaining a new tree.
+    pub fn set(&self, key: tmelcrypt::HashVal, val: &[u8]) -> Tree {
+        let dbn = self
+            .to_dbnode()
+            .set_by_path(&merk::key_to_path(key), key, val, &self.dbm);
+        self.dbm.get_tree(dbn.hash())
+    }
+
+    /// Root hash.
+    pub fn root_hash(&self) -> tmelcrypt::HashVal {
+        self.to_dbnode().hash()
+    }
+}
+
+/// Represents a raw key-value store, similar to that offered by key-value databases. Internally manages garbage collection.
+pub trait RawDB: Send + Sync {
+    /// Gets a database node given its hash.
+    fn get(&self, hash: tmelcrypt::HashVal) -> DBNode;
+    /// Sets a batch of database nodes.
+    fn set_batch(&mut self, kvv: Vec<(tmelcrypt::HashVal, DBNode)>);
+    /// Sets roots for garbage collection. For correctness, garbage collection *must* only occur while this function is running. This is because, nodes pointed to by the roots might be written before the roots are set.
+    /// Both reference-counting and incremental copying GC are pretty easy to implement because "pointers" never mutate.
+    fn set_gc_roots(&mut self, roots: &[tmelcrypt::HashVal]);
+    /// Gets garbage-collection roots.
+    fn get_gc_roots(&self) -> Vec<tmelcrypt::HashVal>;
+}
+
+/// A trivial, in-memory RawDB.
+#[derive(Default)]
+pub struct MemDB {
+    mapping: HashMap<tmelcrypt::HashVal, DBNode>,
+    roots: Vec<tmelcrypt::HashVal>,
+    gc_mark: usize,
+}
+
+impl RawDB for MemDB {
+    fn get(&self, hash: tmelcrypt::HashVal) -> DBNode {
+        self.mapping.get(&hash).unwrap().clone()
+    }
+
+    fn set_batch(&mut self, kvv: Vec<(tmelcrypt::HashVal, DBNode)>) {
+        for (k, v) in kvv {
+            self.mapping.insert(k, v);
+        }
+    }
+
+    fn set_gc_roots(&mut self, roots: &[tmelcrypt::HashVal]) {
+        self.roots = roots.to_owned();
+        self.gc()
+    }
+
+    fn get_gc_roots(&self) -> Vec<tmelcrypt::HashVal> {
+        self.roots.clone()
+    }
+}
+
+impl MemDB {
+    fn gc(&mut self) {
+        if self.mapping.len() > self.gc_mark {
+            log::debug!(
+                "len {} > gc_mark {}, gcing",
+                self.mapping.len(),
+                self.gc_mark
+            );
+            // trivial copying GC
+            let mut new_mapping = HashMap::new();
+            let mut stack = self.roots.clone();
+            // start from the roots
+            while !stack.is_empty() {
+                let curr = stack.pop().unwrap();
+                if curr == tmelcrypt::HashVal::default() {
+                    continue;
+                }
+                let existing = self.get(curr);
+                new_mapping.insert(curr, existing.clone());
+                for outptr in existing.out_ptrs() {
+                    stack.push(outptr)
+                }
+            }
+            // replace the mapping
+            self.mapping = new_mapping;
+            self.gc_mark = self.mapping.len() * 2
+        }
     }
 }
