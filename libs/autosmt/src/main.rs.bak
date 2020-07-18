@@ -24,7 +24,7 @@ fn benchmark(name: &str, db: DBManager) {
     let mut tree = db.get_tree(tmelcrypt::HashVal::default());
     dbg!(tree.root_hash());
 
-    let iterations = 100000;
+    let iterations = 1000000;
     let kvv: Vec<(tmelcrypt::HashVal, Vec<u8>)> = {
         let mut kvv = Vec::new();
         for i in 0..iterations {
