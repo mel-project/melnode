@@ -1,10 +1,7 @@
 mod ondisk;
 mod smt;
 use crate::smt::*;
-use rand::prelude::*;
 use std::path::Path;
-use std::sync::{Arc, RwLock};
-use std::thread;
 use std::time::Instant;
 
 fn main() {
@@ -20,11 +17,11 @@ fn main() {
     benchmark("LMDB", DBManager::load(db));
 }
 
-fn benchmark(name: &str, db: DBManager) {
+fn benchmark(_: &str, db: DBManager) {
     let mut tree = db.get_tree(tmelcrypt::HashVal::default());
     dbg!(tree.root_hash());
 
-    let iterations = 1000000;
+    let iterations = 10000;
     let kvv: Vec<(tmelcrypt::HashVal, Vec<u8>)> = {
         let mut kvv = Vec::new();
         for i in 0..iterations {
@@ -40,9 +37,6 @@ fn benchmark(name: &str, db: DBManager) {
         tree = tree.set(*k, v);
         // println!("set {:?}", k);
         assert!(!tree.get(*k).0.is_empty());
-        if i % 10000 == 0 {
-            db.sync();
-        }
     }
     db.sync();
     println!("time: {:.2} sec", insert_start.elapsed().as_secs_f64());
@@ -59,6 +53,7 @@ fn benchmark(name: &str, db: DBManager) {
     for (i, (k, v)) in kvv.iter().enumerate() {
         let (vv, p) = tree.get(*k);
         assert_eq!(vv, v.clone());
+        assert_eq!(p.compress().decompress().unwrap(), p);
         proof_sizes += p.compress().0.len();
     }
     println!("time: {:.2} sec", retrieval_start.elapsed().as_secs_f64());

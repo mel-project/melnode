@@ -1,8 +1,7 @@
 use crate::common::*;
+use crate::storage::Storage;
 use anyhow::Result;
 use futures::channel::oneshot;
-use futures::prelude::*;
-use futures::select;
 use parking_lot::RwLock;
 use smol::*;
 use std::net::{SocketAddr, TcpListener};
@@ -11,7 +10,7 @@ const AUDITOR_NET: &str = "anet1";
 
 /// A structure representing a running auditor (full node).
 pub struct Auditor {
-    actor: Actor<AuditorMsg>,
+    actor: Arc<Actor<AuditorMsg>>,
 }
 
 enum AuditorMsg {
@@ -24,7 +23,7 @@ impl Auditor {
     /// Creates a new Auditor from the given listener.
     pub async fn new(
         listener: Async<TcpListener>,
-        state: AuditorState,
+        state: Arc<RwLock<Storage>>,
         bootstrap: Vec<SocketAddr>,
     ) -> Result<Self> {
         let net = new_melnet(&listener, AUDITOR_NET).await?;
@@ -54,101 +53,52 @@ impl Auditor {
 
 fn spawn_auditor_actor(
     listener: Async<TcpListener>,
-    state: AuditorState,
-    mut net: melnet::NetState,
-) -> Actor<AuditorMsg> {
-    let state = Arc::new(RwLock::new(state));
-    net.register_verb("newtx", {
-        let state = state.clone();
-        move |ns, tx| {
-            let state = state.clone();
-            let ns = ns.clone();
-            Box::pin(async move { state.write().handle_newtx(&ns, tx) })
-        }
-    });
-    Actor::spawn(move |mut mail| async move {
-        let nuu = net.clone().run_server(listener);
-        let process_msgs = async move {
+    state: Arc<RwLock<Storage>>,
+    net: melnet::NetState,
+) -> Arc<Actor<AuditorMsg>> {
+    // hook up callbacks
+    let auditor_actor = {
+        let net = net.clone();
+        Arc::new(Actor::spawn(move |mut mail| async move {
+            let _die_with = Task::spawn(net.clone().run_server(listener));
             loop {
                 match mail.recv().await {
                     GetNet(s) => s.send(net.clone()).unwrap(),
                     NewTx(tx, s) => {
-                        let res = state.write().handle_newtx(&net, tx);
-                        s.send(
-                            try {
-                                res?;
-                            },
-                        )
-                        .unwrap();
+                        let res = state.write().insert_tx(tx.clone());
+                        if res.is_ok() {
+                            // hey, it's a good TX! we should tell our friends too!
+                            log::debug!(
+                                "good tx {:?}, forwarding to up to 16 peers",
+                                tx.hash_nosigs()
+                            );
+                            for dest in net.routes().into_iter().take(16) {
+                                let tx = tx.clone();
+                                Task::spawn(async move {
+                                    let _ = forward_tx(tx, dest).await;
+                                })
+                                .detach();
+                            }
+                        }
+                        s.send(res).unwrap();
                     }
                 }
             }
-        };
-        futures::join!(process_msgs, nuu);
-    })
-}
+        }))
+    };
 
-/// AuditorState represents the internal state of an Auditor. This is consumed when an Auditor is constructed.
-pub struct AuditorState {
-    mempool: blkstructs::State,
-    recent: lru::LruCache<tmelcrypt::HashVal, bool>,
-}
-
-impl AuditorState {
-    /// Creates an AuditorState for testing, with an in-memory genesis state that puts 1000 mel at the zero-zero coin, unlockable by the always_true script.
-    pub fn new_test() -> Self {
-        let db = autosmt::DBManager::load(autosmt::MemDB::default());
-        let state = blkstructs::State::test_genesis(
-            db,
-            blkstructs::MICRO_CONVERTER * 1000,
-            blkstructs::melscript::Script::always_true().hash(),
-        );
-        AuditorState {
-            mempool: state,
-            recent: lru::LruCache::new(65536),
-        }
+    {
+        let auditor_actor = auditor_actor.clone();
+        net.register_verb("newtx", move |_, tx: blkstructs::Transaction| {
+            let auditor_actor = auditor_actor.clone();
+            Box::pin(async move {
+                let (send, recv) = oneshot::channel();
+                auditor_actor.send(NewTx(tx, send));
+                Ok(recv.await.is_ok())
+            })
+        });
     }
-
-    /// Handles a new transaction.
-    fn handle_newtx(
-        &mut self,
-        ns: &melnet::NetState,
-        tx: blkstructs::Transaction,
-    ) -> melnet::Result<bool> {
-        let txhash = tx.hash_nosigs();
-        if self.recent.get(&txhash).is_some() {
-            return Ok(false);
-        }
-        log::debug!(
-            "attempting to apply tx {:?} with inputs {:#?} onto state {:?}",
-            txhash,
-            tx.inputs,
-            self.mempool.coins.root_hash()
-        );
-        let is_new = self.mempool.apply_tx(&tx);
-        match is_new {
-            Ok(_) => {
-                log::debug!("newtx {:?} is new, forwarding!", tx.hash_nosigs());
-                let mut routes = ns.routes();
-                routes.truncate(16);
-                for n in routes {
-                    let tx = tx.clone();
-                    //let log_str = format!("forwarding {:?} to {:?}", tx.hash_nosigs(), n);
-                    //log::debug!("{}", log_str);
-                    Task::spawn(async move {
-                        let _ = forward_tx(tx, n).await;
-                    })
-                    .detach();
-                }
-                self.recent.put(txhash, true);
-                Ok(true)
-            }
-            Err(err) => {
-                log::debug!("newtx {:?} rejected: {}", tx.hash_nosigs(), err);
-                Err(melnet::MelnetError::Custom(format!("{}", err)))
-            }
-        }
-    }
+    auditor_actor
 }
 
 async fn forward_tx(tx: blkstructs::Transaction, dest: SocketAddr) -> melnet::Result<bool> {

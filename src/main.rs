@@ -1,6 +1,7 @@
 use clap::App;
+use parking_lot::RwLock;
 use smol::*;
-use std::net::{SocketAddr, TcpListener, ToSocketAddrs};
+use std::net::{TcpListener, ToSocketAddrs};
 use std::sync::Arc;
 use std::time::Duration;
 use themelio_core::*;
@@ -30,8 +31,9 @@ async fn main() {
     log::info!("bootstrapping with {:?}", cfg_bootstrap);
     let listener = Async::<TcpListener>::bind(cfg_listen_addr).unwrap();
     log::info!("initializing auditor module...");
+    let storage = Arc::new(RwLock::new(Storage::new_test()));
     let auditor = Arc::new(
-        Auditor::new(listener, AuditorState::new_test(), cfg_bootstrap)
+        Auditor::new(listener, storage.clone(), cfg_bootstrap)
             .await
             .unwrap(),
     );
@@ -46,7 +48,7 @@ async fn main() {
 }
 
 async fn test_spam_txx(auditor: Arc<Auditor>) {
-    let (pk, sk) = tmelcrypt::ed25519_keygen();
+    let (_, sk) = tmelcrypt::ed25519_keygen();
     let txx = blkstructs::testing::random_valid_txx(
         &mut rand::thread_rng(),
         blkstructs::CoinID {

@@ -1,6 +1,9 @@
 use crate::smt::*;
 use bitvec::prelude::*;
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::fmt::Debug;
+use std::io::Read;
 
 pub fn key_to_path(key: tmelcrypt::HashVal) -> [bool; 256] {
     let mut toret = [false; 256];
@@ -14,25 +17,43 @@ pub fn key_to_path(key: tmelcrypt::HashVal) -> [bool; 256] {
     toret
 }
 
-pub fn data_hashes(key: tmelcrypt::HashVal, data: &[u8]) -> Vec<tmelcrypt::HashVal> {
-    let path = merk::key_to_path(key);
-    let mut ptr = hash::datablock(data);
-    let mut hashes = Vec::new();
-    hashes.push(ptr);
-    for data_on_right in path.iter().rev() {
-        if *data_on_right {
-            // add the opposite hash
-            ptr = hash::node(tmelcrypt::HashVal::default(), ptr);
-        } else {
-            ptr = hash::node(ptr, tmelcrypt::HashVal::default());
-        }
-        hashes.push(ptr)
-    }
-    hashes.reverse();
-    hashes
+type HVV = (tmelcrypt::HashVal, Vec<u8>);
+
+thread_local! {
+    static DATA_HASH_CACHE: RefCell<HashMap<HVV, Vec<tmelcrypt::HashVal>>> = RefCell::new(HashMap::new());
 }
 
-#[derive(Debug, Clone)]
+pub fn data_hashes(key: tmelcrypt::HashVal, data: &[u8]) -> Vec<tmelcrypt::HashVal> {
+    DATA_HASH_CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        if cache.len() > 10000 {
+            cache.clear()
+        }
+        cache
+            .entry((key, data.to_vec()))
+            .or_insert_with(|| {
+                let path = merk::key_to_path(key);
+                let mut ptr = hash::datablock(data);
+                let mut hashes = Vec::new();
+                hashes.push(ptr);
+                for data_on_right in path.iter().rev() {
+                    if *data_on_right {
+                        // add the opposite hash
+                        ptr = hash::node(tmelcrypt::HashVal::default(), ptr);
+                    } else {
+                        ptr = hash::node(ptr, tmelcrypt::HashVal::default());
+                    }
+                    hashes.push(ptr)
+                }
+                hashes.reverse();
+                hashes
+            })
+            .clone()
+    })
+}
+
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+/// A full proof with 256 levels.
 pub struct FullProof(pub Vec<tmelcrypt::HashVal>);
 
 impl FullProof {
@@ -56,19 +77,30 @@ impl FullProof {
     }
 }
 
-impl std::fmt::Display for FullProof {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let hexa: Vec<String> = self.0.iter().map(|x| hex::encode(x.0)).collect();
-        hexa.fmt(f)
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+/// A compressed proof.
 pub struct CompressedProof(pub Vec<u8>);
 
-impl std::fmt::Display for CompressedProof {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let str: String = hex::encode(&self.0);
-        std::fmt::Display::fmt(&str, f)
+impl CompressedProof {
+    /// Decompresses a compressed proof. Returns None if the format is invalid.
+    pub fn decompress(&self) -> Option<FullProof> {
+        let b = &self.0;
+        if b.len() < 32 || b.len() % 32 != 0 {
+            return None;
+        }
+        let bitmap = BitVec::<Msb0, u8>::from_slice(&b[..32]);
+        let mut b = &b[32..];
+        let mut out = Vec::new();
+        // go through the bitmap. if b is set, insert a zero. otherwise, take 32 bytes from b. if b runs out, we are dead.
+        for is_zero in bitmap {
+            if is_zero {
+                out.push(tmelcrypt::HashVal::default())
+            } else {
+                let mut buf = [0; 32];
+                b.read_exact(&mut buf).ok()?;
+                out.push(tmelcrypt::HashVal(buf));
+            }
+        }
+        Some(FullProof(out))
     }
 }

@@ -12,6 +12,18 @@ impl Script {
         self.check_opt(tx).is_some()
     }
 
+    pub fn check_raw(&self, args: &[Value]) -> bool {
+        let mut hm = HashMap::new();
+        for (i, v) in args.iter().enumerate() {
+            hm.insert(i as u16, v.clone());
+        }
+        if let Some(ops) = self.to_ops() {
+            Executor::new(hm).run_return(&ops).is_some()
+        } else {
+            false
+        }
+    }
+
     pub fn hash(&self) -> tmelcrypt::HashVal {
         tmelcrypt::hash_single(&self.0)
     }
@@ -140,6 +152,10 @@ impl Script {
             Script::disassemble_one(&mut reversed, &mut output, 0)?
         }
         Some(output)
+    }
+
+    pub fn weight(&self) -> Option<u64> {
+        Some(self.to_ops()?.into_iter().map(|v| v.weight()).sum())
     }
 
     fn assemble_one(op: &OpCode, output: &mut Vec<u8>) -> Option<()> {
@@ -488,8 +504,53 @@ pub enum OpCode {
     PUSHI(bigint::U256),
 }
 
+impl OpCode {
+    pub fn weight(&self) -> u64 {
+        match self {
+            OpCode::ADD => 4,
+            OpCode::SUB => 4,
+            OpCode::MUL => 6,
+            OpCode::DIV => 6,
+            OpCode::REM => 6,
+
+            OpCode::AND => 4,
+            OpCode::OR => 4,
+            OpCode::XOR => 4,
+            OpCode::NOT => 4,
+            OpCode::EQL => 4,
+
+            OpCode::HASH => 50,
+            OpCode::SIGEOK => 100,
+
+            OpCode::STORE => 50,
+            OpCode::LOAD => 50,
+            OpCode::STOREIMM(_) => 50,
+            OpCode::LOADIMM(_) => 50,
+
+            OpCode::VREF => 10,
+            OpCode::VAPPEND => 50,
+            OpCode::VSLICE => 50,
+            OpCode::VLENGTH => 10,
+            OpCode::VEMPTY => 4,
+            OpCode::BEMPTY => 4,
+            OpCode::VPUSH => 10,
+
+            OpCode::BEZ(_) => 1,
+            OpCode::BNZ(_) => 1,
+            OpCode::JMP(_) => 1,
+            OpCode::LOOP(loops, contents) => {
+                let one_iteration: u64 = contents.iter().map(|o| o.weight()).sum();
+                one_iteration.saturating_mul(*loops as u64)
+            }
+
+            OpCode::PUSHB(_) => 1,
+            OpCode::PUSHI(_) => 1,
+        }
+    }
+}
+
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
-enum Value {
+pub enum Value {
     Int(bigint::U256),
     Bytes(im_rc::Vector<u8>),
     Vector(im_rc::Vector<Value>),

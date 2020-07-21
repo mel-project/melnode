@@ -1,4 +1,6 @@
 use crate::constants::*;
+use crate::smtmapping::*;
+pub use crate::stake::*;
 use crate::transaction as txn;
 use im::HashMap;
 use parking_lot::RwLock;
@@ -6,9 +8,6 @@ use rayon::prelude::*;
 use rlp_derive::*;
 use std::convert::TryInto;
 use std::fmt::Debug;
-use std::marker::PhantomData;
-use std::sync::Arc;
-use std::time::Instant;
 use thiserror::Error;
 use tmelcrypt::HashVal;
 
@@ -48,7 +47,7 @@ pub struct State {
     pub met_price: u64,
     pub mel_price: u64,
 
-    pub stake_doc: SmtMapping<txn::CoinID, Vec<u8>>,
+    pub stakes: SmtMapping<txn::CoinID, StakeDoc>,
 }
 
 impl State {
@@ -95,7 +94,6 @@ impl State {
             newself.transactions.insert(tx.hash_nosigs(), tx.clone());
         }
         let lnewself = RwLock::new(newself);
-        let start_time = Instant::now();
         // then we apply the outputs in parallel
         let res: Result<Vec<()>, TxApplicationError> = txx
             .par_iter()
@@ -147,7 +145,7 @@ impl State {
             auction_bids: SmtMapping::new(empty_tree.clone()),
             met_price: MICRO_CONVERTER,
             mel_price: MICRO_CONVERTER,
-            stake_doc: SmtMapping::new(empty_tree),
+            stakes: SmtMapping::new(empty_tree),
         }
     }
 
@@ -244,7 +242,7 @@ impl State {
             txn::TxKind::AuctionFill => {
                 panic!("auction fill transaction processed in normal pipeline")
             }
-            txn::TxKind::Stake => unimplemented!("stake"),
+            txn::TxKind::Stake => State::apply_tx_special_stake(lself, tx),
             txn::TxKind::Normal => {
                 panic!("tried to apply special effects of a non-special transaction")
             }
@@ -332,6 +330,35 @@ impl State {
         lself.auction_bids.delete(&abid_txx.hash_nosigs());
         Ok(())
     }
+    // stake
+    fn apply_tx_special_stake(
+        lself: &RwLock<Self>,
+        tx: &txn::Transaction,
+    ) -> Result<(), TxApplicationError> {
+        // first we check that the data is correct
+        let stake_doc: StakeDoc =
+            rlp::decode(&tx.data).map_err(|_| TxApplicationError::MalformedTx)?;
+        let curr_epoch = lself.read().height / STAKE_EPOCH;
+        // then we check that the first coin is valid
+        let first_coin = tx.outputs.get(0).ok_or(TxApplicationError::MalformedTx)?;
+        if first_coin.cointype != COINTYPE_TMEL.to_vec() {
+            return Err(TxApplicationError::MalformedTx);
+        }
+        // then we check consistency
+        if !(stake_doc.e_start > curr_epoch
+            && stake_doc.e_post_end > stake_doc.e_start
+            && stake_doc.e_start == first_coin.value)
+        {
+            lself.write().stakes.insert(
+                txn::CoinID {
+                    txhash: tx.hash_nosigs(),
+                    index: 0,
+                },
+                stake_doc,
+            );
+        }
+        Ok(())
+    }
 }
 
 /// FinalizedState represents an immutable state at a finalized block height. It cannot be constructed except through finalizing a State or restoring from persistent storage.
@@ -357,7 +384,7 @@ impl FinalizedState {
             auction_bids_hash: inner.auction_bids.root_hash(),
             met_price: inner.met_price,
             mel_price: inner.mel_price,
-            stake_doc_hash: inner.stake_doc.root_hash(),
+            stake_doc_hash: inner.stakes.root_hash(),
         }
     }
     /// Creates a new unfinalized state representing the next block.
@@ -366,6 +393,7 @@ impl FinalizedState {
         // advance the numbers
         new.history.insert(self.0.height, self.header());
         new.height += 1;
+        new.stakes.remove_stale(new.height / STAKE_EPOCH);
         new
     }
 }
@@ -388,72 +416,5 @@ pub struct Header {
 impl Header {
     pub fn hash(&self) -> tmelcrypt::HashVal {
         tmelcrypt::hash_single(&rlp::encode(self))
-    }
-}
-
-/// SmtMapping is a type-safe, constant-time clonable, imperative-style interface to a sparse Merkle tree.
-pub struct SmtMapping<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable> {
-    pub mapping: autosmt::Tree,
-    _phantom_k: PhantomData<K>,
-    _phantom_v: PhantomData<V>,
-}
-
-impl<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable> Debug for SmtMapping<K, V> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.mapping.root_hash().fmt(f)
-    }
-}
-
-impl<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable> Clone for SmtMapping<K, V> {
-    fn clone(&self) -> Self {
-        SmtMapping::new(self.mapping.clone())
-    }
-}
-
-impl<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable> SmtMapping<K, V> {
-    /// Returns true iff the mapping is empty.
-    pub fn is_empty(&self) -> bool {
-        self.root_hash().0 == [0; 32]
-    }
-    /// new converts a type-unsafe SMT to a SmtMapping
-    pub fn new(tree: autosmt::Tree) -> Self {
-        SmtMapping {
-            mapping: tree,
-            _phantom_k: PhantomData,
-            _phantom_v: PhantomData,
-        }
-    }
-    /// get obtains a mapping
-    pub fn get(&self, key: &K) -> (Option<V>, autosmt::FullProof) {
-        let key = tmelcrypt::hash_single(&rlp::encode(key));
-        let (v_bytes, proof) = self.mapping.get(key);
-        match v_bytes.len() {
-            0 => (None, proof),
-            _ => {
-                let res: V = rlp::decode(&v_bytes).expect("SmtMapping saw invalid data");
-                (Some(res), proof)
-            }
-        }
-    }
-    /// insert inserts a mapping, replacing any existing mapping
-    pub fn insert(&mut self, key: K, val: V) {
-        let key = tmelcrypt::hash_single(&rlp::encode(&key));
-        let newmap = self.mapping.set(key, &rlp::encode(&val));
-        // eprintln!(
-        //     "{:?} ==insert=> {:?}",
-        //     self.mapping.root_hash(),
-        //     newmap.root_hash()
-        // );
-        self.mapping = newmap
-    }
-    /// delete deletes a mapping, replacing the mapping with a mapping to the empty bytestring
-    pub fn delete(&mut self, key: &K) {
-        let key = tmelcrypt::hash_single(&rlp::encode(key));
-        let newmap = self.mapping.set(key, b"");
-        self.mapping = newmap
-    }
-    /// root_hash returns the root hash
-    pub fn root_hash(&self) -> HashVal {
-        self.mapping.root_hash()
     }
 }

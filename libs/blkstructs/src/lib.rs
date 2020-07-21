@@ -3,9 +3,12 @@ extern crate test;
 
 mod constants;
 pub mod melscript;
+mod stake;
 mod state;
 mod transaction;
 pub use constants::*;
+mod smtmapping;
+pub use smtmapping::*;
 pub use state::*;
 pub use transaction::*;
 
@@ -164,7 +167,7 @@ mod tests {
     fn smt_mapping() {
         let db = autosmt::DBManager::load(autosmt::MemDB::default());
         let tree = db.get_tree(tmelcrypt::HashVal::default());
-        let mut map: state::SmtMapping<u64, u64> = state::SmtMapping::new(tree.clone());
+        let mut map: SmtMapping<u64, u64> = SmtMapping::new(tree.clone());
         for i in 0..10 {
             map.insert(i, i);
         }

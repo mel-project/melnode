@@ -99,20 +99,18 @@ name = "autosmt"
 version = "0.1.0"
 dependencies = [
  "bitvec",
- "blake2b_simd",
  "blake3",
  "bloomfilter",
  "enum_dispatch",
  "env_logger",
+ "genawaiter",
  "hex",
  "lazy_static",
  "lmdb",
  "log",
  "parking_lot 0.10.2",
  "rand 0.5.6",
- "rlp",
  "snap",
- "threadpool",
  "tmelcrypt",
 ]
 
@@ -155,17 +153,6 @@ checksum = "41262f11d771fd4a61aa3ce019fca363b4b6c282fca9da2a31186d3965a47a5c"
 dependencies = [
  "either",
  "radium",
-]
-
-[[package]]
-name = "blake2b_simd"
-version = "0.5.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8fb2d74254a3a0b5cac33ac9f8ed0e44aa50378d9dbb2e5d83bd21ed1dc2c8a"
-dependencies = [
- "arrayref",
- "arrayvec",
- "constant_time_eq",
 ]
 
 [[package]]
@@ -665,6 +652,21 @@ dependencies = [
  "proc-macro-nested",
  "slab",
 ]
+
+[[package]]
+name = "genawaiter"
+version = "0.99.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c86bd0361bcbde39b13475e6e36cb24c329964aa2611be285289d1e4b751c1a0"
+dependencies = [
+ "genawaiter-macro",
+]
+
+[[package]]
+name = "genawaiter-macro"
+version = "0.99.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b32dfe1fdfc0bbde1f22a5da25355514b5e450c33a6af6770884c8750aedfbc"
 
 [[package]]
 name = "generator"
@@ -1600,12 +1602,14 @@ dependencies = [
  "env_logger",
  "futures",
  "hex",
+ "lmdb",
  "log",
  "lru",
  "melnet",
  "melpow",
  "parking_lot 0.11.0",
  "rand 0.7.3",
+ "scopeguard",
  "smol",
  "smol-potat",
  "symphonia",
@@ -1639,15 +1643,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d40c6d1b69745a6ec6fb1ca717914848da4b44ae29d9b3080cbee91d72a69b14"
 dependencies = [
  "lazy_static",
-]
-
-[[package]]
-name = "threadpool"
-version = "1.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d050e60b33d41c19108b32cea32164033a9013fe3b46cbd4457559bfbf77afaa"
-dependencies = [
- "num_cpus",
 ]
 
 [[package]]

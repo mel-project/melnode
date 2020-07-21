@@ -30,7 +30,7 @@ pub struct NetState {
     network_name: String,
     routes: Arc<RwLock<RoutingTable>>,
     #[derivative(Debug = "ignore")]
-    verbs: HashMap<String, VerbHandler>,
+    verbs: Arc<RwLock<HashMap<String, VerbHandler>>>,
 }
 
 impl NetState {
@@ -124,7 +124,7 @@ impl NetState {
                 conn.get_ref().peer_addr()
             );
             // respond to command
-            let responder = self.verbs.get(&cmd.verb);
+            let responder = RwLock::read(&self.verbs).get(&cmd.verb).cloned();
             match responder {
                 None => {
                     write_len_bts(
@@ -213,12 +213,12 @@ impl NetState {
 
     /// Registers a verb that takes in an RLP object and returns an RLP object.
     pub fn register_verb<TInput: Decodable + Send, TOutput: Encodable + Send>(
-        &mut self,
+        &self,
         verb: &str,
         cback: impl Fn(&NetState, TInput) -> BoxFuture<Result<TOutput>> + 'static + Send + Sync,
     ) {
         debug!("registering verb {}", verb);
-        self.verbs.insert(verb.to_owned(), erase_cback_types(cback));
+        RwLock::write(&self.verbs).insert(verb.to_owned(), erase_cback_types(cback));
     }
 
     /// Adds a route to the routing table.
@@ -234,7 +234,7 @@ impl NetState {
     }
 
     /// Sets the name of the network state.
-    pub fn set_name(&mut self, name: &str) {
+    fn set_name(&mut self, name: &str) {
         self.network_name = name.to_string()
     }
 

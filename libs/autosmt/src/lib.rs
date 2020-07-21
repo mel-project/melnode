@@ -33,4 +33,23 @@ mod tests {
             dbg!(tree.root_hash());
         }
     }
+
+    #[test]
+    fn iterator() {
+        let db = DBManager::load(MemDB::default());
+        let mut tree = db.get_tree(tmelcrypt::HashVal::default());
+        let mut mapping = std::collections::HashMap::new();
+        for i in 0..10 {
+            let key = tmelcrypt::hash_single(format!("key-{}", i).as_bytes());
+            let val = tmelcrypt::hash_single(format!("val-{}", i).as_bytes()).to_vec();
+            tree = tree.set(
+                tmelcrypt::hash_single(format!("key-{}", i).as_bytes()),
+                &val,
+            );
+            mapping.insert(key, val);
+        }
+        for (k, v) in tree.iter() {
+            assert_eq!(mapping[&k], v)
+        }
+    }
 }

@@ -3,9 +3,9 @@ use futures::channel::mpsc;
 use futures::prelude::*;
 use smol::*;
 use std::net::{TcpListener, ToSocketAddrs};
-use std::pin::Pin;
+//use std::pin::Pin;
 
-pub type PinBoxFut<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
+//pub type PinBoxFut<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 
 /// Guesses the public IP address of the current machine.
 async fn guess_my_ip() -> Result<String> {
@@ -67,8 +67,7 @@ impl<T> Mailbox<T> {
 pub async fn new_melnet(listener: &Async<TcpListener>, name: &str) -> Result<melnet::NetState> {
     let my_ip = guess_my_ip().await?;
     let my_ip_port = format!("{}:{}", my_ip, listener.get_ref().local_addr()?.port());
-    let mut net = melnet::NetState::default();
-    net.set_name(name);
+    let net = melnet::NetState::new_with_name(name);
     net.add_route(my_ip_port.to_socket_addrs()?.next().unwrap());
     Ok(net)
 }

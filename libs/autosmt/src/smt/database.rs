@@ -1,8 +1,8 @@
 use crate::smt::dbnode::*;
 use crate::smt::*;
+use genawaiter::rc::Gen;
 use parking_lot::RwLock;
 use std::collections::HashMap;
-use std::convert::TryInto;
 use std::sync::Arc;
 
 /// Wraps around a raw key-value store and produces trees. The main interface to the library.
@@ -70,16 +70,17 @@ impl DBManager {
         tree
     }
 
-    /// Helper function to load a node into memory.
-    pub(crate) fn read_cached(&self, hash: tmelcrypt::HashVal) -> DBNode {
+    /// Helper function to load a node.
+    #[must_use]
+    pub(crate) fn read(&self, hash: tmelcrypt::HashVal) -> DBNode {
         if hash == tmelcrypt::HashVal::default() {
             return DBNode::Zero;
         }
-        let mut cache = self.cache.write();
-        let out = cache
-            .entry(hash)
-            .or_insert_with(|| self.raw.read().get(hash))
-            .clone();
+        let cache = self.cache.read();
+        let out = match cache.get(&hash) {
+            Some(dbn) => dbn.clone(),
+            None => self.raw.read().get(hash),
+        };
         debug_assert_eq!(out.hash(), hash);
         out
     }
@@ -191,7 +192,7 @@ pub struct Tree {
 impl Tree {
     /// Helper function to get DBNode representation.
     fn to_dbnode(&self) -> DBNode {
-        self.dbm.read_cached(self.hash)
+        self.dbm.read(self.hash)
     }
 
     /// Gets a binding and its proof.
@@ -213,6 +214,31 @@ impl Tree {
     /// Root hash.
     pub fn root_hash(&self) -> tmelcrypt::HashVal {
         self.to_dbnode().hash()
+    }
+
+    /// Iterator.
+    pub fn iter(&self) -> impl Iterator<Item = (tmelcrypt::HashVal, Vec<u8>)> {
+        // DFS of the entire tree in arbitrary order. Generator returns only the data bindings.
+        let mut stack = vec![self.to_dbnode()];
+        let dbm = self.dbm.clone();
+        let gen = Gen::new(|co| async move {
+            while !stack.is_empty() {
+                let top = stack.pop().unwrap();
+                match &top {
+                    DBNode::Internal(_) => {
+                        let next = top
+                            .out_ptrs()
+                            .into_iter()
+                            .map(|h| dbm.read(h))
+                            .collect::<Vec<_>>();
+                        stack.extend_from_slice(&next);
+                    }
+                    DBNode::Data(dat) => co.yield_((dat.key, dat.data.clone())).await,
+                    DBNode::Zero => continue,
+                }
+            }
+        });
+        gen.into_iter()
     }
 }
 

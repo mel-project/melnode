@@ -3,11 +3,9 @@ use bloomfilter::Bloom;
 use lmdb::Cursor;
 use lmdb::Transaction;
 use snap::raw;
-use std::collections::HashSet;
 use std::convert::TryInto;
 use std::error::Error;
 use std::sync::Arc;
-use std::thread;
 use std::time::Instant;
 
 pub struct LMDB {
@@ -36,22 +34,14 @@ impl smt::RawDB for LMDB {
     }
     fn set_batch(&mut self, kvv: Vec<(tmelcrypt::HashVal, smt::DBNode)>) {
         let mut txn = self.rw();
-        let mut count = 0;
         for (k, v) in kvv {
-            count += 1;
             //println!("flushing {} to LMDB", hex::encode(&k));
             let bts = v.to_bytes();
             let snapped = raw::Encoder::new().compress_vec(&bts).unwrap();
             txn.put(self.db, &k, &snapped, lmdb::WriteFlags::empty())
                 .unwrap()
         }
-        let start = Instant::now();
         txn.commit().unwrap();
-        // log::debug!(
-        //     "committed {} entries into LMDB within {} secs",
-        //     count,
-        //     start.elapsed().as_secs_f32()
-        // );
     }
 
     fn set_gc_roots(&mut self, roots: &[tmelcrypt::HashVal]) {
@@ -61,7 +51,6 @@ impl smt::RawDB for LMDB {
             for r in roots {
                 total.extend_from_slice(&r)
             }
-            let old_roots = gc_roots_helper(&txn, self.db);
             txn.put(self.db, b"gc_roots", &total, lmdb::WriteFlags::empty())
                 .unwrap();
             // check whether we need a GC

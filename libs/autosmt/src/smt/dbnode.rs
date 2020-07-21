@@ -64,7 +64,6 @@ impl DBNode {
         key: tmelcrypt::HashVal,
         db: &DBManager,
     ) -> (Vec<u8>, Vec<tmelcrypt::HashVal>) {
-        let level = path.len() - 1;
         match self {
             Internal(int) => int.get_by_path_rev(path, key, db),
             Data(dat) => dat.get_by_path_rev(path, key, db),
@@ -225,7 +224,7 @@ impl InternalNode {
     }
 
     fn get_gggc(&self, idx: usize, db: &DBManager) -> DBNode {
-        db.read_cached(self.gggc_hashes[idx])
+        db.read(self.gggc_hashes[idx])
     }
 }
 
@@ -234,7 +233,7 @@ impl InternalNode {
 pub struct DataNode {
     pub(crate) level: usize,
     pub(crate) key: tmelcrypt::HashVal,
-    data: Vec<u8>,
+    pub(crate) data: Vec<u8>,
 }
 
 impl DataNode {
@@ -264,9 +263,9 @@ impl DataNode {
 
     fn get_by_path_rev(
         &self,
-        path: &[bool],
+        _: &[bool],
         key: tmelcrypt::HashVal,
-        db: &DBManager,
+        _: &DBManager,
     ) -> (Vec<u8>, Vec<tmelcrypt::HashVal>) {
         (
             if self.key == key {
