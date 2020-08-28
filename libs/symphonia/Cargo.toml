@@ -17,5 +17,4 @@ env_logger = "0.7"
 crossbeam-channel="0.4"
 rand = "0.7"
 futures="0.3"
-smol="0.1"
-smol-potat = { version = "0.3", features = ["auto"] }
+smol="0.3"

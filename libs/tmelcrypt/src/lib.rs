@@ -95,7 +95,7 @@ impl Ed25519PK {
 
 impl fmt::Debug for Ed25519PK {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("EdPK({}..)", hex::encode(&self.0[..5])))
+        f.write_fmt(format_args!("EdPK({})", hex::encode(&self.0)))
     }
 }
 
@@ -159,6 +159,11 @@ impl Ed25519SK {
                 Some(Ed25519SK(buf))
             }
         }
+    }
+
+    pub fn to_public(&self) -> Ed25519PK {
+        let kp = ed25519_dalek::Keypair::from_bytes(&self.0).unwrap();
+        Ed25519PK(kp.public.to_bytes())
     }
 }
 

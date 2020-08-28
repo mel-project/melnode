@@ -21,6 +21,10 @@ impl<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable> Clone for SmtMapping
 }
 
 impl<K: rlp::Encodable, V: rlp::Decodable + rlp::Encodable> SmtMapping<K, V> {
+    /// Clears a mapping.
+    pub fn clear(&mut self) {
+        self.mapping = self.mapping.zeroed()
+    }
     /// Returns true iff the mapping is empty.
     pub fn is_empty(&self) -> bool {
         self.root_hash().0 == [0; 32]

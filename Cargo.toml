@@ -15,9 +15,8 @@ symphonia={path="libs/symphonia"}
 melnet={path="libs/melnet"}
 hex="0.4.2"
 futures="0.3"
-smol="0.1"
+smol="0.3"
 anyhow="1"
-smol-potat="0.3"
 env_logger="0.7"
 log="0.4"
 attohttpc={version = "0.15", default-features = false, features=[]}
@@ -27,6 +26,12 @@ rand="0.7"
 lru="0.5"
 scopeguard="1.1"
 lmdb="0.8"
+derive_more="0.99"
+defmac="0.2"
+structopt="0.3"
+rlp="0.4"
+rlp-derive="0.1"
+async-net="0.1"
 
 
 [profile.dev]

@@ -9,8 +9,8 @@ pub const STAKE_EPOCH: u64 = 500_000;
 /// StakeDoc is a stake document.
 #[derive(RlpDecodable, RlpEncodable, Debug)]
 pub struct StakeDoc {
-    /// A script, in lieu of a public key, that takes in two arguments (block_hash, signature) and returns whether or not signature is valid proof that this stakeholder signed off on block_hash.
-    pub verifier: melscript::Script,
+    /// Public key.
+    pub pubkey: tmelcrypt::Ed25519PK,
     /// Starting epoch.
     pub e_start: u64,
     /// Ending epoch. This is the epoch *after* the last epoch in which the mets are effective.
@@ -19,15 +19,15 @@ pub struct StakeDoc {
     pub mets_staked: u64,
 }
 
-impl SmtMapping<CoinID, StakeDoc> {
-    /// Gets the voting power, as a floating-point number, for a given verifier and a given epoch.
-    pub fn vote_power(&self, epoch: u64, verifier_hash: tmelcrypt::HashVal) -> f64 {
+impl SmtMapping<tmelcrypt::HashVal, StakeDoc> {
+    /// Gets the voting power, as a floating-point number, for a given public key and a given epoch.
+    pub fn vote_power(&self, epoch: u64, pubkey: tmelcrypt::Ed25519PK) -> f64 {
         let mut total_votes = 1e-50;
         let mut target_votes = 0.0;
         for sdoc in self.val_iter() {
             if epoch >= sdoc.e_start && epoch < sdoc.e_post_end {
                 total_votes += sdoc.mets_staked as f64;
-                if sdoc.verifier.hash() == verifier_hash {
+                if sdoc.pubkey == pubkey {
                     target_votes += sdoc.mets_staked as f64;
                 }
             }

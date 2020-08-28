@@ -216,6 +216,11 @@ impl Tree {
         self.to_dbnode().hash()
     }
 
+    /// Zeroed version.
+    pub fn zeroed(&self) -> Self {
+        self.dbm.get_tree(tmelcrypt::HashVal::default())
+    }
+
     /// Iterator.
     pub fn iter(&self) -> impl Iterator<Item = (tmelcrypt::HashVal, Vec<u8>)> {
         // DFS of the entire tree in arbitrary order. Generator returns only the data bindings.

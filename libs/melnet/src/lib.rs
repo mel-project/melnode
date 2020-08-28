@@ -5,21 +5,23 @@ mod routingtable;
 use derivative::*;
 use log::{debug, trace};
 use routingtable::*;
-use std::net::{SocketAddr, TcpListener, TcpStream, ToSocketAddrs};
+use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 mod reqs;
+use async_net::{TcpListener, TcpStream};
+mod common;
+pub use common::*;
+use futures::prelude::*;
 use futures::prelude::*;
 use futures::select;
 use im::HashMap;
 use parking_lot::RwLock;
 use rand::prelude::*;
-use reqs::*;
-use smol::*;
-use std::time::Duration;
-mod common;
-pub use common::*;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use reqs::*;
+use smol::{Task, Timer};
+use std::time::Duration;
 
 type VerbHandler = Arc<dyn Fn(&NetState, &[u8]) -> BoxFuture<Result<Vec<u8>>> + Send + Sync>;
 
@@ -35,7 +37,7 @@ pub struct NetState {
 
 impl NetState {
     /// Consumes the netstate and runs it, blocking until the listener no longer gives things. You should clone a copy first in order to use the netstate as a client.
-    pub async fn run_server(mut self, listener: Async<TcpListener>) {
+    pub async fn run_server(mut self, listener: TcpListener) {
         self.setup_routing();
         // Spam neighbors with random routes
         // INTENTIONALLY not detach so that it cancels automatically
@@ -44,7 +46,7 @@ impl NetState {
             Task::spawn(async move {
                 let mut rng = rand::rngs::OsRng {};
                 loop {
-                    let mut tmr = Timer::after(Duration::from_secs_f32(0.2)).fuse();
+                    let mut tmr = Timer::new(Duration::from_secs_f32(0.2)).fuse();
                     let routes = state.routes.read().to_vec();
                     if !routes.is_empty() {
                         let (rand_neigh, _) = routes[rng.gen::<usize>() % routes.len()];
@@ -96,78 +98,76 @@ impl NetState {
         }
     }
 
-    async fn server_handle(
-        &self,
-        mut conn: Async<TcpStream>,
-    ) -> std::result::Result<(), Box<dyn std::error::Error>> {
-        conn.get_ref()
-            .set_write_timeout(Some(std::time::Duration::from_secs(10)))?;
-        conn.get_ref()
-            .set_read_timeout(Some(std::time::Duration::from_secs(60)))?;
+    async fn server_handle(&self, mut conn: TcpStream) -> anyhow::Result<()> {
         loop {
-            // read command
-            let cmd: RawRequest = rlp::decode(&read_len_bts(&mut conn).await?)?;
-            if cmd.proto_ver != 1 {
-                let err = rlp::encode(&RawResponse {
-                    kind: "Err".to_owned(),
-                    body: rlp::encode(&"bad protocol version"),
-                });
-                write_len_bts(&mut conn, &err).await?;
-                continue;
-            }
-            if cmd.netname != self.network_name {
-                return Err(Box::new(MelnetError::Custom("bad".to_string())));
-            }
-            trace!(
-                "got command {:?} from {:?}",
-                cmd,
-                conn.get_ref().peer_addr()
-            );
-            // respond to command
-            let responder = RwLock::read(&self.verbs).get(&cmd.verb).cloned();
-            match responder {
-                None => {
-                    write_len_bts(
-                        &mut conn,
-                        &rlp::encode(&RawResponse {
-                            kind: "NoVerb".to_owned(),
-                            body: b"".to_vec(),
-                        }),
-                    )
-                    .await?;
-                    continue;
-                }
-                Some(responder) => {
-                    let ss = self.clone();
-                    let responder = responder.clone();
-                    let response = responder(&ss, &cmd.payload).await;
-                    match response {
-                        Ok(response) => {
-                            write_len_bts(
-                                &mut conn,
-                                &rlp::encode(&RawResponse {
-                                    kind: "Ok".to_owned(),
-                                    body: response,
-                                }),
-                            )
-                            .await?;
-                        }
-                        Err(MelnetError::Custom(err)) => {
-                            write_len_bts(
-                                &mut conn,
-                                &rlp::encode(&RawResponse {
-                                    kind: "Err".to_owned(),
-                                    body: err.as_bytes().to_owned(),
-                                }),
-                            )
-                            .await?
-                        }
-                        _ => break,
-                    }
-                }
+            select! {
+                x = self.server_handle_one(&mut conn).fuse() => x?,
+                _ = Timer::new(Duration::from_secs(60)).fuse() => break
             }
         }
         Ok(())
+    }
+
+    async fn server_handle_one(&self, conn: &mut TcpStream) -> anyhow::Result<()> {
+        // read command
+        let cmd: RawRequest = rlp::decode(&read_len_bts(conn).await?)?;
+        if cmd.proto_ver != 1 {
+            let err = rlp::encode(&RawResponse {
+                kind: "Err".to_owned(),
+                body: rlp::encode(&"bad protocol version"),
+            });
+            write_len_bts(conn, &err).await?;
+            return Err(anyhow::anyhow!("bad"));
+        }
+        if cmd.netname != self.network_name {
+            return Err(anyhow::anyhow!("bad"));
+        }
+        trace!("got command {:?} from {:?}", cmd, conn.peer_addr());
+        // respond to command
+        let responder = RwLock::read(&self.verbs).get(&cmd.verb).cloned();
+        match responder {
+            None => {
+                write_len_bts(
+                    conn,
+                    &rlp::encode(&RawResponse {
+                        kind: "NoVerb".to_owned(),
+                        body: b"".to_vec(),
+                    }),
+                )
+                .await?;
+                Ok(())
+            }
+            Some(responder) => {
+                let ss = self.clone();
+                let responder = responder.clone();
+                let response = responder(&ss, &cmd.payload).await;
+                match response {
+                    Ok(response) => {
+                        write_len_bts(
+                            conn,
+                            &rlp::encode(&RawResponse {
+                                kind: "Ok".to_owned(),
+                                body: response,
+                            }),
+                        )
+                        .await?;
+                        Ok(())
+                    }
+                    Err(MelnetError::Custom(err)) => {
+                        write_len_bts(
+                            conn,
+                            &rlp::encode(&RawResponse {
+                                kind: "Err".to_owned(),
+                                body: err.as_bytes().to_owned(),
+                            }),
+                        )
+                        .await?;
+                        Ok(())
+                    }
+                    _ => anyhow::bail!("bad"),
+                }
+            }
+        }
     }
 
     /// Registers the handler for new_peer.

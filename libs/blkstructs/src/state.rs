@@ -2,14 +2,18 @@ use crate::constants::*;
 use crate::smtmapping::*;
 pub use crate::stake::*;
 use crate::transaction as txn;
+use defmac::defmac;
 use im::HashMap;
 use parking_lot::RwLock;
 use rayon::prelude::*;
 use rlp_derive::*;
 use std::convert::TryInto;
 use std::fmt::Debug;
+use std::io::Read;
+use std::sync::Arc;
 use thiserror::Error;
 use tmelcrypt::HashVal;
+use txn::Transaction;
 
 #[derive(Error, Debug)]
 /// A error that happens while applying a transaction to a state
@@ -47,15 +51,80 @@ pub struct State {
     pub met_price: u64,
     pub mel_price: u64,
 
-    pub stakes: SmtMapping<txn::CoinID, StakeDoc>,
+    pub stakes: SmtMapping<HashVal, StakeDoc>,
+}
+
+fn read_bts(r: &mut impl Read, n: usize) -> Option<Vec<u8>> {
+    let mut buf: Vec<u8> = vec![0; n];
+    r.read_exact(&mut buf).ok()?;
+    Some(buf)
 }
 
 impl State {
+    /// Generates an encoding of the state that, in conjuction with a SMT database, can recover the entire state.
+    pub fn partial_encoding(&self) -> Vec<u8> {
+        let mut out = Vec::new();
+        out.extend_from_slice(&self.height.to_be_bytes());
+        out.extend_from_slice(&self.history.root_hash());
+        out.extend_from_slice(&self.coins.root_hash());
+        out.extend_from_slice(&self.transactions.root_hash());
+
+        out.extend_from_slice(&self.fee_pool.to_be_bytes());
+        out.extend_from_slice(&self.fee_multiplier.to_be_bytes());
+
+        out.extend_from_slice(&self.dosc_multiplier.to_be_bytes());
+        out.extend_from_slice(&self.auction_bids.root_hash());
+        out.extend_from_slice(&self.met_price.to_be_bytes());
+        out.extend_from_slice(&self.mel_price.to_be_bytes());
+
+        out.extend_from_slice(&self.stakes.root_hash());
+        out
+    }
+
+    /// Restores a state from its partial encoding in conjunction with a database. **Does not validate data and will panic; do not use on untrusted data**
+    pub fn from_partial_encoding_infallible(mut encoding: &[u8], db: &autosmt::DBManager) -> Self {
+        defmac!(readu64 => u64::from_be_bytes(read_bts(&mut encoding, 8).unwrap().as_slice().try_into().unwrap()));
+        defmac!(readtree => SmtMapping::new(db.get_tree(tmelcrypt::HashVal(
+            read_bts(&mut encoding, 32).unwrap().as_slice().try_into().unwrap(),
+        ))));
+        let height = readu64!();
+        let history = readtree!();
+        let coins = readtree!();
+        let transactions = readtree!();
+
+        let fee_pool = readu64!();
+        let fee_multiplier = readu64!();
+
+        let dosc_multiplier = readu64!();
+        let auction_bids = readtree!();
+        let met_price = readu64!();
+        let mel_price = readu64!();
+
+        let stakes = readtree!();
+        State {
+            height,
+            history,
+            coins,
+            transactions,
+
+            fee_pool,
+            fee_multiplier,
+
+            dosc_multiplier,
+            auction_bids,
+            met_price,
+            mel_price,
+
+            stakes,
+        }
+    }
+
     /// Generates a test genesis state, with a given starting coin.
     pub fn test_genesis(
         db: autosmt::DBManager,
         start_micromels: u64,
         start_conshash: tmelcrypt::HashVal,
+        start_stakeholders: &[tmelcrypt::Ed25519PK],
     ) -> Self {
         assert!(start_micromels <= MAX_COINVAL);
         let mut empty = State::new_empty(db);
@@ -75,6 +144,17 @@ impl State {
                 height: 0,
             },
         );
+        for stakeholder in start_stakeholders {
+            empty.stakes.insert(
+                HashVal::default(),
+                StakeDoc {
+                    pubkey: *stakeholder,
+                    e_start: 0,
+                    e_post_end: 10,
+                    mets_staked: 1,
+                },
+            );
+        }
         empty
     }
     /// Applies a single transaction.
@@ -127,7 +207,7 @@ impl State {
         }
         // TODO stake stuff
         // create the finalized state
-        FinalizedState(self)
+        FinalizedState(Arc::new(self))
     }
 
     // ----------- helpers start here ------------
@@ -349,25 +429,28 @@ impl State {
             && stake_doc.e_post_end > stake_doc.e_start
             && stake_doc.e_start == first_coin.value)
         {
-            lself.write().stakes.insert(
-                txn::CoinID {
-                    txhash: tx.hash_nosigs(),
-                    index: 0,
-                },
-                stake_doc,
-            );
+            lself.write().stakes.insert(tx.hash_nosigs(), stake_doc);
         }
         Ok(())
     }
 }
 
 /// FinalizedState represents an immutable state at a finalized block height. It cannot be constructed except through finalizing a State or restoring from persistent storage.
-pub struct FinalizedState(State);
+#[derive(Clone, Debug)]
+pub struct FinalizedState(Arc<State>);
 
 impl FinalizedState {
     /// Returns a reference to the State finalized within.
     pub fn inner_ref(&self) -> &State {
         &self.0
+    }
+    /// Partial encoding.
+    pub fn partial_encoding(&self) -> Vec<u8> {
+        self.0.partial_encoding()
+    }
+    /// Partial encoding.
+    pub fn from_partial_encoding_infallible(bts: &[u8], db: &autosmt::DBManager) -> Self {
+        FinalizedState(Arc::new(State::from_partial_encoding_infallible(bts, db)))
     }
     /// Returns the block header represented by the finalized state.
     pub fn header(&self) -> Header {
@@ -387,18 +470,31 @@ impl FinalizedState {
             stake_doc_hash: inner.stakes.root_hash(),
         }
     }
+    /// Returns the final state represented as a "block" (header + transactions).
+    pub fn to_block(&self) -> Block {
+        let mut txx = Vec::new();
+        for tx in self.0.transactions.val_iter() {
+            txx.push(tx);
+        }
+        Block {
+            header: self.header(),
+            transactions: txx,
+        }
+    }
     /// Creates a new unfinalized state representing the next block.
     pub fn next_state(&self) -> State {
-        let mut new = self.0.clone();
+        let mut new = self.inner_ref().clone();
         // advance the numbers
         new.history.insert(self.0.height, self.header());
         new.height += 1;
         new.stakes.remove_stale(new.height / STAKE_EPOCH);
+        new.transactions.clear();
         new
     }
 }
 
-#[derive(RlpEncodable, RlpDecodable, Copy, Clone, Debug)]
+#[derive(RlpEncodable, RlpDecodable, Copy, Clone, Debug, Eq, PartialEq)]
+/// A block header.
 pub struct Header {
     pub height: u64,
     pub history_hash: HashVal,
@@ -417,4 +513,11 @@ impl Header {
     pub fn hash(&self) -> tmelcrypt::HashVal {
         tmelcrypt::hash_single(&rlp::encode(self))
     }
+}
+
+#[derive(RlpEncodable, RlpDecodable, Clone, Debug)]
+/// A (serialized) block.
+pub struct Block {
+    pub header: Header,
+    pub transactions: Vec<Transaction>,
 }

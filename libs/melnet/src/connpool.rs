@@ -1,5 +1,6 @@
 use crate::common::*;
 use crate::reqs::*;
+use async_net::{TcpListener, TcpStream};
 use by_address::ByAddress;
 use futures::channel::mpsc;
 use futures::channel::mpsc::unbounded;
@@ -11,11 +12,10 @@ use log::trace;
 use min_max_heap::MinMaxHeap;
 use parking_lot::RwLock;
 use rlp::{Decodable, Encodable};
-use smol::*;
+use smol::{Task, Timer};
 use std::collections::HashMap;
-use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
+use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::{Duration, Instant};
-
 
 lazy_static! {
     static ref CONN_POOL: ConnPool = ConnPool::default();
@@ -34,7 +34,7 @@ pub struct ConnPool {
 
 impl ConnPool {
     /// Connects to a given address, which may return either a new connection or an existing one.
-    pub async fn connect(&self, addr: impl ToSocketAddrs) -> std::io::Result<Async<TcpStream>> {
+    pub async fn connect(&self, addr: impl ToSocketAddrs) -> std::io::Result<TcpStream> {
         let addr = addr.to_socket_addrs()?.next().unwrap();
         let existing = {
             let pool = self.pool.read();
@@ -51,20 +51,20 @@ impl ConnPool {
                     Some(conn) => Ok(conn),
                     None => {
                         trace!("connect({:?}) -> fresh", addr);
-                        Async::<TcpStream>::connect(&addr).await
+                        TcpStream::connect(addr).await
                     }
                 }
             }
             None => {
                 // create a new connection
                 trace!("connect({:?}) -> fresh", addr);
-                Async::<TcpStream>::connect(&addr).await
+                TcpStream::connect(addr).await
             }
         }
     }
     /// Takes ownership of and returns a given TCP connection back to the pool.
-    pub fn recycle(&self, conn: Async<TcpStream>) {
-        let addr = conn.get_ref().peer_addr().unwrap();
+    pub fn recycle(&self, conn: TcpStream) {
+        let addr = conn.peer_addr().unwrap();
         self.pool
             .write()
             .entry(addr)
@@ -90,12 +90,6 @@ impl ConnPool {
             verb: verb.to_owned(),
             payload: rlp::encode(&req),
         });
-        conn.get_ref()
-            .set_write_timeout(Some(std::time::Duration::from_secs(10)))
-            .map_err(MelnetError::Network)?;
-        conn.get_ref()
-            .set_read_timeout(Some(std::time::Duration::from_secs(60)))
-            .map_err(MelnetError::Network)?;
         write_len_bts(&mut conn, &rr).await?;
         // read the response length
         let response: RawResponse = rlp::decode(&read_len_bts(&mut conn).await?).map_err(|e| {
@@ -119,8 +113,8 @@ impl ConnPool {
 
 #[derive(Debug, Clone)]
 struct SingleHost {
-    send_insertion: mpsc::UnboundedSender<Async<TcpStream>>,
-    send_request: mpsc::UnboundedSender<oneshot::Sender<Option<Async<TcpStream>>>>,
+    send_insertion: mpsc::UnboundedSender<TcpStream>,
+    send_request: mpsc::UnboundedSender<oneshot::Sender<Option<TcpStream>>>,
 }
 
 impl SingleHost {
@@ -136,7 +130,7 @@ impl SingleHost {
             send_request,
         }
     }
-    async fn get_conn(&self) -> Option<Async<TcpStream>> {
+    async fn get_conn(&self) -> Option<TcpStream> {
         let (send, recv) = oneshot::channel();
         self.send_request.unbounded_send(send).unwrap();
         recv.await.unwrap()
@@ -144,20 +138,20 @@ impl SingleHost {
 }
 
 async fn singlehost_monitor(
-    mut recv_insertion: mpsc::UnboundedReceiver<Async<TcpStream>>,
-    mut recv_request: mpsc::UnboundedReceiver<oneshot::Sender<Option<Async<TcpStream>>>>,
+    mut recv_insertion: mpsc::UnboundedReceiver<TcpStream>,
+    mut recv_request: mpsc::UnboundedReceiver<oneshot::Sender<Option<TcpStream>>>,
 ) {
-    let mut heap: MinMaxHeap<(Instant, ByAddress<Box<Async<TcpStream>>>)> = MinMaxHeap::new();
+    let mut heap: MinMaxHeap<(Instant, ByAddress<Box<TcpStream>>)> = MinMaxHeap::new();
     loop {
         let deadline = if let Some((min, _)) = heap.peek_min() {
             let now = Instant::now();
             if now < *min {
-                Timer::after(*min - now)
+                Timer::new(*min - now)
             } else {
-                Timer::after(Duration::from_secs(0))
+                Timer::new(Duration::from_secs(0))
             }
         } else {
-            Timer::after(Duration::from_secs(86400))
+            Timer::new(Duration::from_secs(86400))
         };
 
         select! {

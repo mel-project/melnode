@@ -14,17 +14,17 @@ pub struct LMDB {
 }
 
 impl LMDB {
-    pub fn new(env: lmdb::Environment, name: Option<&str>) -> Result<LMDB, Box<dyn Error>> {
+    pub fn new(env: Arc<lmdb::Environment>, name: Option<&str>) -> Result<LMDB, Box<dyn Error>> {
         let db = env.open_db(name)?;
-        Ok(LMDB {
-            env: Arc::new(env),
-            db,
-        })
+        Ok(LMDB { env, db })
     }
 }
 
 impl smt::RawDB for LMDB {
     fn get(&self, key: tmelcrypt::HashVal) -> smt::DBNode {
+        if key == tmelcrypt::HashVal::default() {
+            return smt::DBNode::Zero;
+        }
         let txn = self.ro();
         smt::DBNode::from_bytes(
             &raw::Decoder::new()

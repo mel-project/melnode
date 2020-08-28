@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CargoProjects">
+    <cargoProject FILE="$PROJECT_DIR$/Cargo.toml" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="617cac41-b6a7-4d92-9153-80e4a6d7f434" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/Cargo.lock" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/libs/autosmt/src/ondisk/be_lmdb.rs" beforeDir="false" afterPath="$PROJECT_DIR$/libs/autosmt/src/ondisk/be_lmdb.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/libs/autosmt/src/smt/database.rs" beforeDir="false" afterPath="$PROJECT_DIR$/libs/autosmt/src/smt/database.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/libs/blkstructs/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/libs/blkstructs/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/libs/blkstructs/src/smtmapping.rs" beforeDir="false" afterPath="$PROJECT_DIR$/libs/blkstructs/src/smtmapping.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/libs/blkstructs/src/stake.rs" beforeDir="false" afterPath="$PROJECT_DIR$/libs/blkstructs/src/stake.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/libs/blkstructs/src/state.rs" beforeDir="false" afterPath="$PROJECT_DIR$/libs/blkstructs/src/state.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/libs/melnet/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/libs/melnet/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/libs/melnet/src/connpool.rs" beforeDir="false" afterPath="$PROJECT_DIR$/libs/melnet/src/connpool.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/libs/melnet/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/libs/melnet/src/lib.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/libs/symphonia/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/libs/symphonia/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/libs/symphonia/src/pacemaker.rs" beforeDir="false" afterPath="$PROJECT_DIR$/libs/symphonia/src/pacemaker.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/libs/tmelcrypt/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/libs/tmelcrypt/src/lib.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/auditor.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/auditor.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/common.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/common.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/lib.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/storage.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/storage.rs" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MacroExpansionManager">
+    <option name="directoryName" value="ufvcm29s" />
+  </component>
+  <component name="ProjectId" id="1fVa3qpBmx37vlg77AF9dPOVUyq" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="org.rust.cargo.project.model.PROJECT_DISCOVERY" value="true" />
+    <property name="settings.editor.selected.configurable" value="editor.preferences.fonts.default" />
+  </component>
+  <component name="RustProjectSettings">
+    <option name="toolchainHomeDirectory" value="$USER_HOME$/.cargo/bin" />
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="617cac41-b6a7-4d92-9153-80e4a6d7f434" name="Default Changelist" comment="" />
+      <created>1596305518886</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1596305518886</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="364" y="173" key="SettingsEditor" timestamp="1596306560119">
+      <screen x="0" y="0" width="2256" height="1504" />
+    </state>
+    <state x="364" y="173" key="SettingsEditor/0.0.2256.1504@0.0.2256.1504" timestamp="1596306560119" />
+  </component>
+</project>
