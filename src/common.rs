@@ -8,6 +8,7 @@ use rlp_derive::{RlpDecodable, RlpEncodable};
 pub use smol::{Task, Timer};
 use std::convert::TryInto;
 use std::net::ToSocketAddrs;
+pub const TEST_ANET: &str = "themelio-test-alphanet";
 //use std::pin::Pin;
 
 //pub type PinBoxFut<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
@@ -15,7 +16,14 @@ use std::net::ToSocketAddrs;
 /// Guesses the public IP address of the current machine.
 async fn guess_my_ip() -> Result<String> {
     // TODO: something better-quality
-    let response = smol::unblock!(attohttpc::get("http://icanhazip.org").send())?;
+    let response = smol::unblock(move || {
+        attohttpc::get(
+            "http://checkip.amazonaws.com/
+    ",
+        )
+        .send()
+    })
+    .await?;
     Ok(response.text()?.trim().to_owned())
 }
 
@@ -33,7 +41,7 @@ impl<ChType> Actor<ChType> {
     ) -> Self {
         let (send, recv) = mpsc::unbounded();
         let fut = closure(Mailbox(recv));
-        let task = Task::spawn(async move {
+        let task = smol::spawn(async move {
             fut.await;
             panic!("Actors aren't supposed to 'normally' die")
         });
@@ -110,7 +118,6 @@ pub fn insecure_testnet_keygen(i: usize) -> (tmelcrypt::Ed25519PK, tmelcrypt::Ed
         "be9a5490aaf7ec26e9ff509fbe488f35d89355a659f72c041cf1e2e797ba0aa8",
         "d8c868ee748202290c38f1a176676325423a4491f45d1010fe3ef02ac610727d",
         "7cb1442b2da924d8e1e16d33a853b3bfc16b42b83b7ef1c72dd1f2e8205190f1",
-        "f954bdf5b0d92ff7a44aa387698f90ca8a5518e0536c0a7b81bc7bfd3852eaa5",
     ];
     let skk = [
         "e3e4fce65278e1b62d3009763ec2c5f71996a1ac556d3cff3971f98f4d552229fd296a6fb3b0840a0371e950771cfcb0ab78dd47ffd7165046658fe0e6ebff69",
@@ -122,10 +129,10 @@ pub fn insecure_testnet_keygen(i: usize) -> (tmelcrypt::Ed25519PK, tmelcrypt::Ed
         "2597fdbf713f3686435ba00e16ab07354ed998767f33965e5f549a855bd036b6be9a5490aaf7ec26e9ff509fbe488f35d89355a659f72c041cf1e2e797ba0aa8",
         "f2946418320a7c212038574350d1880a98a441735e3e02c4a51cb486babe34b5d8c868ee748202290c38f1a176676325423a4491f45d1010fe3ef02ac610727d",
         "d4aea6b2d828167457708c2f5760e26ad9b318ab12294acd3a1d13de76cb285a7cb1442b2da924d8e1e16d33a853b3bfc16b42b83b7ef1c72dd1f2e8205190f1",
-        "6641c249170ad57e4f32d99667f007db4cf02e493336a297d1ac0b76c478644ff954bdf5b0d92ff7a44aa387698f90ca8a5518",
     ];
     let pk = tmelcrypt::Ed25519PK(hex::decode(pkk[i]).unwrap().as_slice().try_into().unwrap());
     let mut sk = [0u8; 64];
+    dbg!(skk[i].len());
     sk.copy_from_slice(&hex::decode(skk[i]).unwrap());
     let sk = tmelcrypt::Ed25519SK(sk);
     (pk, sk)

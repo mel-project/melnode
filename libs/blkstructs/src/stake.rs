@@ -1,5 +1,3 @@
-use crate::melscript;
-use crate::transaction::CoinID;
 use crate::SmtMapping;
 use rlp_derive::*;
 

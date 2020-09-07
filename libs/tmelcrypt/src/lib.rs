@@ -8,6 +8,33 @@ use std::ops::Deref;
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Arbitrary, Ord, PartialOrd, Default)]
 pub struct HashVal(pub [u8; 32]);
 
+impl HashVal {
+    pub fn to_addr(&self) -> String {
+        let raw_base32 = base32::encode(base32::Alphabet::Crockford {}, &self.0);
+        let checksum = hash_keyed(b"address-checksum", &self.0).0[0] % 10;
+        let res = format!("T{}{}", checksum, raw_base32);
+        res.into_bytes()
+            .chunks(5)
+            .map(|chunk| String::from_utf8_lossy(chunk).to_ascii_lowercase())
+            .collect::<Vec<_>>()
+            .join("-")
+    }
+
+    pub fn from_addr(addr: &str) -> Option<Self> {
+        // TODO check checksum
+        if addr.len() < 10 {
+            return None;
+        }
+        let addr = addr.replace("-", "");
+        Some(HashVal(
+            base32::decode(base32::Alphabet::Crockford {}, &addr[2..])?
+                .as_slice()
+                .try_into()
+                .ok()?,
+        ))
+    }
+}
+
 impl Deref for HashVal {
     type Target = [u8];
 

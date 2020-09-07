@@ -25,7 +25,7 @@ impl Pacemaker {
         Pacemaker {
             msg_input: Mutex::new(send_input),
             msg_output: lock::Mutex::new(recv_output),
-            decision_output: lock::Mutex::new(smol::Task::spawn(async move {
+            decision_output: lock::Mutex::new(smol::spawn(async move {
                 pacemaker_loop(machine, recv_input, send_output).await
             })),
         }
@@ -58,7 +58,7 @@ async fn pacemaker_loop(
 ) -> QuorumCert {
     trace!("pacemaker started");
     let mut timeout = Duration::from_millis(5000);
-    let mut timeout_chan = smol::Timer::new(timeout).fuse();
+    let mut timeout_chan = smol::Timer::after(timeout).fuse();
     loop {
         //thread::sleep_ms(1000);
         // send outputs
@@ -85,7 +85,7 @@ async fn pacemaker_loop(
                 trace!("pacemaker forcing a new view after {:?}", timeout);
                 timeout = timeout * 10 / 9;
                 machine.new_view();
-                timeout_chan = smol::Timer::new(timeout).fuse();
+                timeout_chan = smol::Timer::after(timeout).fuse();
             }
         }
     }

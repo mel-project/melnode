@@ -16,6 +16,8 @@ pub enum TxKind {
     AuctionBid = 0x51,
     AuctionBuyout = 0x52,
     AuctionFill = 0x53,
+
+    Faucet = 0xff,
 }
 
 impl Encodable for TxKind {

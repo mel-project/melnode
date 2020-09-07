@@ -189,7 +189,7 @@ impl State {
         // then we apply the nondefault checks in parallel
         let res: Result<Vec<()>, TxApplicationError> = txx
             .par_iter()
-            .filter(|tx| tx.kind != txn::TxKind::Normal)
+            .filter(|tx| tx.kind != txn::TxKind::Normal && tx.kind != txn::TxKind::Faucet)
             .map(|tx| State::apply_tx_special(&lnewself, tx))
             .collect();
         res?;
@@ -200,12 +200,7 @@ impl State {
     }
 
     /// Finalizes a state into a block. This consumes the state.
-    pub fn finalize(mut self) -> FinalizedState {
-        // synthesize auction fill as needed
-        if self.height % AUCTION_INTERVAL == 0 && !self.auction_bids.is_empty() {
-            self.synthesize_afill()
-        }
-        // TODO stake stuff
+    pub fn finalize(self) -> FinalizedState {
         // create the finalized state
         FinalizedState(Arc::new(self))
     }
@@ -278,7 +273,7 @@ impl State {
         }
         // balance inputs and outputs. ignore outputs with empty cointype (they create a new token kind)
         let out_coins = tx.total_outputs();
-        if tx.kind != txn::TxKind::DoscMint {
+        if tx.kind != txn::TxKind::DoscMint && tx.kind != txn::TxKind::Faucet {
             for (currency, value) in out_coins.iter() {
                 if !currency.is_empty() && *value != *in_coins.get(currency).unwrap_or(&u64::MAX) {
                     return Err(TxApplicationError::UnbalancedInOut);
@@ -323,9 +318,7 @@ impl State {
                 panic!("auction fill transaction processed in normal pipeline")
             }
             txn::TxKind::Stake => State::apply_tx_special_stake(lself, tx),
-            txn::TxKind::Normal => {
-                panic!("tried to apply special effects of a non-special transaction")
-            }
+            _ => panic!("tried to apply special effects of a non-special transaction"),
         }
     }
     // dosc minting
@@ -489,6 +482,10 @@ impl FinalizedState {
         new.height += 1;
         new.stakes.remove_stale(new.height / STAKE_EPOCH);
         new.transactions.clear();
+        // synthesize auction fill as needed
+        if new.height % AUCTION_INTERVAL == 0 && !new.auction_bids.is_empty() {
+            new.synthesize_afill()
+        }
         new
     }
 }

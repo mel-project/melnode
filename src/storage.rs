@@ -128,13 +128,19 @@ impl Storage {
 
     /// Gets the last block.
     pub fn last_block(&self) -> Option<blkstructs::FinalizedState> {
-        self.history.get(&(self.curr_state.height - 1)).cloned()
+        self.history
+            .get(&(self.curr_state.height.checked_sub(1)?))
+            .cloned()
     }
 
     /// Consumes a block.
     pub fn apply_block(&mut self, blk: blkstructs::Block) -> Result<()> {
         if blk.header.height != self.curr_state.height {
-            anyhow::bail!("apply_block wrong height");
+            anyhow::bail!(
+                "apply_block wrong height {} {}",
+                blk.header.height,
+                self.curr_state.height
+            );
         }
         let curr_height = self.curr_state.height;
         log::debug!(
@@ -174,7 +180,7 @@ fn new_genesis(dbm: autosmt::DBManager) -> blkstructs::State {
         dbm,
         1000 * blkstructs::MICRO_CONVERTER,
         blkstructs::melscript::Script::always_true().hash(),
-        (0..10)
+        (0..1)
             .map(|i| insecure_testnet_keygen(i).0)
             .collect::<Vec<_>>()
             .as_slice(),

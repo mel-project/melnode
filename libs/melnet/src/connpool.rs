@@ -1,6 +1,6 @@
 use crate::common::*;
 use crate::reqs::*;
-use async_net::{TcpListener, TcpStream};
+use async_net::TcpStream;
 use by_address::ByAddress;
 use futures::channel::mpsc;
 use futures::channel::mpsc::unbounded;
@@ -12,7 +12,7 @@ use log::trace;
 use min_max_heap::MinMaxHeap;
 use parking_lot::RwLock;
 use rlp::{Decodable, Encodable};
-use smol::{Task, Timer};
+use smol::Timer;
 use std::collections::HashMap;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::{Duration, Instant};
@@ -121,7 +121,7 @@ impl SingleHost {
     fn new() -> Self {
         let (send_insertion, recv_insertion) = unbounded();
         let (send_request, recv_request) = unbounded();
-        Task::spawn(async {
+        smol::spawn(async {
             singlehost_monitor(recv_insertion, recv_request).await;
         })
         .detach();
@@ -146,12 +146,12 @@ async fn singlehost_monitor(
         let deadline = if let Some((min, _)) = heap.peek_min() {
             let now = Instant::now();
             if now < *min {
-                Timer::new(*min - now)
+                Timer::after(*min - now)
             } else {
-                Timer::new(Duration::from_secs(0))
+                Timer::after(Duration::from_secs(0))
             }
         } else {
-            Timer::new(Duration::from_secs(86400))
+            Timer::after(Duration::from_secs(86400))
         };
 
         select! {

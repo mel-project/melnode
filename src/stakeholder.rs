@@ -52,10 +52,10 @@ async fn stakeholder_loop(
         // register symphonia verbs
         network.register_verb("symphonia_msg", move |_, smsg: symphonia::SignedMessage| {
             in_send.unbounded_send(smsg).unwrap();
-            Box::pin(async { Ok(true) })
+            Ok(true)
         });
         loop {
-            Timer::new(Duration::from_secs(5)).await;
+            Timer::after(Duration::from_secs(5)).await;
             let proposal = Arc::new(storage.read().curr_state.clone().finalize());
             // create a configuration
             let symphonia_config = symphonia::Config {
@@ -73,7 +73,7 @@ async fn stakeholder_loop(
                 // view_leader right now is hardcoded
                 view_leader: {
                     //let proposal = proposal.clone();
-                    Arc::new(move |view: u64| insecure_testnet_keygen((view % 10) as usize).0)
+                    Arc::new(move |view: u64| insecure_testnet_keygen(0 as usize).0)
                 },
                 is_valid_prop: {
                     let proposal = proposal.clone();
@@ -134,10 +134,9 @@ async fn symphonia_multicast(
     msg: symphonia::SignedMessage,
     routes: Vec<SocketAddr>,
 ) {
-    log::debug!("just broadcasting because we don't know anything else we can do");
     for dest in routes {
         let msg = msg.clone();
-        Task::spawn(async move {
+        smol::spawn(async move {
             let _: bool = melnet::gcp()
                 .request(dest, STAKE_NET, "symphonia_msg", msg)
                 .await

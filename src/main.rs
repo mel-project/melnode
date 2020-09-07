@@ -6,5 +6,5 @@ fn main() {
         .parse_filters("themelio_core")
         .init();
     let opts = Config::from_args();
-    smol::run(run_main(opts))
+    smol::block_on(run_main(opts))
 }

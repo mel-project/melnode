@@ -15,9 +15,12 @@ symphonia={path="libs/symphonia"}
 melnet={path="libs/melnet"}
 hex="0.4.2"
 futures="0.3"
-smol="0.3"
+smol="0.4"
+colored="2"
 anyhow="1"
+tabwriter="1"
 env_logger="0.7"
+rustyline="6"
 log="0.4"
 attohttpc={version = "0.15", default-features = false, features=[]}
 clap="2"
@@ -31,11 +34,12 @@ defmac="0.2"
 structopt="0.3"
 rlp="0.4"
 rlp-derive="0.1"
-async-net="0.1"
+async-net="1"
+im="15"
 
 
 [profile.dev]
-panic = "abort"
+#panic = "abort"
 
 [profile.release]
 panic = "abort"

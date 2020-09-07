@@ -12,7 +12,6 @@ use async_net::{TcpListener, TcpStream};
 mod common;
 pub use common::*;
 use futures::prelude::*;
-use futures::prelude::*;
 use futures::select;
 use im::HashMap;
 use parking_lot::RwLock;
@@ -20,10 +19,10 @@ use rand::prelude::*;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use reqs::*;
-use smol::{Task, Timer};
+use smol::Timer;
 use std::time::Duration;
 
-type VerbHandler = Arc<dyn Fn(&NetState, &[u8]) -> BoxFuture<Result<Vec<u8>>> + Send + Sync>;
+type VerbHandler = Arc<dyn Fn(&NetState, &[u8]) -> Result<Vec<u8>> + Send + Sync>;
 
 #[derive(Derivative, Clone, Default)]
 #[derivative(Debug)]
@@ -43,10 +42,10 @@ impl NetState {
         // INTENTIONALLY not detach so that it cancels automatically
         let spammer = {
             let state = self.clone();
-            Task::spawn(async move {
+            smol::spawn(async move {
                 let mut rng = rand::rngs::OsRng {};
                 loop {
-                    let mut tmr = Timer::new(Duration::from_secs_f32(0.2)).fuse();
+                    let mut tmr = Timer::after(Duration::from_secs_f32(0.2)).fuse();
                     let routes = state.routes.read().to_vec();
                     if !routes.is_empty() {
                         let (rand_neigh, _) = routes[rng.gen::<usize>() % routes.len()];
@@ -84,7 +83,7 @@ impl NetState {
             match conn {
                 Ok((conn, _)) => {
                     //let conn: Async<TcpStream> = conn;
-                    Task::spawn(async move {
+                    smol::spawn(async move {
                         let _ = self_copy.server_handle(conn).await;
                     })
                     .detach();
@@ -102,7 +101,7 @@ impl NetState {
         loop {
             select! {
                 x = self.server_handle_one(&mut conn).fuse() => x?,
-                _ = Timer::new(Duration::from_secs(60)).fuse() => break
+                _ = Timer::after(Duration::from_secs(60)).fuse() => break
             }
         }
         Ok(())
@@ -140,7 +139,7 @@ impl NetState {
             Some(responder) => {
                 let ss = self.clone();
                 let responder = responder.clone();
-                let response = responder(&ss, &cmd.payload).await;
+                let response = smol::unblock(move || responder(&ss, &cmd.payload)).await;
                 match response {
                     Ok(response) => {
                         write_len_bts(
@@ -173,12 +172,12 @@ impl NetState {
     /// Registers the handler for new_peer.
     fn setup_routing(&mut self) {
         // ping just responds to a u64 with itself
-        self.register_verb("ping", |_, ping: u64| Box::pin(async move { Ok(ping) }));
+        self.register_verb("ping", |_, ping: u64| Ok(ping));
         // new_addr
         self.register_verb("new_addr", |state, rr: RoutingRequest| {
-            trace!("got new_addr {:?}", rr);
-            let state = state.clone();
-            Box::pin(async move {
+            smol::block_on(async move {
+                trace!("got new_addr {:?}", rr);
+                let state = state.clone();
                 let unreach = || MelnetError::Custom(String::from("invalid"));
                 if rr.proto != "tcp" {
                     debug!("new_addr unrecognizable proto = {:?}", rr.proto);
@@ -215,7 +214,7 @@ impl NetState {
     pub fn register_verb<TInput: Decodable + Send, TOutput: Encodable + Send>(
         &self,
         verb: &str,
-        cback: impl Fn(&NetState, TInput) -> BoxFuture<Result<TOutput>> + 'static + Send + Sync,
+        cback: impl Fn(&NetState, TInput) -> Result<TOutput> + 'static + Send + Sync,
     ) {
         debug!("registering verb {}", verb);
         RwLock::write(&self.verbs).insert(verb.to_owned(), erase_cback_types(cback));
@@ -251,19 +250,17 @@ fn string_to_addr(s: &str) -> Option<SocketAddr> {
 }
 
 fn erase_cback_types<TInput: Decodable + Send, TOutput: Encodable + Send>(
-    cback: impl Fn(&NetState, TInput) -> BoxFuture<Result<TOutput>> + 'static + Send + Sync,
+    cback: impl Fn(&NetState, TInput) -> Result<TOutput> + 'static + Send + Sync,
 ) -> VerbHandler {
     let cback = Arc::new(cback);
     Arc::new(move |state, input| {
         let input = input.to_vec();
         let state = state.clone();
         let cback = cback.clone();
-        Box::pin(async move {
-            let input: TInput = rlp::decode(&input)
-                .map_err(|e| MelnetError::Custom(format!("rlp error: {:?}", e)))?;
-            let output: TOutput = cback(&state, input).await?;
-            Ok(rlp::encode(&output))
-        })
+        let input: TInput =
+            rlp::decode(&input).map_err(|e| MelnetError::Custom(format!("rlp error: {:?}", e)))?;
+        let output: TOutput = cback(&state, input)?;
+        Ok(rlp::encode(&output))
     })
 }
 
