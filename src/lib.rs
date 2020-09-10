@@ -228,6 +228,28 @@ async fn run_anet_client(cfg: AnetClientConfig) {
                             }
                         }
                     }
+                    ["balances"] => {
+                        writeln!(tw, ">> **** COINS ****")?;
+                        writeln!(tw, ">> [CoinID]\t[Height]\t[Amount]\t[CoinType]")?;
+                        for (coin_id, coin_data) in wallet.unspent_coins() {
+                            let coin_id = hex::encode(rlp::encode(coin_id));
+                            writeln!(
+                                tw,
+                                ">> {}\t{}\t{}\t{}",
+                                coin_id,
+                                coin_data.height.to_string(),
+                                coin_data.coin_data.value.to_string(),
+                                match coin_data.coin_data.cointype.as_slice() {
+                                    COINTYPE_TMEL => "μTML",
+                                    _ => "(other)",
+                                },
+                            )?;
+                        }
+                    }
+                    ["exit"] => {
+                        prompt_stack.pop();
+                        current_wallet = None;
+                    }
                     _ => Err(anyhow::anyhow!("no such command"))?,
                 }
             } else {
@@ -241,8 +263,8 @@ async fn run_anet_client(cfg: AnetClientConfig) {
                         let script = melscript::Script::std_ed25519_pk(pk);
                         wallets.insert(wallet_name.to_string(), Wallet::new(script.clone()));
                         writeln!(tw, ">> New wallet:\t{}", wallet_name.bold()).unwrap();
-                        writeln!(tw, ">> Address:\t{}", script.hash().to_addr().bold()).unwrap();
-                        writeln!(tw, ">> Secret:\t{}", hex::encode(sk.0)).unwrap();
+                        writeln!(tw, ">> Address:\t{}", script.hash().to_addr().yellow()).unwrap();
+                        writeln!(tw, ">> Secret:\t{}", hex::encode(sk.0).dimmed()).unwrap();
                         tw.flush().unwrap();
                     }
                     &["wallet-unlock", wallet_name, wallet_secret] => {
@@ -261,12 +283,19 @@ async fn run_anet_client(cfg: AnetClientConfig) {
                             prompt_stack.push(format!("({})", wallet_name).yellow().to_string());
                         }
                     }
+                    &["wallet-list"] => {
+                        writeln!(tw, ">> [NAME]\t[ADDRESS]")?;
+                        for (name, wallet) in wallets.iter() {
+                            writeln!(tw, ">> {}\t{}", name, wallet.my_script.hash().to_addr())?;
+                        }
+                    }
                     other => {
                         eprintln!("no such command: {:?}", other);
                         continue;
                     }
                 }
             }
+            tw.flush()?;
             eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
         };
         if let Err(err) = res {

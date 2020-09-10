@@ -104,6 +104,10 @@ pub struct Wallet {
 }
 
 impl Wallet {
+    /// Coins
+    pub fn unspent_coins(&self) -> impl Iterator<Item = (&CoinID, &CoinDataHeight)> {
+        self.unspent_coins.iter()
+    }
     /// Create a new wallet.
     pub fn new(my_script: melscript::Script) -> Self {
         Wallet {
