@@ -4,6 +4,9 @@ use async_net::SocketAddr;
 use blkstructs::{melscript, CoinData, CoinDataHeight, CoinID, Header, Transaction, TxKind};
 use std::{collections, time::Instant};
 use tmelcrypt::HashVal;
+use serde::{Deserialize, Serialize, Serializer};
+use serde_json::Result;
+use serde::ser::SerializeMap;
 
 /// A network client with some in-memory caching.
 pub struct Client {
@@ -95,7 +98,7 @@ impl Client {
 }
 
 #[derive(Debug, Clone)]
-/// An immutable, clonable in-memory wallet that can be synced to disk. Does not contain any secrets!
+/// An immutable, cloneable in-memory wallet that can be synced to disk. Does not contain any secrets!
 pub struct Wallet {
     unspent_coins: im::HashMap<CoinID, CoinDataHeight>,
     spent_coins: im::HashMap<CoinID, CoinDataHeight>,
@@ -198,5 +201,95 @@ impl Wallet {
         // "commit"
         *self = oself;
         Ok(())
+    }
+
+    /// Stores contents of wallets into database
+    pub fn store(&self, outputs: Vec<CoinData>) -> anyhow::Result<Transaction> {
+
+    }
+}
+
+impl Serialize for Wallet {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok>
+        where
+            S: Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(self.x.len()))?;
+        for (k, v) in &self.x {
+            map.serialize_entry(&k.to_string(), &v)?;
+        }
+        map.end()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use im::hashmap;
+    use blkstructs;
+    use crate::client::Wallet;
+
+    fn create_wallet() -> Wallet {
+        // Create script
+        let (pk, sk) = tmelcrypt::ed25519_keygen();
+        let script = blkstructs::melscript::Script::std_ed25519_pk(pk);
+
+        // create unspent coins
+        let coin_id = blkstructs::CoinID {
+            txhash: tmelcrypt::HashVal([0; 32]),
+            index: 0,
+        };
+        let coin = blkstructs::CoinData {
+            conshash: scr.hash(),
+            value: blkstructs::MICRO_CONVERTER * 1000,
+            cointype: blkstructs::COINTYPE_TMEL.to_owned(),
+        };
+        let coin_data_height = blkstructs::CoinDataHeight {
+            coin_data: coin,
+            height: 0
+        };
+        let unspent_coins = hashmap! {
+            coin_id => coin_data_height
+        };
+        // create spent coins
+        let spent_coin_id = blkstructs::CoinID {
+            txhash: tmelcrypt::HashVal([0; 32]),
+            index: 0,
+        };
+        let spent_coin = blkstructs::CoinData {
+            conshash: scr.hash(),
+            value: blkstructs::MICRO_CONVERTER * 1000,
+            cointype: blkstructs::COINTYPE_TMEL.to_owned(),
+        };
+        let spent_coin_data_height = blkstructs::CoinDataHeight {
+            coin_data: spent_coin,
+            height: 0
+        };
+        let spent_coins = hashmap! {
+            spent_coin_id => spent_coin_data_height
+        };
+
+        let mut wallet = Wallet::new(my_script);
+        wallet.unspent_coins = unspent_coins;
+        wallet.spent_coins = spent_coins;
+
+        return wallet;
+    }
+
+    #[test]
+    fn store_wallet() {
+        // Setup wallet
+        // let wallet =
+        let wallet = create_wallet();
+
+        // Store wallet
+        // wallet.store()
+        // Serialize it to a JSON string.
+        let wallet_json = serde_json::to_string(&wallet);
+
+        // Print, write to a file, or send to an HTTP server.
+        // println!("{}", wallet_json);
+
+        // Validate it is persisted correctly
+        assert_eq!(2 + 2, 4);
     }
 }

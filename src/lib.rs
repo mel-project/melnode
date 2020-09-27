@@ -18,7 +18,7 @@ use parking_lot::RwLock;
 use std::time::Duration;
 use std::{collections::HashMap, sync::Arc};
 use std::{
-    io::BufRead,
+    // io::BufRead,
     net::{SocketAddr, ToSocketAddrs},
 };
 pub use storage::*;
@@ -228,7 +228,7 @@ async fn run_anet_client(cfg: AnetClientConfig) {
                             }
                         }
                     }
-                    ["balances"] => {
+                    ["balances", ] => {
                         writeln!(tw, ">> **** COINS ****")?;
                         writeln!(tw, ">> [CoinID]\t[Height]\t[Amount]\t[CoinType]")?;
                         for (coin_id, coin_data) in wallet.unspent_coins() {
@@ -246,7 +246,7 @@ async fn run_anet_client(cfg: AnetClientConfig) {
                             )?;
                         }
                     }
-                    ["exit"] => {
+                    ["exit", ] => {
                         prompt_stack.pop();
                         current_wallet = None;
                     }

@@ -3,8 +3,9 @@ use arbitrary::Arbitrary;
 use rlp::{Decodable, Encodable};
 use std::collections::HashMap;
 use std::convert::TryInto;
+use serde::{Serialize, Deserialize};
 
-#[derive(Clone, Eq, PartialEq, Debug, Arbitrary)]
+#[derive(Clone, Eq, PartialEq, Debug, Arbitrary, Serialize, Deserialize)]
 pub struct Script(pub Vec<u8>);
 
 impl Script {

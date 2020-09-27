@@ -4,8 +4,9 @@ use std::convert::TryInto;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
+use serde::{Serialize, Deserialize};
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Arbitrary, Ord, PartialOrd, Default)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Arbitrary, Ord, PartialOrd, Default, Serialize, Deserialize)]
 pub struct HashVal(pub [u8; 32]);
 
 impl HashVal {

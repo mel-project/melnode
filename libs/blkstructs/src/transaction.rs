@@ -6,8 +6,9 @@ use rlp::{Decodable, Encodable};
 use rlp_derive::*;
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use serde::{Serialize, Deserialize};
 
-#[derive(Clone, Copy, IntoPrimitive, TryFromPrimitive, Eq, PartialEq, Arbitrary, Debug)]
+#[derive(Clone, Copy, IntoPrimitive, TryFromPrimitive, Eq, PartialEq, Arbitrary, Debug, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum TxKind {
     Normal = 0x00,
@@ -38,7 +39,7 @@ impl Decodable for TxKind {
 }
 
 /// Transaction represents an individual, RLP-serializable Themelio transaction.
-#[derive(RlpEncodable, RlpDecodable, Clone, Arbitrary, Debug)]
+#[derive(RlpEncodable, RlpDecodable, Clone, Arbitrary, Debug, Serialize, Deserialize)]
 pub struct Transaction {
     pub kind: TxKind,
     pub inputs: Vec<CoinID>,
@@ -113,7 +114,7 @@ impl Transaction {
 }
 
 #[derive(
-    RlpEncodable, RlpDecodable, Clone, Debug, Copy, Arbitrary, Ord, PartialOrd, Eq, PartialEq, Hash,
+    RlpEncodable, RlpDecodable, Clone, Debug, Copy, Arbitrary, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize
 )]
 pub struct CoinID {
     pub txhash: tmelcrypt::HashVal,
@@ -121,7 +122,7 @@ pub struct CoinID {
 }
 
 #[derive(
-    RlpEncodable, RlpDecodable, Clone, Arbitrary, Debug, Ord, PartialOrd, Eq, PartialEq, Hash,
+    RlpEncodable, RlpDecodable, Clone, Arbitrary, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize
 )]
 pub struct CoinData {
     pub conshash: tmelcrypt::HashVal,
@@ -129,7 +130,7 @@ pub struct CoinData {
     pub cointype: Vec<u8>,
 }
 
-#[derive(RlpEncodable, RlpDecodable, Clone, Arbitrary, Debug)]
+#[derive(RlpEncodable, RlpDecodable, Clone, Arbitrary, Debug, Serialize, Deserialize)]
 pub struct CoinDataHeight {
     pub coin_data: CoinData,
     pub height: u64,

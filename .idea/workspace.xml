@@ -1,34 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="CMakeRunConfigurationManager" shouldGenerate="true" shouldDeleteObsolete="true">
+    <generated />
+  </component>
+  <component name="CMakeSettings">
+    <configurations />
+  </component>
   <component name="CargoProjects">
     <cargoProject FILE="$PROJECT_DIR$/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
     <list default="true" id="617cac41-b6a7-4d92-9153-80e4a6d7f434" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Cargo.lock" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.lock" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/libs/autosmt/src/ondisk/be_lmdb.rs" beforeDir="false" afterPath="$PROJECT_DIR$/libs/autosmt/src/ondisk/be_lmdb.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/libs/autosmt/src/smt/database.rs" beforeDir="false" afterPath="$PROJECT_DIR$/libs/autosmt/src/smt/database.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/libs/blkstructs/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/libs/blkstructs/Cargo.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/libs/blkstructs/src/smtmapping.rs" beforeDir="false" afterPath="$PROJECT_DIR$/libs/blkstructs/src/smtmapping.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/libs/blkstructs/src/stake.rs" beforeDir="false" afterPath="$PROJECT_DIR$/libs/blkstructs/src/stake.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/libs/blkstructs/src/state.rs" beforeDir="false" afterPath="$PROJECT_DIR$/libs/blkstructs/src/state.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/libs/melnet/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/libs/melnet/Cargo.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/libs/melnet/src/connpool.rs" beforeDir="false" afterPath="$PROJECT_DIR$/libs/melnet/src/connpool.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/libs/melnet/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/libs/melnet/src/lib.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/libs/symphonia/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/libs/symphonia/Cargo.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/libs/symphonia/src/pacemaker.rs" beforeDir="false" afterPath="$PROJECT_DIR$/libs/symphonia/src/pacemaker.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/libs/blkstructs/src/melscript.rs" beforeDir="false" afterPath="$PROJECT_DIR$/libs/blkstructs/src/melscript.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/libs/blkstructs/src/transaction.rs" beforeDir="false" afterPath="$PROJECT_DIR$/libs/blkstructs/src/transaction.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/libs/tmelcrypt/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/libs/tmelcrypt/Cargo.toml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/libs/tmelcrypt/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/libs/tmelcrypt/src/lib.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/auditor.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/auditor.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/common.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/common.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/client.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/client.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/lib.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/storage.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/storage.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -47,8 +47,59 @@
     <property name="org.rust.cargo.project.model.PROJECT_DISCOVERY" value="true" />
     <property name="settings.editor.selected.configurable" value="editor.preferences.fonts.default" />
   </component>
+  <component name="RunManager" selected="Cargo.Test client::tests::store_wallet">
+    <configuration name="Bench tests::batch_insertion" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+      <option name="channel" value="DEFAULT" />
+      <option name="command" value="bench --package blkstructs --lib tests::batch_insertion -- --exact" />
+      <option name="allFeatures" value="false" />
+      <option name="emulateTerminal" value="false" />
+      <option name="backtrace" value="SHORT" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Test client::tests::store_wallet" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+      <option name="channel" value="DEFAULT" />
+      <option name="command" value="test --package themelio-core --lib client::tests::store_wallet -- --exact" />
+      <option name="allFeatures" value="false" />
+      <option name="emulateTerminal" value="false" />
+      <option name="backtrace" value="SHORT" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Test tests::it_works" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+      <option name="channel" value="DEFAULT" />
+      <option name="command" value="test --package themelio-core --lib tests::it_works -- --exact" />
+      <option name="allFeatures" value="false" />
+      <option name="emulateTerminal" value="false" />
+      <option name="backtrace" value="SHORT" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="GradleAppRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Cargo.Test client::tests::store_wallet" />
+        <item itemvalue="Cargo.Test tests::it_works" />
+        <item itemvalue="Cargo.Bench tests::batch_insertion" />
+      </list>
+    </recent_temporary>
+  </component>
   <component name="RustProjectSettings">
     <option name="toolchainHomeDirectory" value="$USER_HOME$/.cargo/bin" />
+    <option name="version" value="2" />
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
@@ -62,9 +113,65 @@
     <servers />
   </component>
   <component name="WindowStateProjectService">
+    <state x="1098" y="183" key="#xdebugger.evaluate" timestamp="1600922617847">
+      <screen x="0" y="23" width="1920" height="1057" />
+    </state>
+    <state x="1098" y="183" key="#xdebugger.evaluate/0.23.1920.1057@0.23.1920.1057" timestamp="1600922617847" />
+    <state width="1607" height="335" key="GridCell.Tab.0.bottom" timestamp="1600922787314">
+      <screen x="0" y="23" width="1920" height="1057" />
+    </state>
+    <state width="1607" height="335" key="GridCell.Tab.0.bottom/0.23.1920.1057@0.23.1920.1057" timestamp="1600922787314" />
+    <state width="1607" height="335" key="GridCell.Tab.0.center" timestamp="1600922787313">
+      <screen x="0" y="23" width="1920" height="1057" />
+    </state>
+    <state width="1607" height="335" key="GridCell.Tab.0.center/0.23.1920.1057@0.23.1920.1057" timestamp="1600922787313" />
+    <state width="1607" height="335" key="GridCell.Tab.0.left" timestamp="1600922787312">
+      <screen x="0" y="23" width="1920" height="1057" />
+    </state>
+    <state width="1607" height="335" key="GridCell.Tab.0.left/0.23.1920.1057@0.23.1920.1057" timestamp="1600922787312" />
+    <state width="1607" height="335" key="GridCell.Tab.0.right" timestamp="1600922787313">
+      <screen x="0" y="23" width="1920" height="1057" />
+    </state>
+    <state width="1607" height="335" key="GridCell.Tab.0.right/0.23.1920.1057@0.23.1920.1057" timestamp="1600922787313" />
+    <state width="1607" height="335" key="GridCell.Tab.1.bottom" timestamp="1600922787316">
+      <screen x="0" y="23" width="1920" height="1057" />
+    </state>
+    <state width="1607" height="335" key="GridCell.Tab.1.bottom/0.23.1920.1057@0.23.1920.1057" timestamp="1600922787316" />
+    <state width="1607" height="335" key="GridCell.Tab.1.center" timestamp="1600922787315">
+      <screen x="0" y="23" width="1920" height="1057" />
+    </state>
+    <state width="1607" height="335" key="GridCell.Tab.1.center/0.23.1920.1057@0.23.1920.1057" timestamp="1600922787315" />
+    <state width="1607" height="335" key="GridCell.Tab.1.left" timestamp="1600922787314">
+      <screen x="0" y="23" width="1920" height="1057" />
+    </state>
+    <state width="1607" height="335" key="GridCell.Tab.1.left/0.23.1920.1057@0.23.1920.1057" timestamp="1600922787314" />
+    <state width="1607" height="335" key="GridCell.Tab.1.right" timestamp="1600922787315">
+      <screen x="0" y="23" width="1920" height="1057" />
+    </state>
+    <state width="1607" height="335" key="GridCell.Tab.1.right/0.23.1920.1057@0.23.1920.1057" timestamp="1600922787315" />
     <state x="364" y="173" key="SettingsEditor" timestamp="1596306560119">
       <screen x="0" y="0" width="2256" height="1504" />
     </state>
     <state x="364" y="173" key="SettingsEditor/0.0.2256.1504@0.0.2256.1504" timestamp="1596306560119" />
+    <state x="766" y="265" width="586" height="490" key="find.popup" timestamp="1601219359726">
+      <screen x="0" y="23" width="1680" height="1027" />
+    </state>
+    <state x="766" y="265" width="586" height="490" key="find.popup/0.23.1680.1027@0.23.1680.1027" timestamp="1601219359726" />
+    <state x="766" y="295" width="586" height="490" key="find.popup/0.23.1920.1057@0.23.1920.1057" timestamp="1600921898094" />
+    <state x="489" y="244" width="670" height="676" key="search.everywhere.popup" timestamp="1601225314549">
+      <screen x="0" y="23" width="1680" height="1027" />
+    </state>
+    <state x="489" y="244" width="670" height="676" key="search.everywhere.popup/0.23.1680.1027@0.23.1680.1027" timestamp="1601225314549" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/src/client.rs</url>
+          <line>292</line>
+          <option name="timeStamp" value="5" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
 </project>
