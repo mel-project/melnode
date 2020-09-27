@@ -221,6 +221,7 @@ mod tests {
     use im::hashmap;
     use blkstructs;
     use crate::client::Wallet;
+    use rusqlite::{params, Connection, Result};
 
     fn create_wallet() -> Wallet {
         // Create script
@@ -282,6 +283,39 @@ mod tests {
 
         // Print, write to a file, or send to an HTTP server.
         // println!("{}", wallet_json);
+        let conn = Connection::open_in_memory()?;
+
+        conn.execute(
+            "CREATE TABLE wallet (
+                  id              INTEGER PRIMARY KEY,
+                  unspent_coins          BLOB,
+                  spent_coins            BLOB
+                  )",
+            params![],
+        )?;
+        // let me = Person {
+        //     id: 0,
+        //     name: "Steven".to_string(),
+        //     data: None,
+        // };
+        // conn.execute(
+        //     "INSERT INTO person (name, data) VALUES (?1, ?2)",
+        //     params![me.name, me.data],
+        // )?;
+        //
+        // let mut stmt = conn.prepare("SELECT id, name, data FROM person")?;
+        // let person_iter = stmt.query_map(params![], |row| {
+        //     Ok(Person {
+        //         id: row.get(0)?,
+        //         name: row.get(1)?,
+        //         data: row.get(2)?,
+        //     })
+        // })?;
+        //
+        // for person in person_iter {
+        //     println!("Found person {:?}", person.unwrap());
+        // }
+        // Ok(())
 
         // Validate it is persisted correctly
         assert_eq!(2 + 2, 4);
