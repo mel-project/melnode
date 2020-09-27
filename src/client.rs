@@ -209,19 +209,13 @@ impl Wallet {
     }
 }
 
-impl Serialize for Wallet {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok>
-        where
-            S: Serializer,
-    {
-        let mut map = serializer.serialize_map(Some(self.x.len()))?;
-        for (k, v) in &self.x {
-            map.serialize_entry(&k.to_string(), &v)?;
-        }
-        map.end()
+impl serde::Serialize for Wallet {
+    fn serialize<S>(&self, serializer: S) -> Result<S> where
+        S: Serializer {
+        unimplemented!();
     }
 }
-
+// Result<<S as Serializer>::Ok>
 #[cfg(test)]
 mod tests {
     use im::hashmap;
