@@ -1,11 +1,11 @@
 use crate::auditor::{Auditor, AuditorMsg};
 use crate::common::*;
 use crate::storage::Storage;
-use async_net::TcpListener;
 use blkstructs::STAKE_EPOCH;
 use derive_more::*;
 use futures::channel::mpsc;
 use futures::select;
+use smol::net::TcpListener;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;

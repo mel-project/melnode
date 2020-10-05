@@ -5,7 +5,7 @@ use blkstructs::{FinalizedState, Transaction};
 use derive_more::*;
 //use future_parking_lot::rwlock::{FutureReadable, FutureWriteable};
 use crate::client_protocol::*;
-use async_net::TcpListener;
+use smol::net::TcpListener;
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::{sync::Arc, time::Duration};

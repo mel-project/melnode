@@ -17,7 +17,7 @@ log="0.4"
 env_logger="0.7"
 derivative="2"
 #tokio = { version = "0.2", features = ["full"] }
-smol="0.4"
+smol="1"
 futures="0.3"
 im="15"
 rand="0.7"

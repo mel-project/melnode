@@ -1,7 +1,7 @@
 use crate::client_protocol::*;
 use crate::common::*;
-use async_net::SocketAddr;
 use blkstructs::{melscript, CoinData, CoinDataHeight, CoinID, Header, Transaction, TxKind};
+use std::net::SocketAddr;
 use std::{collections, time::Instant};
 use tmelcrypt::HashVal;
 

@@ -85,7 +85,7 @@ mod tests {
         );
         b.iter(|| {
             let db = autosmt::DBManager::load(autosmt::MemDB::default());
-            let mut genesis = State::test_genesis(db, MICRO_CONVERTER * 1000, scr.hash());
+            let mut genesis = State::test_genesis(db, MICRO_CONVERTER * 1000, scr.hash(), &[]);
             genesis.apply_tx_batch(&txx).unwrap();
         })
     }
@@ -111,7 +111,7 @@ mod tests {
         );
         b.iter(|| {
             let db = autosmt::DBManager::load(autosmt::MemDB::default());
-            let mut genesis = State::test_genesis(db, MICRO_CONVERTER * 1000, scr.hash());
+            let mut genesis = State::test_genesis(db, MICRO_CONVERTER * 1000, scr.hash(), &[]);
             for tx in txx.iter() {
                 genesis.apply_tx(tx).unwrap();
             }
@@ -125,7 +125,7 @@ mod tests {
         let db = autosmt::DBManager::load(autosmt::MemDB::default());
         let (pk, sk) = tmelcrypt::ed25519_keygen();
         let scr = melscript::Script::std_ed25519_pk(pk);
-        let genesis = State::test_genesis(db, MICRO_CONVERTER * 1000, scr.hash());
+        let genesis = State::test_genesis(db, MICRO_CONVERTER * 1000, scr.hash(), &[]);
         let first_block = genesis.finalize();
         let mut trng = rand::thread_rng();
         let mut txx = random_valid_txx(

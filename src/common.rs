@@ -1,10 +1,10 @@
 pub use anyhow::Result;
-use async_net::TcpListener;
 pub use futures::channel::mpsc;
 pub use futures::channel::oneshot;
 pub use futures::prelude::*;
 pub use parking_lot::RwLock;
 use rlp_derive::{RlpDecodable, RlpEncodable};
+use smol::net::TcpListener;
 pub use smol::{Task, Timer};
 use std::convert::TryInto;
 use std::net::ToSocketAddrs;

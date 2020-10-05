@@ -12,9 +12,9 @@ mod common;
 use common::*;
 use std::{convert::TryInto, io::Write};
 mod storage;
-use async_net::TcpListener;
 use colored::*;
 use parking_lot::RwLock;
+use smol::net::TcpListener;
 use std::time::Duration;
 use std::{collections::HashMap, sync::Arc};
 use std::{
