@@ -97,7 +97,7 @@ impl Client {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 /// An immutable, cloneable in-memory wallet that can be synced to disk. Does not contain any secrets!
 pub struct Wallet {
     unspent_coins: im::HashMap<CoinID, CoinDataHeight>,
@@ -202,19 +202,8 @@ impl Wallet {
         *self = oself;
         Ok(())
     }
-
-    /// Stores contents of wallets into database
-    pub fn store(&self, outputs: Vec<CoinData>) -> anyhow::Result<Transaction> {
-
-    }
 }
 
-impl serde::Serialize for Wallet {
-    fn serialize<S>(&self, serializer: S) -> Result<S> where
-        S: Serializer {
-        unimplemented!();
-    }
-}
 // Result<<S as Serializer>::Ok>
 #[cfg(test)]
 mod tests {
@@ -234,7 +223,7 @@ mod tests {
             index: 0,
         };
         let coin = blkstructs::CoinData {
-            conshash: scr.hash(),
+            conshash: script.hash(),
             value: blkstructs::MICRO_CONVERTER * 1000,
             cointype: blkstructs::COINTYPE_TMEL.to_owned(),
         };
@@ -251,7 +240,7 @@ mod tests {
             index: 0,
         };
         let spent_coin = blkstructs::CoinData {
-            conshash: scr.hash(),
+            conshash: script.hash(),
             value: blkstructs::MICRO_CONVERTER * 1000,
             cointype: blkstructs::COINTYPE_TMEL.to_owned(),
         };
@@ -263,7 +252,7 @@ mod tests {
             spent_coin_id => spent_coin_data_height
         };
 
-        let mut wallet = Wallet::new(my_script);
+        let mut wallet = Wallet::new(script);
         wallet.unspent_coins = unspent_coins;
         wallet.spent_coins = spent_coins;
 
@@ -272,26 +261,24 @@ mod tests {
 
     #[test]
     fn store_wallet() {
-        // Setup wallet
-        // let wallet =
+        // Setup wallet & serialize wallet
         let wallet = create_wallet();
-
-        // Store wallet
-        // wallet.store()
-        // Serialize it to a JSON string.
-        let wallet_json = serde_json::to_string(&wallet);
+        let encoded_wallet = bincode::serialize(&wallet).unwrap();
 
         // Print, write to a file, or send to an HTTP server.
-        // println!("{}", wallet_json);
+        println!("hi");
         let conn = Connection::open_in_memory()?;
 
         conn.execute(
             "CREATE TABLE wallet (
                   id              INTEGER PRIMARY KEY,
-                  unspent_coins          BLOB,
-                  spent_coins            BLOB
+                  encoded_data    BLOB
                   )",
             params![],
+        )?;
+        conn.execute(
+            "INSERT INTO wallet (encoded_data) VALUES (?1)",
+            params![encoded_wallet],
         )?;
         // let me = Person {
         //     id: 0,
