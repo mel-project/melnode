@@ -259,16 +259,24 @@ mod tests {
         return wallet;
     }
 
+    #[derive(Debug)]
+    struct WalletRecord {
+        id: i32,
+        encoded_data: Vec<u8>,
+    }
+
     #[test]
-    fn store_wallet() {
-        // Setup wallet & serialize wallet
+    fn store_wallet() -> Result<()> {
+        // Create wallet record
         let wallet = create_wallet();
         let encoded_wallet = bincode::serialize(&wallet).unwrap();
+        let wallet_record = WalletRecord {
+            id: 0,
+            encoded_data: encoded_wallet,
+        };
 
-        // Print, write to a file, or send to an HTTP server.
-        println!("hi");
+        // Insert wallet record
         let conn = Connection::open_in_memory()?;
-
         conn.execute(
             "CREATE TABLE wallet (
                   id              INTEGER PRIMARY KEY,
@@ -278,33 +286,26 @@ mod tests {
         )?;
         conn.execute(
             "INSERT INTO wallet (encoded_data) VALUES (?1)",
-            params![encoded_wallet],
+            params![wallet_record.encoded_data],
         )?;
-        // let me = Person {
-        //     id: 0,
-        //     name: "Steven".to_string(),
-        //     data: None,
-        // };
-        // conn.execute(
-        //     "INSERT INTO person (name, data) VALUES (?1, ?2)",
-        //     params![me.name, me.data],
-        // )?;
+
+        // let mut stmt = conn.prepare("SELECT id, encoded_data FROM wallet")?;
+        // let encoded_wallets = stmt.query_map(params![], |row| {
+        //     Ok(&row.get(1)?)
+        // })?;
         //
-        // let mut stmt = conn.prepare("SELECT id, name, data FROM person")?;
-        // let person_iter = stmt.query_map(params![], |row| {
-        //     Ok(Person {
+        // // Validate it is persisted correctly
+        // let mut stmt = conn.prepare("SELECT id, encoded_data, data FROM wallet")?;
+        // let wallet_iter = stmt.query_map(params![], |row| {
+        //     Ok(WalletRecord {
         //         id: row.get(0)?,
-        //         name: row.get(1)?,
-        //         data: row.get(2)?,
+        //         encoded_data: row.get(1)?,
         //     })
         // })?;
         //
         // for person in person_iter {
         //     println!("Found person {:?}", person.unwrap());
         // }
-        // Ok(())
-
-        // Validate it is persisted correctly
-        assert_eq!(2 + 2, 4);
+        Ok(())
     }
 }
