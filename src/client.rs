@@ -7,6 +7,7 @@ use tmelcrypt::HashVal;
 use serde::{Deserialize, Serialize, Serializer};
 use serde_json::Result;
 use serde::ser::SerializeMap;
+use rusqlite::{params, Connection, Result as SQLResult};
 
 /// A network client with some in-memory caching.
 pub struct Client {
@@ -204,15 +205,50 @@ impl Wallet {
     }
 }
 
+#[derive(Debug)]
+struct WalletRecord {
+    id: i32,
+    encoded_data: Vec<u8>,
+}
+
+
+impl WalletRecord {
+    /// Create a new wallet record from a wallet instance.
+    pub fn new(wallet: Wallet) -> Self {
+        let encoded_wallet = bincode::serialize(&wallet).unwrap();
+        WalletRecord {
+            id: 0,
+            encoded_data: encoded_wallet,
+        }
+    }
+
+    // Store a wallet record
+    pub fn store(&self, conn: &Connection) -> SQLResult<()> {
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS wallet (
+                  id              INTEGER PRIMARY KEY,
+                  encoded_data    BLOB
+                  )",
+            params![],
+        )?;
+        conn.execute(
+            "INSERT INTO wallet (encoded_data) VALUES (?1)",
+            params![self.encoded_data.clone()],
+        )?;
+        Ok(())
+    }
+}
+
+
 // Result<<S as Serializer>::Ok>
 #[cfg(test)]
 mod tests {
     use im::hashmap;
     use blkstructs;
-    use crate::client::Wallet;
+    use crate::client::{Wallet, WalletRecord};
     use rusqlite::{params, Connection, Result};
 
-    fn create_wallet() -> Wallet {
+    fn mock_create_wallet() -> Wallet {
         // Create script
         let (pk, sk) = tmelcrypt::ed25519_keygen();
         let script = blkstructs::melscript::Script::std_ed25519_pk(pk);
@@ -259,35 +295,15 @@ mod tests {
         return wallet;
     }
 
-    #[derive(Debug)]
-    struct WalletRecord {
-        id: i32,
-        encoded_data: Vec<u8>,
-    }
-
     #[test]
     fn store_wallet() -> Result<()> {
         // Create wallet record
-        let wallet = create_wallet();
-        let encoded_wallet = bincode::serialize(&wallet).unwrap();
-        let wallet_record = WalletRecord {
-            id: 1,
-            encoded_data: encoded_wallet,
-        };
+        let wallet = mock_create_wallet();
+        let wallet_record = WalletRecord::new(wallet);
 
         // Insert wallet record
         let conn = Connection::open_in_memory()?;
-        conn.execute(
-            "CREATE TABLE wallet (
-                  id              INTEGER PRIMARY KEY,
-                  encoded_data    BLOB
-                  )",
-            params![],
-        )?;
-        conn.execute(
-            "INSERT INTO wallet (encoded_data) VALUES (?1)",
-            params![wallet_record.encoded_data.clone()],
-        )?;
+        wallet_record.store(&conn);
 
         // Verify that only one record inserted and
         // it matches with the expected encoded data
