@@ -271,7 +271,7 @@ mod tests {
         let wallet = create_wallet();
         let encoded_wallet = bincode::serialize(&wallet).unwrap();
         let wallet_record = WalletRecord {
-            id: 0,
+            id: 1,
             encoded_data: encoded_wallet,
         };
 
@@ -286,26 +286,23 @@ mod tests {
         )?;
         conn.execute(
             "INSERT INTO wallet (encoded_data) VALUES (?1)",
-            params![wallet_record.encoded_data],
+            params![wallet_record.encoded_data.clone()],
         )?;
 
-        // let mut stmt = conn.prepare("SELECT id, encoded_data FROM wallet")?;
-        // let encoded_wallets = stmt.query_map(params![], |row| {
-        //     Ok(&row.get(1)?)
-        // })?;
-        //
-        // // Validate it is persisted correctly
-        // let mut stmt = conn.prepare("SELECT id, encoded_data, data FROM wallet")?;
-        // let wallet_iter = stmt.query_map(params![], |row| {
-        //     Ok(WalletRecord {
-        //         id: row.get(0)?,
-        //         encoded_data: row.get(1)?,
-        //     })
-        // })?;
-        //
-        // for person in person_iter {
-        //     println!("Found person {:?}", person.unwrap());
-        // }
+        // Verify that only one record inserted and
+        // it matches with the expected encoded data
+        let mut stmt = conn.prepare("SELECT id, encoded_data FROM wallet")?;
+        let wallet_iter = stmt.query_map(params![], |row| {
+            Ok(WalletRecord {
+                id: row.get(0)?,
+                encoded_data: row.get(1)?,
+            })
+        })?;
+
+        for (idx, wallet) in wallet_iter.enumerate() {
+            assert_eq!(wallet_record.encoded_data, wallet.unwrap().encoded_data);
+            assert_eq!(idx, 0);
+        }
         Ok(())
     }
 }
