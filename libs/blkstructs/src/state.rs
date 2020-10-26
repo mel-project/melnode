@@ -6,7 +6,7 @@ use defmac::defmac;
 use im::HashMap;
 use parking_lot::RwLock;
 use rayon::prelude::*;
-use rlp_derive::*;
+use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::fmt::Debug;
 use std::io::Read;
@@ -328,9 +328,9 @@ impl State {
     ) -> Result<(), TxApplicationError> {
         let lself = lself.read();
         // construct puzzle seed
-        let chi = tmelcrypt::hash_single(&rlp::encode(
-            tx.inputs.get(0).ok_or(TxApplicationError::MalformedTx)?,
-        ));
+        let chi = tmelcrypt::hash_single(
+            &bincode::serialize(tx.inputs.get(0).ok_or(TxApplicationError::MalformedTx)?).unwrap(),
+        );
         // compute difficulty
         let new_dosc = *tx
             .total_outputs()
@@ -410,7 +410,7 @@ impl State {
     ) -> Result<(), TxApplicationError> {
         // first we check that the data is correct
         let stake_doc: StakeDoc =
-            rlp::decode(&tx.data).map_err(|_| TxApplicationError::MalformedTx)?;
+            bincode::deserialize(&tx.data).map_err(|_| TxApplicationError::MalformedTx)?;
         let curr_epoch = lself.read().height / STAKE_EPOCH;
         // then we check that the first coin is valid
         let first_coin = tx.outputs.get(0).ok_or(TxApplicationError::MalformedTx)?;
@@ -490,7 +490,7 @@ impl FinalizedState {
     }
 }
 
-#[derive(RlpEncodable, RlpDecodable, Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
 /// A block header.
 pub struct Header {
     pub height: u64,
@@ -508,11 +508,11 @@ pub struct Header {
 
 impl Header {
     pub fn hash(&self) -> tmelcrypt::HashVal {
-        tmelcrypt::hash_single(&rlp::encode(self))
+        tmelcrypt::hash_single(&bincode::serialize(self).unwrap())
     }
 }
 
-#[derive(RlpEncodable, RlpDecodable, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 /// A (serialized) block.
 pub struct Block {
     pub header: Header,

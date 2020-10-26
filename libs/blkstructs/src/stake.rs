@@ -1,11 +1,11 @@
 use crate::SmtMapping;
-use rlp_derive::*;
+use serde::{Deserialize, Serialize};
 
 /// A stake epoch is 500,000 blocks.
 pub const STAKE_EPOCH: u64 = 500_000;
 
 /// StakeDoc is a stake document.
-#[derive(RlpDecodable, RlpEncodable, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct StakeDoc {
     /// Public key.
     pub pubkey: tmelcrypt::Ed25519PK,
@@ -36,7 +36,7 @@ impl SmtMapping<tmelcrypt::HashVal, StakeDoc> {
     /// Filter out all the elements that no longer matter.
     pub fn remove_stale(&mut self, epoch: u64) {
         let stale_key_hashes = self.mapping.iter().filter_map(|(kh, v)| {
-            let v: StakeDoc = rlp::decode(&v).unwrap();
+            let v: StakeDoc = bincode::deserialize(&v).unwrap();
             if epoch > v.e_post_end {
                 Some(kh)
             } else {

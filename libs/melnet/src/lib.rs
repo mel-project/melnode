@@ -1,10 +1,10 @@
-use rlp::{Decodable, Encodable};
 mod connpool;
 pub use connpool::gcp;
 mod routingtable;
 use derivative::*;
 use log::{debug, trace};
 use routingtable::*;
+use serde::{de::DeserializeOwned, Serialize};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 mod reqs;
@@ -109,12 +109,13 @@ impl NetState {
 
     async fn server_handle_one(&self, conn: &mut TcpStream) -> anyhow::Result<()> {
         // read command
-        let cmd: RawRequest = rlp::decode(&read_len_bts(conn).await?)?;
+        let cmd: RawRequest = bincode::deserialize(&read_len_bts(conn).await?)?;
         if cmd.proto_ver != 1 {
-            let err = rlp::encode(&RawResponse {
+            let err = bincode::serialize(&RawResponse {
                 kind: "Err".to_owned(),
-                body: rlp::encode(&"bad protocol version"),
-            });
+                body: bincode::serialize(&"bad protocol version").unwrap(),
+            })
+            .unwrap();
             write_len_bts(conn, &err).await?;
             return Err(anyhow::anyhow!("bad"));
         }
@@ -128,10 +129,11 @@ impl NetState {
             None => {
                 write_len_bts(
                     conn,
-                    &rlp::encode(&RawResponse {
+                    &bincode::serialize(&RawResponse {
                         kind: "NoVerb".to_owned(),
                         body: b"".to_vec(),
-                    }),
+                    })
+                    .unwrap(),
                 )
                 .await?;
                 Ok(())
@@ -144,10 +146,11 @@ impl NetState {
                     Ok(response) => {
                         write_len_bts(
                             conn,
-                            &rlp::encode(&RawResponse {
+                            &bincode::serialize(&RawResponse {
                                 kind: "Ok".to_owned(),
                                 body: response,
-                            }),
+                            })
+                            .unwrap(),
                         )
                         .await?;
                         Ok(())
@@ -155,10 +158,11 @@ impl NetState {
                     Err(MelnetError::Custom(err)) => {
                         write_len_bts(
                             conn,
-                            &rlp::encode(&RawResponse {
+                            &bincode::serialize(&RawResponse {
                                 kind: "Err".to_owned(),
                                 body: err.as_bytes().to_owned(),
-                            }),
+                            })
+                            .unwrap(),
                         )
                         .await?;
                         Ok(())
@@ -211,7 +215,7 @@ impl NetState {
     }
 
     /// Registers a verb that takes in an RLP object and returns an RLP object.
-    pub fn register_verb<TInput: Decodable + Send, TOutput: Encodable + Send>(
+    pub fn register_verb<TInput: DeserializeOwned + Send, TOutput: Serialize + Send>(
         &self,
         verb: &str,
         cback: impl Fn(&NetState, TInput) -> Result<TOutput> + 'static + Send + Sync,
@@ -249,7 +253,7 @@ fn string_to_addr(s: &str) -> Option<SocketAddr> {
     s.to_socket_addrs().ok()?.next()
 }
 
-fn erase_cback_types<TInput: Decodable + Send, TOutput: Encodable + Send>(
+fn erase_cback_types<TInput: DeserializeOwned + Send, TOutput: Serialize + Send>(
     cback: impl Fn(&NetState, TInput) -> Result<TOutput> + 'static + Send + Sync,
 ) -> VerbHandler {
     let cback = Arc::new(cback);
@@ -257,10 +261,10 @@ fn erase_cback_types<TInput: Decodable + Send, TOutput: Encodable + Send>(
         let input = input.to_vec();
         let state = state.clone();
         let cback = cback.clone();
-        let input: TInput =
-            rlp::decode(&input).map_err(|e| MelnetError::Custom(format!("rlp error: {:?}", e)))?;
+        let input: TInput = bincode::deserialize(&input)
+            .map_err(|e| MelnetError::Custom(format!("rlp error: {:?}", e)))?;
         let output: TOutput = cback(&state, input)?;
-        Ok(rlp::encode(&output))
+        Ok(bincode::serialize(&output).unwrap())
     })
 }
 

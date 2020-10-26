@@ -11,7 +11,7 @@ use lazy_static::lazy_static;
 use log::trace;
 use min_max_heap::MinMaxHeap;
 use parking_lot::RwLock;
-use rlp::{Decodable, Encodable};
+use serde::{de::DeserializeOwned, Serialize};
 use smol::Timer;
 use std::collections::HashMap;
 use std::net::{SocketAddr, ToSocketAddrs};
@@ -74,7 +74,7 @@ impl ConnPool {
             .unwrap();
     }
     /// Does a melnet request to any given endpoint.
-    pub async fn request<TInput: Encodable, TOutput: Decodable>(
+    pub async fn request<TInput: Serialize, TOutput: DeserializeOwned>(
         &self,
         addr: SocketAddr,
         netname: &str,
@@ -84,19 +84,21 @@ impl ConnPool {
         // grab a connection
         let mut conn = self.connect(addr).await.map_err(MelnetError::Network)?;
         // send a request
-        let rr = rlp::encode(&RawRequest {
+        let rr = bincode::serialize(&RawRequest {
             proto_ver: PROTO_VER,
             netname: netname.to_owned(),
             verb: verb.to_owned(),
-            payload: rlp::encode(&req),
-        });
+            payload: bincode::serialize(&req).unwrap(),
+        })
+        .unwrap();
         write_len_bts(&mut conn, &rr).await?;
         // read the response length
-        let response: RawResponse = rlp::decode(&read_len_bts(&mut conn).await?).map_err(|e| {
-            MelnetError::Network(std::io::Error::new(std::io::ErrorKind::InvalidData, e))
-        })?;
+        let response: RawResponse =
+            bincode::deserialize(&read_len_bts(&mut conn).await?).map_err(|e| {
+                MelnetError::Network(std::io::Error::new(std::io::ErrorKind::InvalidData, e))
+            })?;
         let response = match response.kind.as_ref() {
-            "Ok" => rlp::decode::<TOutput>(&response.body)
+            "Ok" => bincode::deserialize::<TOutput>(&response.body)
                 .map_err(|_| MelnetError::Custom("rlp error".to_owned()))?,
             "NoVerb" => return Err(MelnetError::VerbNotFound),
             _ => {

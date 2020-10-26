@@ -1,4 +1,8 @@
 #![feature(try_blocks)]
+
+//! [Themelio](https://themelio.org) is a work-in-progress public blockchain focused on security, performance, and long-term stability 
+
+
 mod auditor;
 pub use auditor::*;
 use client::{Client, Wallet};
@@ -84,9 +88,9 @@ async fn run_node(opt: NodeConfig) {
     let auditor = Auditor::new(listener, storage.clone(), &opt.bootstrap)
         .await
         .unwrap();
-    if opt.test_spam {
+    if opt.test_spam { 
         smol::spawn(test_spam_txx(auditor.clone())).detach();
-    }
+    } 
     if let Some(sh_no) = opt.test_stakeholder {
         smol::spawn(test_stakeholder(sh_no, auditor.clone(), storage.clone())).detach();
     }
@@ -161,7 +165,7 @@ async fn run_anet_client(cfg: AnetClientConfig) {
                                     eprintln!(">> Confirmed at height {}!", lala.height);
                                     eprintln!(
                                         ">> CID = {}",
-                                        hex::encode(rlp::encode(&coin)).bold()
+                                        hex::encode(bincode::serialize(&coin).unwrap()).bold()
                                     );
                                     break;
                                 }
@@ -172,7 +176,7 @@ async fn run_anet_client(cfg: AnetClientConfig) {
                     ["coin-add", coin_id] => {
                         eprintln!(">> Syncing state...");
                         let header = client.last_header().await?.0;
-                        let coin_id: CoinID = rlp::decode(&hex::decode(coin_id)?)?;
+                        let coin_id: CoinID = bincode::deserialize(&hex::decode(coin_id)?)?;
                         let coin_data_height = client.get_coin(header, coin_id).await?;
                         match coin_data_height {
                             None => {
@@ -222,7 +226,7 @@ async fn run_anet_client(cfg: AnetClientConfig) {
                                 eprintln!(">> Confirmed at height {}!", out.height);
                                 eprintln!(
                                     ">> CID = {}",
-                                    hex::encode(rlp::encode(&their_coin)).bold()
+                                    hex::encode(bincode::serialize(&their_coin).unwrap()).bold()
                                 );
                                 break;
                             }
@@ -232,7 +236,7 @@ async fn run_anet_client(cfg: AnetClientConfig) {
                         writeln!(tw, ">> **** COINS ****")?;
                         writeln!(tw, ">> [CoinID]\t[Height]\t[Amount]\t[CoinType]")?;
                         for (coin_id, coin_data) in wallet.unspent_coins() {
-                            let coin_id = hex::encode(rlp::encode(coin_id));
+                            let coin_id = hex::encode(bincode::serialize(coin_id).unwrap());
                             writeln!(
                                 tw,
                                 ">> {}\t{}\t{}\t{}",

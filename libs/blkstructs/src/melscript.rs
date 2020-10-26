@@ -1,10 +1,11 @@
 use crate::transaction as txn;
 use arbitrary::Arbitrary;
-use rlp::{Decodable, Encodable};
+use primitive_types::U256;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryInto;
 
-#[derive(Clone, Eq, PartialEq, Debug, Arbitrary)]
+#[derive(Clone, Eq, PartialEq, Debug, Arbitrary, Serialize, Deserialize)]
 pub struct Script(pub Vec<u8>);
 
 impl Script {
@@ -29,8 +30,8 @@ impl Script {
     }
 
     fn check_opt(&self, tx: &txn::Transaction) -> Option<()> {
-        let txb = rlp::encode(tx);
-        let tx_val: Value = rlp::decode(&txb).unwrap();
+        let txb = bincode::serialize(tx).unwrap();
+        let tx_val: Value = bincode::deserialize(&txb).unwrap();
         let ops = self.to_ops()?;
         let mut hm = HashMap::new();
         hm.insert(0, tx_val);
@@ -136,7 +137,7 @@ impl Script {
                 for r in buf.iter_mut() {
                     *r = bcode.pop()?
                 }
-                output.push(OpCode::PUSHI(bigint::U256::from_big_endian(&buf)))
+                output.push(OpCode::PUSHI(U256::from_big_endian(&buf)))
             }
             _ => return None,
         }
@@ -237,19 +238,6 @@ impl Script {
     }
 }
 
-impl Encodable for Script {
-    fn rlp_append(&self, s: &mut rlp::RlpStream) {
-        (self.0).rlp_append(s)
-    }
-}
-
-impl Decodable for Script {
-    fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-        let raw = Vec::decode(rlp)?;
-        Ok(Script(raw))
-    }
-}
-
 struct Executor {
     stack: Vec<Value>,
     heap: HashMap<u16, Value>,
@@ -296,17 +284,25 @@ impl Executor {
                 self.do_binop(|x, y| Some(Value::Int(x.as_int()?.overflowing_mul(y.as_int()?).0)))?
             }
             OpCode::DIV => self.do_binop(|x, y| {
-                if y.as_int()? == bigint::U256::zero() {
+                if y.as_int()? == U256::zero() {
                     None
                 } else {
-                    Some(Value::Int(x.as_int()?.overflowing_div(y.as_int()?).0))
+                    Some(Value::Int(
+                        x.as_int()?
+                            .checked_add(y.as_int()?)
+                            .unwrap_or_else(|| 0.into()),
+                    ))
                 }
             })?,
             OpCode::REM => self.do_binop(|x, y| {
-                if y.as_int()? == bigint::U256::zero() {
+                if y.as_int()? == U256::zero() {
                     None
                 } else {
-                    Some(Value::Int(x.as_int()?.overflowing_rem(y.as_int()?).0))
+                    Some(Value::Int(
+                        x.as_int()?
+                            .checked_rem(y.as_int()?)
+                            .unwrap_or_else(|| 0.into()),
+                    ))
                 }
             })?,
             // logic
@@ -318,9 +314,9 @@ impl Executor {
                 let x = x.as_int()?;
                 let y = y.as_int()?;
                 if x == y {
-                    Some(Value::Int(bigint::U256::one()))
+                    Some(Value::Int(U256::one()))
                 } else {
-                    Some(Value::Int(bigint::U256::zero()))
+                    Some(Value::Int(U256::zero()))
                 }
             })?,
             // cryptography
@@ -359,7 +355,7 @@ impl Executor {
             OpCode::VREF => self.do_binop(|vec, idx| {
                 let idx = idx.as_u16()? as usize;
                 match vec {
-                    Value::Bytes(bts) => Some(Value::Int(bigint::U256::from(*bts.get(idx)?))),
+                    Value::Bytes(bts) => Some(Value::Int(U256::from(*bts.get(idx)?))),
                     Value::Vector(elems) => Some(elems.get(idx)?.clone()),
                     _ => None,
                 }
@@ -385,12 +381,12 @@ impl Executor {
                 }
             })?,
             OpCode::VLENGTH => self.do_monop(|vec| match vec {
-                Value::Vector(vec) => Some(Value::Int(bigint::U256::from(vec.len()))),
-                Value::Bytes(vec) => Some(Value::Int(bigint::U256::from(vec.len()))),
+                Value::Vector(vec) => Some(Value::Int(U256::from(vec.len()))),
+                Value::Bytes(vec) => Some(Value::Int(U256::from(vec.len()))),
                 _ => None,
             })?,
-            OpCode::VEMPTY => self.stack.push(Value::Vector(im_rc::Vector::new())),
-            OpCode::BEMPTY => self.stack.push(Value::Bytes(im_rc::Vector::new())),
+            OpCode::VEMPTY => self.stack.push(Value::Vector(im::Vector::new())),
+            OpCode::BEMPTY => self.stack.push(Value::Bytes(im::Vector::new())),
             OpCode::VPUSH => self.do_binop(|vec, val| match vec {
                 Value::Vector(mut vec) => {
                     vec.push_back(val);
@@ -398,7 +394,7 @@ impl Executor {
                 }
                 Value::Bytes(mut vec) => {
                     let bts = val.as_int()?;
-                    if bts > bigint::U256::from(255) {
+                    if bts > U256::from(255) {
                         return None;
                     }
                     let bts = bts.low_u32() as u8;
@@ -411,14 +407,14 @@ impl Executor {
             OpCode::BEZ(jgap) => {
                 let top = self.stack.pop()?;
                 self.stack.push(top.clone());
-                if top == Value::Int(bigint::U256::zero()) {
+                if top == Value::Int(U256::zero()) {
                     return Some(pc + 1 + *jgap as u32);
                 }
             }
             OpCode::BNZ(jgap) => {
                 let top = self.stack.pop()?;
                 self.stack.push(top.clone());
-                if top != Value::Int(bigint::U256::zero()) {
+                if top != Value::Int(U256::zero()) {
                     return Some(pc + 1 + *jgap as u32);
                 }
             }
@@ -449,7 +445,7 @@ impl Executor {
         self.run_bare(ops);
         match self.stack.pop()? {
             Value::Int(b) => {
-                if b == bigint::U256::zero() {
+                if b == U256::zero() {
                     None
                 } else {
                     Some(())
@@ -501,7 +497,7 @@ pub enum OpCode {
     LOOP(u16, Vec<OpCode>),
     // literals
     PUSHB(Vec<u8>),
-    PUSHI(bigint::U256),
+    PUSHI(U256),
 }
 
 impl OpCode {
@@ -549,15 +545,15 @@ impl OpCode {
     }
 }
 
-#[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
+#[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub enum Value {
-    Int(bigint::U256),
-    Bytes(im_rc::Vector<u8>),
-    Vector(im_rc::Vector<Value>),
+    Int(U256),
+    Bytes(im::Vector<u8>),
+    Vector(im::Vector<Value>),
 }
 
 impl Value {
-    fn as_int(&self) -> Option<bigint::U256> {
+    fn as_int(&self) -> Option<U256> {
         match self {
             Value::Int(bi) => Some(*bi),
             _ => None,
@@ -565,14 +561,14 @@ impl Value {
     }
     fn as_u16(&self) -> Option<u16> {
         let num = self.as_int()?;
-        if num > bigint::U256::from(65535) {
+        if num > U256::from(65535) {
             None
         } else {
             Some(num.low_u32() as u16)
         }
     }
     fn from_bytes(bts: &[u8]) -> Self {
-        let mut new = im_rc::Vector::new();
+        let mut new = im::Vector::new();
         for b in bts {
             new.push_back(*b);
         }
@@ -580,9 +576,9 @@ impl Value {
     }
     fn from_bool(b: bool) -> Self {
         if b {
-            Value::Int(bigint::U256::one())
+            Value::Int(U256::one())
         } else {
-            Value::Int(bigint::U256::zero())
+            Value::Int(U256::zero())
         }
     }
 
@@ -595,23 +591,6 @@ impl Value {
             }
             Value::Bytes(bts) => Some(bts.iter().copied().collect()),
             Value::Vector(_) => None,
-        }
-    }
-}
-
-impl Decodable for Value {
-    fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-        if rlp.is_list() {
-            let vec: Vec<Value> = rlp.as_list()?;
-            Ok(Value::Vector(vec.try_into().unwrap()))
-        } else if rlp.is_data() {
-            let vec: Vec<u8> = rlp.as_val()?;
-            Ok(Value::Bytes(vec.try_into().unwrap()))
-        } else if rlp.is_int() {
-            let int: u64 = rlp.as_val()?;
-            Ok(Value::Int(int.try_into().unwrap()))
-        } else {
-            Err(rlp::DecoderError::Custom("not int, list, or data"))
         }
     }
 }

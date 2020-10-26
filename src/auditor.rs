@@ -8,7 +8,7 @@ use crate::client_protocol::*;
 use smol::net::TcpListener;
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 use tmelcrypt::HashVal;
 
 /// A structure representing a running auditor (full node).

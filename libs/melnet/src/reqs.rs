@@ -1,6 +1,6 @@
-use rlp_derive::{RlpDecodable, RlpEncodable};
+use serde::{Deserialize, Serialize};
 
-#[derive(RlpEncodable, RlpDecodable, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct RawRequest {
     pub proto_ver: u8,
     pub netname: String,
@@ -8,13 +8,13 @@ pub struct RawRequest {
     pub payload: Vec<u8>,
 }
 
-#[derive(RlpEncodable, RlpDecodable, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct RawResponse {
     pub kind: String,
     pub body: Vec<u8>,
 }
 
-#[derive(RlpEncodable, RlpDecodable, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct RoutingRequest {
     pub proto: String,
     pub addr: String,

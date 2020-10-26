@@ -2,12 +2,21 @@ use crate::constants::*;
 use crate::melscript::*;
 use arbitrary::Arbitrary;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use rlp::{Decodable, Encodable};
-use rlp_derive::*;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::convert::TryFrom;
 
-#[derive(Clone, Copy, IntoPrimitive, TryFromPrimitive, Eq, PartialEq, Arbitrary, Debug)]
+#[derive(
+    Clone,
+    Copy,
+    IntoPrimitive,
+    TryFromPrimitive,
+    Eq,
+    PartialEq,
+    Arbitrary,
+    Debug,
+    Serialize,
+    Deserialize,
+)]
 #[repr(u8)]
 pub enum TxKind {
     Normal = 0x00,
@@ -20,25 +29,8 @@ pub enum TxKind {
     Faucet = 0xff,
 }
 
-impl Encodable for TxKind {
-    fn rlp_append(&self, s: &mut rlp::RlpStream) {
-        (*self as u8).rlp_append(s)
-    }
-}
-
-impl Decodable for TxKind {
-    fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-        let raw = u8::decode(rlp)?;
-        if let Ok(x) = TxKind::try_from(raw) {
-            Ok(x)
-        } else {
-            Err(rlp::DecoderError::Custom("bad txkind"))
-        }
-    }
-}
-
 /// Transaction represents an individual, RLP-serializable Themelio transaction.
-#[derive(RlpEncodable, RlpDecodable, Clone, Arbitrary, Debug)]
+#[derive(Clone, Arbitrary, Debug, Serialize, Deserialize)]
 pub struct Transaction {
     pub kind: TxKind,
     pub inputs: Vec<CoinID>,
@@ -83,7 +75,7 @@ impl Transaction {
     pub fn hash_nosigs(&self) -> tmelcrypt::HashVal {
         let mut s = self.clone();
         s.sigs = vec![];
-        let self_bytes = rlp::encode(&s);
+        let self_bytes = bincode::serialize(&s).unwrap();
         tmelcrypt::hash_single(&self_bytes)
     }
     /// sign_ed25519 appends an ed25519 signature to the transaction.
@@ -113,23 +105,21 @@ impl Transaction {
 }
 
 #[derive(
-    RlpEncodable, RlpDecodable, Clone, Debug, Copy, Arbitrary, Ord, PartialOrd, Eq, PartialEq, Hash,
+    Serialize, Deserialize, Clone, Debug, Copy, Arbitrary, Ord, PartialOrd, Eq, PartialEq, Hash,
 )]
 pub struct CoinID {
     pub txhash: tmelcrypt::HashVal,
     pub index: u8,
 }
 
-#[derive(
-    RlpEncodable, RlpDecodable, Clone, Arbitrary, Debug, Ord, PartialOrd, Eq, PartialEq, Hash,
-)]
+#[derive(Serialize, Deserialize, Clone, Arbitrary, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct CoinData {
     pub conshash: tmelcrypt::HashVal,
     pub value: u64,
     pub cointype: Vec<u8>,
 }
 
-#[derive(RlpEncodable, RlpDecodable, Clone, Arbitrary, Debug)]
+#[derive(Serialize, Deserialize, Clone, Arbitrary, Debug)]
 pub struct CoinDataHeight {
     pub coin_data: CoinData,
     pub height: u64,

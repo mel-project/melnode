@@ -3,7 +3,7 @@ pub use futures::channel::mpsc;
 pub use futures::channel::oneshot;
 pub use futures::prelude::*;
 pub use parking_lot::RwLock;
-use rlp_derive::{RlpDecodable, RlpEncodable};
+use serde::{Deserialize, Serialize};
 use smol::net::TcpListener;
 pub use smol::{Task, Timer};
 use std::convert::TryInto;
@@ -92,7 +92,7 @@ pub async fn new_melnet(listener: &TcpListener, name: &str) -> Result<melnet::Ne
 use blkstructs::Transaction;
 use tmelcrypt::HashVal;
 /// Request for a new block.
-#[derive(RlpDecodable, RlpEncodable, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NewBlkRequest {
     pub consensus: symphonia::QuorumCert,
     pub header: blkstructs::Header,
@@ -101,7 +101,7 @@ pub struct NewBlkRequest {
 }
 
 /// Response for a new block request.
-#[derive(RlpEncodable, RlpDecodable, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NewBlkResponse {
     pub missing_txhashes: Vec<HashVal>,
 }

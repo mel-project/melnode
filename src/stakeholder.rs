@@ -84,7 +84,7 @@ async fn stakeholder_loop(
                 },
                 gen_proposal: {
                     let blk = proposal.to_block();
-                    Arc::new(move || rlp::encode(&blk))
+                    Arc::new(move || bincode::serialize(&blk).unwrap())
                 },
                 my_sk: symphonia_sk,
                 my_pk: symphonia_sk.to_public(),
@@ -114,7 +114,7 @@ async fn stakeholder_loop(
                 }
             };
             // merge in the decision
-            let decided_val: blkstructs::Block = rlp::decode(&decision.node.prop)
+            let decided_val: blkstructs::Block = bincode::deserialize(&decision.node.prop)
                 .expect("decision reached on something that isn't a valid block?!");
             storage
                 .write()

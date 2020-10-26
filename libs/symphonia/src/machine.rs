@@ -386,11 +386,16 @@ impl Machine {
             justify,
             view_number: self.globals.curr_view,
             sender: self.config.my_pk,
-            partial_sig: Some(sk.sign(&rlp::encode(&PVN {
-                phase,
-                view_number: self.globals.curr_view,
-                node,
-            }))),
+            partial_sig: Some(
+                sk.sign(
+                    &bincode::serialize(&PVN {
+                        phase,
+                        view_number: self.globals.curr_view,
+                        node,
+                    })
+                    .unwrap(),
+                ),
+            ),
         }
     }
 
