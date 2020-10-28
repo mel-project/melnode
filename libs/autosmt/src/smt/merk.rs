@@ -57,6 +57,7 @@ pub fn data_hashes(key: tmelcrypt::HashVal, data: &[u8]) -> Vec<tmelcrypt::HashV
 pub struct FullProof(pub Vec<tmelcrypt::HashVal>);
 
 impl FullProof {
+    /// Compresses the proof to a serializable form.
     pub fn compress(&self) -> CompressedProof {
         let FullProof(proof_nodes) = self;
         assert_eq!(proof_nodes.len(), 256);
@@ -74,6 +75,31 @@ impl FullProof {
             }
         }
         CompressedProof(bitmap_slice)
+    }
+
+    /// Verifies that this merkle branch is a valid proof of inclusion or non-inclusion. `Some(true)` means that it's a proof of inclusion, `Some(false)` means that it's a proof of exclusion, and `None` means it's not a valid proof.
+    pub fn verify(&self, root: tmelcrypt::HashVal, key: tmelcrypt::HashVal, val: &[u8]) -> Option<bool>  {
+        assert_eq!(self.0.len(), 256);
+        if self.verify_pure(root, key, val) {
+            Some(true)
+        } else if self.verify_pure(root, key, &[]) {
+            Some(false)
+        } else {
+            None
+        }
+    }
+
+    fn verify_pure(&self, root: tmelcrypt::HashVal, key: tmelcrypt::HashVal, val: &[u8]) -> bool {
+        let path = key_to_path(key);
+        let mut my_root = hash::datablock(val);
+        for (&level, &direction) in self.0.iter().zip(path.iter()).rev() {
+            if direction {
+                my_root = hash::node(level, my_root)
+            } else {
+                my_root = hash::node(my_root, level)
+            }
+        }
+        root == my_root
     }
 }
 
