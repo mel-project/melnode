@@ -2,7 +2,7 @@
 
 ## Summary and rationale
 
-Melnet serves as Themelio's peer-to-peer network layer, based on a randomized topology and gossip. Peers are divided into servers, which have a publicly reachable address, and clients, which do not. It's based on a simple RLP request-response protocol, where the only way to "push" a message is to send a request to a server. There is no multiplexing --- the whole thing works like HTTP/1.1. TCP connections are pretty cheap these days.
+Melnet serves as Themelio's peer-to-peer network layer, based on a randomized topology and gossip. Peers are divided into servers, which have a publicly reachable address, and clients, which do not. It's based on a simple bincode request-response protocol, where the only way to "push" a message is to send a request to a server. There is no multiplexing --- the whole thing works like HTTP/1.1. TCP connections are pretty cheap these days.
 
 This also means that clients never receive notifications, and must poll servers.
 
@@ -14,18 +14,29 @@ This crate doesn't implement any custom verbs; it just provides a basic tool to 
 
 ## Basic request format
 
-The request is always an RLP three-list:
+The request is always bincode-encoded and preceded by a 32-bit length:
 
-```
-[32-bit length]
-[protocolVersion verb payload]
+```rust
+struct Request {
+    verb: String,
+    arguments: BTreeMap<String, Bytes>
+}
 ```
 
-where `protocolVersion = 1`
+The length of each message must not exceed 1 MiB.
 
 ## Response
 
-Response is either `["Ok" response]` or `["Err" error]` or `["NoVerb" ""]`, prefixed with 32-bit length.
+Response is also bincode-encoded and preceded by a 32-bit length:
+
+```rust
+enum Response {
+    Ok(Bytes),
+    Err(String)
+}
+```
+
+The response also may not exceed 1 MiB.
 
 ## Built-in verbs
 

@@ -130,3 +130,4 @@ impl CompressedProof {
         Some(FullProof(out))
     }
 }
+

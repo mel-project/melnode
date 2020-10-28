@@ -26,11 +26,11 @@ mod tests {
                     tmelcrypt::hash_single(format!("key-{}", i).as_bytes()),
                     &val,
                 );
-                dbg!(tree.get(key));
-                assert_eq!(tree.get(key).0, val);
+                let (value, proof) = tree.get(key);
+                assert_eq!(value, val);
+                assert!(proof.verify(tree.root_hash(), key, &value).unwrap());
+                assert!(proof.verify(tree.root_hash(), key, &[]).is_none());
             }
-            // successfully built tree
-            dbg!(tree.root_hash());
         }
     }
 
