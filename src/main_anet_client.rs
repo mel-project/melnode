@@ -136,7 +136,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                             }
                         }
                     }
-                    ["balances"] => {
+                    ["balances", ] => {
                         writeln!(tw, ">> **** COINS ****")?;
                         writeln!(tw, ">> [CoinID]\t[Height]\t[Amount]\t[CoinType]")?;
                         for (coin_id, coin_data) in wallet.unspent_coins() {
@@ -154,7 +154,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                             )?;
                         }
                     }
-                    ["exit"] => {
+                    ["exit", ] => {
                         prompt_stack.pop();
                         current_wallet = None;
                     }
