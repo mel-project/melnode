@@ -43,7 +43,7 @@ async fn stakeholder_loop(
 ) {
     let msg_loop = async {
         loop {
-            let msg = mbox.recv().await;
+            let _msg = mbox.recv().await;
             unimplemented!()
         }
     };
@@ -73,11 +73,11 @@ async fn stakeholder_loop(
                 // view_leader right now is hardcoded
                 view_leader: {
                     //let proposal = proposal.clone();
-                    Arc::new(move |view: u64| insecure_testnet_keygen(0 as usize).0)
+                    Arc::new(move |_view: u64| insecure_testnet_keygen(0 as usize).0)
                 },
                 is_valid_prop: {
-                    let proposal = proposal.clone();
-                    Arc::new(|prop_msg: &[u8]| {
+                    let _proposal = proposal.clone();
+                    Arc::new(|_prop_msg: &[u8]| {
                         log::debug!("is_valid_prop forcing true");
                         true
                     })
@@ -130,7 +130,7 @@ async fn stakeholder_loop(
 }
 
 async fn symphonia_multicast(
-    dest: Option<Ed25519PK>,
+    _dest: Option<Ed25519PK>,
     msg: symphonia::SignedMessage,
     routes: Vec<SocketAddr>,
 ) {

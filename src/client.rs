@@ -5,7 +5,6 @@ use std::net::SocketAddr;
 use std::{collections, time::Instant};
 use tmelcrypt::HashVal;
 use serde::{Deserialize, Serialize};
-use serde::ser::SerializeMap;
 use rusqlite::{params, Connection, Result as SQLResult};
 
 /// A network client with some in-memory caching.
@@ -47,7 +46,7 @@ impl Client {
     /// Get and verify a specific coin.
     pub async fn get_coin(
         &mut self,
-        header: Header,
+        _header: Header,
         coin: CoinID,
     ) -> anyhow::Result<Option<CoinDataHeight>> {
         let (hdr, _) = self.last_header().await?;
@@ -90,7 +89,7 @@ impl Client {
 
     /// Actually broadcast a transaction!
     pub async fn broadcast_tx(&mut self, tx: Transaction) -> anyhow::Result<bool> {
-        let (hdr, _) = self.last_header().await?;
+        let (_hdr, _) = self.last_header().await?;
         Ok(melnet::gcp()
             .request(self.remote, TEST_ANET, "newtx", tx)
             .await?)
