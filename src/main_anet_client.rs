@@ -23,8 +23,8 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
     let mut prompt_stack: Vec<String> = vec![format!("v{}", VERSION).green().to_string()];
 
     // wallets
-    let connection = Connection::open_in_memory()?;
-    let mut wallets: HashMap<String, Wallet> = WalletRecord::load_all(&connection);
+    let connection = Connection::open_in_memory();
+    let mut wallets: HashMap<String, Wallet> = WalletRecord::load_all(&connection.unwrap());
     let mut current_wallet: Option<(String, tmelcrypt::Ed25519SK)> = None;
     let mut client = Client::new(cfg.bootstrap);
 
@@ -180,7 +180,8 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                         let wallet_record = WalletRecord::new(wallet, wallet_name);
 
                         // Insert wallet record
-                        wallet_record.store(&connection);
+                        let conn = Connection::open_in_memory();
+                        wallet_record.store(&conn.unwrap());
                     }
                     &["wallet-unlock", wallet_name, wallet_secret] => {
                         if let Some(wallet) = wallets.get(&wallet_name.to_string()) {

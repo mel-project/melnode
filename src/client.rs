@@ -242,18 +242,19 @@ impl WalletRecord {
     }
 
     pub fn load_all(conn: &Connection) -> HashMap<String, Wallet> {
-        let mut stmt = conn.prepare("SELECT id, wallet_name, encoded_data FROM wallet")?;
+        let mut stmt = conn.prepare("SELECT id, wallet_name, encoded_data FROM wallet").unwrap();
         let wallet_iter = stmt.query_map(params![], |row| {
             Ok(WalletRecord {
                 id: row.get(0)?,
                 wallet_name: row.get(1)?,
                 encoded_data: row.get(2)?,
             })
-        })?;
-        let mut wallets = HashMap::new();
-        for (idx, wallet) in wallet_iter.enumerate() {
-            let wallet = bincode::deserialize(&wallet.unwrap().encoded_data).unwrap();
-            wallets.insert(wallet.unwrap().wallet_name, wallet);
+        }).unwrap();
+        let mut wallets: HashMap<String, Wallet> = HashMap::new();
+        for (idx, wallet_record) in wallet_iter.enumerate() {
+            let wr = wallet_record.unwrap();
+            let wallet: Wallet = bincode::deserialize(&wr.encoded_data.clone()).unwrap();
+            wallets.insert(wr.wallet_name.into_string(), wallet);
         }
         wallets
     }
