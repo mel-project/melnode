@@ -6,7 +6,7 @@ use std::{collections, time::Instant};
 use tmelcrypt::HashVal;
 use serde::{Deserialize, Serialize};
 use rusqlite::{params, Connection, Result as SQLResult};
-use im::HashMap;
+use collections::HashMap;
 
 /// A network client with some in-memory caching.
 pub struct Client {
@@ -241,16 +241,22 @@ impl WalletRecord {
         Ok(())
     }
 
-    // pub fn load_all(conn: &Connection) -> HashMap<str, Wallet> {
-    //     let mut stmt = conn.prepare("SELECT id, name, encoded_data FROM wallet")?;
-    //     let wallet_iter = stmt.query_map(params![], |row| {
-    //         Ok(WalletRecord {
-    //             id: row.get(0)?,
-    //             wallet_name: row.get(1)?,
-    //             encoded_data: row.get(2)?,
-    //         })
-    //     })?;
-    // }
+    pub fn load_all(conn: &Connection) -> HashMap<String, Wallet> {
+        let mut stmt = conn.prepare("SELECT id, wallet_name, encoded_data FROM wallet")?;
+        let wallet_iter = stmt.query_map(params![], |row| {
+            Ok(WalletRecord {
+                id: row.get(0)?,
+                wallet_name: row.get(1)?,
+                encoded_data: row.get(2)?,
+            })
+        })?;
+        let mut wallets = HashMap::new();
+        for (idx, wallet) in wallet_iter.enumerate() {
+            let wallet = bincode::deserialize(&wallet.unwrap().encoded_data).unwrap();
+            wallets.insert(wallet.unwrap().wallet_name, wallet);
+        }
+        wallets
+    }
 }
 
 #[cfg(test)]
