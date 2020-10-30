@@ -6,6 +6,7 @@ use std::{collections, time::Instant};
 use tmelcrypt::HashVal;
 use serde::{Deserialize, Serialize};
 use rusqlite::{params, Connection, Result as SQLResult};
+use im::HashMap;
 
 /// A network client with some in-memory caching.
 pub struct Client {
@@ -204,18 +205,20 @@ impl Wallet {
 }
 
 #[derive(Debug)]
-struct WalletRecord {
+pub struct WalletRecord {
     id: i32,
+    wallet_name: Box<str>,
     encoded_data: Vec<u8>,
 }
 
 
 impl WalletRecord {
     /// Create a new wallet record from a wallet instance.
-    pub fn new(wallet: Wallet) -> Self {
+    pub fn new(wallet: Wallet, wallet_name: &str) -> Self {
         let encoded_wallet = bincode::serialize(&wallet).unwrap();
         WalletRecord {
             id: 0,
+            wallet_name: wallet_name.into(),
             encoded_data: encoded_wallet,
         }
     }
@@ -225,16 +228,29 @@ impl WalletRecord {
         conn.execute(
             "CREATE TABLE IF NOT EXISTS wallet (
                   id              INTEGER PRIMARY KEY,
-                  encoded_data    BLOB
+                  wallet_name     varchar(255) NOT NULL,
+                  encoded_data    BLOB,
+                  UNIQUE (wallet_name)
                   )",
             params![],
         )?;
         conn.execute(
-            "INSERT INTO wallet (encoded_data) VALUES (?1)",
-            params![self.encoded_data.clone()],
+            "INSERT INTO wallet (encoded_data) VALUES (?1, ?2)",
+            params![self.wallet_name, self.encoded_data.clone()],
         )?;
         Ok(())
     }
+
+    // pub fn load_all(conn: &Connection) -> HashMap<str, Wallet> {
+    //     let mut stmt = conn.prepare("SELECT id, name, encoded_data FROM wallet")?;
+    //     let wallet_iter = stmt.query_map(params![], |row| {
+    //         Ok(WalletRecord {
+    //             id: row.get(0)?,
+    //             wallet_name: row.get(1)?,
+    //             encoded_data: row.get(2)?,
+    //         })
+    //     })?;
+    // }
 }
 
 #[cfg(test)]
@@ -295,7 +311,8 @@ mod tests {
     fn store_wallet() -> SQLResult<()> {
         // Create wallet record
         let wallet = mock_create_wallet();
-        let wallet_record = WalletRecord::new(wallet);
+        let wallet_name = "test";
+        let wallet_record = WalletRecord::new(wallet, &wallet_name);
 
         // Insert wallet record
         let conn = Connection::open_in_memory()?;
@@ -303,11 +320,12 @@ mod tests {
 
         // Verify that only one record inserted and
         // it matches with the expected encoded data
-        let mut stmt = conn.prepare("SELECT id, encoded_data FROM wallet")?;
+        let mut stmt = conn.prepare("SELECT id, wallet_name, encoded_data FROM wallet")?;
         let wallet_iter = stmt.query_map(params![], |row| {
             Ok(WalletRecord {
                 id: row.get(0)?,
-                encoded_data: row.get(1)?,
+                wallet_name: row.get(1)?,
+                encoded_data: row.get(2)?,
             })
         })?;
 

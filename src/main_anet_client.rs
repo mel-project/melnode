@@ -6,8 +6,9 @@ use colored::Colorize;
 use structopt::StructOpt;
 use tabwriter::TabWriter;
 use std::io::prelude::*;
+use rusqlite::Connection;
 
-use crate::{VERSION, client::{Client, Wallet}};
+use crate::{VERSION, client::{Client, Wallet, WalletRecord}};
 
 
 #[derive(Debug, StructOpt)]
@@ -169,11 +170,17 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                         }
                         let (pk, sk) = tmelcrypt::ed25519_keygen();
                         let script = melscript::Script::std_ed25519_pk(pk);
-                        wallets.insert(wallet_name.to_string(), Wallet::new(script.clone()));
+                        let wallet = Wallet::new(script.clone());
+                        wallets.insert(wallet_name.to_string(), wallet.clone());
                         writeln!(tw, ">> New wallet:\t{}", wallet_name.bold()).unwrap();
                         writeln!(tw, ">> Address:\t{}", script.hash().to_addr().yellow()).unwrap();
                         writeln!(tw, ">> Secret:\t{}", hex::encode(sk.0).dimmed()).unwrap();
                         tw.flush().unwrap();
+                        let wallet_record = WalletRecord::new(wallet, wallet_name);
+
+                        // Insert wallet record
+                        let conn = Connection::open_in_memory()?;
+                        wallet_record.store(&conn);
                     }
                     &["wallet-unlock", wallet_name, wallet_secret] => {
                         if let Some(wallet) = wallets.get(&wallet_name.to_string()) {
