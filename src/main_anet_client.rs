@@ -6,8 +6,9 @@ use colored::Colorize;
 use structopt::StructOpt;
 use tabwriter::TabWriter;
 use std::io::prelude::*;
+use rusqlite::Connection;
 
-use crate::{VERSION, client::{Client, Wallet}};
+use crate::{VERSION, client::{Client, Wallet, WalletRecord}};
 
 
 #[derive(Debug, StructOpt)]
@@ -22,7 +23,8 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
     let mut prompt_stack: Vec<String> = vec![format!("v{}", VERSION).green().to_string()];
 
     // wallets
-    let mut wallets: HashMap<String, Wallet> = HashMap::new();
+    let connection = Connection::open_in_memory();
+    let mut wallets: HashMap<String, Wallet> = WalletRecord::load_all(&connection.unwrap());
     let mut current_wallet: Option<(String, tmelcrypt::Ed25519SK)> = None;
     let mut client = Client::new(cfg.bootstrap);
 
@@ -136,7 +138,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                             }
                         }
                     }
-                    ["balances"] => {
+                    ["balances", ] => {
                         writeln!(tw, ">> **** COINS ****")?;
                         writeln!(tw, ">> [CoinID]\t[Height]\t[Amount]\t[CoinType]")?;
                         for (coin_id, coin_data) in wallet.unspent_coins() {
@@ -154,7 +156,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                             )?;
                         }
                     }
-                    ["exit"] => {
+                    ["exit", ] => {
                         prompt_stack.pop();
                         current_wallet = None;
                     }
@@ -169,11 +171,17 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                         }
                         let (pk, sk) = tmelcrypt::ed25519_keygen();
                         let script = melscript::Script::std_ed25519_pk(pk);
-                        wallets.insert(wallet_name.to_string(), Wallet::new(script.clone()));
+                        let wallet = Wallet::new(script.clone());
+                        wallets.insert(wallet_name.to_string(), wallet.clone());
                         writeln!(tw, ">> New wallet:\t{}", wallet_name.bold()).unwrap();
                         writeln!(tw, ">> Address:\t{}", script.hash().to_addr().yellow()).unwrap();
                         writeln!(tw, ">> Secret:\t{}", hex::encode(sk.0).dimmed()).unwrap();
                         tw.flush().unwrap();
+                        let wallet_record = WalletRecord::new(wallet, wallet_name);
+
+                        // Insert wallet record
+                        let conn = Connection::open_in_memory();
+                        wallet_record.store(&conn.unwrap());
                     }
                     &["wallet-unlock", wallet_name, wallet_secret] => {
                         if let Some(wallet) = wallets.get(&wallet_name.to_string()) {
