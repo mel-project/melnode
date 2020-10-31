@@ -14,9 +14,7 @@ by_address="1"
 log="0.4"
 env_logger="0.7"
 derivative="2"
-#tokio = { version = "0.2", features = ["full"] }
 smol="1"
-futures="0.3"
 im="15"
 rand="0.7"
 lazy_static="1"
@@ -24,3 +22,8 @@ async-net="1"
 anyhow="1"
 serde = {version="1.0.116", features=["derive"]}
 bincode="1"
+bytes={version="0.6", features=["serde"]}
+smolscale="0.1"
+async-oneshot="0.4" 
+futures="0.3"
+smol-timeout="0.6"

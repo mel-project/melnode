@@ -51,7 +51,7 @@ fn spawn_auditor_actor(
 ) -> Arc<Actor<AuditorMsg>> {
     // local fn definitions
     async fn forward_tx(tx: blkstructs::Transaction, dest: SocketAddr) -> Result<bool> {
-        let raw_result = melnet::gcp().request(dest, TEST_ANET, "newtx", tx).await?;
+        let raw_result = melnet::g_client().request(dest, TEST_ANET, "newtx", tx).await?;
         Ok(raw_result)
     }
     async fn send_blk(
@@ -67,7 +67,7 @@ fn spawn_auditor_actor(
             partial_transactions: vec![],
         };
         // first attempt
-        let first_attempt: NewBlkResponse = melnet::gcp()
+        let first_attempt: NewBlkResponse = melnet::g_client()
             .request(dest, TEST_ANET, "newblk", msg.clone())
             .await?;
         if first_attempt.missing_txhashes.is_empty() {
@@ -83,7 +83,7 @@ fn spawn_auditor_actor(
             .filter(|v| missing_txhashes.contains(&v.hash_nosigs()))
             .collect();
         msg.partial_transactions = missing_txx;
-        let second_attempt: NewBlkResponse = melnet::gcp()
+        let second_attempt: NewBlkResponse = melnet::g_client()
             .request(dest, TEST_ANET, "newblk", msg)
             .await?;
         if !second_attempt.missing_txhashes.is_empty() {

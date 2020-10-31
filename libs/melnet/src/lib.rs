@@ -1,10 +1,10 @@
 mod connpool;
-pub use connpool::gcp;
+use bytes::Bytes;
+pub use connpool::g_client;
 mod routingtable;
 use derivative::*;
 use log::{debug, trace};
 use routingtable::*;
-use serde::{de::DeserializeOwned, Serialize};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 mod reqs;
@@ -19,10 +19,11 @@ use rand::prelude::*;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use reqs::*;
-use smol::Timer;
+use smol::{Timer, channel::{self, Receiver}};
 use std::time::Duration;
+use smol_timeout::TimeoutExt;
 
-type VerbHandler = Arc<dyn Fn(&NetState, &[u8]) -> Result<Vec<u8>> + Send + Sync>;
+type VerbHandler = channel::Sender<Responder>;
 
 #[derive(Derivative, Clone, Default)]
 #[derivative(Debug)]
@@ -35,14 +36,14 @@ pub struct NetState {
 }
 
 impl NetState {
-    /// Consumes the netstate and runs it, blocking until the listener no longer gives things. You should clone a copy first in order to use the netstate as a client.
+    /// Consumes the netstate and runs it, blocking until the listener no longer gives things. 
     pub async fn run_server(mut self, listener: TcpListener) {
         self.setup_routing();
         // Spam neighbors with random routes
         // INTENTIONALLY not detach so that it cancels automatically
         let spammer = {
             let state = self.clone();
-            smol::spawn(async move {
+            smolscale::spawn(async move {
                 let mut rng = rand::rngs::OsRng {};
                 loop {
                     let mut tmr = Timer::after(Duration::from_secs_f32(0.2)).fuse();
@@ -50,15 +51,11 @@ impl NetState {
                     if !routes.is_empty() {
                         let (rand_neigh, _) = routes[rng.gen::<usize>() % routes.len()];
                         let (rand_route, _) = routes[rng.gen::<usize>() % routes.len()];
-                        let to_wait = gcp()
-                            .request::<RoutingRequest, String>(
+                        let to_wait = g_client()
+                            .request(
                                 rand_neigh,
                                 &state.network_name,
-                                "new_addr",
-                                RoutingRequest {
-                                    proto: String::from("tcp"),
-                                    addr: rand_route.to_string(),
-                                },
+                                Request::verb("new_addr").arg("route", rand_route)
                             )
                             .fuse();
                         select! {
@@ -94,10 +91,14 @@ impl NetState {
                     return;
                 }
             }
-        }
+        } 
     }
 
     async fn server_handle(&self, mut conn: TcpStream) -> anyhow::Result<()> {
+        let their_net = read_len_bts(&mut conn).timeout(Duration::from_secs(10)).await.ok_or_else(|| anyhow::anyhow!("read net timeout"))??;
+        if their_net.as_slice() != self.network_name.as_bytes() {
+            anyhow::bail!("incorrect network name")
+        }
         loop {
             select! {
                 x = self.server_handle_one(&mut conn).fuse() => x?,
@@ -108,120 +109,84 @@ impl NetState {
     }
 
     async fn server_handle_one(&self, conn: &mut TcpStream) -> anyhow::Result<()> {
-        // read command
-        let cmd: RawRequest = bincode::deserialize(&read_len_bts(conn).await?)?;
-        if cmd.proto_ver != 1 {
-            let err = bincode::serialize(&RawResponse {
-                kind: "Err".to_owned(),
-                body: bincode::serialize(&"bad protocol version").unwrap(),
-            })
-            .unwrap();
-            write_len_bts(conn, &err).await?;
-            return Err(anyhow::anyhow!("bad"));
-        }
-        if cmd.netname != self.network_name {
-            return Err(anyhow::anyhow!("bad"));
-        }
+        let cmd: Request = bincode::deserialize(&read_len_bts(conn).await?)?;
         trace!("got command {:?} from {:?}", cmd, conn.peer_addr());
         // respond to command
         let responder = RwLock::read(&self.verbs).get(&cmd.verb).cloned();
         match responder {
             None => {
-                write_len_bts(
-                    conn,
-                    &bincode::serialize(&RawResponse {
-                        kind: "NoVerb".to_owned(),
-                        body: b"".to_vec(),
-                    })
-                    .unwrap(),
-                )
-                .await?;
-                Ok(())
+                anyhow::bail!("unknown verb: {}", cmd.verb);
             }
             Some(responder) => {
                 let ss = self.clone();
-                let responder = responder.clone();
-                let response = smol::unblock(move || responder(&ss, &cmd.payload)).await;
-                match response {
-                    Ok(response) => {
-                        write_len_bts(
-                            conn,
-                            &bincode::serialize(&RawResponse {
-                                kind: "Ok".to_owned(),
-                                body: response,
-                            })
-                            .unwrap(),
-                        )
-                        .await?;
-                        Ok(())
-                    }
-                    Err(MelnetError::Custom(err)) => {
-                        write_len_bts(
-                            conn,
-                            &bincode::serialize(&RawResponse {
-                                kind: "Err".to_owned(),
-                                body: err.as_bytes().to_owned(),
-                            })
-                            .unwrap(),
-                        )
-                        .await?;
-                        Ok(())
-                    }
-                    _ => anyhow::bail!("bad"),
-                }
+                let (send, recv) = async_oneshot::oneshot();
+                responder.send(Responder{request: cmd, send_response: send}).await?;
+                let response = recv.await.map_err(|_| anyhow::anyhow!("responder aborted"))?;
+                write_len_bts(
+                    conn,
+                    &bincode::serialize(&response).unwrap());
+                Ok(())
             }
         }
     }
 
     /// Registers the handler for new_peer.
     fn setup_routing(&mut self) {
-        // ping just responds to a u64 with itself
-        self.register_verb("ping", |_, ping: u64| Ok(ping));
+        // ping just responds to anything with Ok("")
+        smolscale::spawn(self.register_verb("ping").for_each_concurrent(None, |resp| async{
+            resp.respond(Response::Okay(Bytes::new()))
+        })).detach();
         // new_addr
-        self.register_verb("new_addr", |state, rr: RoutingRequest| {
-            smol::block_on(async move {
-                trace!("got new_addr {:?}", rr);
-                let state = state.clone();
-                let unreach = || MelnetError::Custom(String::from("invalid"));
-                if rr.proto != "tcp" {
-                    debug!("new_addr unrecognizable proto = {:?}", rr.proto);
-                    return Err(unreach());
-                }
-                let resp: u64 = gcp()
-                    .request(
-                        rr.addr
-                            .to_socket_addrs()
-                            .map_err(|_| unreach())?
-                            .next()
-                            .ok_or_else(unreach)?,
-                        &state.network_name,
-                        "ping",
-                        814 as u64,
-                    )
-                    .await
-                    .map_err(|_| unreach())?;
-                if resp != 814 as u64 {
-                    debug!("new_addr bad ping {:?} {:?}", rr.addr, resp);
-                    return Err(unreach());
-                }
-                state
-                    .routes
-                    .write()
-                    .add_route(string_to_addr(&rr.addr).ok_or_else(unreach)?);
-                trace!("new_addr processed {:?}", rr.addr);
-                Ok("")
-            })
-        })
+        smolscale::spawn(self.register_verb("new_addr").for_each_concurrent(None, |resp| async {
+            async move {
+                
+            }
+        })).detach();
+        // self.register_verb("new_addr", |_, rr: Request| {
+        //     smol::block_on(async move {
+        //         trace!("got new_addr {:?}", rr);
+        //         let state = state.clone();
+        //         let unreach = || MelnetError::Custom(String::from("invalid"));
+        //         if rr.proto != "tcp" {
+        //             debug!("new_addr unrecognizable proto = {:?}", rr.proto);
+        //             return Err(unreach());
+        //         }
+        //         let resp: u64 = g_client()
+        //             .request(
+        //                 rr.addr
+        //                     .to_socket_addrs()
+        //                     .map_err(|_| unreach())?
+        //                     .next()
+        //                     .ok_or_else(unreach)?,
+        //                 &state.network_name,
+        //                 "ping",
+        //                 814 as u64,
+        //             )
+        //             .await
+        //             .map_err(|_| unreach())?;
+        //         if resp != 814 as u64 {
+        //             debug!("new_addr bad ping {:?} {:?}", rr.addr, resp);
+        //             return Err(unreach());
+        //         }
+        //         state
+        //             .routes
+        //             .write()
+        //             .add_route(string_to_addr(&rr.addr).ok_or_else(unreach)?);
+        //         trace!("new_addr processed {:?}", rr.addr);
+        //         Ok("")
+        //     })
+        // })
     }
 
-    /// Registers a verb that takes in an RLP object and returns an RLP object.
-    pub fn register_verb<TInput: DeserializeOwned + Send, TOutput: Serialize + Send>(
+    /// Registers a verb. Returns a Responder handle that should be passed to a task/thread to handle stuff.
+    pub fn register_verb(
         &self,
         verb: &str,
-        cback: impl Fn(&NetState, TInput) -> Result<TOutput> + 'static + Send + Sync,
-    ) {
+    ) -> Receiver<Responder> {
         debug!("registering verb {}", verb);
-        RwLock::write(&self.verbs).insert(verb.to_owned(), erase_cback_types(cback));
+        let (send, recv) = smol::channel::unbounded();
+        self.verbs.write().insert(verb.to_owned(), send);
+        recv
     }
 
     /// Adds a route to the routing table.
@@ -253,19 +218,16 @@ fn string_to_addr(s: &str) -> Option<SocketAddr> {
     s.to_socket_addrs().ok()?.next()
 }
 
-fn erase_cback_types<TInput: DeserializeOwned + Send, TOutput: Serialize + Send>(
-    cback: impl Fn(&NetState, TInput) -> Result<TOutput> + 'static + Send + Sync,
-) -> VerbHandler {
-    let cback = Arc::new(cback);
-    Arc::new(move |state, input| {
-        let input = input.to_vec();
-        let state = state.clone();
-        let cback = cback.clone();
-        let input: TInput = bincode::deserialize(&input)
-            .map_err(|e| MelnetError::Custom(format!("rlp error: {:?}", e)))?;
-        let output: TOutput = cback(&state, input)?;
-        Ok(bincode::serialize(&output).unwrap())
-    })
+/// A structure used to respond to melnet requests.
+pub struct Responder {
+    pub request: Request,
+    send_response: async_oneshot::Sender<Response>
+}
+
+impl Responder {
+    fn respond(self, resp: Response) {
+        let _ = self.send_response.send(resp);
+    }
 }
 
 #[cfg(test)]

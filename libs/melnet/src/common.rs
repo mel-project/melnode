@@ -1,9 +1,7 @@
-use futures::prelude::*;
-use std::pin::Pin;
+use smol::prelude::*;
 use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, MelnetError>;
-pub type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
 
 #[derive(Error, Debug)]
 pub enum MelnetError {

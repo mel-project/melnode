@@ -137,7 +137,7 @@ async fn symphonia_multicast(
     for dest in routes {
         let msg = msg.clone();
         smol::spawn(async move {
-            let _: bool = melnet::gcp()
+            let _: bool = melnet::g_client()
                 .request(dest, STAKE_NET, "symphonia_msg", msg)
                 .await
                 .unwrap_or(false);

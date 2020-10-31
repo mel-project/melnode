@@ -156,6 +156,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-oneshot"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50f4770cbbff928c30a991de67fb3976f44d8e3e202f8c79ef91b47006e04904"
+dependencies = [
+ "futures-micro",
+]
+
+[[package]]
 name = "async-process"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -336,7 +345,7 @@ dependencies = [
  "arbitrary",
  "autosmt",
  "bincode",
- "bytes",
+ "bytes 0.5.5",
  "crossbeam-channel",
  "defmac",
  "env_logger",
@@ -435,6 +444,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "118cf036fbb97d0816e3c34b2d7a1e8cfc60f68fcf63d550ddbe9bd5f59c213b"
 dependencies = [
  "loom",
+ "serde",
+]
+
+[[package]]
+name = "bytes"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0dcbc35f504eb6fc275a6d20e4ebcda18cf50d40ba6fabff8c711fa16cb3b16"
+dependencies = [
  "serde",
 ]
 
@@ -811,9 +829,9 @@ checksum = "5fc94b64bb39543b4e432f1790b6bf18e3ee3b74653c5449f63310e9a74b123c"
 
 [[package]]
 name = "futures-lite"
-version = "1.10.1"
+version = "1.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c48d23e382e1f50ad68d16cd23dd3c467f420d4933b629c3f183f33e9f560d8"
+checksum = "5e6c079abfac3ab269e2927ec048dabc89d009ebfdda6b8ee86624f30c689658"
 dependencies = [
  "fastrand",
  "futures-core",
@@ -835,6 +853,12 @@ dependencies = [
  "quote",
  "syn",
 ]
+
+[[package]]
+name = "futures-micro"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61e9325be55c5581082cd110294fa988c1f920bc573ec370ef201e33c469a95a"
 
 [[package]]
 name = "futures-sink"
@@ -959,7 +983,7 @@ version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28d569972648b2c512421b5f2a405ad6ac9666547189d0c5477a3f200f3e02f9"
 dependencies = [
- "bytes",
+ "bytes 0.5.5",
  "fnv",
  "itoa",
 ]
@@ -1128,8 +1152,10 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-net",
+ "async-oneshot",
  "bincode",
  "by_address",
+ "bytes 0.6.0",
  "derivative",
  "env_logger",
  "futures",
@@ -1141,6 +1167,8 @@ dependencies = [
  "rand",
  "serde",
  "smol",
+ "smol-timeout",
+ "smolscale",
  "thiserror",
 ]
 
@@ -1790,6 +1818,30 @@ dependencies = [
  "blocking",
  "futures-lite",
  "once_cell",
+]
+
+[[package]]
+name = "smol-timeout"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "847d777e2c6c166bad26264479e80a9820f3d364fcb4a0e23cd57bbfa8e94961"
+dependencies = [
+ "async-io",
+ "pin-project-lite",
+]
+
+[[package]]
+name = "smolscale"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b26eb0d5fae3e8d679b5885f005aee01b46f65e89c7c365e92c36f239122447e"
+dependencies = [
+ "async-executor",
+ "event-listener",
+ "futures-lite",
+ "once_cell",
+ "pin-project-lite",
+ "scopeguard",
 ]
 
 [[package]]
