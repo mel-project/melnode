@@ -18,4 +18,4 @@ serde-big-array = "0.3.0"
 
 [dependencies.ed25519-dalek]
 features = ["legacy_compatibility"]
-version = "=1.0.0-pre.3"
+version = "1"

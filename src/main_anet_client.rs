@@ -181,7 +181,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
 
                         // Insert wallet record
                         let conn = Connection::open_in_memory();
-                        wallet_record.store(&conn.unwrap());
+                        wallet_record.store(&conn.unwrap()).expect("SQL error?");
                     }
                     &["wallet-unlock", wallet_name, wallet_secret] => {
                         if let Some(wallet) = wallets.get(&wallet_name.to_string()) {

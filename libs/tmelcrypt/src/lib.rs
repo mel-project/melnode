@@ -5,6 +5,8 @@ use std::convert::TryInto;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
+use ed25519_dalek::{Signer, Verifier};
+use std::convert::TryFrom;
 
 big_array! { BigArray; }
 
@@ -86,7 +88,7 @@ impl Ed25519PK {
     pub fn verify(&self, msg: &[u8], sig: &[u8]) -> bool {
         let pk = ed25519_dalek::PublicKey::from_bytes(&self.0);
         match pk {
-            Ok(pk) => match ed25519_dalek::Signature::from_bytes(sig) {
+            Ok(pk) => match ed25519_dalek::Signature::try_from(sig) {
                 Ok(sig) => pk.verify(msg, &sig).is_ok(),
                 Err(_) => false,
             },
@@ -133,7 +135,7 @@ impl Hash for Ed25519SK {
 
 impl Ed25519SK {
     pub fn sign(&self, msg: &[u8]) -> Vec<u8> {
-        let kp = ed25519_dalek::Keypair::from_bytes(&self.0).unwrap();
+        let kp = ed25519_dalek::Keypair::from_bytes(&self.0).unwrap(); 
         kp.sign(msg).to_bytes().to_vec()
     }
 

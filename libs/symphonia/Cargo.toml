@@ -18,3 +18,4 @@ futures="0.3"
 smol="1"
 serde = {version="1.0.116", features=["derive"]}
 bincode="1"
+smolscale="0.1"

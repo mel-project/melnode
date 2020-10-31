@@ -107,8 +107,8 @@ fn spawn_auditor_actor(
         let net = net.clone();
         let storage = storage.clone();
         Arc::new(Actor::spawn(|mut mail| async move {
-            let _server_runner = smol::spawn(net.clone().run_server(listener));
-            let _blksync_runner = smol::spawn(blksync());
+            let _server_runner = smolscale::spawn(net.clone().run_server(listener));
+            let _blksync_runner = smolscale::spawn(blksync());
             loop {
                 match mail.recv().await {
                     GetNet(s) => s.send(net.clone()).unwrap(),
@@ -119,7 +119,7 @@ fn spawn_auditor_actor(
                             log::debug!("good tx {:?}, forwarding to 16 peers", tx.hash_nosigs());
                             for dest in net.routes().into_iter().take(16) {
                                 let tx = tx.clone();
-                                smol::spawn(async move {
+                                smolscale::spawn(async move {
                                     let _ = forward_tx(tx, dest).await;
                                 })
                                 .detach();
@@ -142,7 +142,7 @@ fn spawn_auditor_actor(
                             log::debug!("promulgating blk to {}", dest);
                             let blk = blk.clone();
                             let cons_proof = cons_proof.clone();
-                            smol::spawn(async move {
+                            smolscale::spawn(async move {
                                 let res = send_blk(blk, cons_proof, dest).await;
                                 log::debug!("result of promulgation {:?}", res.is_ok());
                             })

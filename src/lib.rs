@@ -76,10 +76,10 @@ async fn run_node(opt: NodeConfig) {
         .await
         .unwrap();
     if opt.test_spam { 
-        smol::spawn(test_spam_txx(auditor.clone())).detach();
+        smolscale::spawn(test_spam_txx(auditor.clone())).detach();
     } 
     if let Some(sh_no) = opt.test_stakeholder {
-        smol::spawn(test_stakeholder(sh_no, auditor.clone(), storage.clone())).detach();
+        smolscale::spawn(test_stakeholder(sh_no, auditor.clone(), storage.clone())).detach();
     }
 
     // Storage syncer

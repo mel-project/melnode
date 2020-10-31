@@ -42,7 +42,7 @@ impl NetState {
         // INTENTIONALLY not detach so that it cancels automatically
         let spammer = {
             let state = self.clone();
-            smol::spawn(async move {
+            smolscale::spawn(async move {
                 let mut rng = rand::rngs::OsRng {};
                 loop {
                     let mut tmr = Timer::after(Duration::from_secs_f32(0.2)).fuse();
@@ -83,7 +83,7 @@ impl NetState {
             match conn {
                 Ok((conn, _)) => {
                     //let conn: Async<TcpStream> = conn;
-                    smol::spawn(async move {
+                    smolscale::spawn(async move {
                         let _ = self_copy.server_handle(conn).await;
                     })
                     .detach();
@@ -135,7 +135,7 @@ impl NetState {
                     })
                     .unwrap(),
                 )
-                .await?;
+                .await?; 
                 Ok(())
             }
             Some(responder) => {

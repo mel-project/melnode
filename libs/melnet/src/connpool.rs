@@ -123,7 +123,7 @@ impl SingleHost {
     fn new() -> Self {
         let (send_insertion, recv_insertion) = unbounded();
         let (send_request, recv_request) = unbounded();
-        smol::spawn(async {
+        smolscale::spawn(async {
             singlehost_monitor(recv_insertion, recv_request).await;
         })
         .detach();

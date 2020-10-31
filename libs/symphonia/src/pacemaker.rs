@@ -25,7 +25,7 @@ impl Pacemaker {
         Pacemaker {
             msg_input: Mutex::new(send_input),
             msg_output: lock::Mutex::new(recv_output),
-            decision_output: lock::Mutex::new(smol::spawn(async move {
+            decision_output: lock::Mutex::new(smolscale::spawn(async move {
                 pacemaker_loop(machine, recv_input, send_output).await
             })),
         }

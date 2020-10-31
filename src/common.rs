@@ -41,7 +41,7 @@ impl<ChType> Actor<ChType> {
     ) -> Self {
         let (send, recv) = mpsc::unbounded();
         let fut = closure(Mailbox(recv));
-        let task = smol::spawn(async move {
+        let task = smolscale::spawn(async move {
             fut.await;
             panic!("Actors aren't supposed to 'normally' die")
         });
