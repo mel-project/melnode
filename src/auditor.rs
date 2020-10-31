@@ -51,7 +51,9 @@ fn spawn_auditor_actor(
 ) -> Arc<Actor<AuditorMsg>> {
     // local fn definitions
     async fn forward_tx(tx: blkstructs::Transaction, dest: SocketAddr) -> Result<bool> {
-        let raw_result = melnet::gcp().request(dest, TEST_ANET, "newtx", tx).await?;
+        let raw_result = melnet::g_client()
+            .request(dest, TEST_ANET, "newtx", tx)
+            .await?;
         Ok(raw_result)
     }
     async fn send_blk(
@@ -67,7 +69,7 @@ fn spawn_auditor_actor(
             partial_transactions: vec![],
         };
         // first attempt
-        let first_attempt: NewBlkResponse = melnet::gcp()
+        let first_attempt: NewBlkResponse = melnet::g_client()
             .request(dest, TEST_ANET, "newblk", msg.clone())
             .await?;
         if first_attempt.missing_txhashes.is_empty() {
@@ -83,7 +85,7 @@ fn spawn_auditor_actor(
             .filter(|v| missing_txhashes.contains(&v.hash_nosigs()))
             .collect();
         msg.partial_transactions = missing_txx;
-        let second_attempt: NewBlkResponse = melnet::gcp()
+        let second_attempt: NewBlkResponse = melnet::g_client()
             .request(dest, TEST_ANET, "newblk", msg)
             .await?;
         if !second_attempt.missing_txhashes.is_empty() {
@@ -107,7 +109,8 @@ fn spawn_auditor_actor(
         let net = net.clone();
         let storage = storage.clone();
         Arc::new(Actor::spawn(|mut mail| async move {
-            let _server_runner = smolscale::spawn(net.clone().run_server(listener));
+            let net2 = net.clone();
+            let _server_runner = smolscale::spawn(async move { net2.run_server(listener).await });
             let _blksync_runner = smolscale::spawn(blksync());
             loop {
                 match mail.recv().await {
@@ -159,77 +162,82 @@ fn spawn_auditor_actor(
         // handle new transactions
         net.register_verb("newtx", move |_, tx: blkstructs::Transaction| {
             let auditor_actor = auditor_actor_c.clone();
-            smol::block_on(
-                async move { Ok(auditor_actor.send_ret(|s| SendTx(tx, s)).await.is_ok()) },
-            )
+            async move { Ok(auditor_actor.send_ret(|s| SendTx(tx, s)).await.is_ok()) }
         });
         // handle tx requests
         let gettx_storage = storage.clone();
         net.register_verb("gettx", move |_, txid: HashVal| {
-            gettx_storage
-                .read()
-                .get_tx(txid)
-                .ok_or_else(|| melnet::MelnetError::Custom(String::from("no such TX")))
+            let gettx_storage = gettx_storage.clone();
+            async move {
+                gettx_storage
+                    .read()
+                    .get_tx(txid)
+                    .ok_or_else(|| melnet::MelnetError::Custom(String::from("no such TX")))
+            }
         });
         // handle new blocks
         let newblk_storage = storage.clone();
         let auditor_actor_c = auditor_actor.clone();
         net.register_verb("newblk", move |_, req: NewBlkRequest| {
-            let storage = newblk_storage.clone();
-            let auditor_actor = auditor_actor_c.clone();
-            let mut storage = storage.write();
-            let bad_err = || melnet::MelnetError::Custom(String::from("rejected"));
-            // first we validate the consensus proof
-            log::warn!("not validating the consensus proof yet!");
-            let txmap = {
-                let mut toret = HashMap::new();
-                for tx in req.partial_transactions {
-                    toret.insert(tx.hash_nosigs(), tx);
+            let newblk_storage = newblk_storage.clone();
+            let auditor_actor_c = auditor_actor_c.clone();
+            async move {
+                let storage = newblk_storage.clone();
+                let auditor_actor = auditor_actor_c.clone();
+                let mut storage = storage.write();
+                let bad_err = || melnet::MelnetError::Custom(String::from("rejected"));
+                // first we validate the consensus proof
+                log::warn!("not validating the consensus proof yet!");
+                let txmap = {
+                    let mut toret = HashMap::new();
+                    for tx in req.partial_transactions {
+                        toret.insert(tx.hash_nosigs(), tx);
+                    }
+                    toret
+                };
+                let hash_to_tx = |txh| match storage.get_tx(txh) {
+                    Some(v) => Some(v),
+                    None => txmap.get(&txh).cloned(),
+                };
+                // then we check whether we have all the transactions
+                let missing_hashes: Vec<HashVal> = req
+                    .txhashes
+                    .iter()
+                    .filter(|txh| hash_to_tx(**txh).is_none())
+                    .cloned()
+                    .collect();
+                log::debug!(
+                    "newblk: {}/{} missing",
+                    missing_hashes.len(),
+                    req.txhashes.len()
+                );
+                if !missing_hashes.is_empty() {
+                    // reply to say that we have missing hashes
+                    return Ok(NewBlkResponse {
+                        missing_txhashes: missing_hashes,
+                    });
                 }
-                toret
-            };
-            let hash_to_tx = |txh| match storage.get_tx(txh) {
-                Some(v) => Some(v),
-                None => txmap.get(&txh).cloned(),
-            };
-            // then we check whether we have all the transactions
-            let missing_hashes: Vec<HashVal> = req
-                .txhashes
-                .iter()
-                .filter(|txh| hash_to_tx(**txh).is_none())
-                .cloned()
-                .collect();
-            log::debug!(
-                "newblk: {}/{} missing",
-                missing_hashes.len(),
-                req.txhashes.len()
-            );
-            if !missing_hashes.is_empty() {
-                // reply to say that we have missing hashes
-                return Ok(NewBlkResponse {
-                    missing_txhashes: missing_hashes,
-                });
-            }
-            // we don't have missing hashes. time to construct the state
-            let total_txx: Vec<Transaction> = req
-                .txhashes
-                .iter()
-                .map(|tx| hash_to_tx(*tx).expect("cannot obtain total_txx?!"))
-                .collect();
-            let new_blk = blkstructs::Block {
-                header: req.header,
-                transactions: total_txx,
-            };
-            match storage.apply_block(new_blk) {
-                Err(_) => Err(bad_err()),
-                Ok(_) => {
-                    auditor_actor.send(SendFinalizedBlk(
-                        storage.last_block().unwrap(),
-                        req.consensus,
-                    ));
-                    Ok(NewBlkResponse {
-                        missing_txhashes: vec![],
-                    })
+                // we don't have missing hashes. time to construct the state
+                let total_txx: Vec<Transaction> = req
+                    .txhashes
+                    .iter()
+                    .map(|tx| hash_to_tx(*tx).expect("cannot obtain total_txx?!"))
+                    .collect();
+                let new_blk = blkstructs::Block {
+                    header: req.header,
+                    transactions: total_txx,
+                };
+                match storage.apply_block(new_blk) {
+                    Err(_) => Err(bad_err()),
+                    Ok(_) => {
+                        auditor_actor.send(SendFinalizedBlk(
+                            storage.last_block().unwrap(),
+                            req.consensus,
+                        ));
+                        Ok(NewBlkResponse {
+                            missing_txhashes: vec![],
+                        })
+                    }
                 }
             }
         });
@@ -238,40 +246,49 @@ fn spawn_auditor_actor(
         // get the latest state. TODO THIS IS TOTALLY UNVERIFIABLE
         let get_latest_header_storage = storage.clone();
         net.register_verb("get_latest_header", move |_, _: u8| {
-            let storage = get_latest_header_storage.read();
-            if let Some(block) = storage.last_block() {
-                Ok(block.header())
-            } else {
-                Err(melnet::MelnetError::Custom(String::from("no blocks yet")))
+            let get_latest_header_storage = get_latest_header_storage.clone();
+            async move {
+                let storage = get_latest_header_storage.read();
+                if let Some(block) = storage.last_block() {
+                    Ok(block.header())
+                } else {
+                    Err(melnet::MelnetError::Custom(String::from("no blocks yet")))
+                }
             }
         });
         // handle coin requests
         let get_coin_storage = storage.clone();
         net.register_verb("get_coin", move |_, request: GetCoinRequest| {
-            let storage = get_coin_storage.read();
-            let state = storage
-                .history
-                .get(&request.height)
-                .ok_or_else(|| melnet::MelnetError::Custom(String::from("no such height")))?;
-            let (coin_data, proof) = state.inner_ref().coins.get(&request.coin_id);
-            Ok(GetCoinResponse {
-                coin_data,
-                compressed_proof: proof.compress().0,
-            })
+            let get_coin_storage = get_coin_storage.clone();
+            async move {
+                let storage = get_coin_storage.read();
+                let state = storage
+                    .history
+                    .get(&request.height)
+                    .ok_or_else(|| melnet::MelnetError::Custom(String::from("no such height")))?;
+                let (coin_data, proof) = state.inner_ref().coins.get(&request.coin_id);
+                Ok(GetCoinResponse {
+                    coin_data,
+                    compressed_proof: proof.compress().0,
+                })
+            }
         });
         // handle transaction requests
         let get_coin_storage = storage;
         net.register_verb("get_tx", move |_, request: GetTxRequest| {
-            let storage = get_coin_storage.read();
-            let state = storage
-                .history
-                .get(&request.height)
-                .ok_or_else(|| melnet::MelnetError::Custom(String::from("no such height")))?;
-            let (transaction, proof) = state.inner_ref().transactions.get(&request.txhash);
-            Ok(GetTxResponse {
-                transaction,
-                compressed_proof: proof.compress().0,
-            })
+            let get_coin_storage = get_coin_storage.clone();
+            async move {
+                let storage = get_coin_storage.read();
+                let state = storage
+                    .history
+                    .get(&request.height)
+                    .ok_or_else(|| melnet::MelnetError::Custom(String::from("no such height")))?;
+                let (transaction, proof) = state.inner_ref().transactions.get(&request.txhash);
+                Ok(GetTxResponse {
+                    transaction,
+                    compressed_proof: proof.compress().0,
+                })
+            }
         });
     }
     auditor_actor

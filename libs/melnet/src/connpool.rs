@@ -18,21 +18,21 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::{Duration, Instant};
 
 lazy_static! {
-    static ref CONN_POOL: ConnPool = ConnPool::default();
+    static ref CONN_POOL: Client = Client::default();
 }
 
 /// Returns a reference to the global ConnPool instance.
-pub fn gcp() -> &'static ConnPool {
+pub fn g_client() -> &'static Client {
     &CONN_POOL
 }
 
 /// Implements a thread-safe pool of connections to melnet, or any HTTP/1.1-style keepalive protocol, servers.
 #[derive(Debug, Default)]
-pub struct ConnPool {
+pub struct Client {
     pool: RwLock<HashMap<SocketAddr, SingleHost>>,
 }
 
-impl ConnPool {
+impl Client {
     /// Connects to a given address, which may return either a new connection or an existing one.
     pub async fn connect(&self, addr: impl ToSocketAddrs) -> std::io::Result<TcpStream> {
         let addr = addr.to_socket_addrs()?.next().unwrap();
@@ -201,7 +201,7 @@ mod tests {
             .detach();
             println!("done here");
             // connect 5 times; echo must work all the times
-            let pool = ConnPool::default();
+            let pool = Client::default();
             for count in 0..5 {
                 let test_str = format!("echo-{}", count);
                 println!("wait for connect");

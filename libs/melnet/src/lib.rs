@@ -1,5 +1,5 @@
 mod connpool;
-pub use connpool::gcp;
+pub use connpool::g_client;
 mod routingtable;
 use derivative::*;
 use log::{debug, trace};
@@ -22,7 +22,8 @@ use reqs::*;
 use smol::Timer;
 use std::time::Duration;
 
-type VerbHandler = Arc<dyn Fn(&NetState, &[u8]) -> Result<Vec<u8>> + Send + Sync>;
+type VerbHandler =
+    Arc<dyn Fn(&NetState, &[u8]) -> BoxFuture<Result<Vec<u8>>> + Send + Sync + 'static>;
 
 #[derive(Derivative, Clone, Default)]
 #[derivative(Debug)]
@@ -35,9 +36,10 @@ pub struct NetState {
 }
 
 impl NetState {
-    /// Consumes the netstate and runs it, blocking until the listener no longer gives things. You should clone a copy first in order to use the netstate as a client.
-    pub async fn run_server(mut self, listener: TcpListener) {
-        self.setup_routing();
+    /// Runs the netstate. Usually you would want to call this in a separate task. This doesn't consume the netstate because the netstate struct can still be used to get out routes, register new verbs, etc even when it's concurrently run as a server.
+    pub async fn run_server(&self, listener: TcpListener) {
+        let mut this = self.clone();
+        this.setup_routing();
         // Spam neighbors with random routes
         // INTENTIONALLY not detach so that it cancels automatically
         let spammer = {
@@ -50,7 +52,7 @@ impl NetState {
                     if !routes.is_empty() {
                         let (rand_neigh, _) = routes[rng.gen::<usize>() % routes.len()];
                         let (rand_route, _) = routes[rng.gen::<usize>() % routes.len()];
-                        let to_wait = gcp()
+                        let to_wait = g_client()
                             .request::<RoutingRequest, String>(
                                 rand_neigh,
                                 &state.network_name,
@@ -135,14 +137,14 @@ impl NetState {
                     })
                     .unwrap(),
                 )
-                .await?; 
+                .await?;
                 Ok(())
             }
             Some(responder) => {
                 let ss = self.clone();
                 let responder = responder.clone();
                 let response = smol::unblock(move || responder(&ss, &cmd.payload)).await;
-                match response {
+                match response.await {
                     Ok(response) => {
                         write_len_bts(
                             conn,
@@ -176,51 +178,56 @@ impl NetState {
     /// Registers the handler for new_peer.
     fn setup_routing(&mut self) {
         // ping just responds to a u64 with itself
-        self.register_verb("ping", |_, ping: u64| Ok(ping));
+        self.register_verb("ping", |_, ping: u64| async move { Ok(ping) });
         // new_addr
         self.register_verb("new_addr", |state, rr: RoutingRequest| {
-            smol::block_on(async move {
+            async move {
                 trace!("got new_addr {:?}", rr);
-                let state = state.clone();
                 let unreach = || MelnetError::Custom(String::from("invalid"));
                 if rr.proto != "tcp" {
                     debug!("new_addr unrecognizable proto = {:?}", rr.proto);
                     return Err(unreach());
                 }
-                let resp: u64 = gcp()
-                    .request(
-                        rr.addr
-                            .to_socket_addrs()
-                            .map_err(|_| unreach())?
-                            .next()
-                            .ok_or_else(unreach)?,
-                        &state.network_name,
-                        "ping",
-                        814 as u64,
-                    )
-                    .await
-                    .map_err(|_| unreach())?;
-                if resp != 814 as u64 {
-                    debug!("new_addr bad ping {:?} {:?}", rr.addr, resp);
-                    return Err(unreach());
-                }
-                state
-                    .routes
-                    .write()
-                    .add_route(string_to_addr(&rr.addr).ok_or_else(unreach)?);
-                trace!("new_addr processed {:?}", rr.addr);
+                let nn = state.network_name.clone();
+                // let resp: u64 = g_client()
+                //     .request(
+                //         rr.addr
+                //             .to_socket_addrs()
+                //             .map_err(|_| unreach())?
+                //             .next()
+                //             .ok_or_else(unreach)?,
+                //         &state.network_name.to_owned(),
+                //         "ping",
+                //         814 as u64,
+                //     )
+                //     .await
+                //     .map_err(|_| unreach())?;
+                // if resp != 814 as u64 {
+                //     debug!("new_addr bad ping {:?} {:?}", rr.addr, resp);
+                //     return Err(unreach());
+                // }
+                // state
+                //     .routes
+                //     .write()
+                //     .add_route(string_to_addr(&rr.addr).ok_or_else(unreach)?);
+                // trace!("new_addr processed {:?}", rr.addr);
                 Ok("")
-            })
+            }
         })
     }
 
     /// Registers a verb that takes in an RLP object and returns an RLP object.
-    pub fn register_verb<TInput: DeserializeOwned + Send, TOutput: Serialize + Send>(
+    pub fn register_verb<
+        TInput: DeserializeOwned + Send,
+        TOutput: Serialize + Send,
+        F: Future<Output = Result<TOutput>> + Send + 'static,
+    >(
         &self,
         verb: &str,
-        cback: impl Fn(&NetState, TInput) -> Result<TOutput> + 'static + Send + Sync,
+        cback: impl Fn(NetState, TInput) -> F + 'static + Send + Sync,
     ) {
         debug!("registering verb {}", verb);
+        // let cback = erase_cback_types(cback);
         RwLock::write(&self.verbs).insert(verb.to_owned(), erase_cback_types(cback));
     }
 
@@ -253,18 +260,28 @@ fn string_to_addr(s: &str) -> Option<SocketAddr> {
     s.to_socket_addrs().ok()?.next()
 }
 
-fn erase_cback_types<TInput: DeserializeOwned + Send, TOutput: Serialize + Send>(
-    cback: impl Fn(&NetState, TInput) -> Result<TOutput> + 'static + Send + Sync,
+fn erase_cback_types<
+    TInput: DeserializeOwned + Send,
+    TOutput: Serialize + Send,
+    F: Future<Output = Result<TOutput>> + Send + 'static,
+>(
+    cback: impl Fn(NetState, TInput) -> F + Send + Sync + 'static,
 ) -> VerbHandler {
     let cback = Arc::new(cback);
     Arc::new(move |state, input| {
         let input = input.to_vec();
         let state = state.clone();
         let cback = cback.clone();
-        let input: TInput = bincode::deserialize(&input)
-            .map_err(|e| MelnetError::Custom(format!("rlp error: {:?}", e)))?;
-        let output: TOutput = cback(&state, input)?;
-        Ok(bincode::serialize(&output).unwrap())
+        let fut = async move {
+            let output = cback(
+                state,
+                bincode::deserialize(&input)
+                    .map_err(|e| MelnetError::Custom(format!("rlp error: {:?}", e)))?,
+            )
+            .await?;
+            Ok(bincode::serialize(&output).unwrap())
+        };
+        fut.boxed()
     })
 }
 

@@ -51,8 +51,11 @@ async fn stakeholder_loop(
         let (in_send, mut in_recv) = mpsc::unbounded();
         // register symphonia verbs
         network.register_verb("symphonia_msg", move |_, smsg: symphonia::SignedMessage| {
-            in_send.unbounded_send(smsg).unwrap();
-            Ok(true)
+            let in_send = in_send.clone();
+            async move {
+                in_send.unbounded_send(smsg).unwrap();
+                Ok(true)
+            }
         });
         loop {
             Timer::after(Duration::from_secs(5)).await;
@@ -137,7 +140,7 @@ async fn symphonia_multicast(
     for dest in routes {
         let msg = msg.clone();
         smolscale::spawn(async move {
-            let _: bool = melnet::gcp()
+            let _: bool = melnet::g_client()
                 .request(dest, STAKE_NET, "symphonia_msg", msg)
                 .await
                 .unwrap_or(false);

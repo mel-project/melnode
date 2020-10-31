@@ -29,7 +29,7 @@ impl Client {
     async fn sync_with_net(&mut self) -> anyhow::Result<()> {
         // TODO: caching
         let route = self.remote;
-        let header: Header = melnet::gcp()
+        let header: Header = melnet::g_client()
             .request(route, TEST_ANET, "get_latest_header", 0u8)
             .await?;
         log::warn!("not validating consensus proof!");
@@ -51,7 +51,7 @@ impl Client {
         coin: CoinID,
     ) -> anyhow::Result<Option<CoinDataHeight>> {
         let (hdr, _) = self.last_header().await?;
-        let cdh: GetCoinResponse = melnet::gcp()
+        let cdh: GetCoinResponse = melnet::g_client()
             .request(
                 self.remote,
                 TEST_ANET,
@@ -72,7 +72,7 @@ impl Client {
         height: u64,
         txhash: HashVal,
     ) -> anyhow::Result<(Option<Transaction>, autosmt::FullProof)> {
-        let response: GetTxResponse = melnet::gcp()
+        let response: GetTxResponse = melnet::g_client()
             .request(
                 self.remote,
                 TEST_ANET,
@@ -91,7 +91,7 @@ impl Client {
     /// Actually broadcast a transaction!
     pub async fn broadcast_tx(&mut self, tx: Transaction) -> anyhow::Result<bool> {
         let (_hdr, _) = self.last_header().await?;
-        Ok(melnet::gcp()
+        Ok(melnet::g_client()
             .request(self.remote, TEST_ANET, "newtx", tx)
             .await?)
     }
