@@ -182,39 +182,3 @@ async fn singlehost_monitor(
         };
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::net::TcpListener;
-    #[test]
-    fn simple() {
-        let _ = env_logger::try_init();
-        smol::run(async {
-            // spawn a stupid echo server that only listens once
-            let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-            let addr = listener.local_addr().unwrap();
-            Task::blocking(async move {
-                let (mut cconn, _) = listener.accept().unwrap();
-                std::io::copy(&mut cconn.try_clone().unwrap(), &mut cconn).unwrap();
-            })
-            .detach();
-            println!("done here");
-            // connect 5 times; echo must work all the times
-            let pool = Client::default();
-            for count in 0..5 {
-                let test_str = format!("echo-{}", count);
-                println!("wait for connect");
-                let mut conn = pool.connect(addr).await.unwrap();
-                conn.write_all(&test_str.clone().into_bytes())
-                    .await
-                    .unwrap();
-                let mut buf = [0; 6];
-                conn.read_exact(&mut buf).await.unwrap();
-                assert_eq!(buf.to_vec(), test_str.into_bytes());
-                pool.recycle(conn);
-                Timer::after(Duration::from_millis(10)).await;
-            }
-        })
-    }
-}

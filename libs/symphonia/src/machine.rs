@@ -15,7 +15,7 @@ struct MachVars {
 }
 
 impl MachVars {
-    fn msgs_in_view<'a>(&'a mut self, view: u64) -> &'a mut BTreeSet<Message> {
+    fn msgs_in_view(&mut self, view: u64) -> &mut BTreeSet<Message> {
         let new = BTreeSet::new();
         let out = self.seen_msgs.insert(view, new);
         if let Some(old) = out {
@@ -24,7 +24,7 @@ impl MachVars {
         self.seen_msgs.get_mut(&view).unwrap()
     }
 
-    fn msgs_in_curr_view<'a>(&'a mut self) -> &'a mut BTreeSet<Message> {
+    fn msgs_in_curr_view(&mut self) -> &mut BTreeSet<Message> {
         let v = self.curr_view;
         self.msgs_in_view(v)
     }

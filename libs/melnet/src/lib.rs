@@ -1,3 +1,13 @@
+//! Melnet serves as Themelio's peer-to-peer network layer, based on a randomized topology and gossip. Peers are divided into servers, which have a publicly reachable address, and clients, which do not. It's based on a simple bincode request-response protocol, where the only way to "push" a message is to send a request to a server. There is no multiplexing --- the whole thing works like HTTP/1.1. TCP connections are pretty cheap these days.
+//!
+//! This also means that clients never receive notifications, and must poll servers.
+//!
+//! The general way to use `melnet` is as follows:
+//!
+//! 1. Create a `NetState`. This holds the routing table, RPC verb handlers, and other "global" data.
+//! 2. If running as a server, register RPC verbs with `NetState::register_verb` and run `NetState::run_server` in the background.
+//! 3. Use a `Client`, like the global one returned by `g_client()`, to make RPC calls to other servers. Servers are simply identified by a `std::net::SocketAddr`.
+
 mod connpool;
 pub use connpool::g_client;
 mod routingtable;
@@ -5,15 +15,17 @@ use derivative::*;
 use log::{debug, trace};
 use routingtable::*;
 use serde::{de::DeserializeOwned, Serialize};
-use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    net::{SocketAddr, ToSocketAddrs},
+};
 mod reqs;
 use async_net::{TcpListener, TcpStream};
 mod common;
 pub use common::*;
 use futures::prelude::*;
 use futures::select;
-use im::HashMap;
 use parking_lot::RwLock;
 use rand::prelude::*;
 use rand::seq::SliceRandom;
@@ -180,43 +192,40 @@ impl NetState {
         // ping just responds to a u64 with itself
         self.register_verb("ping", |_, ping: u64| async move { Ok(ping) });
         // new_addr
-        self.register_verb("new_addr", |state, rr: RoutingRequest| {
-            async move {
-                trace!("got new_addr {:?}", rr);
-                let unreach = || MelnetError::Custom(String::from("invalid"));
-                if rr.proto != "tcp" {
-                    debug!("new_addr unrecognizable proto = {:?}", rr.proto);
-                    return Err(unreach());
-                }
-                let nn = state.network_name.clone();
-                // let resp: u64 = g_client()
-                //     .request(
-                //         rr.addr
-                //             .to_socket_addrs()
-                //             .map_err(|_| unreach())?
-                //             .next()
-                //             .ok_or_else(unreach)?,
-                //         &state.network_name.to_owned(),
-                //         "ping",
-                //         814 as u64,
-                //     )
-                //     .await
-                //     .map_err(|_| unreach())?;
-                // if resp != 814 as u64 {
-                //     debug!("new_addr bad ping {:?} {:?}", rr.addr, resp);
-                //     return Err(unreach());
-                // }
-                // state
-                //     .routes
-                //     .write()
-                //     .add_route(string_to_addr(&rr.addr).ok_or_else(unreach)?);
-                // trace!("new_addr processed {:?}", rr.addr);
-                Ok("")
+        self.register_verb("new_addr", |state, rr: RoutingRequest| async move {
+            trace!("got new_addr {:?}", rr);
+            let unreach = || MelnetError::Custom(String::from("invalid"));
+            if rr.proto != "tcp" {
+                debug!("new_addr unrecognizable proto = {:?}", rr.proto);
+                return Err(unreach());
             }
+            let resp: u64 = g_client()
+                .request(
+                    rr.addr
+                        .to_socket_addrs()
+                        .map_err(|_| unreach())?
+                        .next()
+                        .ok_or_else(unreach)?,
+                    &state.network_name.to_owned(),
+                    "ping",
+                    814 as u64,
+                )
+                .await
+                .map_err(|_| unreach())?;
+            if resp != 814 as u64 {
+                debug!("new_addr bad ping {:?} {:?}", rr.addr, resp);
+                return Err(unreach());
+            }
+            state
+                .routes
+                .write()
+                .add_route(string_to_addr(&rr.addr).ok_or_else(unreach)?);
+            trace!("new_addr processed {:?}", rr.addr);
+            Ok("")
         })
     }
 
-    /// Registers a verb that takes in an RLP object and returns an RLP object.
+    /// Registers a verb.
     pub fn register_verb<
         TInput: DeserializeOwned + Send,
         TOutput: Serialize + Send,
@@ -292,38 +301,30 @@ mod tests {
     #[test]
     fn basic_test() {
         let _ = env_logger::try_init();
-        run(async {
-            let task = Task::local(async {
-                const NUM: usize = 100;
-                // start listeners
-                let listeners: Vec<Async<TcpListener>> = (0..NUM)
-                    .map(|i| {
-                        info!("starting listener {}", i);
-                        let listener = Async::<TcpListener>::bind("127.0.0.1:0").unwrap();
-                        listener
-                    })
-                    .collect();
-                info!("listeners made");
-                let first_addr = listeners[0].get_ref().local_addr().unwrap();
-                // start tasks
-                let tasks: Vec<_> = listeners
-                    .into_iter()
-                    .map(|listener| {
-                        let nstate = NetState::new_with_name("testnet");
-                        nstate.add_route(first_addr.clone());
-                        nstate.add_route(listener.get_ref().local_addr().unwrap());
-                        Task::spawn(nstate.run_server(listener))
-                    })
-                    .collect();
-                for t in tasks {
-                    t.await
-                }
-            })
-            .boxed_local();
-            select! {
-                _ = task.fuse() => panic!("tasks ended?!"),
-                _ = Timer::after(Duration::from_secs(5)).fuse() => info!("ending things now")
-            }
-        });
+        let server_task = async {
+            let ns = NetState::new_with_name("test");
+            ns.register_verb("test", |_, input: String| async { Ok(input) });
+            ns.run_server(
+                smol::net::TcpListener::bind("127.0.0.1:12345")
+                    .await
+                    .unwrap(),
+            )
+            .await;
+        };
+        let client_task = async {
+            smol::Timer::after(Duration::from_millis(100)).await;
+            let client = g_client();
+            let response: String = client
+                .request(
+                    "127.0.0.1:12345".parse().unwrap(),
+                    "test",
+                    "test",
+                    "hello world",
+                )
+                .await
+                .unwrap();
+            assert_eq!(response, "hello world".to_string())
+        };
+        smol::future::block_on(smol::future::race(server_task, client_task));
     }
 }

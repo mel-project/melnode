@@ -1,12 +1,12 @@
 use crate::client_protocol::*;
 use crate::common::*;
 use blkstructs::{melscript, CoinData, CoinDataHeight, CoinID, Header, Transaction, TxKind};
+use collections::HashMap;
+use rusqlite::{params, Connection, Result as SQLResult};
+use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::{collections, time::Instant};
 use tmelcrypt::HashVal;
-use serde::{Deserialize, Serialize};
-use rusqlite::{params, Connection, Result as SQLResult};
-use collections::HashMap;
 
 /// A network client with some in-memory caching.
 pub struct Client {
@@ -211,7 +211,6 @@ pub struct WalletRecord {
     encoded_data: Vec<u8>,
 }
 
-
 impl WalletRecord {
     /// Create a new wallet record from a wallet instance.
     pub fn new(wallet: Wallet, wallet_name: &str) -> Self {
@@ -242,16 +241,20 @@ impl WalletRecord {
     }
 
     pub fn load_all(conn: &Connection) -> HashMap<String, Wallet> {
-        let mut stmt = conn.prepare("SELECT id, wallet_name, encoded_data FROM wallet").unwrap();
-        let wallet_iter = stmt.query_map(params![], |row| {
-            Ok(WalletRecord {
-                id: row.get(0)?,
-                wallet_name: row.get(1)?,
-                encoded_data: row.get(2)?,
+        let mut stmt = conn
+            .prepare("SELECT id, wallet_name, encoded_data FROM wallet")
+            .unwrap();
+        let wallet_iter = stmt
+            .query_map(params![], |row| {
+                Ok(WalletRecord {
+                    id: row.get(0)?,
+                    wallet_name: row.get(1)?,
+                    encoded_data: row.get(2)?,
+                })
             })
-        }).unwrap();
+            .unwrap();
         let mut wallets: HashMap<String, Wallet> = HashMap::new();
-        for (idx, wallet_record) in wallet_iter.enumerate() {
+        for wallet_record in wallet_iter {
             let wr = wallet_record.unwrap();
             let wallet: Wallet = bincode::deserialize(&wr.encoded_data.clone()).unwrap();
             wallets.insert(wr.wallet_name.into_string(), wallet);
@@ -262,9 +265,9 @@ impl WalletRecord {
 
 #[cfg(test)]
 mod tests {
-    use im::hashmap;
-    use blkstructs;
     use crate::client::{Wallet, WalletRecord};
+    use blkstructs;
+    use im::hashmap;
     use rusqlite::{params, Connection, Result as SQLResult};
 
     fn mock_create_wallet() -> Wallet {
@@ -284,7 +287,7 @@ mod tests {
         };
         let coin_data_height = blkstructs::CoinDataHeight {
             coin_data: coin,
-            height: 0
+            height: 0,
         };
         let unspent_coins = hashmap! {
             coin_id => coin_data_height
@@ -301,7 +304,7 @@ mod tests {
         };
         let spent_coin_data_height = blkstructs::CoinDataHeight {
             coin_data: spent_coin,
-            height: 0
+            height: 0,
         };
         let spent_coins = hashmap! {
             spent_coin_id => spent_coin_data_height

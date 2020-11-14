@@ -393,7 +393,7 @@ impl State {
         // validate that the first output fills the order
         let first_output: &txn::CoinData =
             tx.outputs.get(0).ok_or(TxApplicationError::MalformedTx)?;
-        if first_output.cointype != COINTYPE_TMET
+        if first_output.cointype != COINTYPE_TSYM
             || first_output.value < abid_txx.outputs[0].value
             || first_output.conshash.0.to_vec() != abid_txx.data
         {

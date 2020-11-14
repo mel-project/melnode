@@ -1,40 +1,21 @@
+//! `melpow` is the crate that implements MelPoW, Themelio's version of non-interactive proofs of sequential work, which are just "Interactive Proofs of Sequential Work" by Cohen and Pietrzak subjected to a Fiat-Shamir transformation. MelPoW is used as the core mechanism behind Melmint, the algorithmic monetary policy system that stabilizes the mel.
+//!
+//! `Proof` is the main interface to MelPoW. It represents a proof that a certain amount of sequential work, represented by a **difficulty**, has been done starting from a **puzzle**. The difficulty is exponential: a difficulty of N represents that `O(2^N)` work has been done.
+
 mod hash;
 mod node;
-use im::ordmap::OrdMap;
 use std::convert::TryInto;
 
 const PROOF_CERTAINTY: usize = 200;
 
 #[derive(Clone, Debug)]
-pub struct Proof(OrdMap<node::Node, Vec<u8>>);
+/// A MelPoW proof with an opaque representation that is guaranteed to be stable. It can be cloned relatively cheaply because it's internally reference counted.
+pub struct Proof(im::HashMap<node::Node, Vec<u8>>);
 
 impl Proof {
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let unit_size = 8 + 32;
-        let mut output = Vec::with_capacity(unit_size * self.0.len());
-        for (k, v) in self.0.iter() {
-            assert_eq!(v.len(), 32);
-            output.extend_from_slice(&k.to_bytes());
-            output.extend_from_slice(&v);
-        }
-        output
-    }
-    pub fn from_bytes(mut bts: &[u8]) -> Option<Self> {
-        let unit_size = 8 + 32;
-        if bts.len() % unit_size != 0 {
-            return None;
-        }
-        let mut omap = OrdMap::new();
-        while !bts.is_empty() {
-            let nd = node::Node::from_bytes(&bts[0..8])?;
-            let lab = (&bts[8..32 + 8]).to_owned();
-            omap.insert(nd, lab);
-            bts = &bts[unit_size..]
-        }
-        Some(Proof(omap))
-    }
+    /// Generates a MelPoW proof with respect to the given starting puzzle and a difficulty.
     pub fn generate(puzzle: &[u8], difficulty: usize) -> Self {
-        let mut proof_map = OrdMap::new();
+        let mut proof_map = im::HashMap::new();
         let chi = hash::bts_key(puzzle, b"chi");
         let gammas = gen_gammas(puzzle, difficulty);
         for g in gammas {
@@ -50,6 +31,7 @@ impl Proof {
         });
         Proof(proof_map)
     }
+    /// Verifies a MelPoW proof.
     pub fn verify(&self, puzzle: &[u8], difficulty: usize) -> bool {
         let chi = hash::bts_key(puzzle, b"chi");
         let gammas = gen_gammas(puzzle, difficulty);
@@ -90,6 +72,34 @@ impl Proof {
             }
         }
         true
+    }
+
+    /// Serializes the proof to a byte vector.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let unit_size = 8 + 32;
+        let mut output = Vec::with_capacity(unit_size * self.0.len());
+        for (k, v) in self.0.iter() {
+            assert_eq!(v.len(), 32);
+            output.extend_from_slice(&k.to_bytes());
+            output.extend_from_slice(&v);
+        }
+        output
+    }
+
+    /// Deserializes a proof from a byte vector.
+    pub fn from_bytes(mut bts: &[u8]) -> Option<Self> {
+        let unit_size = 8 + 32;
+        if bts.len() % unit_size != 0 {
+            return None;
+        }
+        let mut omap = im::HashMap::new();
+        while !bts.is_empty() {
+            let nd = node::Node::from_bytes(&bts[0..8])?;
+            let lab = (&bts[8..32 + 8]).to_owned();
+            omap.insert(nd, lab);
+            bts = &bts[unit_size..]
+        }
+        Some(Proof(omap))
     }
 }
 

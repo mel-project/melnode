@@ -7,8 +7,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rlp="0.4.5"
-rlp-derive="0.1.0"
 tmelcrypt={path="../tmelcrypt"}
 melpow={path="../melpow"}
 autosmt={path="../autosmt"}
@@ -29,5 +27,5 @@ defmac = "0.2"
 bincode = "1.3.1"
 serde = {version="1.0.116", features=["derive"]}
 bytes = { version = "0.5", features = ["serde"] }
-primitive-types = {version="0.7.2", features=["serde"]}
-
+primitive-types = {version="0.7.2", default-features=false, features=["serde"]}
+serde_repr = "0.1"

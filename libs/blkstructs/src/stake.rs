@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 /// A stake epoch is 500,000 blocks.
 pub const STAKE_EPOCH: u64 = 500_000;
 
-/// StakeDoc is a stake document.
+/// StakeDoc is a stake document. It encapsulates all the information needed to verify consensus proofs.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct StakeDoc {
     /// Public key.

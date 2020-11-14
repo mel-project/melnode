@@ -3,6 +3,7 @@ use crate::melscript::*;
 use arbitrary::Arbitrary;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::collections::HashMap;
 
 #[derive(
@@ -14,10 +15,11 @@ use std::collections::HashMap;
     PartialEq,
     Arbitrary,
     Debug,
-    Serialize,
-    Deserialize,
+    Serialize_repr,
+    Deserialize_repr,
 )]
 #[repr(u8)]
+/// An enumeration of all the different possible transaction kinds. Currently contains a "faucet" kind that will be (obviously) removed in production.
 pub enum TxKind {
     Normal = 0x00,
     Stake = 0x10,
@@ -29,7 +31,7 @@ pub enum TxKind {
     Faucet = 0xff,
 }
 
-/// Transaction represents an individual, RLP-serializable Themelio transaction.
+/// Transaction represents an individual, serializable Themelio transaction.
 #[derive(Clone, Arbitrary, Debug, Serialize, Deserialize)]
 pub struct Transaction {
     pub kind: TxKind,
@@ -38,10 +40,8 @@ pub struct Transaction {
     pub fee: u64,
     pub scripts: Vec<Script>,
     pub data: Vec<u8>,
-    pub sigs: Vec<Vecu8>,
+    pub sigs: Vec<Vec<u8>>,
 }
-
-type Vecu8 = Vec<u8>;
 
 impl Transaction {
     pub fn empty_test() -> Self {
@@ -107,12 +107,14 @@ impl Transaction {
 #[derive(
     Serialize, Deserialize, Clone, Debug, Copy, Arbitrary, Ord, PartialOrd, Eq, PartialEq, Hash,
 )]
+/// A coin ID, consisting of a transaction hash and index. Uniquely identifies a coin in Themelio's history.
 pub struct CoinID {
     pub txhash: tmelcrypt::HashVal,
     pub index: u8,
 }
 
 #[derive(Serialize, Deserialize, Clone, Arbitrary, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
+/// The data bound to a coin ID. Contains the "contents" of a coin, i.e. its constraint hash, value, and coin type.
 pub struct CoinData {
     pub conshash: tmelcrypt::HashVal,
     pub value: u64,
@@ -120,6 +122,7 @@ pub struct CoinData {
 }
 
 #[derive(Serialize, Deserialize, Clone, Arbitrary, Debug)]
+/// A `CoinData` but coupled with a block height. This is what actually gets stored in the global state, allowing constraints and the validity-checking algorithm to easily access the age of a coin.
 pub struct CoinDataHeight {
     pub coin_data: CoinData,
     pub height: u64,

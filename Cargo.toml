@@ -13,6 +13,7 @@ tmelcrypt={path="libs/tmelcrypt"}
 melpow={path="libs/melpow"}
 symphonia={path="libs/symphonia"}
 melnet={path="libs/melnet"}
+melscript={path="libs/melscript"}
 hex= "0.4.2"
 futures= "0.3.6"
 smol= "1.2.3"
