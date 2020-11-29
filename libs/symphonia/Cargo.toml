@@ -19,3 +19,5 @@ smol="1"
 serde = {version="1.0.116", features=["derive"]}
 bincode="1"
 smolscale="0.1"
+async-trait="0.1"
+derive_builder="0.9"

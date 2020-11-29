@@ -30,6 +30,7 @@ impl MachVars {
     }
 }
 
+/// Machine implements a HotStuff-like central state machine.
 pub struct Machine {
     globals: MachVars,
     curr_phase: Phase,

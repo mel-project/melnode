@@ -1,15 +1,17 @@
-use crate::transaction as txn;
+use crate::Transaction;
 use arbitrary::Arbitrary;
 use primitive_types::U256;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryInto;
+
+mod lexer;
 
 #[derive(Clone, Eq, PartialEq, Debug, Arbitrary, Serialize, Deserialize)]
 pub struct Script(pub Vec<u8>);
 
 impl Script {
-    pub fn check(&self, tx: &txn::Transaction) -> bool {
+    pub fn check(&self, tx: &Transaction) -> bool {
         self.check_opt(tx).is_some()
     }
 
@@ -29,9 +31,8 @@ impl Script {
         tmelcrypt::hash_single(&self.0)
     }
 
-    fn check_opt(&self, tx: &txn::Transaction) -> Option<()> {
-        let txb = bincode::serialize(tx).unwrap();
-        let tx_val = Value::from_bytes(&txb);
+    fn check_opt(&self, tx: &Transaction) -> Option<()> {
+        let tx_val = Value::from_serde(&tx)?;
         let ops = self.to_ops()?;
         let mut hm = HashMap::new();
         hm.insert(0, tx_val);
@@ -356,7 +357,7 @@ impl Executor {
                 let idx = idx.as_u16()? as usize;
                 match vec {
                     Value::Bytes(bts) => Some(Value::Int(U256::from(*bts.get(idx)?))),
-                    Value::Vector(elems) => Some(elems.get(idx)?.clone()),
+                    Value::Vector(elems, _) => Some(elems.get(idx)?.clone()),
                     _ => None,
                 }
             })?,
@@ -365,9 +366,9 @@ impl Executor {
                     v1.append(v2);
                     Some(Value::Bytes(v1))
                 }
-                (Value::Vector(mut v1), Value::Vector(v2)) => {
+                (Value::Vector(mut v1, b), Value::Vector(v2, _)) => {
                     v1.append(v2);
-                    Some(Value::Vector(v1))
+                    Some(Value::Vector(v1, b))
                 }
                 _ => None,
             })?,
@@ -375,22 +376,22 @@ impl Executor {
                 let i = i.as_u16()? as usize;
                 let j = j.as_u16()? as usize;
                 match vec {
-                    Value::Vector(mut vec) => Some(Value::Vector(vec.slice(i..j))),
+                    Value::Vector(mut vec, b) => Some(Value::Vector(vec.slice(i..j), b)),
                     Value::Bytes(mut vec) => Some(Value::Bytes(vec.slice(i..j))),
                     _ => None,
                 }
             })?,
             OpCode::VLENGTH => self.do_monop(|vec| match vec {
-                Value::Vector(vec) => Some(Value::Int(U256::from(vec.len()))),
+                Value::Vector(vec, _) => Some(Value::Int(U256::from(vec.len()))),
                 Value::Bytes(vec) => Some(Value::Int(U256::from(vec.len()))),
                 _ => None,
             })?,
-            OpCode::VEMPTY => self.stack.push(Value::Vector(im::Vector::new())),
+            OpCode::VEMPTY => self.stack.push(Value::Vector(im::Vector::new(), false)),
             OpCode::BEMPTY => self.stack.push(Value::Bytes(im::Vector::new())),
             OpCode::VPUSH => self.do_binop(|vec, val| match vec {
-                Value::Vector(mut vec) => {
+                Value::Vector(mut vec, _) => {
                     vec.push_back(val);
-                    Some(Value::Vector(vec))
+                    Some(Value::Vector(vec, false))
                 }
                 Value::Bytes(mut vec) => {
                     let bts = val.as_int()?;
@@ -549,7 +550,7 @@ impl OpCode {
 pub enum Value {
     Int(U256),
     Bytes(im::Vector<u8>),
-    Vector(im::Vector<Value>),
+    Vector(im::Vector<Value>, bool),
 }
 
 impl Value {
@@ -590,7 +591,49 @@ impl Value {
                 Some(out)
             }
             Value::Bytes(bts) => Some(bts.iter().copied().collect()),
-            Value::Vector(_) => None,
+            Value::Vector(_, _) => None,
+        }
+    }
+
+    fn from_serde(ss: &impl Serialize) -> Option<Self> {
+        let ss = serde_json::to_string(ss).ok()?;
+        let ss: serde_json::Value = serde_json::from_str(&ss).ok()?;
+        dbg!(&ss);
+        Self::from_serde_json(ss)
+    }
+
+    fn from_serde_json(j_value: serde_json::Value) -> Option<Self> {
+        match j_value {
+            serde_json::Value::Null => None,
+            serde_json::Value::String(_) => None,
+            serde_json::Value::Number(num) => Some(Self::Int(num.as_u64()?.into())),
+            serde_json::Value::Bool(v) => {
+                Some(Self::Int(if v { 1u64.into() } else { 0u64.into() }))
+            }
+            serde_json::Value::Array(vec) => {
+                // if all the subelements are bytes, then we encode as a byte array
+                if vec.iter().find(|v| !v.is_number()).is_none() {
+                    let mut bb: im::Vector<u8> = im::Vector::new();
+                    for elem in vec {
+                        if let serde_json::Value::Number(num) = elem {
+                            let num = num.as_u64()?;
+                            bb.push_back(num as u8);
+                        }
+                    }
+                    Some(Self::Bytes(bb))
+                } else {
+                    let vec: Option<im::Vector<Self>> =
+                        vec.into_iter().map(Self::from_serde_json).collect();
+                    Some(Self::Vector(vec?, false))
+                }
+            }
+            serde_json::Value::Object(obj) => {
+                let mut vec: im::Vector<Self> = im::Vector::new();
+                for (_, v) in obj {
+                    vec.push_back(Self::from_serde_json(v)?)
+                }
+                Some(Self::Vector(vec, true))
+            }
         }
     }
 }
@@ -642,14 +685,14 @@ mod tests {
         )])
         .unwrap();
         println!("script length is {}", check_sig_script.0.len());
-        let mut tx = txn::Transaction::empty_test().sign_ed25519(sk);
+        let tx = Transaction::empty_test().sign_ed25519(sk);
         assert!(check_sig_script.check(&tx));
     }
 
     #[quickcheck]
     fn loop_once_is_identity(bitcode: Vec<u8>) -> bool {
         let ops = Script(bitcode.clone()).to_ops();
-        let tx = txn::Transaction::empty_test();
+        let tx = Transaction::empty_test();
         match ops {
             None => true,
             Some(ops) => {
@@ -664,7 +707,7 @@ mod tests {
     #[quickcheck]
     fn deterministic_execution(bitcode: Vec<u8>) -> bool {
         let ops = Script(bitcode.clone()).to_ops();
-        let tx = txn::Transaction::empty_test();
+        let tx = Transaction::empty_test();
         match ops {
             None => true,
             Some(ops) => {

@@ -1,60 +1,61 @@
-use crate::common::*;
-use crate::machine::Machine;
-use futures::channel::mpsc;
-use futures::lock;
+use crate::{common::*, Decider};
+use crate::{machine::Machine, DestMsg};
+use async_trait::async_trait;
 use futures::prelude::*;
 use futures::select;
 use log::trace;
-use parking_lot::Mutex;
-
+use smol::channel::{Receiver, Sender};
 use std::ops::DerefMut;
 use std::time::Duration;
 
-type DestMsg = (Option<tmelcrypt::Ed25519PK>, SignedMessage);
+/// A Pacemaker is an implementation of Decider that uses a Machine to decide on a value.
 pub struct Pacemaker {
-    msg_input: Mutex<mpsc::UnboundedSender<SignedMessage>>,
-    msg_output: lock::Mutex<mpsc::Receiver<DestMsg>>,
-    decision_output: lock::Mutex<smol::Task<QuorumCert>>,
+    send_input: Sender<SignedMessage>,
+    recv_output: Receiver<DestMsg>,
+    decision_output: smol::lock::Mutex<smol::Task<QuorumCert>>,
 }
 
 impl Pacemaker {
-    // Creates a new Pacemaker from a consumed Machine.
+    /// Creates a new Pacemaker from a consumed Machine.
     pub fn new(machine: Machine) -> Self {
-        let (send_input, recv_input) = mpsc::unbounded();
-        let (send_output, recv_output) = mpsc::channel(0);
+        let (send_input, recv_input) = smol::channel::unbounded();
+        let (send_output, recv_output) = smol::channel::unbounded();
         Pacemaker {
-            msg_input: Mutex::new(send_input),
-            msg_output: lock::Mutex::new(recv_output),
-            decision_output: lock::Mutex::new(smolscale::spawn(async move {
+            send_input,
+            recv_output,
+            decision_output: smol::lock::Mutex::new(smolscale::spawn(async move {
                 pacemaker_loop(machine, recv_input, send_output).await
             })),
         }
     }
+}
 
+#[async_trait]
+impl Decider for Pacemaker {
     // Next output message.
-    pub async fn next_output(&self) -> DestMsg {
-        match self.msg_output.lock().await.next().await {
-            Some(msg) => msg,
-            None => future::pending().await,
+    async fn next_output(&self) -> DestMsg {
+        match self.recv_output.recv().await {
+            Ok(msg) => msg,
+            _ => future::pending().await,
         }
     }
 
-    // Final decision, represented as a quorum certificate.
-    pub async fn decision(&self) -> QuorumCert {
+    /// Final decision, represented as a quorum certificate.
+    async fn decision(&self) -> QuorumCert {
         let mut out = self.decision_output.lock().await;
         out.deref_mut().await
     }
 
-    // Processes an input message.
-    pub fn process_input(&self, msg: SignedMessage) {
-        let _ = self.msg_input.lock().unbounded_send(msg);
+    /// Processes an input message.
+    fn process_input(&self, msg: SignedMessage) {
+        let _ = self.send_input.try_send(msg);
     }
 }
 
 async fn pacemaker_loop(
     mut machine: Machine,
-    mut recv_input: mpsc::UnboundedReceiver<SignedMessage>,
-    mut send_output: mpsc::Sender<DestMsg>,
+    mut recv_input: Receiver<SignedMessage>,
+    send_output: Sender<DestMsg>,
 ) -> QuorumCert {
     trace!("pacemaker started");
     let mut timeout = Duration::from_millis(5000);
@@ -73,7 +74,7 @@ async fn pacemaker_loop(
         }
         // wait for input, or timeout
         select! {
-            s_msg = recv_input.next() => {
+            s_msg = recv_input.next().fuse() => {
                 if let Some(s_msg) = s_msg {
                     //trace!("machine process {:?}", s_msg.msg.phase);
                     machine.process_input(s_msg.clone());

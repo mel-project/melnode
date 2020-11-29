@@ -3,7 +3,25 @@ pub use common::*;
 mod machine;
 pub use machine::*;
 mod pacemaker;
+mod testing;
+use async_trait::async_trait;
 pub use pacemaker::*;
+
+pub type DestMsg = (Option<tmelcrypt::Ed25519PK>, SignedMessage);
+
+/// Decider is an object-safe trait abstracts over all Themelio-compatible consensus algorithms. The choice of Decider is ``soft-critical'': more than 2/3 of stakeholders must agree on which Decider to use, but the choice of Decider does not affect that core state-transition function, and problems in Decider do not affact economic finality, since slashing and other incentives are decided by the state-transition function.
+///
+/// Currently, Pacemaker is the only implementation of Decider in this crate, though other crates may implement Decider freely.
+
+#[async_trait]
+pub trait Decider {
+    /// Waits for the next output message.
+    async fn next_output(&self) -> DestMsg;
+    /// Waits for the decision
+    async fn decision(&self) -> QuorumCert;
+    /// Processes an input message, possibly unblocking next_output or decision.
+    fn process_input(&self, msg: SignedMessage);
+}
 
 #[cfg(test)]
 mod tests {

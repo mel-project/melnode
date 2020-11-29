@@ -1,5 +1,4 @@
-use crate::constants::*;
-use crate::melscript::*;
+use crate::{constants::*, melscript};
 use arbitrary::Arbitrary;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
@@ -38,7 +37,7 @@ pub struct Transaction {
     pub inputs: Vec<CoinID>,
     pub outputs: Vec<CoinData>,
     pub fee: u64,
-    pub scripts: Vec<Script>,
+    pub scripts: Vec<melscript::Script>,
     pub data: Vec<u8>,
     pub sigs: Vec<Vec<u8>>,
 }
@@ -95,7 +94,7 @@ impl Transaction {
         toret
     }
     /// scripts_as_map returns a HashMap mapping the hash of each script in the transaction to the script itself.
-    pub fn script_as_map(&self) -> HashMap<tmelcrypt::HashVal, Script> {
+    pub fn script_as_map(&self) -> HashMap<tmelcrypt::HashVal, melscript::Script> {
         let mut toret = HashMap::new();
         for s in self.scripts.iter() {
             toret.insert(s.hash(), s.clone());

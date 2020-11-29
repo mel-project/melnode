@@ -175,11 +175,8 @@ impl State {
         }
         let lnewself = RwLock::new(newself);
         // then we apply the outputs in parallel
-        let res: Result<Vec<()>, TxApplicationError> = txx
-            .par_iter()
-            .map(|tx| State::apply_tx_outputs(&lnewself, tx))
-            .collect();
-        res?;
+        txx.par_iter()
+            .for_each(|tx| State::apply_tx_outputs(&lnewself, tx));
         // then we apply the inputs in parallel
         let res: Result<Vec<()>, TxApplicationError> = txx
             .par_iter()
@@ -283,10 +280,7 @@ impl State {
         Ok(())
     }
     // apply outputs
-    fn apply_tx_outputs(
-        lself: &RwLock<Self>,
-        tx: &txn::Transaction,
-    ) -> Result<(), TxApplicationError> {
+    fn apply_tx_outputs(lself: &RwLock<Self>, tx: &txn::Transaction) {
         for (index, coin_data) in tx.outputs.iter().enumerate() {
             let height = lself.read().height;
             // if conshash is zero, this destroys the coins permanently
@@ -303,7 +297,6 @@ impl State {
                 );
             }
         }
-        Ok(())
     }
     // apply special effects
     fn apply_tx_special(

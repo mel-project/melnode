@@ -9,6 +9,7 @@ use smol::net::TcpListener;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
+use symphonia::Decider;
 use tmelcrypt::*;
 
 const STAKE_NET: &str = "themelio-stakeholder";
