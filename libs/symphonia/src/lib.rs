@@ -3,7 +3,7 @@ pub use common::*;
 mod machine;
 pub use machine::*;
 mod pacemaker;
-mod testing;
+pub mod testing;
 use async_trait::async_trait;
 pub use pacemaker::*;
 

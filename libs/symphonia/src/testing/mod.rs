@@ -24,6 +24,7 @@ impl Harness {
     /// Runs the harness until all honest participants decide.
     pub async fn run(self) {
         let (send_global, recv_global) = smol::channel::unbounded();
+        let num_participants = self.participants.len();
         let total_weight: u64 = self.participants.iter().map(|(_, w)| w).sum();
         let weight_map: HashMap<tmelcrypt::Ed25519PK, f64> = self
             .participants
@@ -92,7 +93,7 @@ impl Harness {
             }
         });
         // time to wait for the decisions
-        loop {
+        for _ in 0..num_participants {
             let dec = recv_decision.recv().await.unwrap();
             dbg!(dec);
         }
@@ -106,3 +107,8 @@ pub struct MockNet {
     pub latency_variance: Duration,
     pub loss_prob: f64,
 }
+
+/// An efficient lossy channel.
+///
+/// Elements can be stuffed in, and they will be delayed until a given time or lost before they can be read out. This simulates a bad network connection or other similar construct.
+pub struct LossyChan;

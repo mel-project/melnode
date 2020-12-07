@@ -77,7 +77,7 @@ async fn stakeholder_loop(
                 // view_leader right now is hardcoded
                 view_leader: {
                     //let proposal = proposal.clone();
-                    Arc::new(move |_view: u64| insecure_testnet_keygen(0 as usize).0)
+                    Arc::new(move |_view: u64| insecure_testnet_keygen(0).0)
                 },
                 is_valid_prop: {
                     let _proposal = proposal.clone();

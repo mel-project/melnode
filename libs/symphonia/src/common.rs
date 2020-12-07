@@ -1,15 +1,18 @@
+use derivative::Derivative;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
-
 pub const BFT_THRESHOLD: f64 = 0.7;
 
-#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Derivative)]
+#[derivative(Debug)]
+#[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Message {
     pub phase: Phase,
     pub node: Node,
     pub justify: Option<QuorumCert>,
     pub sender: tmelcrypt::Ed25519PK,
     pub view_number: u64,
+    #[derivative(Debug = "ignore")]
     pub partial_sig: Option<Vec<u8>>,
 }
 
@@ -39,9 +42,11 @@ impl Message {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Derivative, Serialize, Deserialize, Clone)]
+#[derivative(Debug)]
 pub struct SignedMessage {
     pub msg: Message,
+    #[derivative(Debug = "ignore")]
     pub signature: Vec<u8>,
 }
 
@@ -78,17 +83,21 @@ pub enum Phase {
     Decide = 0x05,
 }
 
-#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Derivative, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
+#[derivative(Debug)]
 pub struct QuorumCert {
     pub phase: Phase,
     pub view_number: u64,
     pub node: Node,
+    #[derivative(Debug = "ignore")]
     pub signatures: Vec<QCSig>,
 }
 
-#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize, Derivative)]
+#[derivative(Debug)]
 pub struct QCSig {
     pub sender: tmelcrypt::Ed25519PK,
+    #[derivative(Debug = "ignore")]
     pub signature: Vec<u8>,
 }
 

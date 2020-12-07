@@ -1,18 +1,19 @@
 use arbitrary::Arbitrary;
+use ed25519_dalek::{Signer, Verifier};
 use serde::{Deserialize, Serialize};
 use serde_big_array::big_array;
+use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
-use ed25519_dalek::{Signer, Verifier};
-use std::convert::TryFrom;
 
 big_array! { BigArray; }
 
 #[derive(
     Copy, Clone, Eq, PartialEq, Hash, Arbitrary, Ord, PartialOrd, Default, Serialize, Deserialize,
 )]
+/// Represents an 256-byte hash value.
 pub struct HashVal(pub [u8; 32]);
 
 impl HashVal {
@@ -62,16 +63,19 @@ impl fmt::Debug for HashVal {
     }
 }
 
+/// Hashes a single value.
 pub fn hash_single(val: &[u8]) -> HashVal {
     let b3h = blake3::hash(val);
     HashVal((*b3h.as_bytes().as_ref()).try_into().unwrap())
 }
 
+/// Hashes a value with the given key.
 pub fn hash_keyed(key: &[u8], val: &[u8]) -> HashVal {
     let b3h = blake3::keyed_hash(&hash_single(key).0, val);
     HashVal((*b3h.as_bytes().as_ref()).try_into().unwrap())
 }
 
+/// Generates an ed25519 keypair.
 pub fn ed25519_keygen() -> (Ed25519PK, Ed25519SK) {
     let mut csprng = rand::thread_rng();
     let keypair = ed25519_dalek::Keypair::generate(&mut csprng);
@@ -82,6 +86,7 @@ pub fn ed25519_keygen() -> (Ed25519PK, Ed25519SK) {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
+/// An ed25519 public key.
 pub struct Ed25519PK(pub [u8; 32]);
 
 impl Ed25519PK {
@@ -113,6 +118,7 @@ impl fmt::Debug for Ed25519PK {
     }
 }
 #[derive(Copy, Clone, Serialize, Deserialize)]
+/// An ed25519 secret key.
 pub struct Ed25519SK(#[serde(with = "BigArray")] pub [u8; 64]);
 
 impl PartialEq for Ed25519SK {
@@ -135,7 +141,7 @@ impl Hash for Ed25519SK {
 
 impl Ed25519SK {
     pub fn sign(&self, msg: &[u8]) -> Vec<u8> {
-        let kp = ed25519_dalek::Keypair::from_bytes(&self.0).unwrap(); 
+        let kp = ed25519_dalek::Keypair::from_bytes(&self.0).unwrap();
         kp.sign(msg).to_bytes().to_vec()
     }
 

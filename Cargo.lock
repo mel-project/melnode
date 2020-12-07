@@ -2006,6 +2006,7 @@ dependencies = [
  "async-trait",
  "bincode",
  "crossbeam-channel 0.4.4",
+ "derivative",
  "derive_builder",
  "env_logger",
  "futures",
