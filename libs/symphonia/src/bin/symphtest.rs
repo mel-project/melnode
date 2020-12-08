@@ -1,12 +1,11 @@
 use env_logger::Env;
-use std::time::Duration;
 use structopt::StructOpt;
 use symphonia::testing::{Harness, MockNet};
 
 #[derive(Debug, StructOpt)]
 #[structopt(
     name = "Symphonia Test Harness",
-    about = "Simulate a network of nodes running symphonia"
+    about = "Simulate a network of nodes running Symphonia"
 )]
 struct Opt {
     #[structopt(
@@ -14,18 +13,18 @@ struct Opt {
         long,
         short,
         help = "Mean time in ms for latency",
-        default_value = "100"
+        default_value = "100.0"
     )]
-    latency_mean_ms: u64,
+    latency_mean_ms: f64,
 
     #[structopt(
         name = "variance",
         long,
         short,
-        help = "Variance time in ms for latency",
-        default_value = "10"
+        help = "Variance of normal distribution for latency",
+        default_value = "1.0"
     )]
-    latency_variance_ms: u64,
+    latency_variance: f64,
 
     #[structopt(
         name = "loss",
@@ -48,16 +47,18 @@ struct Opt {
 }
 
 fn main() {
-    // let opt: Opt = Opt::from_args();
+    let opt: Opt = Opt::from_args();
+    println!("{:?}", opt);
     smol::block_on(async move {
         env_logger::from_env(Env::default().default_filter_or("symphonia=trace,warn")).init();
         let mut harness = Harness::new(MockNet {
-            latency_mean: Duration::from_millis(100),
-            latency_variance: Duration::from_millis(10),
-            loss_prob: 0.01,
+            latency_mean_ms: opt.latency_mean_ms,
+            latency_variance: opt.latency_variance,
+            loss_prob: opt.loss_prob,
         });
-        for _ in 0..100 {
-            harness = harness.add_participant(tmelcrypt::ed25519_keygen().1, 100);
+        for particpant_weight in opt.participant_weights.iter() {
+            harness =
+                harness.add_participant(tmelcrypt::ed25519_keygen().1, particpant_weight.clone());
         }
         harness.run().await
     });
