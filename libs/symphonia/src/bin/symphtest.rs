@@ -22,7 +22,7 @@ struct Opt {
         long,
         short,
         help = "Variance of normal distribution for latency",
-        default_value = "1.0"
+        default_value = "20.0"
     )]
     latency_variance: f64,
 
@@ -31,7 +31,7 @@ struct Opt {
         long,
         short,
         help = "Probability of loss per network transfer",
-        default_value = "0.01"
+        default_value = "0.05"
     )]
     loss_prob: f64,
 

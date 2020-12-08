@@ -1,3 +1,4 @@
+use log::trace;
 use rand::prelude::*;
 use rand_distr::{Distribution, Normal};
 use smol::channel::{Receiver, Sender};
@@ -19,7 +20,8 @@ pub fn unbounded<T: Send + 'static>(network: MockNet) -> (Sender<T>, Receiver<T>
             let output = recv_input.recv().await.ok()?;
 
             // drop it based on loss probability
-            if rand::thread_rng().gen::<f64>() > network.loss_prob {
+            if rand::thread_rng().gen::<f64>() < network.loss_prob {
+                trace!("Simulated loss");
                 continue;
             }
 
@@ -27,6 +29,7 @@ pub fn unbounded<T: Send + 'static>(network: MockNet) -> (Sender<T>, Receiver<T>
             let normal =
                 Normal::new(network.latency_mean_ms, network.latency_variance.sqrt()).unwrap();
             let delay = normal.sample(&mut rand::thread_rng()).round() as u64;
+            trace!("[delay in ms={}]", delay.clone());
             let delay = Duration::from_millis(delay);
 
             // send it over later. this is a little inefficient but it's fine because we don't need crazy throughput or anything and tasks are cheap
