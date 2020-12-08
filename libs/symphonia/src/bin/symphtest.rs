@@ -16,7 +16,7 @@ struct Opt {
         help = "Mean time in ms for latency",
         default_value = "100"
     )]
-    latency_mean_ms: u32,
+    latency_mean_ms: u64,
 
     #[structopt(
         name = "variance",
@@ -25,7 +25,7 @@ struct Opt {
         help = "Variance time in ms for latency",
         default_value = "10"
     )]
-    latency_variance_ms: u32,
+    latency_variance_ms: u64,
 
     #[structopt(
         name = "loss",
@@ -44,10 +44,11 @@ struct Opt {
         default_value = "100",
         use_delimiter = true
     )]
-    participant_weights: Vec<u32>,
+    participant_weights: Vec<u64>,
 }
 
 fn main() {
+    // let opt: Opt = Opt::from_args();
     smol::block_on(async move {
         env_logger::from_env(Env::default().default_filter_or("symphonia=trace,warn")).init();
         let mut harness = Harness::new(MockNet {
