@@ -1,5 +1,4 @@
 use env_logger::Env;
-use std::path::PathBuf;
 use std::time::Duration;
 use structopt::StructOpt;
 use symphonia::testing::{Harness, MockNet};
@@ -15,7 +14,7 @@ struct Opt {
         long,
         short,
         help = "Mean time in ms for latency",
-        default = "100"
+        default_value = "100"
     )]
     latency_mean_ms: u32,
 
@@ -24,7 +23,7 @@ struct Opt {
         long,
         short,
         help = "Variance time in ms for latency",
-        default = "10"
+        default_value = "10"
     )]
     latency_variance_ms: u32,
 
@@ -33,7 +32,7 @@ struct Opt {
         long,
         short,
         help = "Probability of loss per network transfer",
-        default = "0.01"
+        default_value = "0.01"
     )]
     loss_prob: f64,
 
@@ -43,7 +42,7 @@ struct Opt {
         short,
         help = "Comma separated voting weight of each consensus participants",
         default_value = "100",
-        raw(use_delimiter = "true")
+        use_delimiter = true
     )]
     participant_weights: Vec<u32>,
 }
