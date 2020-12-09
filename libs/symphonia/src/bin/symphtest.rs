@@ -2,12 +2,21 @@ use env_logger::Env;
 use structopt::StructOpt;
 use symphonia::testing::{Harness, MockNet};
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, StructOpt, Clone)]
 #[structopt(
     name = "Symphonia Test Harness",
-    about = "Simulate a network of nodes running Symphonia"
+    about = "Simulate a network of nodes running Symphonia for a number of rounds"
 )]
 struct Opt {
+    #[structopt(
+        name = "rounds",
+        long,
+        short,
+        help = "Number of rounds or times to reach consensus on a block",
+        default_value = "1"
+    )]
+    rounds: u64,
+
     #[structopt(
         name = "mean",
         long,
@@ -47,19 +56,26 @@ struct Opt {
 }
 
 fn main() {
+    env_logger::from_env(Env::default().default_filter_or("symphonia=trace,warn")).init();
     let opt: Opt = Opt::from_args();
+    let mock_net = MockNet {
+        latency_mean_ms: opt.latency_mean_ms,
+        latency_standard_deviation: opt.latency_standard_deviation,
+        loss_prob: opt.loss_prob,
+    };
     println!("{:?}", opt);
     smol::block_on(async move {
-        env_logger::from_env(Env::default().default_filter_or("symphonia=trace,warn")).init();
-        let mut harness = Harness::new(MockNet {
-            latency_mean_ms: opt.latency_mean_ms,
-            latency_standard_deviation: opt.latency_standard_deviation,
-            loss_prob: opt.loss_prob,
-        });
-        for participant_weight in opt.participant_weights.iter() {
-            harness =
-                harness.add_participant(tmelcrypt::ed25519_keygen().1, participant_weight.clone());
+        for _ in 0..opt.rounds {
+            run_round(opt.clone(), mock_net).await;
         }
-        harness.run().await
     });
+}
+
+async fn run_round(opt: Opt, mock_net: MockNet) {
+    let mut harness = Harness::new(mock_net);
+    for participant_weight in opt.participant_weights.iter() {
+        harness =
+            harness.add_participant(tmelcrypt::ed25519_keygen().1, participant_weight.clone());
+    }
+    harness.run().await
 }
