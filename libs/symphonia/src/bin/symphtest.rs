@@ -18,13 +18,13 @@ struct Opt {
     latency_mean_ms: f64,
 
     #[structopt(
-        name = "variance",
+        name = "deviation",
         long,
         short,
-        help = "Variance of normal distribution for latency",
-        default_value = "20.0"
+        help = "Standard deviation of normal distribution for latency",
+        default_value = "5.0"
     )]
-    latency_variance: f64,
+    latency_standard_deviation: f64,
 
     #[structopt(
         name = "loss",
@@ -53,12 +53,12 @@ fn main() {
         env_logger::from_env(Env::default().default_filter_or("symphonia=trace,warn")).init();
         let mut harness = Harness::new(MockNet {
             latency_mean_ms: opt.latency_mean_ms,
-            latency_variance: opt.latency_variance,
+            latency_standard_deviation: opt.latency_standard_deviation,
             loss_prob: opt.loss_prob,
         });
-        for particpant_weight in opt.participant_weights.iter() {
+        for participant_weight in opt.participant_weights.iter() {
             harness =
-                harness.add_participant(tmelcrypt::ed25519_keygen().1, particpant_weight.clone());
+                harness.add_participant(tmelcrypt::ed25519_keygen().1, participant_weight.clone());
         }
         harness.run().await
     });

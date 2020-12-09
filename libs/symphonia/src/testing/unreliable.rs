@@ -27,7 +27,7 @@ pub fn unbounded<T: Send + 'static>(network: MockNet) -> (Sender<T>, Receiver<T>
 
             // compute delay duration from latency params using a standard curve
             let normal =
-                Normal::new(network.latency_mean_ms, network.latency_variance.sqrt()).unwrap();
+                Normal::new(network.latency_mean_ms, network.latency_standard_deviation).unwrap();
             let delay = normal.sample(&mut rand::thread_rng()).round() as u64;
             trace!("[delay in ms={}]", delay.clone());
             let delay = Duration::from_millis(delay);
