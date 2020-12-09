@@ -1,6 +1,7 @@
 use crate::{Config, Decider, Machine, Pacemaker};
 use smol::prelude::*;
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc};
+mod unreliable;
 
 /// A harness for testing that uses a mock network to transport messages. Uses a builder-style pattern and should be "run" at the end.
 pub struct Harness {
@@ -23,7 +24,7 @@ impl Harness {
     }
     /// Runs the harness until all honest participants decide.
     pub async fn run(self) {
-        let (send_global, recv_global) = smol::channel::unbounded();
+        let (send_global, recv_global) = unreliable::unbounded(self.network);
         let num_participants = self.participants.len();
         let total_weight: u64 = self.participants.iter().map(|(_, w)| w).sum();
         let weight_map: HashMap<tmelcrypt::Ed25519PK, f64> = self
@@ -103,8 +104,8 @@ impl Harness {
 /// A mock-network.
 #[derive(Clone, Debug, Copy)]
 pub struct MockNet {
-    pub latency_mean: Duration,
-    pub latency_variance: Duration,
+    pub latency_mean_ms: f64,
+    pub latency_variance: f64,
     pub loss_prob: f64,
 }
 
