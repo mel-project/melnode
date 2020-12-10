@@ -1,4 +1,8 @@
 use env_logger::Env;
+use serde::Deserialize;
+use std::env;
+use std::fs;
+use std::path::PathBuf;
 use structopt::StructOpt;
 use symphonia::testing::{Harness, MockNet};
 
@@ -8,7 +12,7 @@ use symphonia::testing::{Harness, MockNet};
     about = "Simulate a network of nodes running Symphonia"
 )]
 enum Opt {
-    #[structopt(about = "Simulate rounds in Symphonia")]
+    #[structopt(about = "Simulate rounds in Symphonia for a set of params")]
     Rounds {
         #[structopt(
             name = "rounds",
@@ -57,80 +61,53 @@ enum Opt {
         participant_weights: Vec<u64>,
     },
 
-    #[structopt(about = "Simulate different parameter ranges in Symphonia")]
+    #[structopt(about = "Simulate different test cases selection params from input file")]
     Parameterize {
+        #[structopt(
+            name = "test-count",
+            long,
+            short,
+            help = "Number of test simulations to run",
+            default_value = "100"
+        )]
+        test_count: u64,
+
         #[structopt(
             name = "rounds",
             long,
             short,
-            help = "Comma separated list of min, interval and max round range",
-            min_values = 3,
-            max_values = 3,
-            use_delimiter = true,
-            required = true
+            help = "Number of rounds or times to reach consensus on a block",
+            default_value = "1"
         )]
-        rounds_range: Vec<u64>,
+        rounds: u64,
 
         #[structopt(
-            name = "mean",
+            name = "filename",
             long,
             short,
-            help = "Comma separated list of min, interval and max mean range",
-            min_values = 3,
-            max_values = 3,
-            use_delimiter = true,
-            required = true
+            help = "Input params file name containing to determine values to test"
         )]
-        mean_range: Vec<f64>,
-
-        #[structopt(
-            name = "deviation",
-            long,
-            short,
-            help = "Comma separated list of min, interval and max standard deviation range",
-            min_values = 3,
-            max_values = 3,
-            use_delimiter = true,
-            required = true
-        )]
-        standard_deviation_range: Vec<f64>,
-
-        #[structopt(
-            name = "loss",
-            long,
-            short,
-            help = "Comma separated list of min, interval and max loss range",
-            min_values = 3,
-            max_values = 3,
-            use_delimiter = true,
-            required = true
-        )]
-        loss_range: Vec<f64>,
-
-        #[structopt(
-            name = "pareto",
-            long,
-            short,
-            help = "Comma separated list of min, interval and max pareto alpha scalar range",
-            min_values = 3,
-            max_values = 3,
-            use_delimiter = true,
-            required = true
-        )]
-        pareto_alpha_range: Vec<f64>,
-
-        #[structopt(
-            name = "num_participants",
-            long,
-            short,
-            help = "Comma separated list of min, interval and max num of participants range",
-            min_values = 3,
-            max_values = 3,
-            use_delimiter = true,
-            required = true
-        )]
-        num_participants_range: Vec<u64>,
+        file_name: String,
     },
+}
+
+#[derive(Debug, Deserialize)]
+struct Latency {
+    mean_milli_sec: Vec<f64>,
+    standard_deviation: Vec<f64>,
+    loss_probability: Vec<f64>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Participants {
+    pareto_alpha: Vec<f64>,
+    num_participants: Vec<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Params {
+    latency: Latency,
+    participants: Participants,
 }
 
 fn main() {
@@ -157,28 +134,47 @@ fn main() {
                 }
             }
             Opt::Parameterize {
-                rounds_range,
-                mean_range,
-                standard_deviation_range,
-                loss_range,
-                pareto_alpha_range,
-                num_participants_range,
+                rounds,
+                file_name,
+                test_count,
             } => {
-                let latency_mean_ms = 100.0;
-                let latency_standard_deviation = 5.0;
-                let loss_prob = 0.01;
-                let participant_weights = vec![100, 100, 100, 100, 100, 100, 100, 100, 100];
-                for round_range in rounds_range {
-                    for _ in 0..round_range {
-                        let mock_net = MockNet {
-                            latency_mean_ms,
-                            latency_standard_deviation,
-                            loss_prob,
-                        };
-                        // TODO: avoid clone by using immutable vector conversion before loop
-                        run_round(participant_weights.clone(), mock_net).await
-                    }
-                }
+                // Load file and deserialize into params
+                let mut path = env::current_dir().expect("Failed to get current directory");
+                path.push(file_name);
+                println!("{:?}", path);
+                let file_contents = fs::read_to_string(path).expect("Unable to read file");
+                let params: Params =
+                    toml::from_str(&file_contents).expect("Unable to deserialize params");
+                println!("{:?}", params);
+                // let params = toml::from_str
+                // let params = params_file;
+                // let params = [];
+
+                // Run test cases
+                // for _ in test_count {
+                //     // Select values from params
+                //     let (
+                //         latency_mean_ms,
+                //         latency_standard_deviation,
+                //         loss_prob,
+                //         participant_weights,
+                //     ) = get_values(params);
+                // }
+                // let latency_mean_ms = 100.0;
+                // let latency_standard_deviation = 5.0;
+                // let loss_prob = 0.01;
+                // let participant_weights = vec![100, 100, 100, 100, 100, 100, 100, 100, 100];
+                // for round_range in rounds_range {
+                //     for _ in 0..round_range {
+                //         let mock_net = MockNet {
+                //             latency_mean_ms,
+                //             latency_standard_deviation,
+                //             loss_prob,
+                //         };
+                //         // TODO: avoid clone by using immutable vector conversion before loop
+                //         run_round(participant_weights.clone(), mock_net).await
+                //     }
+                // }
 
                 // run_rounds(rounds_range.clone(), latency_mean_ms, latency_standard_deviation, loss_prob, participant_weights).await;
             }
