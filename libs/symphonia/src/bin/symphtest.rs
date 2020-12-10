@@ -1,4 +1,5 @@
 use env_logger::Env;
+use rand::Rng;
 use serde::Deserialize;
 use std::env;
 use std::fs;
@@ -98,6 +99,18 @@ struct Latency {
     loss_probability: Vec<f64>,
 }
 
+impl Latency {
+    fn sample(&self) -> (f64, f64, f64) {
+        /// Calculate and return a sample from min and max on latency fields
+        let mut rng = rand::thread_rng();
+        let mean = rng.gen_range(self.mean_milli_sec[0], self.mean_milli_sec[1]);
+        let standard_deviation =
+            rng.gen_range(self.standard_deviation[0], self.standard_deviation[1]);
+        let loss_probability = rng.gen_range(self.loss_probability[0], self.loss_probability[1]);
+        (mean, standard_deviation, loss_probability)
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct Participants {
     pareto_alpha: Vec<f64>,
@@ -141,25 +154,21 @@ fn main() {
                 // Load file and deserialize into params
                 let mut path = env::current_dir().expect("Failed to get current directory");
                 path.push(file_name);
-                println!("{:?}", path);
                 let file_contents = fs::read_to_string(path).expect("Unable to read file");
                 let params: Params =
                     toml::from_str(&file_contents).expect("Unable to deserialize params");
-                println!("{:?}", params);
-                // let params = toml::from_str
-                // let params = params_file;
-                // let params = [];
 
                 // Run test cases
-                // for _ in test_count {
-                //     // Select values from params
-                //     let (
-                //         latency_mean_ms,
-                //         latency_standard_deviation,
-                //         loss_prob,
-                //         participant_weights,
-                //     ) = get_values(params);
-                // }
+                for _ in 0..test_count {
+                    // Select values from params
+                    let (latency_mean_ms, latency_standard_deviation, loss_prob) =
+                        params.latency.sample();
+                    let mock_net = MockNet {
+                        latency_mean_ms,
+                        loss_prob,
+                        latency_standard_deviation,
+                    };
+                }
                 // let latency_mean_ms = 100.0;
                 // let latency_standard_deviation = 5.0;
                 // let loss_prob = 0.01;
