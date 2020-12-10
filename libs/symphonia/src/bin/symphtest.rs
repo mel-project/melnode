@@ -179,6 +179,8 @@ fn main() {
                         run_round(participant_weights.clone(), mock_net).await
                     }
                 }
+
+                // run_rounds(rounds_range.clone(), latency_mean_ms, latency_standard_deviation, loss_prob, participant_weights).await;
             }
         }
     });
@@ -192,3 +194,5 @@ async fn run_round(participant_weights: Vec<u64>, mock_net: MockNet) {
     }
     harness.run().await
 }
+
+async fn run_rounds() {}
