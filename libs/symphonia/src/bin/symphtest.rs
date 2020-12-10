@@ -4,76 +4,178 @@ use symphonia::testing::{Harness, MockNet};
 
 #[derive(Debug, StructOpt, Clone)]
 #[structopt(
-    name = "Symphonia Test Harness",
-    about = "Simulate a network of nodes running Symphonia for a number of rounds"
+    name = "Symphonia test harness",
+    about = "Simulate a network of nodes running Symphonia"
 )]
-struct Opt {
-    #[structopt(
-        name = "rounds",
-        long,
-        short,
-        help = "Number of rounds or times to reach consensus on a block",
-        default_value = "1"
-    )]
-    rounds: u64,
+enum Opt {
+    #[structopt(about = "Simulate rounds in Symphonia")]
+    Rounds {
+        #[structopt(
+            name = "rounds",
+            long,
+            short,
+            help = "Number of rounds or times to reach consensus on a block",
+            default_value = "1"
+        )]
+        rounds: u64,
 
-    #[structopt(
-        name = "mean",
-        long,
-        short,
-        help = "Mean time in ms for latency",
-        default_value = "100.0"
-    )]
-    latency_mean_ms: f64,
+        #[structopt(
+            name = "mean",
+            long,
+            short,
+            help = "Mean time in ms for latency",
+            default_value = "100.0"
+        )]
+        latency_mean_ms: f64,
 
-    #[structopt(
-        name = "deviation",
-        long,
-        short,
-        help = "Standard deviation of normal distribution for latency",
-        default_value = "5.0"
-    )]
-    latency_standard_deviation: f64,
+        #[structopt(
+            name = "deviation",
+            long,
+            short,
+            help = "Standard deviation of normal distribution for latency",
+            default_value = "5.0"
+        )]
+        latency_standard_deviation: f64,
 
-    #[structopt(
-        name = "loss",
-        long,
-        short,
-        help = "Probability of loss per network transfer",
-        default_value = "0.05"
-    )]
-    loss_prob: f64,
+        #[structopt(
+            name = "loss",
+            long,
+            short,
+            help = "Probability of loss per network transfer",
+            default_value = "0.05"
+        )]
+        loss_prob: f64,
 
-    #[structopt(
-        name = "weights",
-        long,
-        short,
-        help = "Comma separated voting weight of each consensus participants",
-        default_value = "100",
-        use_delimiter = true
-    )]
-    participant_weights: Vec<u64>,
+        #[structopt(
+            name = "weights",
+            long,
+            short,
+            help = "Comma separated voting weight of each consensus participants",
+            default_value = "100",
+            use_delimiter = true
+        )]
+        participant_weights: Vec<u64>,
+    },
+
+    #[structopt(about = "Simulate different parameter ranges in Symphonia")]
+    Parameterize {
+        #[structopt(
+            name = "rounds",
+            long,
+            short,
+            help = "Comma separated list of min, interval and max round range",
+            min_values = 3,
+            max_values = 3,
+            use_delimiter = true,
+            required = true
+        )]
+        rounds_range: Vec<u64>,
+        /*
+        #[structopt(
+            name = "mean",
+            long,
+            short,
+            help = "Comma separated list of min, interval and max mean range",
+            min_values = 3,
+            max_values = 3,
+            use_delimiter = true,
+            required = true
+        )]
+        mean_range: Vec<f64>,
+
+        #[structopt(
+            name = "deviation",
+            long,
+            short,
+            help = "Comma separated list of min, interval and max standard deviation range",
+            min_values = 3,
+            max_values = 3,
+            use_delimiter = true,
+            required = true
+        )]
+        standard_deviation_range: Vec<f64>,
+
+        #[structopt(
+            name = "loss",
+            long,
+            short,
+            help = "Comma separated list of min, interval and max loss range",
+            min_values = 3,
+            max_values = 3,
+            use_delimiter = true,
+            required = true
+        )]
+        loss_range: Vec<f64>,
+
+        #[structopt(
+            name = "pareto",
+            long,
+            short,
+            help = "Comma separated list of min, interval and max pareto alpha scalar range",
+            min_values = 3,
+            max_values = 3,
+            use_delimiter = true,
+            required = true
+        )]
+        pareto_alpha_range: Vec<f64>,
+
+        #[structopt(
+            name = "participants",
+            long,
+            short,
+            help = "Comma separated list of min, interval and max num of participants range",
+            min_values = 3,
+            max_values = 3,
+            use_delimiter = true,
+            required = true
+        )]
+        num_participants_range: Vec<f64>,
+        */
+    },
 }
+
+// > symphoniatest rounds -r 10 -w [100,100,100]
+// > symphoniatest parameterize --rounds-range 1,1,100 --mean-range 50.0,1.0,100.0 --deviation-range 1.0,0.5,10.0 --loss-range 0.0,0.01,0.2
+// --pareto-alpha-range 0,0.1,10 --num-participants-range 1,1,1000
 
 fn main() {
     env_logger::from_env(Env::default().default_filter_or("symphonia=trace,warn")).init();
     let opt: Opt = Opt::from_args();
-    let mock_net = MockNet {
-        latency_mean_ms: opt.latency_mean_ms,
-        latency_standard_deviation: opt.latency_standard_deviation,
-        loss_prob: opt.loss_prob,
-    };
     println!("{:?}", opt);
     smol::block_on(async move {
-        for _ in 0..opt.rounds {
-            run_round(opt.clone(), mock_net).await;
+        match opt {
+            Opt::Rounds {
+                rounds,
+                latency_mean_ms,
+                latency_standard_deviation,
+                loss_prob,
+                participant_weights,
+            } => {
+                for _ in 0..rounds {
+                    let mock_net = MockNet {
+                        latency_mean_ms,
+                        latency_standard_deviation,
+                        loss_prob,
+                    };
+                    // TODO: avoid clone by using immutable vector conversion before loop
+                    run_round(participant_weights.clone(), mock_net).await
+                }
+            }
+            Opt::Parameterize {
+                rounds_range,
+                // mean_range,
+                // standard_deviation_range,
+                // loss_range,
+                // pareto_alpha_range,
+                // num_participants_range,
+            } => {}
         }
     });
 }
 
-async fn run_round(opt: Opt, mock_net: MockNet) {
+async fn run_round(participant_weights: Vec<u64>, mock_net: MockNet) {
     let mut harness = Harness::new(mock_net);
-    for participant_weight in opt.participant_weights.iter() {
+    for participant_weight in participant_weights.iter() {
         harness =
             harness.add_participant(tmelcrypt::ed25519_keygen().1, participant_weight.clone());
     }
