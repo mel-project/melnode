@@ -70,7 +70,7 @@ enum Opt {
             required = true
         )]
         rounds_range: Vec<u64>,
-        /*
+
         #[structopt(
             name = "mean",
             long,
@@ -120,7 +120,7 @@ enum Opt {
         pareto_alpha_range: Vec<f64>,
 
         #[structopt(
-            name = "participants",
+            name = "num_participants",
             long,
             short,
             help = "Comma separated list of min, interval and max num of participants range",
@@ -129,14 +129,9 @@ enum Opt {
             use_delimiter = true,
             required = true
         )]
-        num_participants_range: Vec<f64>,
-        */
+        num_participants_range: Vec<u64>,
     },
 }
-
-// > symphoniatest rounds -r 10 -w [100,100,100]
-// > symphoniatest parameterize --rounds-range 1,1,100 --mean-range 50.0,1.0,100.0 --deviation-range 1.0,0.5,10.0 --loss-range 0.0,0.01,0.2
-// --pareto-alpha-range 0,0.1,10 --num-participants-range 1,1,1000
 
 fn main() {
     env_logger::from_env(Env::default().default_filter_or("symphonia=trace,warn")).init();
@@ -163,12 +158,28 @@ fn main() {
             }
             Opt::Parameterize {
                 rounds_range,
-                // mean_range,
-                // standard_deviation_range,
-                // loss_range,
-                // pareto_alpha_range,
-                // num_participants_range,
-            } => {}
+                mean_range,
+                standard_deviation_range,
+                loss_range,
+                pareto_alpha_range,
+                num_participants_range,
+            } => {
+                let latency_mean_ms = 100.0;
+                let latency_standard_deviation = 5.0;
+                let loss_prob = 0.01;
+                let participant_weights = vec![100, 100, 100, 100, 100, 100, 100, 100, 100];
+                for round_range in rounds_range {
+                    for _ in 0..round_range {
+                        let mock_net = MockNet {
+                            latency_mean_ms,
+                            latency_standard_deviation,
+                            loss_prob,
+                        };
+                        // TODO: avoid clone by using immutable vector conversion before loop
+                        run_round(participant_weights.clone(), mock_net).await
+                    }
+                }
+            }
         }
     });
 }
