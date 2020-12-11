@@ -160,7 +160,7 @@ fn main() {
 
                 // Run test cases
                 for _ in 0..test_count {
-                    // Select values from params
+                    // Sample latency and create mock network
                     let (latency_mean_ms, latency_standard_deviation, loss_prob) =
                         params.latency.sample();
                     let mock_net = MockNet {
@@ -168,24 +168,13 @@ fn main() {
                         loss_prob,
                         latency_standard_deviation,
                     };
-                }
-                // let latency_mean_ms = 100.0;
-                // let latency_standard_deviation = 5.0;
-                // let loss_prob = 0.01;
-                // let participant_weights = vec![100, 100, 100, 100, 100, 100, 100, 100, 100];
-                // for round_range in rounds_range {
-                //     for _ in 0..round_range {
-                //         let mock_net = MockNet {
-                //             latency_mean_ms,
-                //             latency_standard_deviation,
-                //             loss_prob,
-                //         };
-                //         // TODO: avoid clone by using immutable vector conversion before loop
-                //         run_round(participant_weights.clone(), mock_net).await
-                //     }
-                // }
 
-                // run_rounds(rounds_range.clone(), latency_mean_ms, latency_standard_deviation, loss_prob, participant_weights).await;
+                    // Sample participants and run rounds
+                    let participant_weights = vec![100, 100, 100, 100, 100, 100, 100, 100];
+                    for _ in 0..rounds {
+                        run_round(participant_weights.clone(), mock_net.clone()).await
+                    }
+                }
             }
         }
     });
@@ -199,5 +188,3 @@ async fn run_round(participant_weights: Vec<u64>, mock_net: MockNet) {
     }
     harness.run().await
 }
-
-async fn run_rounds() {}
