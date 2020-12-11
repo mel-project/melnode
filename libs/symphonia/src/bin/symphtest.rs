@@ -3,7 +3,6 @@ use rand::Rng;
 use serde::Deserialize;
 use std::env;
 use std::fs;
-use std::path::PathBuf;
 use structopt::StructOpt;
 use symphonia::testing::{Harness, MockNet};
 
@@ -69,7 +68,7 @@ enum Opt {
             long,
             short,
             help = "Number of test simulations to run",
-            default_value = "100"
+            default_value = "1"
         )]
         test_count: u64,
 
@@ -93,15 +92,15 @@ enum Opt {
 }
 
 #[derive(Debug, Deserialize)]
-struct Latency {
+struct NetworkLatencyParams {
     mean_milli_sec: Vec<f64>,
     standard_deviation: Vec<f64>,
     loss_probability: Vec<f64>,
 }
 
-impl Latency {
+impl NetworkLatencyParams {
+    /// Calculate and return a sample from min and max on latency fields
     fn sample(&self) -> (f64, f64, f64) {
-        /// Calculate and return a sample from min and max on latency fields
         let mut rng = rand::thread_rng();
         let mean = rng.gen_range(self.mean_milli_sec[0], self.mean_milli_sec[1]);
         let standard_deviation =
@@ -112,21 +111,29 @@ impl Latency {
 }
 
 #[derive(Debug, Deserialize)]
-struct Participants {
+struct ParticipantParams {
     pareto_alpha: Vec<f64>,
     num_participants: Vec<u64>,
 }
 
+impl ParticipantParams {
+    fn sample(&self) -> Vec<u64> {
+        // TODO: sample pareto alpha and skew the voting weight per participant
+        let mut rng = rand::thread_rng();
+        let num_participants = rng.gen_range(self.num_participants[0], self.num_participants[1]);
+        vec![100; num_participants as usize]
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct Params {
-    latency: Latency,
-    participants: Participants,
+    latency: NetworkLatencyParams,
+    participants: ParticipantParams,
 }
 
 fn main() {
     env_logger::from_env(Env::default().default_filter_or("symphonia=trace,warn")).init();
     let opt: Opt = Opt::from_args();
-    println!("{:?}", opt);
     smol::block_on(async move {
         match opt {
             Opt::Rounds {
@@ -170,7 +177,7 @@ fn main() {
                     };
 
                     // Sample participants and run rounds
-                    let participant_weights = vec![100, 100, 100, 100, 100, 100, 100, 100];
+                    let participant_weights = params.participants.sample();
                     for _ in 0..rounds {
                         run_round(participant_weights.clone(), mock_net.clone()).await
                     }
