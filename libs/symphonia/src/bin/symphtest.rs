@@ -12,93 +12,98 @@ use symphonia::testing::{Harness, MockNet};
     about = "Simulate a network of nodes running Symphonia"
 )]
 enum Opt {
-    #[structopt(about = "Simulate rounds in Symphonia for a set of params")]
-    Rounds {
-        #[structopt(
-            name = "rounds",
-            long,
-            short,
-            help = "Number of rounds or times to reach consensus on a block",
-            default_value = "1"
-        )]
-        rounds: u64,
+    TestCase(TestCaseOpt),
+    TestCases(TestCasesOpt),
+}
 
-        #[structopt(
-            name = "mean",
-            long,
-            short,
-            help = "Mean time in ms for latency",
-            default_value = "100.0"
-        )]
-        latency_mean_ms: f64,
+#[derive(Debug, StructOpt, Clone)]
+#[structopt(about = "Run Symphonia harness consecutively for a set of params")]
+struct TestCaseOpt {
+    #[structopt(
+        name = "run-count",
+        long,
+        short,
+        help = "Number of times to run harness to reach consensus on a block",
+        default_value = "1"
+    )]
+    run_count: u64,
 
-        #[structopt(
-            name = "deviation",
-            long,
-            short,
-            help = "Standard deviation of normal distribution for latency",
-            default_value = "5.0"
-        )]
-        latency_standard_deviation: f64,
+    #[structopt(
+        name = "mean",
+        long,
+        short,
+        help = "Mean time in ms for latency",
+        default_value = "100.0"
+    )]
+    latency_mean_ms: f64,
 
-        #[structopt(
-            name = "loss",
-            long,
-            short,
-            help = "Probability of loss per network transfer",
-            default_value = "0.05"
-        )]
-        loss_prob: f64,
+    #[structopt(
+        name = "deviation",
+        long,
+        short,
+        help = "Standard deviation of normal distribution for latency",
+        default_value = "5.0"
+    )]
+    latency_standard_deviation: f64,
 
-        #[structopt(
-            name = "weights",
-            long,
-            short,
-            help = "Comma separated voting weight of each consensus participants",
-            default_value = "100",
-            use_delimiter = true
-        )]
-        participant_weights: Vec<u64>,
-    },
+    #[structopt(
+        name = "loss",
+        long,
+        short,
+        help = "Probability of loss per network transfer",
+        default_value = "0.05"
+    )]
+    loss_prob: f64,
 
-    #[structopt(about = "Simulate different test cases selection params from input file")]
-    Parameterize {
-        #[structopt(
-            name = "test-count",
-            long,
-            short,
-            help = "Number of test simulations to run",
-            default_value = "1"
-        )]
-        test_count: u64,
+    #[structopt(
+        name = "weights",
+        long,
+        short,
+        help = "Comma separated voting weight of each consensus participants",
+        default_value = "100",
+        use_delimiter = true
+    )]
+    participant_weights: Vec<u64>,
+}
 
-        #[structopt(
-            name = "rounds",
-            long,
-            short,
-            help = "Number of rounds or times to reach consensus on a block",
-            default_value = "1"
-        )]
-        rounds: u64,
+#[derive(Debug, StructOpt, Clone)]
+#[structopt(about = "Simulate different test cases selection params from input file")]
+struct TestCasesOpt {
+    #[structopt(
+        name = "test-count",
+        long,
+        short,
+        help = "Number of test cases to run",
+        default_value = "1"
+    )]
+    test_count: u64,
 
-        #[structopt(
-            name = "filename",
-            long,
-            short,
-            help = "Input params file name containing to determine values to test"
-        )]
-        file_name: String,
-    },
+    #[structopt(
+        name = "run-count",
+        long,
+        short,
+        help = "Number of times to run test harness for a test case",
+        default_value = "1"
+    )]
+    run_count: u64,
+
+    #[structopt(
+        name = "filename",
+        long,
+        short,
+        help = "Input params file name containing to determine values to test"
+    )]
+    file_name: String,
 }
 
 #[derive(Debug, Deserialize)]
-struct NetworkLatencyParams {
+struct NetParams {
     mean_milli_sec: Vec<f64>,
     standard_deviation: Vec<f64>,
     loss_probability: Vec<f64>,
 }
 
-impl NetworkLatencyParams {
+impl NetParams {
     /// Calculate and return a sample from min and max on latency fields
     fn sample(&self) -> (f64, f64, f64) {
         let mut rng = rand::thread_rng();
@@ -127,7 +132,7 @@ impl ParticipantParams {
 
 #[derive(Debug, Deserialize)]
 struct Params {
-    latency: NetworkLatencyParams,
+    latency: NetParams,
     participants: ParticipantParams,
 }
 
@@ -136,37 +141,27 @@ fn main() {
     let opt: Opt = Opt::from_args();
     smol::block_on(async move {
         match opt {
-            Opt::Rounds {
-                rounds,
-                latency_mean_ms,
-                latency_standard_deviation,
-                loss_prob,
-                participant_weights,
-            } => {
-                for _ in 0..rounds {
+            Opt::TestCase(test_case) => {
+                for _ in 0..test_case.run_count {
                     let mock_net = MockNet {
-                        latency_mean_ms,
-                        latency_standard_deviation,
-                        loss_prob,
+                        latency_mean_ms: test_case.latency_mean_ms,
+                        latency_standard_deviation: test_case.latency_standard_deviation,
+                        loss_prob: test_case.loss_prob,
                     };
                     // TODO: avoid clone by using immutable vector conversion before loop
-                    run_round(participant_weights.clone(), mock_net).await
+                    run_harness(test_case.participant_weights.clone(), mock_net).await
                 }
             }
-            Opt::Parameterize {
-                rounds,
-                file_name,
-                test_count,
-            } => {
+            Opt::TestCases(test_cases) => {
                 // Load file and deserialize into params
                 let mut path = env::current_dir().expect("Failed to get current directory");
-                path.push(file_name);
+                path.push(test_cases.file_name);
                 let file_contents = fs::read_to_string(path).expect("Unable to read file");
                 let params: Params =
                     toml::from_str(&file_contents).expect("Unable to deserialize params");
 
                 // Run test cases
-                for _ in 0..test_count {
+                for _ in 0..test_cases.test_count {
                     // Sample latency and create mock network
                     let (latency_mean_ms, latency_standard_deviation, loss_prob) =
                         params.latency.sample();
@@ -176,10 +171,10 @@ fn main() {
                         latency_standard_deviation,
                     };
 
-                    // Sample participants and run rounds
+                    // Sample participants and run harness based on run count
                     let participant_weights = params.participants.sample();
-                    for _ in 0..rounds {
-                        run_round(participant_weights.clone(), mock_net.clone()).await
+                    for _ in 0..test_cases.run_count {
+                        run_harness(participant_weights.clone(), mock_net.clone()).await
                     }
                 }
             }
@@ -187,7 +182,7 @@ fn main() {
     });
 }
 
-async fn run_round(participant_weights: Vec<u64>, mock_net: MockNet) {
+async fn run_harness(participant_weights: Vec<u64>, mock_net: MockNet) {
     let mut harness = Harness::new(mock_net);
     for participant_weight in participant_weights.iter() {
         harness =
