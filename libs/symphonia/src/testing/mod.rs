@@ -1,9 +1,6 @@
-use crate::{Config, Decider, Machine, Pacemaker, SignedMessage};
-use rand::Rng;
-use smol::channel::{Receiver, Sender};
+use crate::{Config, Decider, Machine, Pacemaker};
 use smol::prelude::*;
-use std::{collections::HashMap, sync::Arc, thread, time::Duration};
-use tmelcrypt::Ed25519PK;
+use std::{collections::HashMap, sync::Arc};
 mod unreliable;
 
 /// A harness for testing that uses a mock network to transport messages. Uses a builder-style pattern and should be "run" at the end.
@@ -107,8 +104,8 @@ impl Harness {
 /// A mock-network.
 #[derive(Clone, Debug, Copy)]
 pub struct MockNet {
-    pub latency_mean: Duration,
-    pub latency_variance: Duration,
+    pub latency_mean_ms: f64,
+    pub latency_variance: f64,
     pub loss_prob: f64,
 }
 
