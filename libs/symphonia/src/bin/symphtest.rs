@@ -98,8 +98,8 @@ struct TestCasesOpt {
 
 #[derive(Debug, Deserialize)]
 struct NetParams {
-    mean_milli_sec: Vec<f64>,
-    standard_deviation: Vec<f64>,
+    latency_mean_ms: Vec<f64>,
+    latency_std_dev: Vec<f64>,
     loss_probability: Vec<f64>,
 }
 
@@ -107,9 +107,8 @@ impl NetParams {
     /// Calculate and return a sample from min and max on latency fields
     fn sample(&self) -> (f64, f64, f64) {
         let mut rng = rand::thread_rng();
-        let mean = rng.gen_range(self.mean_milli_sec[0], self.mean_milli_sec[1]);
-        let standard_deviation =
-            rng.gen_range(self.standard_deviation[0], self.standard_deviation[1]);
+        let mean = rng.gen_range(self.latency_mean_ms[0], self.latency_mean_ms[1]);
+        let standard_deviation = rng.gen_range(self.latency_std_dev[0], self.latency_std_dev[1]);
         let loss_probability = rng.gen_range(self.loss_probability[0], self.loss_probability[1]);
         (mean, standard_deviation, loss_probability)
     }
