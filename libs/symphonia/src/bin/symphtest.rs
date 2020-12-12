@@ -1,13 +1,33 @@
 use env_logger::Env;
+use rand::Rng;
+use serde::Deserialize;
+use std::env;
+use std::fs;
 use structopt::StructOpt;
 use symphonia::testing::{Harness, MockNet};
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, StructOpt, Clone)]
 #[structopt(
-    name = "Symphonia Test Harness",
+    name = "Symphonia test harness",
     about = "Simulate a network of nodes running Symphonia"
 )]
-struct Opt {
+enum Opt {
+    TestCase(TestCaseOpt),
+    TestCases(TestCasesOpt),
+}
+
+#[derive(Debug, StructOpt, Clone)]
+#[structopt(about = "Run Symphonia harness consecutively for a set of params")]
+struct TestCaseOpt {
+    #[structopt(
+        name = "run-count",
+        long,
+        short,
+        help = "Number of times to run harness to reach consensus on a block",
+        default_value = "1"
+    )]
+    run_count: u64,
+
     #[structopt(
         name = "mean",
         long,
@@ -18,13 +38,13 @@ struct Opt {
     latency_mean_ms: f64,
 
     #[structopt(
-        name = "variance",
+        name = "deviation",
         long,
         short,
-        help = "Variance of normal distribution for latency",
-        default_value = "20.0"
+        help = "Standard deviation of normal distribution for latency",
+        default_value = "5.0"
     )]
-    latency_variance: f64,
+    latency_standard_deviation: f64,
 
     #[structopt(
         name = "loss",
@@ -46,20 +66,126 @@ struct Opt {
     participant_weights: Vec<u64>,
 }
 
+#[derive(Debug, StructOpt, Clone)]
+#[structopt(about = "Simulate different test cases selection params from input file")]
+struct TestCasesOpt {
+    #[structopt(
+        name = "test-count",
+        long,
+        short,
+        help = "Number of test cases to run",
+        default_value = "1"
+    )]
+    test_count: u64,
+
+    #[structopt(
+        name = "run-count",
+        long,
+        short,
+        help = "Number of times to run test harness for a test case",
+        default_value = "1"
+    )]
+    run_count: u64,
+
+    #[structopt(
+        name = "filename",
+        long,
+        short,
+        help = "Input params file name containing to determine values to test"
+    )]
+    file_name: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct NetParams {
+    latency_mean_ms: Vec<f64>,
+    latency_std_dev: Vec<f64>,
+    loss_probability: Vec<f64>,
+}
+
+impl NetParams {
+    /// Calculate and return a sample from min and max on latency fields
+    fn sample(&self) -> (f64, f64, f64) {
+        let mut rng = rand::thread_rng();
+        let mean = rng.gen_range(self.latency_mean_ms[0], self.latency_mean_ms[1]);
+        let standard_deviation = rng.gen_range(self.latency_std_dev[0], self.latency_std_dev[1]);
+        let loss_probability = rng.gen_range(self.loss_probability[0], self.loss_probability[1]);
+        (mean, standard_deviation, loss_probability)
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct ParticipantParams {
+    pareto_alpha: Vec<f64>,
+    num_participants: Vec<u64>,
+}
+
+impl ParticipantParams {
+    fn sample(&self) -> Vec<u64> {
+        // TODO: sample pareto alpha and skew the voting weight per participant
+        let mut rng = rand::thread_rng();
+        let num_participants = rng.gen_range(self.num_participants[0], self.num_participants[1]);
+        vec![100; num_participants as usize]
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct Params {
+    latency: NetParams,
+    participants: ParticipantParams,
+}
+
 fn main() {
+    env_logger::from_env(Env::default().default_filter_or("symphonia=trace,warn")).init();
     let opt: Opt = Opt::from_args();
-    println!("{:?}", opt);
     smol::block_on(async move {
-        env_logger::from_env(Env::default().default_filter_or("symphonia=trace,warn")).init();
-        let mut harness = Harness::new(MockNet {
-            latency_mean_ms: opt.latency_mean_ms,
-            latency_variance: opt.latency_variance,
-            loss_prob: opt.loss_prob,
-        });
-        for particpant_weight in opt.participant_weights.iter() {
-            harness =
-                harness.add_participant(tmelcrypt::ed25519_keygen().1, particpant_weight.clone());
+        match opt {
+            Opt::TestCase(test_case) => {
+                for _ in 0..test_case.run_count {
+                    let mock_net = MockNet {
+                        latency_mean_ms: test_case.latency_mean_ms,
+                        latency_standard_deviation: test_case.latency_standard_deviation,
+                        loss_prob: test_case.loss_prob,
+                    };
+                    // TODO: avoid clone by using immutable vector conversion before loop
+                    run_harness(test_case.participant_weights.clone(), mock_net).await
+                }
+            }
+            Opt::TestCases(test_cases) => {
+                // Load file and deserialize into params
+                let mut path = env::current_dir().expect("Failed to get current directory");
+                path.push(test_cases.file_name);
+                let file_contents = fs::read_to_string(path).expect("Unable to read file");
+                let params: Params =
+                    toml::from_str(&file_contents).expect("Unable to deserialize params");
+
+                // Run test cases
+                for _ in 0..test_cases.test_count {
+                    // Sample latency and create mock network
+                    let (latency_mean_ms, latency_standard_deviation, loss_prob) =
+                        params.latency.sample();
+                    let mock_net = MockNet {
+                        latency_mean_ms,
+                        loss_prob,
+                        latency_standard_deviation,
+                    };
+
+                    // Sample participants and run harness based on run count
+                    let participant_weights = params.participants.sample();
+                    for _ in 0..test_cases.run_count {
+                        run_harness(participant_weights.clone(), mock_net.clone()).await
+                    }
+                }
+            }
         }
-        harness.run().await
     });
+}
+
+async fn run_harness(participant_weights: Vec<u64>, mock_net: MockNet) {
+    let mut harness = Harness::new(mock_net);
+    for participant_weight in participant_weights.iter() {
+        harness =
+            harness.add_participant(tmelcrypt::ed25519_keygen().1, participant_weight.clone());
+    }
+    harness.run().await
 }
