@@ -2046,6 +2046,7 @@ dependencies = [
  "smolscale",
  "structopt",
  "tmelcrypt",
+ "toml",
 ]
 
 [[package]]

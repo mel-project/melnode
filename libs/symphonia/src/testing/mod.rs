@@ -105,7 +105,7 @@ impl Harness {
 #[derive(Clone, Debug, Copy)]
 pub struct MockNet {
     pub latency_mean_ms: f64,
-    pub latency_variance: f64,
+    pub latency_standard_deviation: f64,
     pub loss_prob: f64,
 }
 
