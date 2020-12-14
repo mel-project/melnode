@@ -1,4 +1,6 @@
 use env_logger::Env;
+use rand::prelude::*;
+use serde::Deserialize;
 use structopt::StructOpt;
 use symphonia::testing::{Harness, MockNet};
 
@@ -150,9 +152,9 @@ fn main() {
             }
             Opt::TestCases(test_cases) => {
                 // Load file and deserialize into params
-                let mut path = env::current_dir().expect("Failed to get current directory");
+                let mut path = std::env::current_dir().expect("Failed to get current directory");
                 path.push(test_cases.file_name);
-                let file_contents = fs::read_to_string(path).expect("Unable to read file");
+                let file_contents = std::fs::read_to_string(path).expect("Unable to read file");
                 let params: Params =
                     toml::from_str(&file_contents).expect("Unable to deserialize params");
 
@@ -170,20 +172,18 @@ fn main() {
                     // Sample participants and run harness based on run count
                     let participant_weights = params.participants.sample();
                     for _ in 0..test_cases.run_count {
-                        run_harness(participant_weights.clone(), mock_net.clone()).await
+                        run_harness(participant_weights.clone(), mock_net).await
                     }
                 }
             }
         }
-        harness.run().await
     });
 }
 
 async fn run_harness(participant_weights: Vec<u64>, mock_net: MockNet) {
     let mut harness = Harness::new(mock_net);
     for participant_weight in participant_weights.iter() {
-        harness =
-            harness.add_participant(tmelcrypt::ed25519_keygen().1, participant_weight.clone());
+        harness = harness.add_participant(tmelcrypt::ed25519_keygen().1, *participant_weight);
     }
     harness.run().await
 }
