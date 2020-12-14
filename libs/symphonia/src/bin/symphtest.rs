@@ -56,9 +56,8 @@ fn main() {
             latency_variance: opt.latency_variance,
             loss_prob: opt.loss_prob,
         });
-        for particpant_weight in opt.participant_weights.iter() {
-            harness =
-                harness.add_participant(tmelcrypt::ed25519_keygen().1, particpant_weight.clone());
+        for participant_weight in opt.participant_weights.iter() {
+            harness = harness.add_participant(tmelcrypt::ed25519_keygen().1, *participant_weight);
         }
         harness.run().await
     });
