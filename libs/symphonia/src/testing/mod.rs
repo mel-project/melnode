@@ -46,13 +46,14 @@ impl Harness {
         let mut pacemakers = HashMap::new();
         let (send_decision, recv_decision) = smol::channel::unbounded();
         for (sk, _) in self.participants {
+            let pk = sk.to_public();
             let cfg = Config {
                 sender_weight: sender_weight.clone(),
                 view_leader: view_leader.clone(),
                 is_valid_prop: is_valid_prop.clone(),
                 gen_proposal: gen_proposal.clone(),
                 my_sk: sk,
-                my_pk: sk.to_public(),
+                my_pk: pk.clone(),
             };
             let machine = Machine::new(cfg);
             let pmaker = Arc::new(Pacemaker::new(machine));
@@ -88,10 +89,16 @@ impl Harness {
                     let pmaker = pmaker.clone();
                     let send_decision = send_decision.clone();
                     let decision_counter = Arc::clone(&metrics_gatherer);
+                    let decider_pk = pk.clone();
                     async move {
                         let decision = pmaker.decision().await;
                         send_decision.try_send(decision).unwrap();
-                        // TODO: how do we get the pk of the node who decided?
+                        decision_counter.try_write().unwrap().insert(
+                            SystemTime::now(),
+                            Event::Decided {
+                                participant: decider_pk,
+                            },
+                        );
                     }
                 }
                 .or(fut_out_wait),
