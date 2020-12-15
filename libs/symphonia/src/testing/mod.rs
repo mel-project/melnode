@@ -1,9 +1,6 @@
 use crate::{Config, Decider, Machine, Pacemaker};
-use futures::TryFutureExt;
-use smol::lock::Mutex;
+use smol::lock::RwLock;
 use smol::prelude::*;
-use std::ops::Receiver;
-use std::sync::mpsc::Sender;
 use std::{collections::BTreeMap, collections::HashMap, sync::Arc, time::SystemTime};
 use tmelcrypt::Ed25519PK;
 
@@ -29,8 +26,8 @@ impl Harness {
         self
     }
     /// Runs the harness until all honest participants decide.
-    pub async fn run(self, mut metrics_gatherer: MetricsGatherer) {
-        let metrics_gatherer = Arc::new(Mutex::new(metrics_gatherer));
+    pub async fn run(self, metrics_gatherer: BTreeMap<SystemTime, Event>) {
+        let metrics_gatherer = Arc::new(RwLock::new(metrics_gatherer));
         let (send_global, recv_global) = unreliable::unbounded(self.network);
         let num_participants = self.participants.len();
         let total_weight: u64 = self.participants.iter().map(|(_, w)| w).sum();
@@ -68,20 +65,19 @@ impl Harness {
                     loop {
                         // Get output from pacemaker and send to global channel
                         let output = pmaker.next_output().await;
-                        let _ = send_global.send(output).await;
+                        let _ = send_global.send(output.clone()).await;
 
                         // Store event in metrics gatherer
                         let (dest, signed_msg) = output.clone();
                         if let Some(d) = dest {
-                            let event = Event::Sent {
-                                sender: signed_msg.msg.sender,
-                                destination: d,
-                                content: String::new(),
-                            };
-                            send_counter
-                                .try_lock()
-                                .unwrap()
-                                .store(SystemTime::now(), event);
+                            send_counter.try_write().unwrap().insert(
+                                SystemTime::now(),
+                                Event::Sent {
+                                    sender: signed_msg.msg.sender,
+                                    destination: d,
+                                    content: String::new(),
+                                },
+                            );
                         }
                     }
                 }
@@ -107,25 +103,24 @@ impl Harness {
         let _stuffer = smolscale::spawn(async move {
             let recv_counter = Arc::clone(&metrics_gatherer);
             loop {
-                let (dest, msg) = recv_global.recv().await.unwrap();
+                let (dest, signed_msg) = recv_global.recv().await.unwrap();
                 if let Some(dest) = dest {
                     // store received event
-                    let event = Event::Received {
-                        sender: signed_msg.msg.sender,
-                        destination: dest,
-                        content: String::new(),
-                    };
-                    recv_counter
-                        .try_lock()
-                        .unwrap()
-                        .store(SystemTime::now(), event);
+                    recv_counter.try_write().unwrap().insert(
+                        SystemTime::now(),
+                        Event::Received {
+                            sender: signed_msg.msg.sender,
+                            destination: dest,
+                            content: String::new(),
+                        },
+                    );
 
                     // there's a definite destination
                     let dest = pacemakers.get(&dest).expect("nonexistent destination");
-                    dest.process_input(msg);
+                    dest.process_input(signed_msg);
                 } else {
                     for (_, dest) in pacemakers.iter() {
-                        dest.process_input(msg.clone());
+                        dest.process_input(signed_msg.clone());
                     }
                 }
             }
@@ -151,7 +146,7 @@ pub struct MockNet {
 /// Elements can be stuffed in, and they will be delayed until a given time or lost before they can be read out. This simulates a bad network connection or other similar construct.
 pub struct LossyChan;
 
-enum Event {
+pub enum Event {
     Sent {
         sender: Ed25519PK,
         destination: Ed25519PK,
@@ -165,20 +160,4 @@ enum Event {
     Decided {
         participant: Ed25519PK,
     },
-}
-
-pub struct MetricsGatherer {
-    stats: BTreeMap<SystemTime, Event>,
-}
-
-impl MetricsGatherer {
-    pub fn new() -> MetricsGatherer {
-        return MetricsGatherer {
-            stats: BTreeMap::new(),
-        };
-    }
-
-    pub fn store(mut self, sys_time: SystemTime, event: Event) {
-        self.stats.insert(sys_time, event);
-    }
 }

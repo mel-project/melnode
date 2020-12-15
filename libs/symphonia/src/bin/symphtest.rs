@@ -1,8 +1,10 @@
 use env_logger::Env;
 use rand::Rng;
 use serde::Deserialize;
+use std::collections::BTreeMap;
 use std::env;
 use std::fs;
+use std::time::SystemTime;
 use structopt::StructOpt;
 use symphonia::testing::{Harness, MetricsGatherer, MockNet};
 
@@ -187,6 +189,6 @@ async fn run_harness(participant_weights: Vec<u64>, mock_net: MockNet) {
         harness =
             harness.add_participant(tmelcrypt::ed25519_keygen().1, participant_weight.clone());
     }
-    let mut metrics_gatherer = MetricsGatherer::new();
+    let metrics_gatherer: BTreeMap<SystemTime, Event> = BTreeMap::new();
     harness.run(metrics_gatherer).await
 }
