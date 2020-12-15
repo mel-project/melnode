@@ -4,7 +4,7 @@ use serde::Deserialize;
 use std::env;
 use std::fs;
 use structopt::StructOpt;
-use symphonia::testing::{Harness, MockNet};
+use symphonia::testing::{Harness, MetricsGatherer, MockNet};
 
 #[derive(Debug, StructOpt, Clone)]
 #[structopt(
@@ -173,7 +173,7 @@ fn main() {
                     // Sample participants and run harness based on run count
                     let participant_weights = params.participants.sample();
                     for _ in 0..test_cases.run_count {
-                        run_harness(participant_weights.clone(), mock_net.clone()).await
+                        run_harness(participant_weights.clone(), mock_net).await
                     }
                 }
             }
@@ -187,5 +187,6 @@ async fn run_harness(participant_weights: Vec<u64>, mock_net: MockNet) {
         harness =
             harness.add_participant(tmelcrypt::ed25519_keygen().1, participant_weight.clone());
     }
-    harness.run().await
+    let mut metrics_gatherer = MetricsGatherer::new();
+    harness.run(metrics_gatherer).await
 }

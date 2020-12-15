@@ -1,4 +1,6 @@
 #![feature(map_first_last)]
+#![feature(receiver_trait)]
+
 mod common;
 pub use common::*;
 mod machine;
