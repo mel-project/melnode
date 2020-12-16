@@ -14,6 +14,7 @@ use thiserror::Error;
 use tmelcrypt::HashVal;
 use txn::Transaction;
 mod helpers;
+mod melmint;
 
 #[derive(Error, Debug)]
 /// A error that happens while applying a transaction to a state
@@ -220,10 +221,6 @@ impl State {
             stakes: SmtMapping::new(empty_tree),
         }
     }
-
-    fn synthesize_afill(&mut self) {
-        todo!("synthesize afill")
-    }
 }
 
 /// FinalizedState represents an immutable state at a finalized block height. It cannot be constructed except through finalizing a State or restoring from persistent storage.
@@ -282,7 +279,7 @@ impl FinalizedState {
         new.transactions.clear();
         // synthesize auction fill as needed
         if new.height % AUCTION_INTERVAL == 0 && !new.auction_bids.is_empty() {
-            new.synthesize_afill()
+            melmint::synthesize_afill(&mut new)
         }
         new
     }

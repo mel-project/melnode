@@ -89,7 +89,8 @@ pub(crate) fn apply_tx_special(
         TxKind::AuctionBid => apply_tx_special_auctionbid(lself, tx),
         TxKind::AuctionBuyout => apply_tx_special_auctionbuyout(lself, tx),
         TxKind::AuctionFill => {
-            panic!("auction fill transaction processed in normal pipeline")
+            // intentionally ignore here. the auction-fill effects are done elsewhere.
+            Ok(())
         }
         TxKind::Stake => apply_tx_special_stake(lself, tx),
         _ => panic!("tried to apply special effects of a non-special transaction"),
