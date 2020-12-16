@@ -2,6 +2,7 @@ use env_logger::Env;
 use rand::prelude::*;
 use serde::Deserialize;
 use smol::prelude::*;
+use std::sync::Arc;
 use std::time::Duration;
 use structopt::StructOpt;
 use symphonia::testing::{Harness, MetricsGatherer, MockNet};
@@ -187,9 +188,9 @@ async fn run_harness(participant_weights: Vec<u64>, mock_net: MockNet) {
     for participant_weight in participant_weights.iter() {
         harness = harness.add_participant(tmelcrypt::ed25519_keygen().1, *participant_weight);
     }
-    let metrics_gatherer = MetricsGatherer::new();
+    let metrics_gatherer = Arc::new(MetricsGatherer::new());
     let success_fut = async {
-        harness.run(metrics_gatherer).await;
+        harness.run(metrics_gatherer.clone()).await;
         true
     };
     let fail_fut = async {
@@ -197,4 +198,9 @@ async fn run_harness(participant_weights: Vec<u64>, mock_net: MockNet) {
         false
     };
     let _succeeded = success_fut.race(fail_fut).await;
+    if _succeeded {
+        metrics_gatherer.summarize().await;
+    } else {
+        print!("Timed out");
+    }
 }
