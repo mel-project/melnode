@@ -1,9 +1,7 @@
 use env_logger::Env;
-use rand::Rng;
+use rand::prelude::*;
 use serde::Deserialize;
 use smol::prelude::*;
-use std::env;
-use std::fs;
 use std::time::Duration;
 use structopt::StructOpt;
 use symphonia::testing::{Harness, MetricsGatherer, MockNet};
@@ -140,6 +138,7 @@ struct Params {
 fn main() {
     env_logger::from_env(Env::default().default_filter_or("symphonia=trace,warn")).init();
     let opt: Opt = Opt::from_args();
+    println!("{:?}", opt);
     smol::block_on(async move {
         match opt {
             Opt::TestCase(test_case) => {
@@ -155,9 +154,9 @@ fn main() {
             }
             Opt::TestCases(test_cases) => {
                 // Load file and deserialize into params
-                let mut path = env::current_dir().expect("Failed to get current directory");
+                let mut path = std::env::current_dir().expect("Failed to get current directory");
                 path.push(test_cases.file_name);
-                let file_contents = fs::read_to_string(path).expect("Unable to read file");
+                let file_contents = std::fs::read_to_string(path).expect("Unable to read file");
                 let params: Params =
                     toml::from_str(&file_contents).expect("Unable to deserialize params");
 
@@ -186,8 +185,7 @@ fn main() {
 async fn run_harness(participant_weights: Vec<u64>, mock_net: MockNet) {
     let mut harness = Harness::new(mock_net);
     for participant_weight in participant_weights.iter() {
-        harness =
-            harness.add_participant(tmelcrypt::ed25519_keygen().1, participant_weight.clone());
+        harness = harness.add_participant(tmelcrypt::ed25519_keygen().1, *participant_weight);
     }
     let metrics_gatherer = MetricsGatherer::new();
     let success_fut = async {
@@ -199,5 +197,5 @@ async fn run_harness(participant_weights: Vec<u64>, mock_net: MockNet) {
         print!("Timeout");
         false
     };
-    let succeeded = success_fut.race(fail_fut).await;
+    let _succeeded = success_fut.race(fail_fut).await;
 }
