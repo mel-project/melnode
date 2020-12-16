@@ -1,6 +1,6 @@
-[latency]
-mean_milli_sec = [10.0, 1000.0]
-standard_deviation = [0.1, 5.0]
+[network]
+latency_mean_ms = [10.0, 1000.0]
+latency_std_dev = [0.1, 5.0]
 loss_probability = [0.01, 0.1]
 
 [participants]

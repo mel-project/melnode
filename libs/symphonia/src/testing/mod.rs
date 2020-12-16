@@ -1,5 +1,5 @@
 use crate::{Config, Decider, Machine, Pacemaker};
-use smol::lock::RwLock;
+use smol::lock::Mutex;
 use smol::prelude::*;
 use std::{collections::BTreeMap, collections::HashMap, sync::Arc, time::SystemTime};
 use tmelcrypt::Ed25519PK;
@@ -26,8 +26,8 @@ impl Harness {
         self
     }
     /// Runs the harness until all honest participants decide.
-    pub async fn run(self, metrics_gatherer: BTreeMap<SystemTime, Event>) {
-        let metrics_gatherer = Arc::new(RwLock::new(metrics_gatherer));
+    pub async fn run(self, _: MetricsGatherer) {
+        let metrics_gatherer = Arc::new(MetricsGatherer::new());
         let (send_global, recv_global) = unreliable::unbounded(self.network);
         let num_participants = self.participants.len();
         let total_weight: u64 = self.participants.iter().map(|(_, w)| w).sum();
@@ -61,24 +61,21 @@ impl Harness {
             let fut_out_wait = {
                 let pmaker = pmaker.clone();
                 let send_global = send_global.clone();
-                let send_counter = Arc::clone(&metrics_gatherer);
+                let send_metrics = metrics_gatherer.clone();
                 async move {
                     loop {
                         // Get output from pacemaker and send to global channel
                         let output = pmaker.next_output().await;
                         let _ = send_global.send(output.clone()).await;
-
                         // Store event in metrics gatherer
                         let (dest, signed_msg) = output.clone();
                         if let Some(d) = dest {
-                            send_counter.try_write().unwrap().insert(
-                                SystemTime::now(),
-                                Event::Sent {
+                            send_metrics
+                                .store(Event::Sent {
                                     sender: signed_msg.msg.sender,
                                     destination: d,
-                                    content: String::new(),
-                                },
-                            );
+                                })
+                                .await;
                         }
                     }
                 }
@@ -88,17 +85,17 @@ impl Harness {
                 {
                     let pmaker = pmaker.clone();
                     let send_decision = send_decision.clone();
-                    let decision_counter = Arc::clone(&metrics_gatherer);
                     let decider_pk = pk.clone();
+                    let decision_metrics = metrics_gatherer.clone();
                     async move {
                         let decision = pmaker.decision().await;
                         send_decision.try_send(decision).unwrap();
-                        decision_counter.try_write().unwrap().insert(
-                            SystemTime::now(),
-                            Event::Decided {
+                        // Store decision event
+                        decision_metrics
+                            .store(Event::Decided {
                                 participant: decider_pk,
-                            },
-                        );
+                            })
+                            .await;
                     }
                 }
                 .or(fut_out_wait),
@@ -108,19 +105,18 @@ impl Harness {
         }
         // message stuffer, drop automatically
         let _stuffer = smolscale::spawn(async move {
-            let recv_counter = Arc::clone(&metrics_gatherer);
             loop {
                 let (dest, signed_msg) = recv_global.recv().await.unwrap();
                 if let Some(dest) = dest {
                     // store received event
-                    recv_counter.try_write().unwrap().insert(
-                        SystemTime::now(),
-                        Event::Received {
-                            sender: signed_msg.msg.sender,
-                            destination: dest,
-                            content: String::new(),
-                        },
-                    );
+                    // let mut events = metrics_gatherer.clone().try_write().unwrap();
+                    // events.insert(
+                    //     SystemTime::now(),
+                    //     Event::Received {
+                    //         sender: signed_msg.msg.sender,
+                    //         destination: dest,
+                    //     },
+                    // );
 
                     // there's a definite destination
                     let dest = pacemakers.get(&dest).expect("nonexistent destination");
@@ -153,18 +149,34 @@ pub struct MockNet {
 /// Elements can be stuffed in, and they will be delayed until a given time or lost before they can be read out. This simulates a bad network connection or other similar construct.
 pub struct LossyChan;
 
+/// Consensus state event data
+///
 pub enum Event {
     Sent {
         sender: Ed25519PK,
         destination: Ed25519PK,
-        content: String,
     },
     Received {
         sender: Ed25519PK,
         destination: Ed25519PK,
-        content: String,
     },
     Decided {
         participant: Ed25519PK,
     },
+}
+
+pub struct MetricsGatherer {
+    pub synced_map: Mutex<BTreeMap<SystemTime, Event>>,
+}
+
+impl MetricsGatherer {
+    pub fn new() -> MetricsGatherer {
+        return MetricsGatherer {
+            synced_map: Mutex::new(BTreeMap::new()),
+        };
+    }
+    pub async fn store(&self, event: Event) {
+        let mut map = self.synced_map.lock().await;
+        map.insert(SystemTime::now(), event);
+    }
 }

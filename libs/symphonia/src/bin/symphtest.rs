@@ -1,10 +1,10 @@
 use env_logger::Env;
 use rand::Rng;
 use serde::Deserialize;
-use std::collections::BTreeMap;
+use smol::prelude::*;
 use std::env;
 use std::fs;
-use std::time::SystemTime;
+use std::time::Duration;
 use structopt::StructOpt;
 use symphonia::testing::{Harness, MetricsGatherer, MockNet};
 
@@ -133,7 +133,7 @@ impl ParticipantParams {
 
 #[derive(Debug, Deserialize)]
 struct Params {
-    latency: NetParams,
+    network: NetParams,
     participants: ParticipantParams,
 }
 
@@ -165,7 +165,7 @@ fn main() {
                 for _ in 0..test_cases.test_count {
                     // Sample latency and create mock network
                     let (latency_mean_ms, latency_standard_deviation, loss_prob) =
-                        params.latency.sample();
+                        params.network.sample();
                     let mock_net = MockNet {
                         latency_mean_ms,
                         loss_prob,
@@ -189,6 +189,14 @@ async fn run_harness(participant_weights: Vec<u64>, mock_net: MockNet) {
         harness =
             harness.add_participant(tmelcrypt::ed25519_keygen().1, participant_weight.clone());
     }
-    let metrics_gatherer: BTreeMap<SystemTime, Event> = BTreeMap::new();
-    harness.run(metrics_gatherer).await
+    let metrics_gatherer = MetricsGatherer::new();
+    let success_fut = async {
+        harness.run(metrics_gatherer).await;
+        true
+    }; // impl Future<Output = bool>
+    let fail_fut = async {
+        smol::Timer::after(Duration::from_secs(60)).await;
+        false
+    }; // impl Future<Output = bool>
+    let succeeded = success_fut.race(fail_fut).await;
 }
