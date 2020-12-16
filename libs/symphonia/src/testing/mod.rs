@@ -104,8 +104,8 @@ impl Harness {
             pacemakers.insert(sk.to_public(), pmaker);
         }
         // message stuffer, drop automatically
+        let recv_metrics = metrics_gatherer.clone();
         let _stuffer = smolscale::spawn(async move {
-            let recv_metrics = metrics_gatherer.clone();
             loop {
                 let (dest, signed_msg) = recv_global.recv().await.unwrap();
                 if let Some(dest) = dest {
@@ -132,6 +132,9 @@ impl Harness {
             let dec = recv_decision.recv().await.unwrap();
             dbg!(dec);
         }
+
+        // Print and test metric results summary
+        metrics_gatherer.summarize().await;
     }
 }
 
@@ -164,6 +167,7 @@ pub enum Event {
     },
 }
 
+/// A lockable map which records metric events with timestamps and creates a metrics summary for a test
 pub struct MetricsGatherer {
     pub synced_map: Mutex<BTreeMap<SystemTime, Event>>,
 }
@@ -177,5 +181,9 @@ impl MetricsGatherer {
     pub async fn store(&self, event: Event) {
         let mut map = self.synced_map.lock().await;
         map.insert(SystemTime::now(), event);
+    }
+
+    pub async fn summarize(&self) {
+        print!("Done");
     }
 }
