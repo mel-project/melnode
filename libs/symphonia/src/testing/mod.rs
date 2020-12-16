@@ -26,8 +26,8 @@ impl Harness {
         self
     }
     /// Runs the harness until all honest participants decide.
-    pub async fn run(self, _: MetricsGatherer) {
-        let metrics_gatherer = Arc::new(MetricsGatherer::new());
+    pub async fn run(self, metrics: MetricsGatherer) {
+        let metrics_gatherer = Arc::new(metrics);
         let (send_global, recv_global) = unreliable::unbounded(self.network);
         let num_participants = self.participants.len();
         let total_weight: u64 = self.participants.iter().map(|(_, w)| w).sum();
