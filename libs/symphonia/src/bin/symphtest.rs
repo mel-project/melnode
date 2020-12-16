@@ -193,10 +193,11 @@ async fn run_harness(participant_weights: Vec<u64>, mock_net: MockNet) {
     let success_fut = async {
         harness.run(metrics_gatherer).await;
         true
-    }; // impl Future<Output = bool>
+    };
     let fail_fut = async {
         smol::Timer::after(Duration::from_secs(60)).await;
+        print!("Timeout");
         false
-    }; // impl Future<Output = bool>
+    };
     let succeeded = success_fut.race(fail_fut).await;
 }
