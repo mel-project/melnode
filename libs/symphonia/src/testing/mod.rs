@@ -105,18 +105,17 @@ impl Harness {
         }
         // message stuffer, drop automatically
         let _stuffer = smolscale::spawn(async move {
+            let recv_metrics = metrics_gatherer.clone();
             loop {
                 let (dest, signed_msg) = recv_global.recv().await.unwrap();
                 if let Some(dest) = dest {
                     // store received event
-                    // let mut events = metrics_gatherer.clone().try_write().unwrap();
-                    // events.insert(
-                    //     SystemTime::now(),
-                    //     Event::Received {
-                    //         sender: signed_msg.msg.sender,
-                    //         destination: dest,
-                    //     },
-                    // );
+                    recv_metrics
+                        .store(Event::Received {
+                            sender: signed_msg.msg.sender,
+                            destination: dest,
+                        })
+                        .await;
 
                     // there's a definite destination
                     let dest = pacemakers.get(&dest).expect("nonexistent destination");
