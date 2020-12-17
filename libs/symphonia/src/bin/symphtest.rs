@@ -5,7 +5,7 @@ use smol::prelude::*;
 use std::sync::Arc;
 use std::time::Duration;
 use structopt::StructOpt;
-use symphonia::testing::{Harness, MetricsGatherer, MockNet};
+use symphonia::testing::{Harness, MetricsGatherer, MockNet, TestResult};
 
 #[derive(Debug, StructOpt, Clone)]
 #[structopt(
@@ -161,7 +161,9 @@ fn main() {
                 let params: Params =
                     toml::from_str(&file_contents).expect("Unable to deserialize params");
 
-                // Run test cases
+                println!("{}", TestResult::header().clone());
+
+                // Run test case
                 for _ in 0..test_cases.test_count {
                     // Sample latency and create mock network
                     let (latency_mean_ms, latency_standard_deviation, loss_prob) =
@@ -198,9 +200,9 @@ async fn run_harness(participant_weights: Vec<u64>, mock_net: MockNet) {
         false
     };
     let _succeeded = success_fut.race(fail_fut).await;
-    if _succeeded {
-        metrics_gatherer.summarize().await;
-    } else {
-        print!("Timed out");
-    }
+
+    let test_result = metrics_gatherer.summarize().await;
+    let test_result_content = test_result.generate(0, _succeeded, mock_net, participant_weights);
+
+    println!("{}", test_result_content);
 }

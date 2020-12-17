@@ -1,7 +1,7 @@
 [network]
-latency_mean_ms = [10.0, 1000.0]
+latency_mean_ms = [0.0, 1000.0]
 latency_std_dev = [0.1, 5.0]
-loss_probability = [0.01, 0.1]
+loss_probability = [0.01, 0.2]
 
 [participants]
 pareto_alpha = [0.0, 10.0]

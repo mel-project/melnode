@@ -1,6 +1,7 @@
 use crate::{Config, Decider, Machine, Pacemaker};
 use smol::lock::Mutex;
 use smol::prelude::*;
+use std::collections::HashSet;
 use std::{collections::BTreeMap, collections::HashMap, sync::Arc, time::SystemTime};
 use tmelcrypt::Ed25519PK;
 
@@ -149,6 +150,7 @@ pub struct LossyChan;
 
 /// Consensus state event data
 ///
+#[derive(Clone, Debug, Copy)]
 pub enum Event {
     Sent {
         sender: Ed25519PK,
@@ -161,6 +163,61 @@ pub enum Event {
     Decided {
         participant: Ed25519PK,
     },
+}
+
+pub struct TestResult {
+    sent_graph: Vec<String>,
+    recv_graph: Vec<String>,
+    duration: Vec<u128>,
+    deciders: HashSet<Ed25519PK>,
+}
+
+impl TestResult {
+    pub fn new() -> TestResult {
+        TestResult {
+            sent_graph: Vec::new(),
+            recv_graph: Vec::new(),
+            duration: Vec::new(),
+            deciders: HashSet::new(),
+        }
+    }
+
+    pub fn header() -> String {
+        let result = [
+            format!("TestIter"),
+            format!("Datetime"),
+            format!("Result"),
+            format!("Network"),
+            format!("NumParticipants"),
+            format!("NumDeciders"),
+            format!("SendGraph"),
+            format!("RecvGraph"),
+        ];
+        result.join(",")
+    }
+
+    pub fn generate(
+        self,
+        test_iter: i32,
+        test_success: bool,
+        net: MockNet,
+        participant_weights: Vec<u64>,
+    ) -> String {
+        let senders = self.sent_graph.join(" ");
+        let receivers = self.recv_graph.join(" ");
+
+        let result = [
+            format!("{:?}", test_iter),
+            format!("{:?}", SystemTime::now()),
+            format!("{:?}", test_success),
+            format!("{:?}", net),
+            format!("{:?}", participant_weights.len()),
+            format!("{:?}", self.deciders.len()),
+            format!("digraph S {{ {} }}", senders),
+            format!("digraph R {{ {} }}", receivers),
+        ];
+        result.join(",")
+    }
 }
 
 /// A lockable map which records metric events with timestamps and creates a metrics summary for a test
@@ -179,7 +236,40 @@ impl MetricsGatherer {
         map.insert(SystemTime::now(), event);
     }
 
-    pub async fn summarize(&self) {
-        print!("Done");
+    pub async fn summarize(&self) -> TestResult {
+        let s_map = self.synced_map.lock().await;
+        let mut test_result = TestResult::new();
+        for (&system_time, &event) in s_map.iter() {
+            match system_time.duration_since(SystemTime::UNIX_EPOCH) {
+                Ok(duration) => {
+                    test_result.duration.push(duration.as_millis());
+                    match event {
+                        Event::Sent {
+                            sender,
+                            destination,
+                        } => {
+                            test_result
+                                .sent_graph
+                                .push(format!("{:?} -> {:?};", sender, destination));
+                        }
+                        Event::Received {
+                            sender,
+                            destination,
+                        } => {
+                            test_result
+                                .recv_graph
+                                .push(format!("{:?} -> {:?};", sender, destination));
+                        }
+                        Event::Decided { participant } => {
+                            test_result.deciders.insert(participant);
+                        }
+                    };
+                }
+                Err(_e) => {
+                    // trace!("System time error {:?}", e);
+                }
+            }
+        }
+        test_result
     }
 }
