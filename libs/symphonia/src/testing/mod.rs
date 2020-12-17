@@ -203,8 +203,8 @@ impl TestResult {
         net: MockNet,
         participant_weights: Vec<u64>,
     ) -> String {
-        let senders = self.sent_graph.join(" ");
-        let receivers = self.recv_graph.join(" ");
+        let senders = ""; // self.sent_graph.join(" ");
+        let receivers = ""; // self.recv_graph.join(" ");
 
         let result = [
             format!("{:?}", test_iter),
