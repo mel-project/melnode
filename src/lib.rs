@@ -1,11 +1,11 @@
 #![feature(try_blocks)]
 
-//! [Themelio](https://themelio.org) is a work-in-progress public blockchain focused on security, performance, and long-term stability 
-
+//! [Themelio](https://themelio.org) is a work-in-progress public blockchain focused on security, performance, and long-term stability
 
 mod auditor;
+mod protocols;
 pub use auditor::*;
-use main_anet_client::{AnetClientConfig, run_anet_client};
+use main_anet_client::{run_anet_client, AnetClientConfig};
 mod stakeholder;
 pub use stakeholder::*;
 mod common;
@@ -13,11 +13,9 @@ use common::*;
 mod storage;
 use parking_lot::RwLock;
 use smol::net::TcpListener;
+use std::net::{SocketAddr, ToSocketAddrs};
+use std::sync::Arc;
 use std::time::Duration;
-use std::{sync::Arc};
-use std::{
-    net::{SocketAddr, ToSocketAddrs},
-};
 pub use storage::*;
 mod client;
 mod main_anet_client;
@@ -75,9 +73,9 @@ async fn run_node(opt: NodeConfig) {
     let auditor = Auditor::new(listener, storage.clone(), &opt.bootstrap)
         .await
         .unwrap();
-    if opt.test_spam { 
+    if opt.test_spam {
         smolscale::spawn(test_spam_txx(auditor.clone())).detach();
-    } 
+    }
     if let Some(sh_no) = opt.test_stakeholder {
         smolscale::spawn(test_stakeholder(sh_no, auditor.clone(), storage.clone())).detach();
     }

@@ -1,10 +1,11 @@
 pub use anyhow::Result;
-pub use futures::channel::mpsc;
-pub use futures::channel::oneshot;
 pub use futures::prelude::*;
 pub use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use smol::net::TcpListener;
+use smol::{
+    channel::{Receiver, Sender},
+    net::TcpListener,
+};
 pub use smol::{Task, Timer};
 use std::convert::TryInto;
 use std::net::ToSocketAddrs;
@@ -30,7 +31,7 @@ async fn guess_my_ip() -> Result<String> {
 /// Actor is a wrapper around a smol Task that comes with an asynchronous mailbox similar to that of Erlang. Unlike with channels, using the mailbox is infallible, because the sender can only be dropped if the task is dropped, yet if the task is dropped it is cancelled.
 #[derive(Debug)]
 pub struct Actor<ChType> {
-    sender: mpsc::UnboundedSender<ChType>,
+    sender: Sender<ChType>,
     _task: Task<()>,
 }
 
@@ -39,7 +40,7 @@ impl<ChType> Actor<ChType> {
     pub fn spawn<T: Future<Output = ()> + 'static + Send, F: FnOnce(Mailbox<ChType>) -> T>(
         closure: F,
     ) -> Self {
-        let (send, recv) = mpsc::unbounded();
+        let (send, recv) = smol::channel::unbounded();
         let fut = closure(Mailbox(recv));
         let task = smolscale::spawn(async move {
             fut.await;
@@ -54,21 +55,23 @@ impl<ChType> Actor<ChType> {
     /// Sends a message to the Actor.
     pub fn send(&self, msg: ChType) {
         self.sender
-            .unbounded_send(msg)
+            .try_send(msg)
             .expect("mailbox send invariant failed?!")
     }
 
     /// Helper to send a message to the Actor that has a return channel.
-    pub async fn send_ret<T>(&self, msg_gen: impl FnOnce(oneshot::Sender<T>) -> ChType) -> T {
-        let (send, recv) = oneshot::channel();
+    pub async fn send_ret<T>(&self, msg_gen: impl FnOnce(Sender<T>) -> ChType) -> T {
+        let (send, recv) = smol::channel::unbounded();
         let msg = msg_gen(send);
         self.send(msg);
-        recv.await.expect("mailbox send_ret invariant failed?!")
+        recv.recv()
+            .await
+            .expect("mailbox send_ret invariant failed?!")
     }
 }
 
 /// Mailbox is an opaque mailbox passed into the closure that an Actor runs.
-pub struct Mailbox<T>(mpsc::UnboundedReceiver<T>);
+pub struct Mailbox<T>(Receiver<T>);
 
 impl<T> Mailbox<T> {
     /// Receives the next message from the mailbox.

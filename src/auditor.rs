@@ -3,9 +3,10 @@ use crate::storage::Storage;
 use anyhow::Result;
 use blkstructs::{FinalizedState, Transaction};
 use derive_more::*;
+use melnet::Request;
 //use future_parking_lot::rwlock::{FutureReadable, FutureWriteable};
 use crate::client_protocol::*;
-use smol::net::TcpListener;
+use smol::{channel::Sender, net::TcpListener};
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -19,9 +20,9 @@ pub struct Auditor {
 
 pub enum AuditorMsg {
     /// Obtain the NetState out of the Auditor.
-    GetNet(oneshot::Sender<melnet::NetState>),
+    GetNet(Sender<melnet::NetState>),
     /// Broadcast a transaction onto the network.
-    SendTx(Transaction, oneshot::Sender<Result<()>>),
+    SendTx(Transaction, Sender<Result<()>>),
     /// Broadcast a finalized block onto the network. Should only be called after the block is actually finalized!
     SendFinalizedBlk(FinalizedState, symphonia::QuorumCert),
 }
@@ -114,7 +115,7 @@ fn spawn_auditor_actor(
             let _blksync_runner = smolscale::spawn(blksync());
             loop {
                 match mail.recv().await {
-                    GetNet(s) => s.send(net.clone()).unwrap(),
+                    GetNet(s) => s.send(net.clone()).await.unwrap(),
                     SendTx(tx, s) => {
                         let res = storage.write().insert_tx(tx.clone());
                         if res.is_ok() {
@@ -128,7 +129,7 @@ fn spawn_auditor_actor(
                                 .detach();
                             }
                         }
-                        s.send(res).unwrap();
+                        s.send(res).await.unwrap();
                     }
                     SendFinalizedBlk(blk, cons_proof) => {
                         // we only promulgate states we believe in!
@@ -158,138 +159,163 @@ fn spawn_auditor_actor(
     };
 
     {
-        let auditor_actor_c = auditor_actor.clone();
+        let actor = auditor_actor.clone();
         // handle new transactions
-        net.register_verb("newtx", move |_, tx: blkstructs::Transaction| {
-            let auditor_actor = auditor_actor_c.clone();
-            async move { Ok(auditor_actor.send_ret(|s| SendTx(tx, s)).await.is_ok()) }
-        });
+        net.register_verb(
+            "newtx",
+            melnet::anon_responder(move |req: melnet::Request<Transaction, _>| {
+                let tx = req.body.clone();
+                let actor = actor.clone();
+                smolscale::spawn(async move {
+                    req.respond(Ok(actor.send_ret(|s| SendTx(tx, s)).await.is_ok()))
+                })
+                .detach();
+            }),
+        );
         // handle tx requests
         let gettx_storage = storage.clone();
-        net.register_verb("gettx", move |_, txid: HashVal| {
-            let gettx_storage = gettx_storage.clone();
-            async move {
-                gettx_storage
+        net.register_verb(
+            "gettx",
+            melnet::anon_responder(move |req: melnet::Request<HashVal, _>| {
+                let gettx_storage = gettx_storage.clone();
+                let txid = req.body;
+                let resp = gettx_storage
                     .read()
                     .get_tx(txid)
-                    .ok_or_else(|| melnet::MelnetError::Custom(String::from("no such TX")))
-            }
-        });
+                    .ok_or_else(|| melnet::MelnetError::Custom(String::from("no such TX")));
+                req.respond(resp)
+            }),
+        );
         // handle new blocks
         let newblk_storage = storage.clone();
         let auditor_actor_c = auditor_actor.clone();
-        net.register_verb("newblk", move |_, req: NewBlkRequest| {
-            let newblk_storage = newblk_storage.clone();
-            let auditor_actor_c = auditor_actor_c.clone();
-            async move {
-                let storage = newblk_storage.clone();
-                let auditor_actor = auditor_actor_c.clone();
-                let mut storage = storage.write();
-                let bad_err = || melnet::MelnetError::Custom(String::from("rejected"));
-                // first we validate the consensus proof
-                log::warn!("not validating the consensus proof yet!");
-                let txmap = {
-                    let mut toret = HashMap::new();
-                    for tx in req.partial_transactions {
-                        toret.insert(tx.hash_nosigs(), tx);
+        net.register_verb(
+            "newblk",
+            melnet::anon_responder(move |mreq: melnet::Request<NewBlkRequest, _>| {
+                let newblk_storage = newblk_storage.clone();
+                let auditor_actor_c = auditor_actor_c.clone();
+                let req = mreq.body.clone();
+                let resp = move || {
+                    let storage = newblk_storage.clone();
+                    let auditor_actor = auditor_actor_c.clone();
+                    let mut storage = storage.write();
+                    let bad_err = || melnet::MelnetError::Custom(String::from("rejected"));
+                    // first we validate the consensus proof
+                    log::warn!("not validating the consensus proof yet!");
+                    let txmap = {
+                        let mut toret = HashMap::new();
+                        for tx in req.partial_transactions {
+                            toret.insert(tx.hash_nosigs(), tx);
+                        }
+                        toret
+                    };
+                    let hash_to_tx = |txh| match storage.get_tx(txh) {
+                        Some(v) => Some(v),
+                        None => txmap.get(&txh).cloned(),
+                    };
+                    // then we check whether we have all the transactions
+                    let missing_hashes: Vec<HashVal> = req
+                        .txhashes
+                        .iter()
+                        .filter(|txh| hash_to_tx(**txh).is_none())
+                        .cloned()
+                        .collect();
+                    log::debug!(
+                        "newblk: {}/{} missing",
+                        missing_hashes.len(),
+                        req.txhashes.len()
+                    );
+                    if !missing_hashes.is_empty() {
+                        // reply to say that we have missing hashes
+                        return Ok(NewBlkResponse {
+                            missing_txhashes: missing_hashes,
+                        });
                     }
-                    toret
-                };
-                let hash_to_tx = |txh| match storage.get_tx(txh) {
-                    Some(v) => Some(v),
-                    None => txmap.get(&txh).cloned(),
-                };
-                // then we check whether we have all the transactions
-                let missing_hashes: Vec<HashVal> = req
-                    .txhashes
-                    .iter()
-                    .filter(|txh| hash_to_tx(**txh).is_none())
-                    .cloned()
-                    .collect();
-                log::debug!(
-                    "newblk: {}/{} missing",
-                    missing_hashes.len(),
-                    req.txhashes.len()
-                );
-                if !missing_hashes.is_empty() {
-                    // reply to say that we have missing hashes
-                    return Ok(NewBlkResponse {
-                        missing_txhashes: missing_hashes,
-                    });
-                }
-                // we don't have missing hashes. time to construct the state
-                let total_txx: Vec<Transaction> = req
-                    .txhashes
-                    .iter()
-                    .map(|tx| hash_to_tx(*tx).expect("cannot obtain total_txx?!"))
-                    .collect();
-                let new_blk = blkstructs::Block {
-                    header: req.header,
-                    transactions: total_txx,
-                };
-                match storage.apply_block(new_blk) {
-                    Err(_) => Err(bad_err()),
-                    Ok(_) => {
-                        auditor_actor.send(SendFinalizedBlk(
-                            storage.last_block().unwrap(),
-                            req.consensus,
-                        ));
-                        Ok(NewBlkResponse {
-                            missing_txhashes: vec![],
-                        })
+                    // we don't have missing hashes. time to construct the state
+                    let total_txx: Vec<Transaction> = req
+                        .txhashes
+                        .iter()
+                        .map(|tx| hash_to_tx(*tx).expect("cannot obtain total_txx?!"))
+                        .collect();
+                    let new_blk = blkstructs::Block {
+                        header: req.header,
+                        transactions: total_txx,
+                    };
+                    match storage.apply_block(new_blk) {
+                        Err(_) => Err(bad_err()),
+                        Ok(_) => {
+                            auditor_actor.send(SendFinalizedBlk(
+                                storage.last_block().unwrap(),
+                                req.consensus,
+                            ));
+                            Ok(NewBlkResponse {
+                                missing_txhashes: vec![],
+                            })
+                        }
                     }
-                }
-            }
-        });
+                };
+                mreq.respond(resp());
+            }),
+        );
 
         // *********** CLIENT METHODS ***********
         // get the latest state. TODO THIS IS TOTALLY UNVERIFIABLE
-        let get_latest_header_storage = storage.clone();
-        net.register_verb("get_latest_header", move |_, _: u8| {
-            let get_latest_header_storage = get_latest_header_storage.clone();
-            async move {
-                let storage = get_latest_header_storage.read();
+        let s2 = storage.clone();
+        net.register_verb(
+            "get_latest_header",
+            melnet::anon_responder(move |req: Request<(), _>| {
+                let storage = s2.read();
                 if let Some(block) = storage.last_block() {
-                    Ok(block.header())
+                    req.respond(Ok(block.header()))
                 } else {
-                    Err(melnet::MelnetError::Custom(String::from("no blocks yet")))
+                    req.respond(Err(melnet::MelnetError::Custom(String::from(
+                        "no blocks yet",
+                    ))))
                 }
-            }
-        });
+            }),
+        );
         // handle coin requests
-        let get_coin_storage = storage.clone();
-        net.register_verb("get_coin", move |_, request: GetCoinRequest| {
-            let get_coin_storage = get_coin_storage.clone();
-            async move {
-                let storage = get_coin_storage.read();
-                let state = storage
-                    .history
-                    .get(&request.height)
-                    .ok_or_else(|| melnet::MelnetError::Custom(String::from("no such height")))?;
-                let (coin_data, proof) = state.inner_ref().coins.get(&request.coin_id);
-                Ok(GetCoinResponse {
-                    coin_data,
-                    compressed_proof: proof.compress().0,
-                })
-            }
-        });
+        let s2 = storage.clone();
+        net.register_verb(
+            "get_coin",
+            melnet::anon_responder(move |req: Request<GetCoinRequest, _>| {
+                let request = req.body.clone();
+                let storage = s2.read();
+                let state = storage.history.get(&request.height);
+                if let Some(state) = state {
+                    let (coin_data, proof) = state.inner_ref().coins.get(&request.coin_id);
+                    req.respond(Ok(GetCoinResponse {
+                        coin_data,
+                        compressed_proof: proof.compress().0,
+                    }))
+                } else {
+                    req.respond(Err(melnet::MelnetError::Custom(String::from(
+                        "no such height",
+                    ))));
+                }
+            }),
+        );
         // handle transaction requests
-        let get_coin_storage = storage;
-        net.register_verb("get_tx", move |_, request: GetTxRequest| {
-            let get_coin_storage = get_coin_storage.clone();
-            async move {
-                let storage = get_coin_storage.read();
-                let state = storage
-                    .history
-                    .get(&request.height)
-                    .ok_or_else(|| melnet::MelnetError::Custom(String::from("no such height")))?;
-                let (transaction, proof) = state.inner_ref().transactions.get(&request.txhash);
-                Ok(GetTxResponse {
-                    transaction,
-                    compressed_proof: proof.compress().0,
-                })
-            }
-        });
+        let s2 = storage;
+        net.register_verb(
+            "get_tx",
+            melnet::anon_responder(move |req: Request<GetTxRequest, _>| {
+                let request = req.body.clone();
+                let storage = s2.read();
+                let state = storage.history.get(&request.height);
+                if let Some(state) = state {
+                    let (transaction, proof) = state.inner_ref().transactions.get(&request.txhash);
+                    req.respond(Ok(GetTxResponse {
+                        transaction,
+                        compressed_proof: proof.compress().0,
+                    }))
+                } else {
+                    req.respond(Err(melnet::MelnetError::Custom(String::from(
+                        "no such height",
+                    ))));
+                }
+            }),
+        );
     }
     auditor_actor
 }

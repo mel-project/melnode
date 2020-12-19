@@ -1,6 +1,6 @@
 use std::{collections::HashSet, sync::Arc, time::Duration};
 
-use melnet::NetState;
+use melnet::{NetState, Request};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use smol::prelude::*;
@@ -22,24 +22,25 @@ fn main() -> anyhow::Result<()> {
         let nstate = NetState::new_with_name("gossip");
         let seen_msgs = Arc::new(parking_lot::RwLock::new(HashSet::new()));
         // register the verbs
-        nstate.register_verb("gossip", {
-            move |nstate, req: GossipMsg| {
-                let seen_msgs = seen_msgs.clone();
-                async {
-                    println!("received {:?}", req);
-                    if seen_msgs.read().get(&req.id).is_none() {
-                        seen_msgs.write().insert(req.id);
-                        // spam to all my neighbors
-                        if let Err(e) = spam_neighbors(&nstate, req).await {
+        nstate.register_verb(
+            "gossip",
+            melnet::anon_responder(move |req: Request<GossipMsg, _>| {
+                println!("received {:?}", req.body);
+                if seen_msgs.read().get(&req.body.id).is_none() {
+                    seen_msgs.write().insert(req.body.id);
+                    let body = req.body.clone();
+                    let state = req.state.clone();
+                    // spam to all my neighbors
+                    smolscale::spawn(async move {
+                        if let Err(e) = spam_neighbors(&state, body).await {
                             println!("failed: {}", e);
                         }
-                    }
-                    drop(seen_msgs);
-                    drop(nstate);
-                    Ok(())
+                    })
+                    .detach();
                 }
-            }
-        });
+                req.respond(Ok(()));
+            }),
+        );
         // listen
         nstate
             .run_server(tcp_listener)

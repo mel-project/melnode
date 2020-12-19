@@ -1,4 +1,4 @@
-use futures::prelude::*;
+use smol::prelude::*;
 use std::pin::Pin;
 use thiserror::Error;
 
@@ -11,6 +11,8 @@ pub enum MelnetError {
     Custom(String),
     #[error("verb not found")]
     VerbNotFound,
+    #[error("internal server error")]
+    InternalServerError,
     #[error("network error: `{0}`")]
     Network(std::io::Error),
 }
