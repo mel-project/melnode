@@ -3,7 +3,6 @@ use crate::common::*;
 use crate::storage::Storage;
 use blkstructs::STAKE_EPOCH;
 use derive_more::*;
-use futures::channel::mpsc;
 use futures::select;
 use smol::net::TcpListener;
 use std::net::SocketAddr;
@@ -49,15 +48,19 @@ async fn stakeholder_loop(
         }
     };
     let symphonia_loop = async {
-        let (in_send, mut in_recv) = mpsc::unbounded();
+        let (in_send, mut in_recv) = smol::channel::unbounded();
         // register symphonia verbs
-        network.register_verb("symphonia_msg", move |_, smsg: symphonia::SignedMessage| {
-            let in_send = in_send.clone();
-            async move {
-                in_send.unbounded_send(smsg).unwrap();
-                Ok(true)
-            }
-        });
+        network.register_verb(
+            "symphonia_msg",
+            melnet::anon_responder(
+                move |req: melnet::Request<symphonia::SignedMessage, bool>| {
+                    let in_send = in_send.clone();
+                    let smsg = req.body.clone();
+                    in_send.try_send(smsg).unwrap();
+                    req.respond(Ok(true))
+                },
+            ),
+        );
         loop {
             Timer::after(Duration::from_secs(5)).await;
             let proposal = Arc::new(storage.read().curr_state.clone().finalize());
@@ -105,7 +108,7 @@ async fn stakeholder_loop(
             };
             let decision: symphonia::QuorumCert = loop {
                 select! {
-                    new_msg = in_recv.next() => {
+                    new_msg = in_recv.next().fuse() => {
                         pacemaker.process_input(new_msg.unwrap())
                     }
                     outgoing_msg = pacemaker.next_output().fuse() => {

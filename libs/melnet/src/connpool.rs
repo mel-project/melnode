@@ -1,18 +1,14 @@
 use crate::common::*;
 use crate::reqs::*;
-use async_net::TcpStream;
 use by_address::ByAddress;
-use futures::channel::mpsc;
-use futures::channel::mpsc::unbounded;
-use futures::channel::oneshot;
-use futures::prelude::*;
-use futures::select;
 use lazy_static::lazy_static;
 use log::trace;
 use min_max_heap::MinMaxHeap;
 use parking_lot::RwLock;
 use serde::{de::DeserializeOwned, Serialize};
 use smol::Timer;
+use smol::{channel::Receiver, prelude::*};
+use smol::{channel::Sender, net::TcpStream};
 use std::collections::HashMap;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::{Duration, Instant};
@@ -70,7 +66,7 @@ impl Client {
             .entry(addr)
             .or_insert_with(SingleHost::new)
             .send_insertion
-            .unbounded_send(conn)
+            .try_send(conn)
             .unwrap();
     }
     /// Does a melnet request to any given endpoint.
@@ -115,14 +111,14 @@ impl Client {
 
 #[derive(Debug, Clone)]
 struct SingleHost {
-    send_insertion: mpsc::UnboundedSender<TcpStream>,
-    send_request: mpsc::UnboundedSender<oneshot::Sender<Option<TcpStream>>>,
+    send_insertion: Sender<TcpStream>,
+    send_request: Sender<Sender<Option<TcpStream>>>,
 }
 
 impl SingleHost {
     fn new() -> Self {
-        let (send_insertion, recv_insertion) = unbounded();
-        let (send_request, recv_request) = unbounded();
+        let (send_insertion, recv_insertion) = smol::channel::unbounded();
+        let (send_request, recv_request) = smol::channel::unbounded();
         smolscale::spawn(async {
             singlehost_monitor(recv_insertion, recv_request).await;
         })
@@ -133,52 +129,64 @@ impl SingleHost {
         }
     }
     async fn get_conn(&self) -> Option<TcpStream> {
-        let (send, recv) = oneshot::channel();
-        self.send_request.unbounded_send(send).unwrap();
-        recv.await.unwrap()
+        let (send, recv) = smol::channel::unbounded();
+        self.send_request.send(send).await.unwrap();
+        recv.recv().await.unwrap()
     }
 }
 
 async fn singlehost_monitor(
-    mut recv_insertion: mpsc::UnboundedReceiver<TcpStream>,
-    mut recv_request: mpsc::UnboundedReceiver<oneshot::Sender<Option<TcpStream>>>,
-) {
+    recv_insertion: Receiver<TcpStream>,
+    recv_request: Receiver<Sender<Option<TcpStream>>>,
+) -> Option<()> {
     let mut heap: MinMaxHeap<(Instant, ByAddress<Box<TcpStream>>)> = MinMaxHeap::new();
+
+    enum Evt {
+        Insertion(TcpStream),
+        Request(Sender<Option<TcpStream>>),
+        Timeout,
+    }
+
     loop {
-        let deadline = if let Some((min, _)) = heap.peek_min() {
-            let now = Instant::now();
-            if now < *min {
-                Timer::after(*min - now)
+        let deadline = async {
+            if let Some((min, _)) = heap.peek_min() {
+                let now = Instant::now();
+                if now < *min {
+                    Timer::after(*min - now).await;
+                } else {
+                    Timer::after(Duration::from_secs(0)).await;
+                }
             } else {
-                Timer::after(Duration::from_secs(0))
-            }
-        } else {
-            Timer::after(Duration::from_secs(86400))
+                smol::future::pending().await
+            };
         };
 
-        select! {
-            insertion = recv_insertion.next() => {
-                if let Some(insertion) = insertion {
-                    let inserted_deadline = Instant::now() + Duration::from_secs(1);
-                    heap.push((inserted_deadline, ByAddress(Box::new(insertion))));
-                }
+        let evt: Evt = async { Some(Evt::Insertion(recv_insertion.recv().await.ok()?)) }
+            .or(async { Some(Evt::Request(recv_request.recv().await.ok()?)) })
+            .or(async {
+                deadline.await;
+                Some(Evt::Timeout)
+            })
+            .await?;
+
+        match evt {
+            Evt::Insertion(insertion) => {
+                let inserted_deadline = Instant::now() + Duration::from_secs(1);
+                heap.push((inserted_deadline, ByAddress(Box::new(insertion))));
             }
-            send_response = recv_request.next() => {
-                if let Some(send_response) = send_response {
-                    send_response.send(match heap.pop_max() {
-                        Some(max) => {
-                            let ByAddress(bx) = max.1;
-                            Some(*bx)
-                        }
-                        None => None
-                    }).unwrap()
-                } else {
-                    return
-                }
+            Evt::Request(send_response) => send_response
+                .send(match heap.pop_max() {
+                    Some(max) => {
+                        let ByAddress(bx) = max.1;
+                        Some(*bx)
+                    }
+                    None => None,
+                })
+                .await
+                .unwrap(),
+            Evt::Timeout => {
+                heap.pop_min();
             }
-            _ = deadline.fuse() => {
-                heap.pop_min(); // this drops the tcp connection too!
-            }
-        };
+        }
     }
 }

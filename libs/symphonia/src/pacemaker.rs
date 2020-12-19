@@ -59,8 +59,9 @@ async fn pacemaker_loop(
 ) -> QuorumCert {
     trace!("pacemaker started");
     let mut timeout = Duration::from_millis(5000);
-    let mut timeout_chan = smol::Timer::after(timeout).fuse();
     loop {
+        let tt = timeout;
+        let mut timeout_chan = async move { smol::Timer::after(tt).await }.boxed().fuse();
         //thread::sleep_ms(1000);
         // send outputs
         let outputs = machine.drain_output();
@@ -86,7 +87,6 @@ async fn pacemaker_loop(
                 trace!("pacemaker forcing a new view after {:?}", timeout);
                 timeout = timeout * 10 / 9;
                 machine.new_view();
-                timeout_chan = smol::Timer::after(timeout).fuse();
             }
         }
     }
