@@ -16,7 +16,7 @@ fn random_valid_txx(
     let mut pqueue: BinaryHeap<(u64, CoinID, CoinData)> = BinaryHeap::new();
     pqueue.push((rng.gen(), start_coin, start_coindata));
     let mut toret = Vec::new();
-    for _ in 0..100 {
+    for _ in 0..1000 {
         // pop one item from pqueue
         let (_, to_spend, to_spend_data) = pqueue.pop().unwrap();
         assert_eq!(to_spend_data.conshash, cons.hash());
@@ -49,9 +49,10 @@ fn random_valid_txx(
 static KEYPAIR: Lazy<(Ed25519PK, Ed25519SK)> = Lazy::new(tmelcrypt::ed25519_keygen);
 
 fn main() {
+    env_logger::init();
     let db = autosmt::DBManager::load(autosmt::MemDB::default());
     let mut genesis = State::test_genesis(
-        db,
+        db.clone(),
         MICRO_CONVERTER * 1000,
         melscript::Script::std_ed25519_pk(KEYPAIR.0).hash(),
         &[],
@@ -63,7 +64,7 @@ fn main() {
         cointype: COINTYPE_TMEL.to_owned(),
     };
     let mut start_coin = CoinID::zero_zero();
-    for count in 0.. {
+    for count in 0..1000 {
         let txx = random_valid_txx(
             &mut rand::thread_rng(),
             start_coin,
@@ -77,9 +78,18 @@ fn main() {
         };
         genesis.apply_tx_batch(&txx).unwrap();
         eprintln!("inserted {} batches", count);
-        if count % 100 == 0 {
-            eprintln!("FINALIZING AND CONTINUING!");
-            genesis = genesis.finalize().next_state()
-        }
+        eprintln!("FINALIZING AND CONTINUING!");
+        genesis = genesis.finalize().next_state();
+
+        db.sync()
     }
+    eprintln!(
+        "partial encoding length: {}",
+        genesis.partial_encoding().len()
+    );
+    eprintln!("{:#?}", genesis);
+    for coin in genesis.coins.val_iter() {
+        eprintln!("{:#?}", coin);
+    }
+    eprintln!("{}", db.debug_graphviz())
 }
