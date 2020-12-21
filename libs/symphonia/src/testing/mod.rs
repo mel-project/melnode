@@ -54,7 +54,7 @@ impl Harness {
                 is_valid_prop: is_valid_prop.clone(),
                 gen_proposal: gen_proposal.clone(),
                 my_sk: sk,
-                my_pk: pk.clone(),
+                my_pk: pk,
             };
             let machine = Machine::new(cfg);
             let pmaker = Arc::new(Pacemaker::new(machine));
@@ -86,7 +86,7 @@ impl Harness {
                 {
                     let pmaker = pmaker.clone();
                     let send_decision = send_decision.clone();
-                    let decider_pk = pk.clone();
+                    let decider_pk = pk;
                     let decision_metrics = metrics_gatherer.clone();
                     async move {
                         let decision = pmaker.decision().await;
@@ -175,6 +175,7 @@ pub enum Event {
     },
 }
 
+#[derive(Debug, Default)]
 pub struct TestResult {
     sent_graph: Vec<String>,
     recv_graph: Vec<String>,
@@ -183,25 +184,16 @@ pub struct TestResult {
 }
 
 impl TestResult {
-    pub fn new() -> TestResult {
-        TestResult {
-            sent_graph: Vec::new(),
-            recv_graph: Vec::new(),
-            duration: Vec::new(),
-            deciders: HashSet::new(),
-        }
-    }
-
     pub fn header() -> String {
         let result = [
-            format!("TestIter"),
-            format!("Datetime"),
-            format!("Result"),
-            format!("Network"),
-            format!("NumParticipants"),
-            format!("NumDeciders"),
-            format!("SendGraph"),
-            format!("RecvGraph"),
+            "TestIter".to_string(),
+            "Datetime".to_string(),
+            "Result".to_string(),
+            "Network".to_string(),
+            "NumParticipants".to_string(),
+            "NumDeciders".to_string(),
+            "SendGraph".to_string(),
+            "RecvGraph".to_string(),
         ];
         result.join(",")
     }
@@ -231,16 +223,12 @@ impl TestResult {
 }
 
 /// A lockable map which records metric events with timestamps and creates a metrics summary for a test
+#[derive(Default)]
 pub struct MetricsGatherer {
     pub synced_map: Mutex<BTreeMap<SystemTime, Event>>,
 }
 
 impl MetricsGatherer {
-    pub fn new() -> MetricsGatherer {
-        return MetricsGatherer {
-            synced_map: Mutex::new(BTreeMap::new()),
-        };
-    }
     pub async fn store(&self, event: Event) {
         let mut map = self.synced_map.lock().await;
         map.insert(SystemTime::now(), event);
@@ -248,7 +236,7 @@ impl MetricsGatherer {
 
     pub async fn summarize(&self) -> TestResult {
         let s_map = self.synced_map.lock().await;
-        let mut test_result = TestResult::new();
+        let mut test_result = TestResult::default();
         for (&system_time, &event) in s_map.iter() {
             match system_time.duration_since(SystemTime::UNIX_EPOCH) {
                 Ok(duration) => {

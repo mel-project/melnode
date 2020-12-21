@@ -161,7 +161,7 @@ fn main() {
                 let params: Params =
                     toml::from_str(&file_contents).expect("Unable to deserialize params");
 
-                println!("{}", TestResult::header().clone());
+                println!("{}", TestResult::header());
 
                 // Run test case
                 for _ in 0..test_cases.test_count {
@@ -190,7 +190,7 @@ async fn run_harness(participant_weights: Vec<u64>, mock_net: MockNet) {
     for participant_weight in participant_weights.iter() {
         harness = harness.add_participant(tmelcrypt::ed25519_keygen().1, *participant_weight);
     }
-    let metrics_gatherer = Arc::new(MetricsGatherer::new());
+    let metrics_gatherer = Arc::new(MetricsGatherer::default());
     let success_fut = async {
         harness.run(metrics_gatherer.clone()).await;
         true

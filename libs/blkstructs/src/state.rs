@@ -193,6 +193,12 @@ impl State {
         res?;
         // we commit the changes
         //panic!("COMMIT?!");
+        log::debug!(
+            "applied a batch of {} txx to {:?} => {:?}",
+            txx.len(),
+            self.coins.root_hash(),
+            lnewself.read().coins.root_hash()
+        );
         *self = lnewself.read().clone();
         Ok(())
     }
