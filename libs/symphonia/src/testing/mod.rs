@@ -1,4 +1,5 @@
 use crate::{Config, Decider, Machine, Pacemaker};
+use smol::channel::TrySendError;
 use smol::lock::Mutex;
 use smol::prelude::*;
 use std::collections::HashSet;
@@ -89,7 +90,16 @@ impl Harness {
                     let decision_metrics = metrics_gatherer.clone();
                     async move {
                         let decision = pmaker.decision().await;
-                        send_decision.try_send(decision).unwrap();
+                        send_decision
+                            .try_send(decision)
+                            .unwrap_or_else(|e| match e {
+                                TrySendError::Full(_) => {
+                                    println!("Send error full");
+                                }
+                                TrySendError::Closed(_) => {
+                                    println!("Send error closed");
+                                }
+                            });
                         // Store decision event
                         decision_metrics
                             .store(Event::Decided {
@@ -265,8 +275,8 @@ impl MetricsGatherer {
                         }
                     };
                 }
-                Err(_e) => {
-                    // trace!("System time error {:?}", e);
+                Err(e) => {
+                    println!("System time error {:?}", e);
                 }
             }
         }

@@ -428,6 +428,8 @@ impl Machine {
             }
             None => true,
         };
+        // println!("node.prop {:?}", node.prop);
+        // assert_ne!(node.prop.len(), 0 as usize);
         safetylive && (self.config.is_valid_prop)(&node.prop)
     }
 

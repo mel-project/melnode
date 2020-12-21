@@ -18,7 +18,7 @@ futures="0.3"
 smol="1"
 serde = {version="1.0.116", features=["derive"]}
 bincode="1"
-smolscale="0.1"
+smolscale="0.1.2"
 async-trait="0.1"
 derive_builder="0.9"
 derivative="2.1"
