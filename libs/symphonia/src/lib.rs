@@ -1,4 +1,5 @@
 #![feature(map_first_last)]
+
 mod common;
 pub use common::*;
 mod machine;

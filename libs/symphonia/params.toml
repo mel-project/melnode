@@ -1,8 +1,8 @@
-[latency]
-mean_milli_sec = [10.0, 1000.0]
-standard_deviation = [0.1, 5.0]
-loss_probability = [0.01, 0.1]
+[network]
+latency_mean_ms = [0.0, 200.0]
+latency_std_dev = [0.1, 2.0]
+loss_probability = [0.01, 0.2]
 
 [participants]
 pareto_alpha = [0.0, 10.0]
-num_participants = [1, 100]
+num_participants = [20, 50]

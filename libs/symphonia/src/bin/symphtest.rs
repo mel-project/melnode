@@ -1,8 +1,11 @@
 use env_logger::Env;
 use rand::prelude::*;
 use serde::Deserialize;
+use smol::prelude::*;
+use std::sync::Arc;
+use std::time::Duration;
 use structopt::StructOpt;
-use symphonia::testing::{Harness, MockNet};
+use symphonia::testing::{Harness, MetricsGatherer, MockNet, TestResult};
 
 #[derive(Debug, StructOpt, Clone)]
 #[structopt(
@@ -129,7 +132,7 @@ impl ParticipantParams {
 
 #[derive(Debug, Deserialize)]
 struct Params {
-    latency: NetParams,
+    network: NetParams,
     participants: ParticipantParams,
 }
 
@@ -158,11 +161,13 @@ fn main() {
                 let params: Params =
                     toml::from_str(&file_contents).expect("Unable to deserialize params");
 
-                // Run test cases
+                println!("{}", TestResult::header().clone());
+
+                // Run test case
                 for _ in 0..test_cases.test_count {
                     // Sample latency and create mock network
                     let (latency_mean_ms, latency_standard_deviation, loss_prob) =
-                        params.latency.sample();
+                        params.network.sample();
                     let mock_net = MockNet {
                         latency_mean_ms,
                         loss_prob,
@@ -185,5 +190,19 @@ async fn run_harness(participant_weights: Vec<u64>, mock_net: MockNet) {
     for participant_weight in participant_weights.iter() {
         harness = harness.add_participant(tmelcrypt::ed25519_keygen().1, *participant_weight);
     }
-    harness.run().await
+    let metrics_gatherer = Arc::new(MetricsGatherer::new());
+    let success_fut = async {
+        harness.run(metrics_gatherer.clone()).await;
+        true
+    };
+    let fail_fut = async {
+        smol::Timer::after(Duration::from_secs(30)).await;
+        false
+    };
+    let suceeded = success_fut.race(fail_fut).await;
+
+    let test_result = metrics_gatherer.summarize().await;
+    let test_result_content = test_result.generate(0, suceeded, mock_net, participant_weights);
+
+    println!("{}", test_result_content);
 }
