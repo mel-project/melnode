@@ -18,10 +18,7 @@ pub use responder::*;
 use routingtable::*;
 use serde::{de::DeserializeOwned, Serialize};
 use std::sync::Arc;
-use std::{
-    collections::HashMap,
-    net::{SocketAddr, ToSocketAddrs},
-};
+use std::{collections::HashMap, net::SocketAddr};
 mod reqs;
 use async_net::{TcpListener, TcpStream};
 mod common;
@@ -234,38 +231,6 @@ impl NetState {
                 .detach();
             }),
         );
-        // new_addr
-        // self.register_verb("new_addr", |state, rr: RoutingRequest| async move {
-        //     trace!("got new_addr {:?}", rr);
-        //     let unreach = || MelnetError::Custom(String::from("invalid"));
-        //     if rr.proto != "tcp" {
-        //         debug!("new_addr unrecognizable proto = {:?}", rr.proto);
-        //         return Err(unreach());
-        //     }
-        //     let resp: u64 = g_client()
-        //         .request(
-        //             rr.addr
-        //                 .to_socket_addrs()
-        //                 .map_err(|_| unreach())?
-        //                 .next()
-        //                 .ok_or_else(unreach)?,
-        //             &state.network_name.to_owned(),
-        //             "ping",
-        //             814u64,
-        //         )
-        //         .await
-        //         .map_err(|_| unreach())?;
-        //     if resp != 814 {
-        //         debug!("new_addr bad ping {:?} {:?}", rr.addr, resp);
-        //         return Err(unreach());
-        //     }
-        //     state
-        //         .routes
-        //         .write()
-        //         .add_route(string_to_addr(&rr.addr).ok_or_else(unreach)?);
-        //     trace!("new_addr processed {:?}", rr.addr);
-        //     Ok("")
-        // })
     }
 
     /// Registers a verb.
@@ -306,10 +271,6 @@ impl NetState {
         ns.set_name(name);
         ns
     }
-}
-
-fn string_to_addr(s: &str) -> Option<SocketAddr> {
-    s.to_socket_addrs().ok()?.next()
 }
 
 #[cfg(test)]

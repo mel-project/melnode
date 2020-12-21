@@ -40,6 +40,7 @@ smolscale="0.1"
 
 [profile.dev]
 panic = "abort"
+opt-level = 1
 
 [profile.release]
 panic = "abort"

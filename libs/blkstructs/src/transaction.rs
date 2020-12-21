@@ -112,6 +112,16 @@ pub struct CoinID {
     pub index: u8,
 }
 
+impl CoinID {
+    /// The genesis coin of "zero-zero".
+    pub fn zero_zero() -> Self {
+        Self {
+            txhash: tmelcrypt::HashVal::default(),
+            index: 0,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Arbitrary, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
 /// The data bound to a coin ID. Contains the "contents" of a coin, i.e. its constraint hash, value, and coin type.
 pub struct CoinData {
