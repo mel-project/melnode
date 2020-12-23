@@ -102,6 +102,7 @@ impl Machine {
         let is_leader = leader_pk == self.config.my_pk;
         loop {
             let curr_view = self.globals.curr_view;
+            trace!("PK={:?}", self.config.my_pk);
             match self.curr_phase {
                 // Prepare phase
                 Phase::Prepare => {
@@ -353,13 +354,11 @@ impl Machine {
                 }
                 Phase::NewView => {
                     let next_leader = (self.config.view_leader)(self.globals.curr_view + 1);
+                    let node = Node::default();
+                    trace!("phase new view {:?}", node);
                     self.broadcast(
                         Some(next_leader),
-                        self.make_vote_msg(
-                            Phase::NewView,
-                            Node::default(),
-                            self.globals.prepare_qc.clone(),
-                        ),
+                        self.make_vote_msg(Phase::NewView, node, self.globals.prepare_qc.clone()),
                     );
                     self.globals.curr_view += 1;
                     self.curr_phase = Phase::Prepare;
@@ -428,8 +427,6 @@ impl Machine {
             }
             None => true,
         };
-        // println!("node.prop {:?}", node.prop);
-        // assert_ne!(node.prop.len(), 0 as usize);
         safetylive && (self.config.is_valid_prop)(&node.prop)
     }
 
