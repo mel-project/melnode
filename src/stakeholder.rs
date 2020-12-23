@@ -37,7 +37,7 @@ impl Stakeholder {
 async fn stakeholder_loop(
     mut mbox: Mailbox<StakeholderMsg>,
     network: melnet::NetState,
-    mut auditor: Auditor,
+    auditor: Auditor,
     storage: Arc<RwLock<Storage>>,
     symphonia_sk: Ed25519SK,
 ) {
