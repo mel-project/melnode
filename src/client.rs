@@ -27,21 +27,12 @@ impl Client {
     }
 
     async fn sync_with_net(&mut self) -> anyhow::Result<()> {
-        // TODO: caching
-        let route = self.remote;
-        let header: Header = melnet::g_client()
-            .request(route, TEST_ANET, "get_latest_header", 0u8)
-            .await?;
-        log::warn!("not validating consensus proof!");
-        self.last_header = Some(header);
-        self.cache_date = Some(Instant::now());
-        Ok(())
+        unimplemented!()
     }
 
     /// Obtain and verify the latest header.
     pub async fn last_header(&mut self) -> anyhow::Result<(Header, Instant)> {
-        self.sync_with_net().await?;
-        Ok((self.last_header.unwrap(), self.cache_date.unwrap()))
+        unimplemented!()
     }
 
     /// Get and verify a specific coin.
@@ -50,20 +41,7 @@ impl Client {
         _header: Header,
         coin: CoinID,
     ) -> anyhow::Result<Option<CoinDataHeight>> {
-        let (hdr, _) = self.last_header().await?;
-        let cdh: GetCoinResponse = melnet::g_client()
-            .request(
-                self.remote,
-                TEST_ANET,
-                "get_coin",
-                GetCoinRequest {
-                    coin_id: coin,
-                    height: hdr.height,
-                },
-            )
-            .await?;
-        // TODO: validate branch
-        Ok(cdh.coin_data)
+        unimplemented!()
     }
 
     /// Get and verify a specific transaction at a specific height
@@ -72,28 +50,12 @@ impl Client {
         height: u64,
         txhash: HashVal,
     ) -> anyhow::Result<(Option<Transaction>, autosmt::FullProof)> {
-        let response: GetTxResponse = melnet::g_client()
-            .request(
-                self.remote,
-                TEST_ANET,
-                "get_tx",
-                GetTxRequest { txhash, height },
-            )
-            .await?;
-        Ok((
-            response.transaction,
-            autosmt::CompressedProof(response.compressed_proof)
-                .decompress()
-                .ok_or_else(|| anyhow::anyhow!("could not decompress proof"))?,
-        ))
+        unimplemented!()
     }
 
     /// Actually broadcast a transaction!
     pub async fn broadcast_tx(&mut self, tx: Transaction) -> anyhow::Result<bool> {
-        let (_hdr, _) = self.last_header().await?;
-        Ok(melnet::g_client()
-            .request(self.remote, TEST_ANET, "newtx", tx)
-            .await?)
+        unimplemented!()
     }
 }
 

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 pub const STAKE_EPOCH: u64 = 500_000;
 
 /// StakeDoc is a stake document. It encapsulates all the information needed to verify consensus proofs.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct StakeDoc {
     /// Public key.
     pub pubkey: tmelcrypt::Ed25519PK,
@@ -16,6 +16,9 @@ pub struct StakeDoc {
     /// Number of mets staked.
     pub mets_staked: u64,
 }
+
+/// A stake mapping
+pub type StakeMapping = SmtMapping<tmelcrypt::HashVal, StakeDoc>;
 
 impl SmtMapping<tmelcrypt::HashVal, StakeDoc> {
     /// Gets the voting power, as a floating-point number, for a given public key and a given epoch.
