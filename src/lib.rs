@@ -6,9 +6,7 @@ mod auditor;
 mod protocols;
 pub use auditor::*;
 use main_anet_client::{run_anet_client, AnetClientConfig};
-mod stakeholder;
-use protocols::NodeProtocol;
-pub use stakeholder::*;
+use protocols::{NodeProtocol, StakerProtocol};
 mod common;
 use common::*;
 mod storage;
@@ -54,6 +52,10 @@ pub struct NodeConfig {
     /// Testnet type
     #[structopt(long)]
     test_stakeholder: Option<usize>,
+
+    /// Listen address for the staker network.
+    #[structopt(long)]
+    listen_staker: Option<SocketAddr>,
 }
 
 pub async fn run_main(opt: Config) {
@@ -70,11 +72,25 @@ async fn run_node(opt: NodeConfig) {
     log::info!("themelio-core v{} initializing...", VERSION);
     log::info!("bootstrapping with {:?}", opt.bootstrap);
     let storage = Arc::new(RwLock::new(Storage::open_testnet(&opt.database).unwrap()));
-    let _node_prot = NodeProtocol::new(opt.listen, opt.bootstrap, storage.clone()).unwrap();
+    let _node_prot = NodeProtocol::new(opt.listen, opt.bootstrap.clone(), storage.clone()).unwrap();
+    let _staker_prot = if let Some(v) = opt.test_stakeholder {
+        let my_sk = insecure_testnet_keygen(v).1;
+        Some(
+            StakerProtocol::new(
+                opt.listen_staker.unwrap(),
+                opt.bootstrap.clone(),
+                storage.clone(),
+                my_sk,
+            )
+            .unwrap(),
+        )
+    } else {
+        None
+    };
 
     // Storage syncer
     loop {
-        Timer::after(Duration::from_secs(600)).await;
+        Timer::after(Duration::from_secs(1)).await;
         {
             let storage = storage.clone();
             smol::unblock(move || storage.write().sync()).await;

@@ -9,7 +9,7 @@ use tmelcrypt::HashVal;
 
 use crate::{storage, SharedStorage};
 
-use super::blksync;
+use super::blksync::{self, AbbreviatedBlock};
 
 /// This encapsulates the node peer-to-peer for both auditors and stakers..
 pub struct NodeProtocol {
@@ -177,26 +177,6 @@ impl AuditorResponder {
             transactions.push(tx);
         }
         Ok(transactions)
-    }
-}
-
-/// An abbreviated block
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct AbbreviatedBlock {
-    pub header: Header,
-    pub txhashes: Vec<HashVal>,
-}
-
-impl AbbreviatedBlock {
-    pub fn from_state(state: &blkstructs::FinalizedState) -> Self {
-        let header = state.header();
-        let txhashes: Vec<HashVal> = state
-            .inner_ref()
-            .transactions
-            .val_iter()
-            .map(|v| v.hash_nosigs())
-            .collect();
-        Self { header, txhashes }
     }
 }
 

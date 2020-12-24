@@ -1,10 +1,9 @@
 use std::net::SocketAddr;
 
-use blkstructs::{Block, ConfirmedState, State, Transaction};
+use blkstructs::{Block, ConfirmedState, Header, State, Transaction};
+use serde::{Deserialize, Serialize};
 use symphonia::QuorumCert;
 use tmelcrypt::HashVal;
-
-use super::AbbreviatedBlock;
 
 /// This cancellable async function synchronizes the block state with some other node. If the other node has the *next* block, it is returned; otherwise None is returned.
 ///
@@ -58,4 +57,23 @@ pub async fn sync_state(
         transactions: all_txx,
     };
     Ok(Some((new_block, remote_state.1)))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct AbbreviatedBlock {
+    pub header: Header,
+    pub txhashes: Vec<HashVal>,
+}
+
+impl AbbreviatedBlock {
+    pub fn from_state(state: &blkstructs::FinalizedState) -> Self {
+        let header = state.header();
+        let txhashes: Vec<HashVal> = state
+            .inner_ref()
+            .transactions
+            .val_iter()
+            .map(|v| v.hash_nosigs())
+            .collect();
+        Self { header, txhashes }
+    }
 }
