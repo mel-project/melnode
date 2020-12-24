@@ -1,4 +1,5 @@
 use crate::common::*;
+use blkstructs::FinalizedState;
 use lmdb::Transaction;
 use lru::LruCache;
 use std::collections::HashMap;
@@ -6,10 +7,13 @@ use std::path::Path;
 use std::sync::Arc;
 //use std::path::Path;
 
+/// Locked storage.
+pub type SharedStorage = Arc<RwLock<Storage>>;
+
 /// Storage represents the persistent storage of the system.
 pub struct Storage {
     pub curr_state: blkstructs::State,
-    pub history: HashMap<u64, blkstructs::FinalizedState>,
+    pub history: HashMap<u64, blkstructs::ConfirmedState>,
     tree_db: autosmt::DBManager,
 
     recent_tx: LruCache<tmelcrypt::HashVal, ()>,
@@ -46,12 +50,18 @@ impl Storage {
         let history = {
             let txn = lme.begin_ro_txn()?;
             let mut toret = HashMap::new();
+            let mut last_state: Option<FinalizedState>;
             for height in (0..state.height).rev() {
                 let key = format!("history_{}", height);
                 if let Ok(res) = txn.get(lmd, &key.as_bytes()) {
                     let state =
                         blkstructs::FinalizedState::from_partial_encoding_infallible(&res, &dbm);
-                    toret.insert(height, state);
+                    last_state = Some(state.clone());
+                    let proof_key = format!("cproof_{}", height);
+                    let proof = bincode::deserialize(&txn.get(lmd, &proof_key.as_bytes()).unwrap())
+                        .unwrap();
+                    let lala = last_state.map(|fs| fs.inner_ref().clone());
+                    toret.insert(height, state.confirm(proof, lala.as_ref()).unwrap());
                 } else {
                     break;
                 }
@@ -102,7 +112,15 @@ impl Storage {
             txn.put(
                 self.lmdb_db,
                 &key,
-                &v.partial_encoding(),
+                &v.inner().partial_encoding(),
+                lmdb::WriteFlags::empty(),
+            )
+            .unwrap();
+            let proof_key = format!("proof_{}", k);
+            txn.put(
+                self.lmdb_db,
+                &proof_key,
+                &bincode::serialize(v.cproof()).unwrap(),
                 lmdb::WriteFlags::empty(),
             )
             .unwrap();
@@ -119,7 +137,7 @@ impl Storage {
         // nope that didn't work. scan through history
         // TODO do something intelligent
         for (_, s) in self.history.iter() {
-            if let (Some(tx), _) = s.inner_ref().transactions.get(&txhash) {
+            if let (Some(tx), _) = s.inner().inner_ref().transactions.get(&txhash) {
                 return Some(tx);
             }
         }
@@ -127,14 +145,18 @@ impl Storage {
     }
 
     /// Gets the last block.
-    pub fn last_block(&self) -> Option<blkstructs::FinalizedState> {
+    pub fn last_block(&self) -> Option<blkstructs::ConfirmedState> {
         self.history
             .get(&(self.curr_state.height.checked_sub(1)?))
             .cloned()
     }
 
     /// Consumes a block.
-    pub fn apply_block(&mut self, blk: blkstructs::Block) -> Result<()> {
+    pub fn apply_block(
+        &mut self,
+        blk: blkstructs::Block,
+        cproof: symphonia::QuorumCert,
+    ) -> Result<()> {
         if blk.header.height != self.curr_state.height {
             anyhow::bail!(
                 "apply_block wrong height {} {}",
@@ -152,14 +174,23 @@ impl Storage {
             log::debug!("apply_block special case when height is zero");
             new_genesis(self.tree_db.clone())
         } else {
-            self.history[&(curr_height - 1)].clone().next_state()
+            self.history[&(curr_height - 1)]
+                .clone()
+                .inner()
+                .next_state()
         };
         last_state.apply_tx_batch(&blk.transactions)?;
         let state = last_state.finalize();
         if state.header() != blk.header {
             anyhow::bail!("header mismatch");
         }
-        self.history.insert(curr_height, state.clone());
+        self.history.insert(
+            curr_height,
+            state
+                .clone()
+                .confirm(cproof, Some(state.inner_ref()))
+                .ok_or_else(|| anyhow::anyhow!("incorrect proof"))?,
+        );
         self.curr_state = state.next_state();
         self.sync();
         Ok(())

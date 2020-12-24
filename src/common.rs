@@ -135,7 +135,6 @@ pub fn insecure_testnet_keygen(i: usize) -> (tmelcrypt::Ed25519PK, tmelcrypt::Ed
     ];
     let pk = tmelcrypt::Ed25519PK(hex::decode(pkk[i]).unwrap().as_slice().try_into().unwrap());
     let mut sk = [0u8; 64];
-    dbg!(skk[i].len());
     sk.copy_from_slice(&hex::decode(skk[i]).unwrap());
     let sk = tmelcrypt::Ed25519SK(sk);
     (pk, sk)

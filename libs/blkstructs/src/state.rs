@@ -289,7 +289,45 @@ impl FinalizedState {
         }
         new
     }
+
+    /// Confirms a state with a given consensus proof. This function is supposed to be called to *verify* the consensus proof; `ConfirmedState`s cannot be constructed without checking the consensus proof as a result.
+    ///
+    /// **TODO**: Right now it DOES NOT check the consensus proof!
+    pub fn confirm(
+        self,
+        cproof: symphonia::QuorumCert,
+        previous_state: Option<&State>,
+    ) -> Option<ConfirmedState> {
+        if previous_state.is_none() {
+            assert_eq!(self.inner_ref().height, 0);
+        }
+        Some(ConfirmedState {
+            state: self,
+            cproof,
+        })
+    }
 }
+
+/// ConfirmedState represents a fully confirmed state with a consensus proof.
+#[derive(Clone, Debug)]
+pub struct ConfirmedState {
+    state: FinalizedState,
+    cproof: symphonia::QuorumCert,
+}
+
+impl ConfirmedState {
+    /// Returns the wrapped finalized state
+    pub fn inner(&self) -> &FinalizedState {
+        &self.state
+    }
+
+    /// Returns the proof
+    pub fn cproof(&self) -> &symphonia::QuorumCert {
+        &self.cproof
+    }
+}
+
+// impl Deref<Target =
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
 /// A block header.
@@ -310,6 +348,18 @@ pub struct Header {
 impl Header {
     pub fn hash(&self) -> tmelcrypt::HashVal {
         tmelcrypt::hash_single(&bincode::serialize(self).unwrap())
+    }
+
+    pub fn validate_cproof(
+        &self,
+        cproof: &symphonia::QuorumCert,
+        previous_state: Option<&State>,
+    ) -> bool {
+        if previous_state.is_none() && self.height != 0 {
+            return false;
+        }
+        // TODO
+        true
     }
 }
 

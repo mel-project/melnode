@@ -224,6 +224,7 @@ impl NetState {
                         debug!("new_addr bad ping {:?} {:?}", rr.addr, resp);
                         request.respond(Err(unreach()));
                     } else {
+                        state.add_route(*smol::net::resolve(&rr.addr).await.ok()?.first()?);
                         request.respond(Ok("".to_string()));
                     }
                     Some(())

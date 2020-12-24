@@ -4,6 +4,8 @@ use serde::{de::DeserializeOwned, Serialize};
 use smol::channel::Sender;
 use smol::prelude::*;
 
+use crate::MelnetError;
+
 /// A Responder responds to Requests. Requests are responded to by calling `Request::respond()` rather than by return value to simplify asynchronous handling.
 pub trait Responder<Req: DeserializeOwned, Resp: Serialize> {
     /// Handle a request. This should not block. Implementations should do things like move the Request to background tasks/threads to avoid this.
@@ -48,24 +50,38 @@ impl<
 }
 
 /// Converts a responder to a boxed closure for internal use.
-pub(crate) fn responder_to_closure<Req: DeserializeOwned + Send, Resp: Serialize + Send>(
+pub(crate) fn responder_to_closure<
+    Req: DeserializeOwned + Send,
+    Resp: Serialize + Send + 'static,
+>(
     state: crate::NetState,
     mut responder: impl Responder<Req, Resp> + 'static + Send,
 ) -> BoxedResponder {
     let clos = move |bts: &[u8]| {
         let decoded: Result<Req, _> = bincode::deserialize(&bts);
-        if let Ok(decoded) = decoded {
-            let (respond, recv_respond) = smol::channel::bounded(1);
-            let request = Request {
-                state: state.clone(),
-                body: decoded,
-                respond,
-            };
-            responder.respond(request);
-            let response_fut = async move { recv_respond.recv().await.unwrap() };
-            response_fut.boxed();
+        match decoded {
+            Ok(decoded) => {
+                let (respond, recv_respond) = smol::channel::bounded(1);
+                let request = Request {
+                    state: state.clone(),
+                    body: decoded,
+                    respond,
+                };
+                responder.respond(request);
+                let response_fut = async move {
+                    recv_respond
+                        .recv()
+                        .await
+                        .unwrap()
+                        .map(|v| bincode::serialize(&v).unwrap())
+                };
+                response_fut.boxed()
+            }
+            Err(e) => {
+                log::warn!("issue decoding request: {}", e);
+                async { Err(MelnetError::InternalServerError) }.boxed()
+            }
         }
-        unimplemented!()
     };
     BoxedResponder(Box::new(clos))
 }

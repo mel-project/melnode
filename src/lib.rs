@@ -7,6 +7,7 @@ mod protocols;
 pub use auditor::*;
 use main_anet_client::{run_anet_client, AnetClientConfig};
 mod stakeholder;
+use protocols::NodeProtocol;
 pub use stakeholder::*;
 mod common;
 use common::*;
@@ -35,7 +36,7 @@ pub enum Config {
 #[derive(Debug, StructOpt)]
 pub struct NodeConfig {
     /// Listen address
-    #[structopt(long, default_value = "0.0.0.0:0")]
+    #[structopt(long)]
     listen: SocketAddr,
 
     /// Bootstrap addresses
@@ -68,17 +69,8 @@ async fn run_node(opt: NodeConfig) {
 
     log::info!("themelio-core v{} initializing...", VERSION);
     log::info!("bootstrapping with {:?}", opt.bootstrap);
-    let listener = TcpListener::bind(opt.listen).await.unwrap();
     let storage = Arc::new(RwLock::new(Storage::open_testnet(&opt.database).unwrap()));
-    let auditor = Auditor::new(listener, storage.clone(), &opt.bootstrap)
-        .await
-        .unwrap();
-    if opt.test_spam {
-        smolscale::spawn(test_spam_txx(auditor.clone())).detach();
-    }
-    if let Some(sh_no) = opt.test_stakeholder {
-        smolscale::spawn(test_stakeholder(sh_no, auditor.clone(), storage.clone())).detach();
-    }
+    let _node_prot = NodeProtocol::new(opt.listen, opt.bootstrap, storage.clone()).unwrap();
 
     // Storage syncer
     loop {
@@ -90,50 +82,50 @@ async fn run_node(opt: NodeConfig) {
     }
 }
 
-async fn test_stakeholder(sh_no: usize, auditor: Auditor, storage: Arc<RwLock<Storage>>) {
-    log::info!("testnet stakeholder {}", sh_no);
-    let socket_addr = "0.0.0.0:0".to_socket_addrs().unwrap().next().unwrap();
-    let _actor = Stakeholder::new(
-        socket_addr,
-        auditor,
-        storage,
-        if sh_no == 0 {
-            insecure_testnet_keygen(sh_no).1
-        } else {
-            tmelcrypt::ed25519_keygen().1
-        },
-    )
-    .await
-    .unwrap();
-    // block forever now
-    loop {
-        Timer::after(Duration::from_secs(10000000)).await;
-    }
-}
+// async fn test_stakeholder(sh_no: usize, auditor: Auditor, storage: Arc<RwLock<Storage>>) {
+//     log::info!("testnet stakeholder {}", sh_no);
+//     let socket_addr = "0.0.0.0:0".to_socket_addrs().unwrap().next().unwrap();
+//     let _actor = Stakeholder::new(
+//         socket_addr,
+//         auditor,
+//         storage,
+//         if sh_no == 0 {
+//             insecure_testnet_keygen(sh_no).1
+//         } else {
+//             tmelcrypt::ed25519_keygen().1
+//         },
+//     )
+//     .await
+//     .unwrap();
+//     // block forever now
+//     loop {
+//         Timer::after(Duration::from_secs(10000000)).await;
+//     }
+// }
 
-async fn test_spam_txx(auditor: Auditor) {
-    let (_, sk) = tmelcrypt::ed25519_keygen();
-    let txx = blkstructs::testing::random_valid_txx(
-        &mut rand::thread_rng(),
-        blkstructs::CoinID {
-            txhash: tmelcrypt::HashVal::default(),
-            index: 0,
-        },
-        blkstructs::CoinData {
-            conshash: blkstructs::melscript::Script::always_true().hash(),
-            value: blkstructs::MICRO_CONVERTER * 1000,
-            cointype: blkstructs::COINTYPE_TMEL.to_owned(),
-        },
-        sk,
-        &blkstructs::melscript::Script::always_true(),
-    );
-    log::info!("starting spamming with {} txx", txx.len());
-    //let txx = &txx[1..];
-    for tx in txx {
-        Timer::after(Duration::from_millis(1000)).await;
-        auditor
-            .send_ret(|s| AuditorMsg::SendTx(tx, s))
-            .await
-            .unwrap();
-    }
-}
+// async fn test_spam_txx(auditor: Auditor) {
+//     let (_, sk) = tmelcrypt::ed25519_keygen();
+//     let txx = blkstructs::testing::random_valid_txx(
+//         &mut rand::thread_rng(),
+//         blkstructs::CoinID {
+//             txhash: tmelcrypt::HashVal::default(),
+//             index: 0,
+//         },
+//         blkstructs::CoinData {
+//             conshash: blkstructs::melscript::Script::always_true().hash(),
+//             value: blkstructs::MICRO_CONVERTER * 1000,
+//             cointype: blkstructs::COINTYPE_TMEL.to_owned(),
+//         },
+//         sk,
+//         &blkstructs::melscript::Script::always_true(),
+//     );
+//     log::info!("starting spamming with {} txx", txx.len());
+//     //let txx = &txx[1..];
+//     for tx in txx {
+//         Timer::after(Duration::from_millis(1000)).await;
+//         auditor
+//             .send_ret(|s| AuditorMsg::SendTx(tx, s))
+//             .await
+//             .unwrap();
+//     }
+// }

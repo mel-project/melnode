@@ -1,15 +1,18 @@
+use std::{collections::HashMap, convert::TryInto, net::SocketAddr};
 
-use std::{collections::HashMap, net::SocketAddr, convert::TryInto};
-
-use blkstructs::{COINTYPE_TMEL, CoinData, CoinID, MICRO_CONVERTER, Transaction, TxKind, melscript};
+use blkstructs::{
+    melscript, CoinData, CoinID, Transaction, TxKind, COINTYPE_TMEL, MICRO_CONVERTER,
+};
 use colored::Colorize;
+use rusqlite::Connection;
+use std::io::prelude::*;
 use structopt::StructOpt;
 use tabwriter::TabWriter;
-use std::io::prelude::*;
-use rusqlite::Connection;
 
-use crate::{VERSION, client::{Client, Wallet, WalletRecord}};
-
+use crate::{
+    client::{Client, Wallet, WalletRecord},
+    VERSION,
+};
 
 #[derive(Debug, StructOpt)]
 pub struct AnetClientConfig {
@@ -138,7 +141,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                             }
                         }
                     }
-                    ["balances", ] => {
+                    ["balances"] => {
                         writeln!(tw, ">> **** COINS ****")?;
                         writeln!(tw, ">> [CoinID]\t[Height]\t[Amount]\t[CoinType]")?;
                         for (coin_id, coin_data) in wallet.unspent_coins() {
@@ -156,7 +159,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                             )?;
                         }
                     }
-                    ["exit", ] => {
+                    ["exit"] => {
                         prompt_stack.pop();
                         current_wallet = None;
                     }
@@ -219,7 +222,6 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
         }
     }
 }
-
 
 async fn read_line(prompt: String) -> anyhow::Result<String> {
     smol::unblock(move || {
