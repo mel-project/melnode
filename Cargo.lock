@@ -320,6 +320,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_repr",
+ "symphonia",
  "thiserror",
  "tmelcrypt",
 ]
