@@ -159,7 +159,7 @@ impl AuditorResponder {
         let last_block = storage
             .history
             .get(&height)
-            .ok_or_else(|| MelnetError::Custom("no blocks confirmed yet".into()))?;
+            .ok_or_else(|| MelnetError::Custom(format!("block {} not confirmed yet", height)))?;
         // create mapping
         Ok((
             AbbreviatedBlock::from_state(last_block.inner()),
