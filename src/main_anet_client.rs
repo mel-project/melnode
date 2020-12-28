@@ -9,10 +9,8 @@ use std::io::prelude::*;
 use structopt::StructOpt;
 use tabwriter::TabWriter;
 
-use crate::{
-    client::{Client, Wallet, WalletRecord},
-    VERSION,
-};
+use crate::wallet::{Wallet, WalletRecord};
+use crate::{client::Client, VERSION};
 
 #[derive(Debug, StructOpt)]
 pub struct AnetClientConfig {

@@ -18,6 +18,7 @@ mod client;
 mod main_anet_client;
 use structopt::StructOpt;
 mod client_protocol;
+mod wallet;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
