@@ -114,7 +114,7 @@ impl Ed25519PK {
 
 impl fmt::Debug for Ed25519PK {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("EdPK_{}", hex::encode(&self.0[..4])))
+        f.write_fmt(format_args!("EdPK_{}", hex::encode(&self.0)))
     }
 }
 #[derive(Copy, Clone, Serialize, Deserialize)]
