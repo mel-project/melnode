@@ -54,6 +54,7 @@ impl Storage {
             for height in (0..state.height).rev() {
                 let key = format!("history_{}", height);
                 if let Ok(res) = txn.get(lmd, &key.as_bytes()) {
+                    log::debug!("loading history at height {}...", height);
                     let state =
                         blkstructs::FinalizedState::from_partial_encoding_infallible(&res, &dbm);
                     last_state = Some(state.clone());

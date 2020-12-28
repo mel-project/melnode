@@ -168,18 +168,18 @@ impl melnet::Responder<symphonia::SignedMessage, ()> for StakerResponder {
 
 /// Wait until the next consensus
 async fn next_consensus_time() {
-    // let now_unix = SystemTime::now()
-    //     .duration_since(std::time::UNIX_EPOCH)
-    //     .unwrap();
-    // let cons_unix = Duration::from_secs((now_unix.as_secs() / 30 + 1) * 30);
-    // assert!(cons_unix > now_unix);
-    // log::debug!("waiting till next consensus time {}", cons_unix.as_secs());
-    // while SystemTime::now()
-    //     .duration_since(std::time::UNIX_EPOCH)
-    //     .unwrap()
-    //     < cons_unix
-    // {
-    //     // wait in a loop to wait "clock time" rather than real time
-    //     smol::Timer::after(Duration::from_secs(1)).await;
-    // }
+    let now_unix = SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap();
+    let cons_unix = Duration::from_secs((now_unix.as_secs() / 30 + 1) * 30);
+    assert!(cons_unix > now_unix);
+    log::debug!("waiting till next consensus time {}", cons_unix.as_secs());
+    while SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        < cons_unix
+    {
+        // wait in a loop to wait "clock time" rather than real time
+        smol::Timer::after(Duration::from_secs(1)).await;
+    }
 }

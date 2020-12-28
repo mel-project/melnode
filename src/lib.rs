@@ -2,9 +2,7 @@
 
 //! [Themelio](https://themelio.org) is a work-in-progress public blockchain focused on security, performance, and long-term stability
 
-mod auditor;
 mod protocols;
-pub use auditor::*;
 use main_anet_client::{run_anet_client, AnetClientConfig};
 use protocols::{NodeProtocol, StakerProtocol};
 mod common;

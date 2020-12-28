@@ -17,6 +17,7 @@ pub async fn sync_state(
     let log_tag = format!("sync_state({}, {})", remote, netname);
     // start with get_state
     let next_height = my_last_state.map(|v| v.height + 1).unwrap_or(0);
+    log::debug!("next_height = {}", next_height);
     let remote_state: (AbbreviatedBlock, QuorumCert) = melnet::g_client()
         .request(remote, netname, "get_state", next_height)
         .await?;
@@ -30,7 +31,7 @@ pub async fn sync_state(
     if remote_state.0.header.height != next_height {
         anyhow::bail!("server responded with the wrong height");
     }
-    if remote_state
+    if !remote_state
         .0
         .header
         .validate_cproof(&remote_state.1, my_last_state)
