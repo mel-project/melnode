@@ -1,3 +1,6 @@
+// TODO: what is try_blocks for? Where does it go?
+// #![feature(try_blocks)]
+
 use std::{collections::HashMap, convert::TryInto, net::SocketAddr};
 
 use blkstructs::{

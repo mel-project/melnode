@@ -5,7 +5,6 @@ use lru::LruCache;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
-//use std::path::Path;
 
 /// Locked storage.
 pub type SharedStorage = Arc<RwLock<Storage>>;
