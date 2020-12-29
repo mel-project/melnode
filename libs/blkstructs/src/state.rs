@@ -352,7 +352,7 @@ impl Header {
 
     pub fn validate_cproof(
         &self,
-        cproof: &symphonia::QuorumCert,
+        _cproof: &symphonia::QuorumCert,
         previous_state: Option<&State>,
     ) -> bool {
         if previous_state.is_none() && self.height != 0 {

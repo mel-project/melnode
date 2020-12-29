@@ -1,6 +1,5 @@
 use crate::dal::sql::SQLConnectionType;
-use rusqlite::{params, Connection, Result as SQLResult};
-use std::collections::HashMap;
+use rusqlite::{params, Result as SQLResult};
 
 /// Represents a single wallet record row element in db
 #[derive(Debug)]

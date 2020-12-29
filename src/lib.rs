@@ -1,3 +1,5 @@
+#![feature(try_blocks)]
+
 mod dal;
 mod protocols;
 mod services;
