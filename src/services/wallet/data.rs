@@ -4,29 +4,29 @@ use std::collections;
 use tmelcrypt::HashVal;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-/// An immutable, cloneable in-memory wallet that can be synced to disk. Does not contain any secrets!
-pub struct Wallet {
+/// An immutable, cloneable in-memory data that can be synced to disk. Does not contain any secrets!
+pub struct WalletData {
     unspent_coins: im::HashMap<CoinID, CoinDataHeight>,
     spent_coins: im::HashMap<CoinID, CoinDataHeight>,
     tx_in_progress: im::HashMap<HashVal, Transaction>,
     pub my_script: melscript::Script,
 }
 
-impl Wallet {
+impl WalletData {
     /// Coins
     pub fn unspent_coins(&self) -> impl Iterator<Item = (&CoinID, &CoinDataHeight)> {
         self.unspent_coins.iter()
     }
-    /// Create a new wallet.
+    /// Create a new data.
     pub fn new(my_script: melscript::Script) -> Self {
-        Wallet {
+        WalletData {
             unspent_coins: im::HashMap::new(),
             spent_coins: im::HashMap::new(),
             tx_in_progress: im::HashMap::new(),
             my_script,
         }
     }
-    /// Inserts a coin into the wallet, returning whether or not the coin already exists.
+    /// Inserts a coin into the data, returning whether or not the coin already exists.
     pub fn insert_coin(&mut self, coin_id: CoinID, coin_data_height: CoinDataHeight) -> bool {
         self.spent_coins.get(&coin_id).is_none()
             && self
@@ -35,7 +35,7 @@ impl Wallet {
                 .is_none()
     }
 
-    /// Creates an **unsigned** transaction out of the coins in the wallet. Does not spend it yet.
+    /// Creates an **unsigned** transaction out of the coins in the data. Does not spend it yet.
     pub fn pre_spend(&self, outputs: Vec<CoinData>) -> anyhow::Result<Transaction> {
         // find coins that might match
         let mut txn = Transaction {
@@ -99,7 +99,7 @@ impl Wallet {
             let coindata = oself
                 .unspent_coins
                 .remove(&input)
-                .ok_or_else(|| anyhow::anyhow!("no such coin in wallet"))?;
+                .ok_or_else(|| anyhow::anyhow!("no such coin in data"))?;
             oself.spent_coins.insert(input, coindata);
         }
         // put tx in progress

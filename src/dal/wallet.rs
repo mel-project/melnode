@@ -1,7 +1,7 @@
 use crate::dal::sql::SQLConnectionType;
 use rusqlite::{params, Result as SQLResult};
 
-/// Represents a single wallet record row element in db
+/// Represents a single data record row element in db
 #[derive(Debug)]
 pub struct WalletRecord {
     id: i32,
@@ -19,10 +19,10 @@ impl WalletRecordDAL {
         return WalletRecordDAL { conn };
     }
 
-    /// Create new wallet record or update if it exists
+    /// Create new data record or update if it exists
     pub fn upsert(&self, wallet_name: &str, encoded_data: Vec<u8>) -> SQLResult<()> {
         self.conn.execute(
-            "CREATE TABLE IF NOT EXISTS wallet (
+            "CREATE TABLE IF NOT EXISTS data (
                   id              INTEGER PRIMARY KEY,
                   wallet_name     varchar(255) NOT NULL,
                   encoded_data    BLOB,
@@ -31,17 +31,17 @@ impl WalletRecordDAL {
             params![],
         )?;
         self.conn.execute(
-            "INSERT INTO wallet (encoded_data) VALUES (?1, ?2)",
+            "INSERT INTO data (encoded_data) VALUES (?1, ?2)",
             params![wallet_name, encoded_data],
         )?;
         Ok(())
     }
 
-    /// Load all wallet records
+    /// Load all data records
     pub fn read_all(&self) -> Vec<WalletRecord> {
         let mut stmt = self
             .conn
-            .prepare("SELECT id, wallet_name, encoded_data FROM wallet")
+            .prepare("SELECT id, wallet_name, encoded_data FROM data")
             .unwrap();
         let wallet_iter = stmt
             .query_map(params![], |row| {
@@ -64,7 +64,7 @@ impl WalletRecordDAL {
 // TODO: refactor to match WalletDAL impl
 // #[cfg(test)]
 // mod tests {
-//     use crate::wallet::{Wallet, WalletRecord};
+//     use crate::data::{Wallet, WalletRecord};
 //     use blkstructs;
 //     use im::hashmap;
 //     use rusqlite::{params, Connection, Result as SQLResult};
@@ -109,27 +109,27 @@ impl WalletRecordDAL {
 //             spent_coin_id => spent_coin_data_height
 //         };
 //
-//         let mut wallet = Wallet::new(script);
-//         wallet.unspent_coins = unspent_coins;
-//         wallet.spent_coins = spent_coins;
+//         let mut data = Wallet::new(script);
+//         data.unspent_coins = unspent_coins;
+//         data.spent_coins = spent_coins;
 //
-//         return wallet;
+//         return data;
 //     }
 //
 //     #[test]
 //     fn store_wallet() -> SQLResult<()> {
-//         // Create wallet record
-//         let wallet = mock_create_wallet();
+//         // Create data record
+//         let data = mock_create_wallet();
 //         let wallet_name = "test";
-//         let wallet_record = WalletRecord::new(wallet, &wallet_name);
+//         let wallet_record = WalletRecord::new(data, &wallet_name);
 //
-//         // Insert wallet record
+//         // Insert data record
 //         let conn = Connection::open_in_memory()?;
 //         wallet_record.store(&conn);
 //
 //         // Verify that only one record inserted and
 //         // it matches with the expected encoded data
-//         let mut stmt = conn.prepare("SELECT id, wallet_name, encoded_data FROM wallet")?;
+//         let mut stmt = conn.prepare("SELECT id, wallet_name, encoded_data FROM data")?;
 //         let wallet_iter = stmt.query_map(params![], |row| {
 //             Ok(WalletRecord {
 //                 id: row.get(0)?,
@@ -138,8 +138,8 @@ impl WalletRecordDAL {
 //             })
 //         })?;
 //
-//         for (idx, wallet) in wallet_iter.enumerate() {
-//             assert_eq!(wallet_record.encoded_data, wallet.unwrap().encoded_data);
+//         for (idx, data) in wallet_iter.enumerate() {
+//             assert_eq!(wallet_record.encoded_data, data.unwrap().encoded_data);
 //             assert_eq!(idx, 0);
 //         }
 //         Ok(())

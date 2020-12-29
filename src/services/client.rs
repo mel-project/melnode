@@ -23,16 +23,16 @@ impl Client {
             cache_date: None,
         }
     }
-
+    // update last header and cache state variables
     async fn sync_with_net(&mut self) -> anyhow::Result<()> {
         unimplemented!()
     }
-
+    // calls sync with net and verify header (dont need to do)
     /// Obtain and verify the latest header.
     pub async fn last_header(&mut self) -> anyhow::Result<(Header, Instant)> {
         unimplemented!()
     }
-
+    // translate the master client to current system (be in protocols folder)
     /// Get and verify a specific coin.
     pub async fn get_coin(
         &mut self,
