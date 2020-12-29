@@ -1,8 +1,6 @@
 use blkstructs::{melscript, CoinData, CoinDataHeight, CoinID, Transaction, TxKind};
-use rusqlite::{params, Connection, Result as SQLResult};
 use serde::{Deserialize, Serialize};
 use std::collections;
-use std::collections::HashMap;
 use tmelcrypt::HashVal;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
