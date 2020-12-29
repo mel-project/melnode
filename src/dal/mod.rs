@@ -1,5 +1,5 @@
 mod sql;
-mod wallet;
+pub(crate) mod wallet;
 use sql::{SQLConnectionType, SQL_CONNECTION};
 
 use wallet::WalletRecord;

@@ -4,7 +4,7 @@ use std::{
     time::{Duration, SystemTime, SystemTimeError},
 };
 
-use crate::SharedStorage;
+use crate::services::SharedStorage;
 use blkstructs::{Block, StakeMapping, Transaction, STAKE_EPOCH};
 use melnet::Request;
 use smol::channel::{Receiver, Sender};

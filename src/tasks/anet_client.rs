@@ -12,9 +12,8 @@ use std::io::prelude::*;
 use structopt::StructOpt;
 use tabwriter::TabWriter;
 
+use crate::dal::wallet::{WalletRecord, WalletRecordDAL};
 use crate::services::{Client, Wallet};
-use crate::wallet::{Wallet, WalletRecord};
-use crate::{client::Client, VERSION};
 
 #[derive(Debug, StructOpt)]
 pub struct AnetClientConfig {
@@ -25,6 +24,7 @@ pub struct AnetClientConfig {
 
 /// Runs the alphanet client
 pub async fn run_anet_client(cfg: AnetClientConfig) {
+    const VERSION: &str = "TMP";
     let mut prompt_stack: Vec<String> = vec![format!("v{}", VERSION).green().to_string()];
 
     // wallets

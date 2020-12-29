@@ -1,9 +1,11 @@
-use crate::services::{insecure_testnet_keygen, Storage};
-use smol::lock::RwLock;
+use crate::protocols::{NodeProtocol, StakerProtocol};
+use crate::services::{insecure_testnet_keygen, SharedStorage, Storage};
+use parking_lot::lock_api::RwLock;
 use smol::net::SocketAddr;
 use smol::Timer;
 use std::sync::Arc;
 use std::time::Duration;
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 pub struct NodeConfig {
@@ -35,10 +37,11 @@ pub struct NodeConfig {
 /// Runs the main function for a node.
 pub async fn run_node(opt: NodeConfig) {
     let _ = std::fs::create_dir_all(&opt.database);
-
+    const VERSION: &str = "TMP";
     log::info!("themelio-core v{} initializing...", VERSION);
     log::info!("bootstrapping with {:?}", opt.bootstrap);
-    let storage = Arc::new(RwLock::new(Storage::open_testnet(&opt.database).unwrap()));
+    let storage: SharedStorage =
+        Arc::new(RwLock::new(Storage::open_testnet(&opt.database).unwrap()));
     let _node_prot = NodeProtocol::new(opt.listen, opt.bootstrap.clone(), storage.clone()).unwrap();
     let _staker_prot = if let Some(v) = opt.test_stakeholder {
         let my_sk = insecure_testnet_keygen(v).1;

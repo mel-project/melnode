@@ -7,7 +7,7 @@ use smol::channel::{Receiver, Sender};
 use symphonia::QuorumCert;
 use tmelcrypt::HashVal;
 
-use crate::{storage, SharedStorage};
+use crate::services::{storage, SharedStorage};
 
 use super::blksync::{self, AbbreviatedBlock};
 
