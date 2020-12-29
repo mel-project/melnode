@@ -5,5 +5,6 @@ pub use common::*;
 
 pub(crate) mod storage;
 pub use storage::*;
-mod data;
+mod wallet;
+
 pub use data::*;
