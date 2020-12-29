@@ -12,6 +12,7 @@ use std::io::prelude::*;
 use structopt::StructOpt;
 use tabwriter::TabWriter;
 
+use crate::services::{Client, Wallet};
 use crate::wallet::{Wallet, WalletRecord};
 use crate::{client::Client, VERSION};
 

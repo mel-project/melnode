@@ -6,3 +6,6 @@ pub use node::*;
 mod blksync;
 mod staker;
 pub use staker::*;
+
+mod client_protocol;
+pub use client_protocol::*;
