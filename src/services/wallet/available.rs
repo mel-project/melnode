@@ -26,7 +26,8 @@ impl AvailableWallets {
 
         // Serialize wallet into encoded data and store it into db
         let encoded_data = bincode::serialize(&wallet_data).unwrap();
-        wallet::insert(&self.conn, &wallet_name, &encoded_data);
+        wallet::insert(&self.conn, &wallet_name, &encoded_data)
+            .expect("Failed to insert wallet data");
         return false;
     }
 

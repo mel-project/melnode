@@ -7,10 +7,6 @@ use smol::net::TcpListener;
 pub use smol::{Task, Timer};
 use std::convert::TryInto;
 use std::net::ToSocketAddrs;
-pub const TEST_ANET: &str = "themelio-test-alphanet";
-//use std::pin::Pin;
-
-//pub type PinBoxFut<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
 
 /// Guesses the public IP address of the current machine.
 async fn guess_my_ip() -> Result<String> {

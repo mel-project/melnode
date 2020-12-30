@@ -35,7 +35,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
 
             match input.split(' ').collect::<Vec<_>>().as_slice() {
                 &["wallet-new", wallet_name] => {
-                    if let Some(existing_wallet) = available_wallets.get(wallet_name) {
+                    if let Some(_) = available_wallets.get(wallet_name) {
                         eprintln!(">> {}: data already exists", "ERROR".red().bold());
                         continue;
                     }
@@ -125,7 +125,7 @@ async fn run_active_wallet(
                 );
             }
             ["coin-add", coin_id] => {
-                let (coin_data_height, coin_id, full_proof) =
+                let (coin_data_height, coin_id, _full_proof) =
                     active_wallet.coin_get(coin_id).await?;
                 match coin_data_height {
                     None => {
@@ -148,7 +148,7 @@ async fn run_active_wallet(
                 }
             }
             ["tx-send", dest_addr, amount, unit] => {
-                let height = active_wallet.send_tx(dest_addr, amount, unit).await?;
+                let _height = active_wallet.send_tx(dest_addr, amount, unit).await?;
             }
             ["balances"] => {
                 active_wallet.get_balances().await?;
