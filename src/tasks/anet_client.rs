@@ -86,8 +86,21 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                         tw.flush().unwrap();
                     }
                     &["data-unlock", wallet_name, wallet_secret] => {
-                        // available_wallets.unlock(wallet_name, wallet_secret);
-                        // display_available_wallets_unlock()
+                        if let Some(wallet) = available_wallets.get(&wallet_name) {
+                            let wallet_secret = hex::decode(wallet_secret)?;
+                            let wallet_secret =
+                                tmelcrypt::Ed25519SK(wallet_secret.as_slice().try_into()?);
+                            if melscript::Script::std_ed25519_pk(wallet_secret.to_public())
+                                != wallet.my_script
+                            {
+                                Err(anyhow::anyhow!(
+                                    "unlocking failed, make sure you have the right secret!"
+                                ))?;
+                            }
+                            // TODO: how to handle current wallet?
+                            // current_wallet = Some((wallet_name.to_string(), wallet_secret));
+                            prompt_stack.push(format!("({})", wallet_name).yellow().to_string());
+                        }
                     }
                     &["data-list"] => {
                         let wallets = available_wallets.get_all();
