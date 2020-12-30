@@ -9,7 +9,7 @@ use structopt::StructOpt;
 use tabwriter::TabWriter;
 
 use crate::config::VERSION;
-use crate::services::{ActiveWallet, AvailableWallets, Client, WalletData};
+use crate::services::{ActiveWallet, AvailableWallets, WalletData};
 use std::path::Path;
 
 #[derive(Debug, StructOpt)]

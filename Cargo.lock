@@ -231,6 +231,7 @@ dependencies = [
  "once_cell",
  "parking_lot 0.11.1",
  "rand",
+ "serde",
  "snap",
  "tmelcrypt",
 ]

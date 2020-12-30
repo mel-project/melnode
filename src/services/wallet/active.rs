@@ -1,12 +1,14 @@
-use crate::services::{Client, WalletData};
+use crate::services::WalletData;
 use blkstructs::{CoinData, CoinID, Transaction, TxKind, COINTYPE_TMEL, MICRO_CONVERTER};
 use smol::net::SocketAddr;
 use tmelcrypt::Ed25519SK;
 
+use super::netclient::NetClient;
+
 pub struct ActiveWallet {
     sk: Option<Ed25519SK>,
     wallet: Option<WalletData>,
-    client: Client,
+    client: NetClient,
 }
 
 impl ActiveWallet {
@@ -18,7 +20,7 @@ impl ActiveWallet {
         return ActiveWallet {
             sk: None,
             wallet: None,
-            client: Client::new(remote),
+            client: NetClient::new(remote),
         };
     }
 
