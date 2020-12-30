@@ -63,7 +63,7 @@ impl ActiveWallet {
         }
     }
 
-    // -> Option<(CoinID, u32)>
+    /// TODO: move out eprintlns!
     pub async fn coin_add(&mut self, coin_id: &str) -> anyhow::Result<(CoinDataHeight)> {
         eprintln!(">> Syncing state...");
         let header = self.client.last_header().await?.0;
@@ -87,64 +87,62 @@ impl ActiveWallet {
         dest_addr: &str,
         amount: &str,
         unit: &str,
-    ) -> anyhow::Result<()> {
-        unimplemented!("");
-        // let number: u64 = amount.parse()?;
-        // assert_eq!(unit, "TML");
-        // let dest_addr = tmelcrypt::HashVal::from_addr(dest_addr)
-        //     .ok_or_else(|| anyhow::anyhow!("can't decode as address"))?;
-        // let output = CoinData {
-        //     cointype: COINTYPE_TMEL.to_vec(),
-        //     value: number * MICRO_CONVERTER,
-        //     conshash: dest_addr,
-        // };
-        // let to_send = self.wallet.pre_spend(vec![output])?.sign_ed25519(self.sk);
-        // eprintln!(">> Syncing state...");
-        // self.client.broadcast_tx(to_send.clone()).await?;
-        // eprintln!(">> Transaction {:?} broadcast!", to_send.hash_nosigs());
-        // eprintln!(">> Waiting for confirmation...");
-        // loop {
-        //     let header = self.client.last_header().await?.0;
-        //     let first_change = CoinID {
-        //         txhash: to_send.hash_nosigs(),
-        //         index: 1,
-        //     };
-        //     let their_coin = CoinID {
-        //         txhash: to_send.hash_nosigs(),
-        //         index: 0,
-        //     };
-        //     let (coin_data_height, full_proof) = self.client.get_coin(header, first_change).await?;
-        //     if let Some(out) = coin_data_height {
-        //         eprintln!(">> Confirmed at height {}!", out.height);
-        //         eprintln!(
-        //             ">> CID = {}",
-        //             hex::encode(bincode::serialize(&their_coin).unwrap()) // .bold()
-        //         );
-        //         // break; // replace with Err
-        //     }
-        // }
+    ) -> anyhow::Result<(CoinDataHeight)> {
+        let number: u64 = amount.parse()?;
+        assert_eq!(unit, "TML");
+        let dest_addr = tmelcrypt::HashVal::from_addr(dest_addr)
+            .ok_or_else(|| anyhow::anyhow!("can't decode as address"))?;
+        let output = CoinData {
+            cointype: COINTYPE_TMEL.to_vec(),
+            value: number * MICRO_CONVERTER,
+            conshash: dest_addr,
+        };
+        let to_send = self.wallet.pre_spend(vec![output])?.sign_ed25519(self.sk);
+        eprintln!(">> Syncing state...");
+        self.client.broadcast_tx(to_send.clone()).await?;
+        eprintln!(">> Transaction {:?} broadcast!", to_send.hash_nosigs());
+        eprintln!(">> Waiting for confirmation...");
+        loop {
+            let header = self.client.last_header().await?.0;
+            let first_change = CoinID {
+                txhash: to_send.hash_nosigs(),
+                index: 1,
+            };
+            let their_coin = CoinID {
+                txhash: to_send.hash_nosigs(),
+                index: 0,
+            };
+            let (coin_data_height, full_proof) = self.client.get_coin(header, first_change).await?;
+            if let Some(out) = coin_data_height {
+                eprintln!(">> Confirmed at height {}!", out.height);
+                eprintln!(
+                    ">> CID = {}",
+                    hex::encode(bincode::serialize(&their_coin).unwrap()) // .bold()
+                );
+                return Ok(out);
+            }
+        }
     }
 
     pub async fn get_balances(&mut self) -> anyhow::Result<()> {
-        unimplemented!("");
-        // let mut tw = TabWriter::new(vec![]); // remove this
-        //
-        // // writeln!(tw, ">> **** COINS ****")?;
-        // // writeln!(tw, ">> [CoinID]\t[Height]\t[Amount]\t[CoinType]")?;
-        // for (coin_id, coin_data) in self.wallet.unspent_coins() {
-        //     let coin_id = hex::encode(bincode::serialize(coin_id).unwrap());
-        //     // writeln!(
-        //     //     tw,
-        //     //     ">> {}\t{}\t{}\t{}",
-        //     //     coin_id,
-        //     //     coin_data.height.to_string(),
-        //     //     coin_data.coin_data.value.to_string(),
-        //     //     match coin_data.coin_data.cointype.as_slice() {
-        //     //         COINTYPE_TMEL => "μTML",
-        //     //         _ => "(other)",
-        //     //     },
-        //     // )?;
-        // }
-        // Ok(())
+        let mut tw = TabWriter::new(vec![]); // remove this
+
+        // writeln!(tw, ">> **** COINS ****")?;
+        // writeln!(tw, ">> [CoinID]\t[Height]\t[Amount]\t[CoinType]")?;
+        for (coin_id, coin_data) in self.wallet.unspent_coins() {
+            let coin_id = hex::encode(bincode::serialize(coin_id).unwrap());
+            // writeln!(
+            //     tw,
+            //     ">> {}\t{}\t{}\t{}",
+            //     coin_id,
+            //     coin_data.height.to_string(),
+            //     coin_data.coin_data.value.to_string(),
+            //     match coin_data.coin_data.cointype.as_slice() {
+            //         COINTYPE_TMEL => "μTML",
+            //         _ => "(other)",
+            //     },
+            // )?;
+        }
+        Ok(())
     }
 }
