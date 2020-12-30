@@ -3,10 +3,12 @@ use blkstructs::{CoinData, CoinID, Transaction, TxKind, COINTYPE_TMEL, MICRO_CON
 use smol::net::SocketAddr;
 use tmelcrypt::Ed25519SK;
 
+use super::netclient::NetClient;
+
 pub struct ActiveWallet {
+    client: NetClient,
     sk: Ed25519SK,
     wallet: WalletData,
-    client: Client,
 }
 
 impl ActiveWallet {

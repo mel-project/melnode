@@ -2,6 +2,7 @@ use crate::smt::*;
 use bitvec::prelude::*;
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
+use serde::{Deserialize, Serialize};
 use std::io::Read;
 use std::{collections::HashMap, fmt::Debug};
 
@@ -142,7 +143,7 @@ impl FullProof {
     }
 }
 
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize)]
 /// A compressed proof.
 pub struct CompressedProof(pub Vec<u8>);
 
