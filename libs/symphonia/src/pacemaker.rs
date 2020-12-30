@@ -66,7 +66,7 @@ async fn pacemaker_loop(
         // send outputs
         let outputs = machine.drain_output();
         for msg in outputs {
-            // trace!("machine send {:?}", msg.1.msg.phase);
+            trace!("machine send {:?}", msg.1.msg);
             let _ = send_output.send(msg).await;
         }
         if let Some(dec) = machine.decision() {
@@ -83,9 +83,10 @@ async fn pacemaker_loop(
                     panic!("pacemaker stopped because recv_input dead");
                 }
             }
-         _ = timeout_chan => {
+            _ = timeout_chan => {
                 trace!("pacemaker forcing a new view after {:?}", timeout);
                 timeout = timeout * 10 / 9;
+                trace!("new timeout {:?}", timeout);
                 machine.new_view();
             }
         }

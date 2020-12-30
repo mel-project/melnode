@@ -1,4 +1,6 @@
 use crate::{Config, Decider, Machine, Pacemaker};
+use log::trace;
+use smol::channel::TrySendError;
 use smol::lock::Mutex;
 use smol::prelude::*;
 use std::collections::HashSet;
@@ -41,10 +43,11 @@ impl Harness {
         });
         let pp = self.participants.clone();
         let view_leader = Arc::new(move |view: u64| pp[view as usize % pp.len()].0.to_public());
-        let is_valid_prop = Arc::new(|prop: &[u8]| prop[0] % 2 == 0);
+        let is_valid_prop = Arc::new(|prop: &[u8]| prop.len() != 0 && prop[0] % 2 == 0);
         let gen_proposal = Arc::new(|| String::from("nuuunuuNUUU!").as_bytes().to_vec());
         let mut pacemakers = HashMap::new();
         let (send_decision, recv_decision) = smol::channel::unbounded();
+        trace!("Num participants: {:?}", self.participants.len());
         for (sk, _) in self.participants {
             let pk = sk.to_public();
             let cfg = Config {
@@ -85,11 +88,20 @@ impl Harness {
                 {
                     let pmaker = pmaker.clone();
                     let send_decision = send_decision.clone();
-                    let decider_pk = pk;
+                    let decider_pk = pk.clone();
                     let decision_metrics = metrics_gatherer.clone();
                     async move {
                         let decision = pmaker.decision().await;
-                        send_decision.try_send(decision).unwrap();
+                        send_decision
+                            .try_send(decision)
+                            .unwrap_or_else(|e| match e {
+                                TrySendError::Full(_) => {
+                                    println!("Send error full");
+                                }
+                                TrySendError::Closed(_) => {
+                                    println!("Send error closed");
+                                }
+                            });
                         // Store decision event
                         decision_metrics
                             .store(Event::Decided {
@@ -253,8 +265,8 @@ impl MetricsGatherer {
                         }
                     };
                 }
-                Err(_e) => {
-                    // trace!("System time error {:?}", e);
+                Err(e) => {
+                    println!("System time error {:?}", e);
                 }
             }
         }
