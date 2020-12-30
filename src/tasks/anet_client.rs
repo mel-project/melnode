@@ -1,16 +1,13 @@
-use std::{collections::HashMap, convert::TryInto, net::SocketAddr};
+use std::{convert::TryInto, net::SocketAddr};
 
-use blkstructs::{
-    melscript, CoinData, CoinID, Transaction, TxKind, COINTYPE_TMEL, MICRO_CONVERTER,
-};
+use blkstructs::melscript;
 use colored::Colorize;
 use std::io::prelude::*;
 use structopt::StructOpt;
 use tabwriter::TabWriter;
 
 use crate::config::VERSION;
-use crate::services::{ActiveWallet, AvailableWallets, Client, WalletData};
-use std::path::Path;
+use crate::services::{ActiveWallet, AvailableWallets, WalletData};
 use tmelcrypt::Ed25519SK;
 
 #[derive(Debug, StructOpt)]
@@ -33,7 +30,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
     loop {
         let prompt = format!("[anet client {}]% ", prompt_stack.join(" "));
         let res: anyhow::Result<()> = try {
-            let input = read_line(prompt).await.unwrap();
+            let input = read_line(prompt.clone()).await.unwrap();
             let mut tw = TabWriter::new(vec![]);
 
             match input.split(' ').collect::<Vec<_>>().as_slice() {
@@ -68,7 +65,8 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                             ))?;
                         }
                         prompt_stack.push(format!("({})", wallet_name).yellow().to_string());
-                        run_active_wallet(wallet_secret, wallet, cfg.bootstrap).await;
+                        run_active_wallet(wallet_secret, wallet, cfg.bootstrap, prompt.clone())
+                            .await;
                         prompt_stack.pop();
                     }
                 }
@@ -101,9 +99,14 @@ async fn read_line(prompt: String) -> anyhow::Result<String> {
     .await
 }
 
-async fn run_active_wallet(wallet_sk: Ed25519SK, wallet_data: WalletData, route: SocketAddr) {
-    let mut active_wallet = ActiveWallet::new(route);
-    let input = read_line(prompt).await.unwrap();
+async fn run_active_wallet(
+    wallet_sk: Ed25519SK,
+    wallet_data: WalletData,
+    route: SocketAddr,
+    prompt: String,
+) {
+    let mut active_wallet = ActiveWallet::new(wallet_sk, wallet_data, route);
+    let input = read_line(prompt.clone()).await.unwrap();
     match input.split(' ').collect::<Vec<_>>().as_slice() {
         ["faucet", number, unit] => {
             eprintln!(
@@ -111,24 +114,23 @@ async fn run_active_wallet(wallet_sk: Ed25519SK, wallet_data: WalletData, route:
                 number.to_string().bold()
             );
             eprintln!(">> Waiting for confirmation...");
-            let (coin_data, height) = active_wallet.fuacet(number, unit);
+            active_wallet.faucet(number, unit).await;
+            // let (coin_data, height) = active_wallet.fuacet(number, unit).await?;
             // display_faucet(coin_data, height);
         }
         ["coin-add", coin_id] => {
-            let (coin_id, height) = active_wallet.coin_add(coin_id);
+            // let (coin_id, height) = active_wallet.coin_add(coin_id);
             // display_coin_add(coin_id, height);
         }
         ["tx-send", dest_addr, amount, unit] => {
-            let height = active_wallet.tx_send(dest_addr, amount, unit);
+            // let height = active_wallet.tx_send(dest_addr, amount, unit);
             // display_tx_send(height);
         }
         ["balances"] => {
-            let balances = active_wallet.get_balances();
+            // let balances = active_wallet.get_balances();
             // display_balances(prompt_stack, balances);
         }
-        ["exit"] => {
-            return;
-        }
-        _ => Err(anyhow::anyhow!("no such command"))?,
+        ["exit"] => return,
+        _ => (), // Err(anyhow::anyhow!("no such command")),
     }
 }

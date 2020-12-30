@@ -1,11 +1,8 @@
 use crate::dal::wallet;
 use crate::services::wallet::data::WalletData;
-use blkstructs::melscript;
-use rusqlite::{Connection, Result as SQLResult};
+use rusqlite::Connection;
 use std::collections::HashMap;
 use std::path::Path;
-use std::process::exit;
-use std::sync::Arc;
 
 pub struct AvailableWallets {
     conn: Connection,

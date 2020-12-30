@@ -18,18 +18,18 @@ impl ActiveWallet {
         };
     }
 
-    pub async fn faucet(&mut self, number: &str, unit: &str) {
+    pub async fn faucet(&mut self, number: &str, unit: &str) -> anyhow::Result<()> {
         // Return Option(coin data) and height?
 
         let number: u64 = number.parse()?;
-        assert_eq!(unit, &"TML");
+        assert_eq!(unit, "TML");
         // create faucet transaction
         let txn = Transaction {
             kind: TxKind::Faucet,
             inputs: vec![],
             outputs: vec![CoinData {
                 cointype: COINTYPE_TMEL.to_owned(),
-                conshash: wallet.my_script.hash(),
+                conshash: self.wallet.my_script.hash(),
                 value: number * MICRO_CONVERTER,
             }],
             fee: 0,
@@ -50,9 +50,8 @@ impl ActiveWallet {
                     eprintln!(">> Confirmed at height {}!", coin_data_height.height);
                     eprintln!(
                         ">> CID = {}",
-                        hex::encode(bincode::serialize(&coin).unwrap()).bold()
+                        hex::encode(bincode::serialize(&coin).unwrap()) // .bold()
                     );
-                    break;
                 }
                 None => eprintln!(">> Not at height {}...", hdr.height),
             }

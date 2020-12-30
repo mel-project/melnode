@@ -3,10 +3,7 @@ pub use futures::prelude::*;
 pub use parking_lot::RwLock;
 
 use serde::{Deserialize, Serialize};
-use smol::{
-    channel::{Receiver, Sender},
-    net::TcpListener,
-};
+use smol::net::TcpListener;
 pub use smol::{Task, Timer};
 use std::convert::TryInto;
 use std::net::ToSocketAddrs;
