@@ -37,12 +37,17 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
             let input = read_line(prompt).await.unwrap();
             let mut tw = TabWriter::new(vec![]);
             // data mode
-            if false {
+            if active_wallet.is_ready() {
                 //let Some((wallet_name, wallet_sk)) = &mut current_wallet {
                 // let wallet = wallets.get_mut(wallet_name).unwrap();
                 match input.split(' ').collect::<Vec<_>>().as_slice() {
                     ["faucet", number, unit] => {
-                        // let (coin_data, height) = active_wallet.fuacet(number, unit);
+                        eprintln!(
+                            ">> Faucet transaction for {} mels to be broadcast!",
+                            number.to_string().bold()
+                        );
+                        eprintln!(">> Waiting for confirmation...");
+                        let (coin_data, height) = active_wallet.fuacet(number, unit);
                         // display_faucet(coin_data, height);
                     }
                     ["coin-add", coin_id] => {
