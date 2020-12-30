@@ -67,7 +67,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                 }
             } else {
                 match input.split(' ').collect::<Vec<_>>().as_slice() {
-                    &["data-new", wallet_name] => {
+                    &["wallet-new", wallet_name] => {
                         if let Some(existing_wallet) = available_wallets.get(wallet_name) {
                             eprintln!(">> {}: data already exists", "ERROR".red().bold());
                             continue;
@@ -85,7 +85,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                         writeln!(tw, ">> Secret:\t{}", hex::encode(sk.0).dimmed()).unwrap();
                         tw.flush().unwrap();
                     }
-                    &["data-unlock", wallet_name, wallet_secret] => {
+                    &["wallet-unlock", wallet_name, wallet_secret] => {
                         if let Some(wallet) = available_wallets.get(&wallet_name) {
                             let wallet_secret = hex::decode(wallet_secret)?;
                             let wallet_secret =
@@ -102,7 +102,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                             prompt_stack.push(format!("({})", wallet_name).yellow().to_string());
                         }
                     }
-                    &["data-list"] => {
+                    &["wallet-list"] => {
                         let wallets = available_wallets.get_all();
                         writeln!(tw, ">> [NAME]\t[ADDRESS]")?;
                         for (name, wallet) in wallets.iter() {

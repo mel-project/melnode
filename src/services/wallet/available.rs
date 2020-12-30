@@ -14,16 +14,17 @@ pub struct AvailableWallets {
 impl AvailableWallets {
     pub fn new(path: &String) -> Self {
         let path = Path::new(path);
-        AvailableWallets {
-            conn: Connection::open(path).expect("SQLite connection failure"),
-        }
+        let conn = Connection::open(path).expect("SQLite connection failure");
+        wallet::init(&conn);
+        AvailableWallets { conn }
     }
 
     /// Inserts a wallet_data into the database. If something already exists, returns true
     pub fn insert(&self, wallet_name: &str, wallet_data: &WalletData) -> bool {
         // If wallet already exists, do not insert and return true
         let existing_wallet = wallet::read_by_name(&self.conn, &wallet_name);
-        if existing_wallet.is_err() {
+        if existing_wallet.is_ok() {
+            println!("{:?}", existing_wallet.err().unwrap());
             return true;
         };
 
