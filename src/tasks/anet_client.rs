@@ -10,12 +10,17 @@ use structopt::StructOpt;
 
 use crate::config::VERSION;
 use crate::services::{AvailableWallets, Client};
+use std::path::Path;
 
 #[derive(Debug, StructOpt)]
 pub struct AnetClientConfig {
     /// Address for bootstrapping into the network
     #[structopt(long, default_value = "35.225.14.194:18888")]
     bootstrap: SocketAddr,
+
+    /// Path to db storage
+    #[structopt(long, default_value = "./sql.db")]
+    storage_path: String,
 }
 
 /// Runs the alphanet client
@@ -23,7 +28,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
     let mut prompt_stack: Vec<String> = vec![format!("v{}", VERSION).green().to_string()];
 
     // wallets
-    let available_wallets = AvailableWallets::new();
+    let available_wallets = AvailableWallets::new(&cfg.storage_path);
 
     // let mut wallets: HashMap<String, WalletData> = WalletRecord::load_all(&connection.unwrap());
     // let mut current_wallet: Option<(String, tmelcrypt::Ed25519SK)> = None;

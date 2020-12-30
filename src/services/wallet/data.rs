@@ -1,7 +1,7 @@
 use blkstructs::{melscript, CoinData, CoinDataHeight, CoinID, Transaction, TxKind};
 use serde::{Deserialize, Serialize};
 use std::collections;
-use tmelcrypt::HashVal;
+use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 /// An immutable, cloneable in-memory data that can be synced to disk. Does not contain any secrets!
@@ -27,10 +27,10 @@ impl WalletData {
         }
     }
     /// Generates wallet data from script based on keypair
-    pub fn generate() -> Self {
+    pub fn generate() -> (Ed25519SK, Ed25519PK, Self) {
         let (pk, sk) = tmelcrypt::ed25519_keygen();
         let script = melscript::Script::std_ed25519_pk(pk);
-        WalletData::new(script.clone())
+        (sk, pk, WalletData::new(script.clone()))
     }
     /// Inserts a coin into the data, returning whether or not the coin already exists.
     pub fn insert_coin(&mut self, coin_id: CoinID, coin_data_height: CoinDataHeight) -> bool {
