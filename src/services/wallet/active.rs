@@ -1,4 +1,4 @@
-use crate::services::{Client, WalletData};
+use crate::services::WalletData;
 use blkstructs::{CoinData, CoinID, Transaction, TxKind, COINTYPE_TMEL, MICRO_CONVERTER};
 use smol::net::SocketAddr;
 use tmelcrypt::Ed25519SK;
@@ -16,13 +16,13 @@ impl ActiveWallet {
         return ActiveWallet {
             sk,
             wallet,
-            client: Client::new(remote),
+            client: NetClient::new(remote),
         };
     }
 
     pub async fn faucet(&mut self, number: &str, unit: &str) -> anyhow::Result<()> {
         // Return Option(coin data) and height?
-
+        unimplemented!("");
         let number: u64 = number.parse()?;
         assert_eq!(unit, "TML");
         // create faucet transaction
@@ -45,19 +45,19 @@ impl ActiveWallet {
         };
         self.client.broadcast_tx(txn).await?;
 
-        loop {
-            let (hdr, _) = self.client.last_header().await?;
-            match self.client.get_coin(hdr, coin).await? {
-                Some(coin_data_height) => {
-                    eprintln!(">> Confirmed at height {}!", coin_data_height.height);
-                    eprintln!(
-                        ">> CID = {}",
-                        hex::encode(bincode::serialize(&coin).unwrap()) // .bold()
-                    );
-                }
-                None => eprintln!(">> Not at height {}...", hdr.height),
-            }
-        }
+        // loop {
+        //     let (hdr, _) = self.client.last_header().await?;
+        //     match self.client.get_coin(hdr, coin).await? {
+        //         Some(coin_data_height) => {
+        //             eprintln!(">> Confirmed at height {}!", coin_data_height.height);
+        //             eprintln!(
+        //                 ">> CID = {}",
+        //                 hex::encode(bincode::serialize(&coin).unwrap()) // .bold()
+        //             );
+        //         }
+        //         None => eprintln!(">> Not at height {}...", hdr.height),
+        //     }
+        // }
     }
 
     // -> Option<(CoinID, u32)>
