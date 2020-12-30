@@ -21,7 +21,6 @@ impl AvailableWallets {
         // If wallet already exists, do not insert and return true
         let existing_wallet = wallet::read_by_name(&self.conn, &wallet_name);
         if existing_wallet.is_ok() {
-            println!("{:?}", existing_wallet.err().unwrap());
             return true;
         };
 

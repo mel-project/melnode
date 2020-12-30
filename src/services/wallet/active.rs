@@ -64,25 +64,24 @@ impl ActiveWallet {
     }
 
     /// TODO: move out eprintlns!
-    pub async fn coin_add(&mut self, coin_id: &str) -> anyhow::Result<(CoinDataHeight)> {
+    pub async fn coin_get(
+        &mut self,
+        coin_id: &str,
+    ) -> anyhow::Result<(Option<CoinDataHeight>, CoinID, autosmt::FullProof)> {
         eprintln!(">> Syncing state...");
         let header = self.client.last_header().await?.0;
+        eprintln!(">> Retrieving coin at height {}", header.height);
         let coin_id: CoinID = bincode::deserialize(&hex::decode(coin_id)?)?;
         let (coin_data_height, full_proof) = self.client.get_coin(header, coin_id).await?;
-        match coin_data_height {
-            None => {
-                eprintln!(">> No such coin yet at height {}!", header.height);
-                let msg = format!(">> No such coin yet at height {}!", header.height);
-                Err(anyhow::anyhow!("no such coin yet at height")).unwrap()
-            }
-            Some(coin_data_height) => {
-                self.wallet.insert_coin(coin_id, coin_data_height.clone());
-                Ok(coin_data_height)
-            }
-        }
+        Ok((coin_data_height, coin_id, full_proof))
     }
 
-    pub async fn tx_send(
+    pub async fn coin_add(&mut self, coin_id: &CoinID, coin_data_height: &CoinDataHeight) {
+        self.wallet
+            .insert_coin(coin_id.clone(), coin_data_height.clone());
+    }
+
+    pub async fn send_tx(
         &mut self,
         dest_addr: &str,
         amount: &str,

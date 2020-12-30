@@ -13,7 +13,7 @@ use tmelcrypt::Ed25519SK;
 #[derive(Debug, StructOpt)]
 pub struct AnetClientConfig {
     /// Address for bootstrapping into the network
-    #[structopt(long, default_value = "35.225.14.194:18888")]
+    #[structopt(long, default_value = "94.237.109.116:11814")]
     bootstrap: SocketAddr,
 
     /// Path to db storage
@@ -99,6 +99,7 @@ async fn read_line(prompt: String) -> anyhow::Result<String> {
     .await
 }
 
+/// Handle command line inputs for active wallet mode
 async fn run_active_wallet(
     wallet_sk: Ed25519SK,
     wallet_data: WalletData,
@@ -116,29 +117,37 @@ async fn run_active_wallet(
                 );
                 eprintln!(">> Waiting for confirmation...");
                 let coin_data_height = active_wallet.faucet(number, unit).await?;
-                // display_faucet(coin_data, height);
+                eprintln!(">> Confirmed at height {}!", coin_data_height.height);
+                eprintln!(
+                    ">> CID = {}",
+                    hex::encode(bincode::serialize(&coin_data_height.coin_data).unwrap()).bold()
+                );
             }
             ["coin-add", coin_id] => {
-                let coin_data_height = active_wallet.coin_add(coin_id).await?;
-                // display coin_add
-                // eprintln!(
-                //     ">> Coin found at height {}! Added {} {} to data",
-                //     coin_data_height.height,
-                //     coin_data_height.coin_data.value,
-                //     match coin_data_height.coin_data.cointype.as_slice() {
-                //         COINTYPE_TMEL => "μmel".to_string(),
-                //         val => format!("X-{}", hex::encode(val)),
-                //     }
-                // );
-                // eprintln!(">> Confirmed at height {}!", height);
-                // eprintln!(
-                //     ">> CID = {}",
-                //     hex::encode(coin_id.unwrap()) // .bold()
-                // );
-                // display_coin_add(coin_id, height);
+                let (coin_data_height, coin_id, full_proof) =
+                    active_wallet.coin_get(coin_id).await?;
+                match coin_data_height {
+                    None => {
+                        continue;
+                    }
+                    Some(coin_data_height) => {
+                        active_wallet.coin_add(&coin_id, &coin_data_height);
+                        // display coin_add
+                        eprintln!(
+                            ">> Coin found at height {}! Added {} {} to data",
+                            coin_data_height.height,
+                            coin_data_height.coin_data.value,
+                            match coin_data_height.coin_data.cointype.as_slice() {
+                                COINTYPE_TMEL => "μmel".to_string(),
+                                val => format!("X-{}", hex::encode(val)),
+                            }
+                        );
+                        return Ok(());
+                    }
+                }
             }
             ["tx-send", dest_addr, amount, unit] => {
-                let height = active_wallet.tx_send(dest_addr, amount, unit).await?;
+                let height = active_wallet.send_tx(dest_addr, amount, unit).await?;
                 // display_tx_send(height);
             }
             ["balances"] => {
