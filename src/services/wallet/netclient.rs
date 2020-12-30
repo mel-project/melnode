@@ -1,9 +1,6 @@
 use crate::protocols::{AbbreviatedBlock, NODE_NETNAME};
-use crate::services::common;
-use blkstructs::{melscript, CoinData, CoinDataHeight, CoinID, Header, Transaction, TxKind};
-use collections::HashMap;
-use rusqlite::{params, Connection, Result as SQLResult};
-use std::{collections, time::Instant};
+use blkstructs::{CoinDataHeight, CoinID, Header, Transaction};
+use std::time::Instant;
 use std::{net::SocketAddr, time::Duration};
 use symphonia::QuorumCert;
 use tmelcrypt::HashVal;

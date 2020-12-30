@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use blkstructs::{Block, ConfirmedState, Header, State, Transaction};
+use blkstructs::{Block, Header, State, Transaction};
 use serde::{Deserialize, Serialize};
 use symphonia::QuorumCert;
 use tmelcrypt::HashVal;

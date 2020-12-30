@@ -1,8 +1,7 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
-use blkstructs::{CoinDataHeight, CoinID, Header, Transaction};
+use blkstructs::{CoinDataHeight, CoinID, Transaction};
 use melnet::MelnetError;
-use serde::{Deserialize, Serialize};
 use smol::channel::{Receiver, Sender};
 use symphonia::QuorumCert;
 use tmelcrypt::HashVal;
@@ -71,7 +70,7 @@ impl NodeProtocol {
         network.register_verb(
             "get_last_state",
             melnet::anon_responder(move |req: melnet::Request<(), _>| {
-                let body = req.body;
+                let _body = req.body;
                 req.respond(rr.resp_get_last_state())
             }),
         );

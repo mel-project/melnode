@@ -1,4 +1,4 @@
-use rusqlite::{params, Connection, Error, Result};
+use rusqlite::{params, Connection, Result};
 
 #[derive(Debug)]
 pub struct WalletRecord {

@@ -6,8 +6,6 @@ use smol::net::SocketAddr;
 use tmelcrypt::Ed25519SK;
 
 use super::netclient::NetClient;
-use autosmt::FullProof;
-use tabwriter::TabWriter;
 
 pub struct ActiveWallet {
     client: NetClient,
@@ -24,7 +22,7 @@ impl ActiveWallet {
         };
     }
 
-    pub async fn faucet(&mut self, number: &str, unit: &str) -> anyhow::Result<(CoinDataHeight)> {
+    pub async fn faucet(&mut self, number: &str, unit: &str) -> anyhow::Result<CoinDataHeight> {
         // validate input
         let number: u64 = number.parse()?;
         assert_eq!(unit, "TML");
@@ -56,7 +54,7 @@ impl ActiveWallet {
         // loop until we get coin data height and proof from last header
         loop {
             let (hdr, _) = self.client.last_header().await?;
-            let (coin_data_height, proof) = self.client.get_coin(hdr, coin).await?;
+            let (coin_data_height, _proof) = self.client.get_coin(hdr, coin).await?;
             match coin_data_height {
                 Some(coin_data_height) => return Ok(coin_data_height),
                 None => {
@@ -79,9 +77,14 @@ impl ActiveWallet {
         Ok((coin_data_height, coin_id, full_proof))
     }
 
-    pub async fn coin_add(&mut self, coin_id: &CoinID, coin_data_height: &CoinDataHeight) {
+    pub async fn coin_add(
+        &mut self,
+        coin_id: &CoinID,
+        coin_data_height: &CoinDataHeight,
+    ) -> anyhow::Result<()> {
         self.wallet
             .insert_coin(coin_id.clone(), coin_data_height.clone());
+        Ok(())
     }
 
     pub async fn send_tx(
@@ -89,7 +92,7 @@ impl ActiveWallet {
         dest_addr: &str,
         amount: &str,
         unit: &str,
-    ) -> anyhow::Result<(CoinDataHeight)> {
+    ) -> anyhow::Result<CoinDataHeight> {
         let number: u64 = amount.parse()?;
         assert_eq!(unit, "TML");
         let dest_addr = tmelcrypt::HashVal::from_addr(dest_addr)
@@ -114,7 +117,8 @@ impl ActiveWallet {
                 txhash: to_send.hash_nosigs(),
                 index: 0,
             };
-            let (coin_data_height, full_proof) = self.client.get_coin(header, first_change).await?;
+            let (coin_data_height, _full_proof) =
+                self.client.get_coin(header, first_change).await?;
             if let Some(out) = coin_data_height {
                 eprintln!(">> Confirmed at height {}!", out.height);
                 eprintln!(
@@ -127,12 +131,10 @@ impl ActiveWallet {
     }
 
     pub async fn get_balances(&mut self) -> anyhow::Result<()> {
-        let mut tw = TabWriter::new(vec![]); // remove this
-
         // writeln!(tw, ">> **** COINS ****")?;
         // writeln!(tw, ">> [CoinID]\t[Height]\t[Amount]\t[CoinType]")?;
-        for (coin_id, coin_data) in self.wallet.unspent_coins() {
-            let coin_id = hex::encode(bincode::serialize(coin_id).unwrap());
+        for (coin_id, _coin_data) in self.wallet.unspent_coins() {
+            let _coin_id = hex::encode(bincode::serialize(coin_id).unwrap());
             // writeln!(
             //     tw,
             //     ">> {}\t{}\t{}\t{}",

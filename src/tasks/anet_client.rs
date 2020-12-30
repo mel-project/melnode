@@ -1,6 +1,6 @@
 use std::{convert::TryInto, net::SocketAddr};
 
-use blkstructs::{melscript, CoinID};
+use blkstructs::melscript;
 use colored::Colorize;
 use std::io::prelude::*;
 use structopt::StructOpt;
@@ -39,7 +39,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                         eprintln!(">> {}: data already exists", "ERROR".red().bold());
                         continue;
                     }
-                    let (sk, pk, wallet_data) = WalletData::generate();
+                    let (sk, _pk, wallet_data) = WalletData::generate();
                     let wallet = available_wallets.insert(wallet_name, &wallet_data);
                     assert!(!wallet, "Internal error: DB state inconsistent");
                     writeln!(tw, ">> New data:\t{}", wallet_name.bold()).unwrap();
@@ -66,7 +66,8 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                         }
                         prompt_stack.push(format!("({})", wallet_name).yellow().to_string());
                         run_active_wallet(wallet_secret, wallet, cfg.bootstrap, prompt.clone())
-                            .await;
+                            .await
+                            .expect("Internal error with active wallet");
                         prompt_stack.pop();
                     }
                 }
@@ -108,7 +109,7 @@ async fn run_active_wallet(
 ) -> anyhow::Result<()> {
     let mut active_wallet = ActiveWallet::new(wallet_sk, wallet_data, route);
     loop {
-        let mut input = read_line(prompt.clone()).await.unwrap();
+        let input = read_line(prompt.clone()).await.unwrap();
         match input.split(' ').collect::<Vec<_>>().as_slice() {
             ["faucet", number, unit] => {
                 eprintln!(
@@ -131,7 +132,7 @@ async fn run_active_wallet(
                         continue;
                     }
                     Some(coin_data_height) => {
-                        active_wallet.coin_add(&coin_id, &coin_data_height);
+                        active_wallet.coin_add(&coin_id, &coin_data_height).await?;
                         // display coin_add
                         eprintln!(
                             ">> Coin found at height {}! Added {} {} to data",
