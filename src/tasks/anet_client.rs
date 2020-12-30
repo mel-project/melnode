@@ -74,7 +74,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                         }
                         let (sk, pk, wallet_data) = WalletData::generate();
                         let wallet = available_wallets.insert(wallet_name, &wallet_data);
-                        assert!(!wallet, "DB state inconsistent");
+                        assert!(!wallet, "Internal error: DB state inconsistent");
                         writeln!(tw, ">> New data:\t{}", wallet_name.bold()).unwrap();
                         writeln!(
                             tw,
@@ -90,7 +90,11 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                         // display_available_wallets_unlock()
                     }
                     &["data-list"] => {
-                        // available_wallets.list();
+                        let wallets = available_wallets.get_all();
+                        writeln!(tw, ">> [NAME]\t[ADDRESS]")?;
+                        for (name, wallet) in wallets.iter() {
+                            writeln!(tw, ">> {}\t{}", name, wallet.my_script.hash().to_addr())?;
+                        }
                     }
                     other => {
                         eprintln!("no such command: {:?}", other);
