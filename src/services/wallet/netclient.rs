@@ -104,7 +104,7 @@ impl NetClient {
     }
 
     /// Actually broadcast a transaction!
-    pub async fn broadcast_tx(&mut self, tx: Transaction) -> anyhow::Result<bool> {
+    pub async fn broadcast_tx(&mut self, tx: Transaction) -> anyhow::Result<()> {
         Ok(melnet::g_client()
             .request(self.remote, NODE_NETNAME, "send_tx", tx)
             .await?)

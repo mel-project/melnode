@@ -28,7 +28,6 @@ impl ActiveWallet {
         // validate input
         let number: u64 = number.parse()?;
         assert_eq!(unit, "TML");
-
         // create faucet transaction and broadcast it
         let txn = Transaction {
             kind: TxKind::Faucet,
@@ -43,11 +42,16 @@ impl ActiveWallet {
             sigs: vec![],
             data: vec![],
         };
+
         let coin = CoinID {
             txhash: txn.hash_nosigs(),
             index: 0,
         };
-        self.client.broadcast_tx(txn).await?;
+
+        self.client
+            .broadcast_tx(txn)
+            .await
+            .expect("Error in broadcast_tx");
 
         // loop until we get coin data height and proof from last header
         loop {
@@ -63,7 +67,6 @@ impl ActiveWallet {
         }
     }
 
-    /// TODO: move out eprintlns!
     pub async fn coin_get(
         &mut self,
         coin_id: &str,

@@ -8,7 +8,6 @@ use std::sync::Arc;
 use tracing::instrument;
 
 use super::insecure_testnet_keygen;
-//use std::path::Path;
 
 /// Locked storage.
 pub type SharedStorage = Arc<RwLock<Storage>>;
@@ -88,7 +87,10 @@ impl Storage {
     /// Inserts a new transaction.
     #[instrument(skip(self))]
     pub fn insert_tx(&mut self, tx: blkstructs::Transaction) -> anyhow::Result<()> {
+        println!("Test");
+        log::warn!("insert_tx");
         let txhash = tx.hash_nosigs();
+        println!("self.recent_tx {:?}", self.recent_tx);
         if self.recent_tx.put(txhash, ()).is_some() {
             anyhow::bail!("already seen tx")
         }

@@ -107,8 +107,8 @@ async fn run_active_wallet(
     prompt: String,
 ) -> anyhow::Result<()> {
     let mut active_wallet = ActiveWallet::new(wallet_sk, wallet_data, route);
-    let input = read_line(prompt.clone()).await.unwrap();
     loop {
+        let mut input = read_line(prompt.clone()).await.unwrap();
         match input.split(' ').collect::<Vec<_>>().as_slice() {
             ["faucet", number, unit] => {
                 eprintln!(
@@ -148,15 +148,15 @@ async fn run_active_wallet(
             }
             ["tx-send", dest_addr, amount, unit] => {
                 let height = active_wallet.send_tx(dest_addr, amount, unit).await?;
-                // display_tx_send(height);
             }
             ["balances"] => {
-                // TODO: return balances
                 active_wallet.get_balances().await?;
-                // display_balances(prompt_stack, balances);
             }
             ["exit"] => return Ok(()),
-            _ => Err(anyhow::anyhow!("no such command")).unwrap(),
+            _ => {
+                eprintln!("Invalid command for active wallet");
+                continue;
+            }
         }
     }
 }
