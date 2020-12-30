@@ -47,7 +47,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                             number.to_string().bold()
                         );
                         eprintln!(">> Waiting for confirmation...");
-                        let (coin_data, height) = active_wallet.fuacet(number, unit);
+                        // let (coin_data, height) = active_wallet.faucet(number, unit).await;
                         // display_faucet(coin_data, height);
                     }
                     ["coin-add", coin_id] => {

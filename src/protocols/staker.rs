@@ -182,25 +182,3 @@ async fn next_consensus_time() {
         smol::Timer::after(Duration::from_secs(1)).await;
     }
 }
-
-// TODO: where does this test go?
-// async fn test_stakeholder(sh_no: usize, auditor: Auditor, storage: Arc<RwLock<Storage>>) {
-//     log::info!("testnet stakeholder {}", sh_no);
-//     let socket_addr = "0.0.0.0:0".to_socket_addrs().unwrap().next().unwrap();
-//     let _actor = Stakeholder::new(
-//         socket_addr,
-//         auditor,
-//         storage,
-//         if sh_no == 0 {
-//             insecure_testnet_keygen(sh_no).1
-//         } else {
-//             tmelcrypt::ed25519_keygen().1
-//         },
-//     )
-//     .await
-//     .unwrap();
-//     // block forever now
-//     loop {
-//         Timer::after(Duration::from_secs(10000000)).await;
-//     }
-// }

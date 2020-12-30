@@ -145,14 +145,14 @@ impl State {
                 height: 0,
             },
         );
-        for stakeholder in start_stakeholders {
+        for (i, stakeholder) in start_stakeholders.iter().enumerate() {
             empty.stakes.insert(
-                HashVal::default(),
+                tmelcrypt::hash_single(&(i as u64).to_be_bytes()),
                 StakeDoc {
                     pubkey: *stakeholder,
                     e_start: 0,
-                    e_post_end: 10,
-                    mets_staked: 1,
+                    e_post_end: 1000000000,
+                    mets_staked: 100,
                 },
             );
         }

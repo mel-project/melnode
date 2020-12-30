@@ -1,5 +1,6 @@
 use arbitrary::Arbitrary;
 use ed25519_dalek::{Signer, Verifier};
+use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_big_array::big_array;
 use std::convert::TryFrom;
@@ -17,6 +18,11 @@ big_array! { BigArray; }
 pub struct HashVal(pub [u8; 32]);
 
 impl HashVal {
+    /// Randomly generates a HashVal. This will almost certainly not collide with the actual hash of anything.
+    pub fn random() -> Self {
+        HashVal(rand::thread_rng().gen())
+    }
+
     pub fn to_addr(&self) -> String {
         let raw_base32 = base32::encode(base32::Alphabet::Crockford {}, &self.0);
         let checksum = hash_keyed(b"address-checksum", &self.0).0[0] % 10;

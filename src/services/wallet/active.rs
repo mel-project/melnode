@@ -10,6 +10,10 @@ pub struct ActiveWallet {
 }
 
 impl ActiveWallet {
+    pub fn is_ready(&self) -> bool {
+        unimplemented!()
+    }
+
     pub fn new(remote: SocketAddr) -> Self {
         return ActiveWallet {
             sk: None,
@@ -32,45 +36,46 @@ impl ActiveWallet {
         self.wallet = None;
     }
 
-    pub async fn faucet(&mut self, number: &str, unit: &str) {
+    pub async fn faucet(&mut self, number: &str, unit: &str) -> anyhow::Result<()> {
         // Return Option(coin data) and height?
+        unimplemented!()
 
-        let number: u64 = number.parse()?;
-        assert_eq!(unit, &"TML");
-        // create faucet transaction
-        let txn = Transaction {
-            kind: TxKind::Faucet,
-            inputs: vec![],
-            outputs: vec![CoinData {
-                cointype: COINTYPE_TMEL.to_owned(),
-                conshash: wallet.my_script.hash(),
-                value: number * MICRO_CONVERTER,
-            }],
-            fee: 0,
-            scripts: vec![],
-            sigs: vec![],
-            data: vec![],
-        };
-        let coin = CoinID {
-            txhash: txn.hash_nosigs(),
-            index: 0,
-        };
-        self.client.broadcast_tx(txn).await?;
+        // let number: u64 = number.parse()?;
+        // assert_eq!(unit, "TML");
+        // // create faucet transaction
+        // let txn = Transaction {
+        //     kind: TxKind::Faucet,
+        //     inputs: vec![],
+        //     outputs: vec![CoinData {
+        //         cointype: COINTYPE_TMEL.to_owned(),
+        //         conshash: wallet.my_script.hash(),
+        //         value: number * MICRO_CONVERTER,
+        //     }],
+        //     fee: 0,
+        //     scripts: vec![],
+        //     sigs: vec![],
+        //     data: vec![],
+        // };
+        // let coin = CoinID {
+        //     txhash: txn.hash_nosigs(),
+        //     index: 0,
+        // };
+        // self.client.broadcast_tx(txn).await?;
 
-        loop {
-            let (hdr, _) = self.client.last_header().await?;
-            match self.client.get_coin(hdr, coin).await? {
-                Some(coin_data_height) => {
-                    eprintln!(">> Confirmed at height {}!", coin_data_height.height);
-                    eprintln!(
-                        ">> CID = {}",
-                        hex::encode(bincode::serialize(&coin).unwrap()).bold()
-                    );
-                    break;
-                }
-                None => eprintln!(">> Not at height {}...", hdr.height),
-            }
-        }
+        // loop {
+        //     let (hdr, _) = self.client.last_header().await?;
+        //     match self.client.get_coin(hdr, coin).await? {
+        //         Some(coin_data_height) => {
+        //             eprintln!(">> Confirmed at height {}!", coin_data_height.height);
+        //             eprintln!(
+        //                 ">> CID = {}",
+        //                 hex::encode(bincode::serialize(&coin).unwrap()).bold()
+        //             );
+        //             break;
+        //         }
+        //         None => eprintln!(">> Not at height {}...", hdr.height),
+        //     }
+        // }
     }
 
     // -> Option<(CoinID, u32)>

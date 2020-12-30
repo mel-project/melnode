@@ -8,6 +8,7 @@ use tmelcrypt::HashVal;
 /// This cancellable async function synchronizes the block state with some other node. If the other node has the *next* block, it is returned; otherwise None is returned.
 ///
 /// Right now we don't have a decent fastsync protocol yet, but that's fine for the testnet.
+#[tracing::instrument(skip(get_cached_tx, my_last_state))]
 pub async fn sync_state(
     remote: SocketAddr,
     netname: &str,
@@ -17,11 +18,11 @@ pub async fn sync_state(
     let log_tag = format!("sync_state({}, {})", remote, netname);
     // start with get_state
     let next_height = my_last_state.map(|v| v.height + 1).unwrap_or(0);
-    log::debug!("next_height = {}", next_height);
+    log::trace!("next_height = {}", next_height);
     let remote_state: (AbbreviatedBlock, QuorumCert) = melnet::g_client()
         .request(remote, netname, "get_state", next_height)
         .await?;
-    log::debug!(
+    log::trace!(
         "{}: remote_state with height={}, count={}",
         log_tag,
         remote_state.0.header.height,
