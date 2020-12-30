@@ -6,6 +6,7 @@ use smol::net::SocketAddr;
 use tmelcrypt::Ed25519SK;
 
 use super::netclient::NetClient;
+use std::collections::HashMap;
 
 pub struct ActiveWallet {
     client: NetClient,
@@ -130,23 +131,11 @@ impl ActiveWallet {
         }
     }
 
-    pub async fn get_balances(&mut self) -> anyhow::Result<()> {
-        // writeln!(tw, ">> **** COINS ****")?;
-        // writeln!(tw, ">> [CoinID]\t[Height]\t[Amount]\t[CoinType]")?;
-        for (coin_id, _coin_data) in self.wallet.unspent_coins() {
-            let _coin_id = hex::encode(bincode::serialize(coin_id).unwrap());
-            // writeln!(
-            //     tw,
-            //     ">> {}\t{}\t{}\t{}",
-            //     coin_id,
-            //     coin_data.height.to_string(),
-            //     coin_data.coin_data.value.to_string(),
-            //     match coin_data.coin_data.cointype.as_slice() {
-            //         COINTYPE_TMEL => "μTML",
-            //         _ => "(other)",
-            //     },
-            // )?;
+    pub async fn get_balances(&mut self) -> anyhow::Result<HashMap<CoinID, CoinDataHeight>> {
+        let mut unspent_coins = HashMap::new();
+        for (coin_id, coin_data) in self.wallet.unspent_coins() {
+            unspent_coins.insert(coin_id.clone(), coin_data.clone());
         }
-        Ok(())
+        Ok(unspent_coins)
     }
 }

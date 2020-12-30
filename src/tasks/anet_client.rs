@@ -65,7 +65,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                             ))?;
                         }
                         prompt_stack.push(format!("({})", wallet_name).yellow().to_string());
-                        run_active_wallet(wallet_secret, wallet, cfg.bootstrap, prompt.clone())
+                        run_active_wallet(wallet_secret, wallet, cfg.bootstrap, &prompt)
                             .await
                             .expect("Internal error with active wallet");
                         prompt_stack.pop();
@@ -105,7 +105,7 @@ async fn run_active_wallet(
     wallet_sk: Ed25519SK,
     wallet_data: WalletData,
     route: SocketAddr,
-    prompt: String,
+    prompt: &String,
 ) -> anyhow::Result<()> {
     let mut active_wallet = ActiveWallet::new(wallet_sk, wallet_data, route);
     loop {
@@ -151,7 +151,22 @@ async fn run_active_wallet(
                 let _height = active_wallet.send_tx(dest_addr, amount, unit).await?;
             }
             ["balances"] => {
-                active_wallet.get_balances().await?;
+                let unspent_coins = active_wallet.get_balances().await?;
+                eprintln!(">> **** COINS ****");
+                eprintln!(">> [CoinID]\t[Height]\t[Amount]\t[CoinType]");
+                for (coin_id, coin_data) in unspent_coins.iter() {
+                    let coin_id = hex::encode(bincode::serialize(coin_id).unwrap());
+                    eprintln!(
+                        ">> {}\t{}\t{}\t{}",
+                        coin_id,
+                        coin_data.height.to_string(),
+                        coin_data.coin_data.value.to_string(),
+                        match coin_data.coin_data.cointype.as_slice() {
+                            COINTYPE_TMEL => "μTML",
+                            _ => "(other)",
+                        },
+                    );
+                }
             }
             ["exit"] => return Ok(()),
             _ => {
