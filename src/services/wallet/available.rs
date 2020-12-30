@@ -4,31 +4,20 @@ use crate::services::wallet::data::WalletData;
 use blkstructs::melscript;
 use rusqlite::{Connection, Result as SQLResult};
 use std::collections::HashMap;
+use std::process::exit;
 use std::sync::Arc;
 
-pub struct AvailableWallets {
-    active_wallet: Option<WalletData>,
-    session: Arc<dyn Fn() -> SQLResult<Connection>>,
-}
+pub struct AvailableWallets {}
 
 impl AvailableWallets {
     pub fn new() -> AvailableWallets {
-        AvailableWallets {
-            active_wallet: None,
-            session: SQL_SESSION.clone(),
-        }
+        AvailableWallets {}
     }
-
-    // pub fn get_active() -> Option<WalletData> {}
-    //
-    // // Returns a result type?
-    // pub fn set_active(wallet_name: &str) {}
 
     /// Inserts a wallet_data into the database. If something already exists, returns true
     pub fn insert(&self, wallet_name: &str, wallet_data: WalletData) -> bool {
         // If wallet already exists, do not insert and return true
-        let session: SQLResult<Connection> = self.session();
-        let conn = session.expect("SQLite connection failure");
+        let conn = Connection::open_in_memory().expect("SQLite connection failure");
         let existing_wallet = wallet::read_by_name(&conn, &wallet_name);
         if existing_wallet.is_err() {
             true
@@ -40,42 +29,30 @@ impl AvailableWallets {
         false
     }
 
-    // // /// Gets a wallet with a certain name. If the wallet exists, return it; otherwise generate a fresh wallet.
-    // // pub fn get_or_init(&self, wallet_name: &str) -> WalletData {
-    // //     // If wallet already exists, do not insert and return
-    // //     let conn = Connection::open_in_memory().expect("SQLite connection failure");
-    // //     let existing_wallet = wallet::read_by_name(&conn, &wallet_name);
-    // //     if existing_wallet.is_err() {
-    // //         None
-    // //     }
-    // // }
-    //
-    // pub fn unlock() {
-    //     // if let Some(wallet) = wallets.get(&wallet_name.to_string()) {
-    //     //     let wallet_secret = hex::decode(wallet_secret)?;
-    //     //     let wallet_secret =
-    //     //         tmelcrypt::Ed25519SK(wallet_secret.as_slice().try_into()?);
-    //     //     if melscript::Script::std_ed25519_pk(wallet_secret.to_public())
-    //     //         != wallet.my_script
-    //     //     {
-    //     //         Err(anyhow::anyhow!(
-    //     //             "unlocking failed, make sure you have the right secret!"
-    //     //         ))?;
-    //     //     }
-    //     //     current_wallet = Some((wallet_name.to_string(), wallet_secret));
-    //     //     prompt_stack.push(format!("({})", wallet_name).yellow().to_string());
-    //     // }
-    // }
-    //
-    // pub fn list() -> Vec<WalletData> {
-    //     // let connection = Connection::open_in_memory()?;
-    //     // let wallet_records = wallet::read_all(&connection);
-    //     // let mut wallets = Vec::new();
-    //     // for wallet_record in &wallet_records.iter() {}
-    //     // vec![]
-    //     // writeln!(tw, ">> [NAME]\t[ADDRESS]")?;
-    //     // for (name, wallet) in wallets.iter() {
-    //     //     writeln!(tw, ">> {}\t{}", name, wallet.my_script.hash().to_addr())?;
-    //     // }
-    // }
+    /// Gets a wallet with a certain name. If the wallet exists, return it; otherwise generate a fresh wallet.
+    pub fn get_or_init(&self, wallet_name: &str) -> WalletData {
+        // If wallet already exists, do not insert and return
+        let conn = Connection::open_in_memory().expect("SQLite connection failure");
+        let existing_wallet = wallet::read_by_name(&conn, &wallet_name);
+        if let Ok(wallet) = existing_wallet {
+            let wallet: WalletData = bincode::deserialize(&wallet.encoded_data).unwrap();
+            wallet
+        }
+
+        // Otherwise create and return new wallet data
+        WalletData::generate()
+    }
+
+    /// Get all wallets by name
+    pub fn get_all(&self) -> HashMap<String, WalletData> {
+        let conn = Connection::open_in_memory().expect("SQLite connection failure");
+        let existing_wallets = wallet::read_all(&conn).expect("Failed to get wallet records");
+        let mut wallets_by_name = HashMap::new();
+        for &existing_wallet in existing_wallets {
+            let wallet_data: WalletData =
+                bincode::deserialize(&existing_wallet.encoded_data).unwrap();
+            wallets_by_name.insert(existing_wallet.wallet_name, wallet_data)
+        }
+        wallets_by_name
+    }
 }

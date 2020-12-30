@@ -4,10 +4,9 @@ use blkstructs::{
     melscript, CoinData, CoinID, Transaction, TxKind, COINTYPE_TMEL, MICRO_CONVERTER,
 };
 use colored::Colorize;
-use rusqlite::Connection;
-use std::io::prelude::*;
+// use std::io::prelude::*;
 use structopt::StructOpt;
-use tabwriter::TabWriter;
+// use tabwriter::TabWriter;
 
 use crate::config::VERSION;
 use crate::services::{AvailableWallets, Client};
@@ -25,6 +24,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
 
     // wallets
     let available_wallets = AvailableWallets::new();
+
     let active_wallet = available_wallets.get_active_wallet();
 
     // let mut wallets: HashMap<String, WalletData> = WalletRecord::load_all(&connection.unwrap());

@@ -1,8 +1,8 @@
 use rusqlite::{params, Connection, Error, Result};
 
 pub struct WalletRecord {
-    wallet_name: String,
-    encoded_data: Vec<u8>,
+    pub wallet_name: String,
+    pub encoded_data: Vec<u8>,
 }
 
 /// Create a wallet record in db
