@@ -1,8 +1,33 @@
+use crate::services::{Client, WalletData};
 use blkstructs::CoinID;
+use smol::net::SocketAddr;
+use tmelcrypt::Ed25519SK;
 
-pub struct ActiveWallet {}
+pub struct ActiveWallet {
+    sk: Option<Ed25519SK>,
+    wallet: Option<WalletData>,
+    client: Client,
+}
 
 impl ActiveWallet {
+    pub fn new(remote: SocketAddr) -> Self {
+        return ActiveWallet {
+            sk: None,
+            wallet: None,
+            client: Client::new(remote),
+        };
+    }
+
+    pub fn activate(&mut self, sk: Ed25519SK, wallet: WalletData) {
+        self.sk = Some(sk);
+        self.wallet = Some(wallet);
+    }
+
+    pub fn deactivate(&mut self) {
+        self.sk = None;
+        self.wallet = None;
+    }
+
     pub fn faucet(num: &str, unit: &str) {
         // Return Option(coin data) and height?
 

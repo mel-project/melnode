@@ -9,7 +9,7 @@ use structopt::StructOpt;
 use tabwriter::TabWriter;
 
 use crate::config::VERSION;
-use crate::services::{AvailableWallets, Client, WalletData};
+use crate::services::{ActiveWallet, AvailableWallets, Client, WalletData};
 use std::path::Path;
 
 #[derive(Debug, StructOpt)]
@@ -29,9 +29,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
 
     // wallets
     let available_wallets = AvailableWallets::new(&cfg.storage_path);
-
-    // let mut current_wallet: Option<(String, tmelcrypt::Ed25519SK)> = None;
-    let mut client = Client::new(cfg.bootstrap);
+    let mut active_wallet = ActiveWallet::new(cfg.bootstrap);
 
     loop {
         let prompt = format!("[anet client {}]% ", prompt_stack.join(" "));
@@ -61,7 +59,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                     }
                     ["exit"] => {
                         prompt_stack.pop();
-                        // current_wallet = None;
+                        active_wallet.deactivate();
                     }
                     _ => Err(anyhow::anyhow!("no such command"))?,
                 }
@@ -97,8 +95,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                                     "unlocking failed, make sure you have the right secret!"
                                 ))?;
                             }
-                            // TODO: how to handle current wallet?
-                            // current_wallet = Some((wallet_name.to_string(), wallet_secret));
+                            active_wallet.activate(wallet_secret, wallet);
                             prompt_stack.push(format!("({})", wallet_name).yellow().to_string());
                         }
                     }
