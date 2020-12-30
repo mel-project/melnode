@@ -114,7 +114,10 @@ async fn run_active_wallet(
                 number.to_string().bold()
             );
             eprintln!(">> Waiting for confirmation...");
-            active_wallet.faucet(number, unit).await;
+            active_wallet
+                .faucet(number, unit)
+                .await
+                .expect("Failed to run faucet");
             // let (coin_data, height) = active_wallet.fuacet(number, unit).await?;
             // display_faucet(coin_data, height);
         }

@@ -59,19 +59,20 @@ impl ActiveWallet {
     }
 
     // -> Option<(CoinID, u32)>
-    pub fn coin_add(coin_id: &str) {
+    pub async fn coin_add(&mut self, coin_id: &str) -> anyhow::Result<()> {
+        unimplemented!();
         // display_coin_add(coin_id, height);
         // eprintln!(">> Syncing state...");
-        // let header = client.last_header().await?.0;
+        // let header = self.client.last_header().await?.0;
         // let coin_id: CoinID = bincode::deserialize(&hex::decode(coin_id)?)?;
-        // let coin_data_height = client.get_coin(header, coin_id).await?;
+        // let coin_data_height = self.client.get_coin(header, coin_id).await?;
         // match coin_data_height {
         //     None => {
         //         eprintln!(">> No such coin yet at height {}!", header.height);
-        //         continue;
+        //         // continue;
         //     }
         //     Some(coin_data_height) => {
-        //         wallet.insert_coin(coin_id, coin_data_height.clone());
+        //         self.wallet.insert_coin(coin_id, coin_data_height.clone());
         //         eprintln!(
         //             ">> Coin found at height {}! Added {} {} to data",
         //             coin_data_height.height,
@@ -85,7 +86,8 @@ impl ActiveWallet {
         // }
     }
 
-    pub fn tx_send() {
+    pub async fn tx_send() -> anyhow::Result<()> {
+        unimplemented!();
         // let number: u64 = amount.parse()?;
         // assert_eq!(unit, &"TML");
         // let dest_addr = tmelcrypt::HashVal::from_addr(dest_addr)
@@ -121,7 +123,8 @@ impl ActiveWallet {
         // }
     }
 
-    pub fn get_balances() {
+    pub async fn get_balances(&mut self) -> anyhow::Result<()> {
+        unimplemented!();
         // writeln!(tw, ">> **** COINS ****")?;
         // writeln!(tw, ">> [CoinID]\t[Height]\t[Amount]\t[CoinType]")?;
         // for (coin_id, coin_data) in wallet.unspent_coins() {
