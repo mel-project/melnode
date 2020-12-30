@@ -20,7 +20,7 @@ impl AvailableWallets {
     }
 
     /// Inserts a wallet_data into the database. If something already exists, returns true
-    pub fn insert(&self, wallet_name: &str, wallet_data: WalletData) -> bool {
+    pub fn insert(&self, wallet_name: &str, wallet_data: &WalletData) -> bool {
         // If wallet already exists, do not insert and return true
         let existing_wallet = wallet::read_by_name(&self.conn, &wallet_name);
         if existing_wallet.is_err() {
