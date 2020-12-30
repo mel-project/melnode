@@ -1,3 +1,5 @@
+use blkstructs::CoinID;
+
 pub struct ActiveWallet {}
 
 impl ActiveWallet {
@@ -46,7 +48,8 @@ impl ActiveWallet {
         // }
     }
 
-    pub fn coin_add(coin_id: &str) -> Option<CoinId, int> {
+    // -> Option<(CoinID, u32)>
+    pub fn coin_add(coin_id: &str) {
         // display_coin_add(coin_id, height);
         // eprintln!(">> Syncing state...");
         // let header = client.last_header().await?.0;

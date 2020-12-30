@@ -1,3 +1,4 @@
+use crate::config::VERSION;
 use crate::protocols::{NodeProtocol, StakerProtocol};
 use crate::services::{insecure_testnet_keygen, SharedStorage, Storage};
 use parking_lot::lock_api::RwLock;
@@ -37,7 +38,6 @@ pub struct NodeConfig {
 /// Runs the main function for a node.
 pub async fn run_node(opt: NodeConfig) {
     let _ = std::fs::create_dir_all(&opt.database);
-    const VERSION: &str = "TMP";
     log::info!("themelio-core v{} initializing...", VERSION);
     log::info!("bootstrapping with {:?}", opt.bootstrap);
     let storage: SharedStorage =

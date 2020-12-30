@@ -7,4 +7,4 @@ pub(crate) mod storage;
 pub use storage::*;
 mod wallet;
 
-pub use data::*;
+pub use wallet::*;

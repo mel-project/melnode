@@ -1,5 +1,3 @@
-//! [Themelio](https://themelio.org) is a public blockchain focused on security, performance, and long-term stability
-
 use structopt::StructOpt;
 use themelio_core;
 
