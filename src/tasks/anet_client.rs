@@ -137,15 +137,16 @@ async fn run_active_wallet(
                 // );
                 // display_coin_add(coin_id, height);
             }
-            // ["tx-send", dest_addr, amount, unit] => {
-            //     // let height = active_wallet.tx_send(dest_addr, amount, unit);
-            //     // display_tx_send(height);
-            // }
-            // ["balances"] => {
-            //     // let balances = active_wallet.get_balances();
-            //     // display_balances(prompt_stack, balances);
-            // }
-            // ["exit"] => Ok(()),
+            ["tx-send", dest_addr, amount, unit] => {
+                let height = active_wallet.tx_send(dest_addr, amount, unit).await?;
+                // display_tx_send(height);
+            }
+            ["balances"] => {
+                // TODO: return balances
+                active_wallet.get_balances().await?;
+                // display_balances(prompt_stack, balances);
+            }
+            ["exit"] => return Ok(()),
             _ => Err(anyhow::anyhow!("no such command")).unwrap(),
         }
     }
