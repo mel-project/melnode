@@ -1,4 +1,3 @@
-use crate::dal::sql::SQL_SESSION;
 use crate::dal::wallet;
 use crate::services::wallet::data::WalletData;
 use blkstructs::melscript;
@@ -20,13 +19,13 @@ impl AvailableWallets {
         let conn = Connection::open_in_memory().expect("SQLite connection failure");
         let existing_wallet = wallet::read_by_name(&conn, &wallet_name);
         if existing_wallet.is_err() {
-            true
-        }
+            return true;
+        };
 
         // Serialize wallet into encoded data and store it into db
         let encoded_data = bincode::serialize(&wallet_data).unwrap();
         wallet::insert(&conn, &wallet_name, &encoded_data);
-        false
+        return false;
     }
 
     /// Gets a wallet with a certain name. If the wallet exists, return it; otherwise generate a fresh wallet.
@@ -36,8 +35,8 @@ impl AvailableWallets {
         let existing_wallet = wallet::read_by_name(&conn, &wallet_name);
         if let Ok(wallet) = existing_wallet {
             let wallet: WalletData = bincode::deserialize(&wallet.encoded_data).unwrap();
-            wallet
-        }
+            return wallet;
+        };
 
         // Otherwise create and return new wallet data
         WalletData::generate()
@@ -48,10 +47,11 @@ impl AvailableWallets {
         let conn = Connection::open_in_memory().expect("SQLite connection failure");
         let existing_wallets = wallet::read_all(&conn).expect("Failed to get wallet records");
         let mut wallets_by_name = HashMap::new();
-        for &existing_wallet in existing_wallets {
+        for existing_wallet in existing_wallets {
+            let wallet_name = existing_wallet.wallet_name.clone();
             let wallet_data: WalletData =
                 bincode::deserialize(&existing_wallet.encoded_data).unwrap();
-            wallets_by_name.insert(existing_wallet.wallet_name, wallet_data)
+            wallets_by_name.insert(wallet_name, wallet_data);
         }
         wallets_by_name
     }
