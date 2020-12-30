@@ -9,15 +9,14 @@ mod common;
 use common::*;
 mod storage;
 use parking_lot::RwLock;
-use smol::net::TcpListener;
-use std::net::{SocketAddr, ToSocketAddrs};
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 pub use storage::*;
 mod client;
 mod main_anet_client;
 use structopt::StructOpt;
-mod client_protocol;
+use tracing::instrument;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -56,6 +55,7 @@ pub struct NodeConfig {
     listen_staker: Option<SocketAddr>,
 }
 
+#[instrument(skip(opt))]
 pub async fn run_main(opt: Config) {
     match opt {
         Config::Node(cfg) => run_node(cfg).await,
@@ -64,6 +64,7 @@ pub async fn run_main(opt: Config) {
 }
 
 /// Runs the main function for a node.
+#[instrument(skip(opt))]
 async fn run_node(opt: NodeConfig) {
     let _ = std::fs::create_dir_all(&opt.database);
 
@@ -88,58 +89,10 @@ async fn run_node(opt: NodeConfig) {
 
     // Storage syncer
     loop {
-        Timer::after(Duration::from_secs(1)).await;
+        Timer::after(Duration::from_secs(30)).await;
         {
             let storage = storage.clone();
             smol::unblock(move || storage.write().sync()).await;
         }
     }
 }
-
-// async fn test_stakeholder(sh_no: usize, auditor: Auditor, storage: Arc<RwLock<Storage>>) {
-//     log::info!("testnet stakeholder {}", sh_no);
-//     let socket_addr = "0.0.0.0:0".to_socket_addrs().unwrap().next().unwrap();
-//     let _actor = Stakeholder::new(
-//         socket_addr,
-//         auditor,
-//         storage,
-//         if sh_no == 0 {
-//             insecure_testnet_keygen(sh_no).1
-//         } else {
-//             tmelcrypt::ed25519_keygen().1
-//         },
-//     )
-//     .await
-//     .unwrap();
-//     // block forever now
-//     loop {
-//         Timer::after(Duration::from_secs(10000000)).await;
-//     }
-// }
-
-// async fn test_spam_txx(auditor: Auditor) {
-//     let (_, sk) = tmelcrypt::ed25519_keygen();
-//     let txx = blkstructs::testing::random_valid_txx(
-//         &mut rand::thread_rng(),
-//         blkstructs::CoinID {
-//             txhash: tmelcrypt::HashVal::default(),
-//             index: 0,
-//         },
-//         blkstructs::CoinData {
-//             conshash: blkstructs::melscript::Script::always_true().hash(),
-//             value: blkstructs::MICRO_CONVERTER * 1000,
-//             cointype: blkstructs::COINTYPE_TMEL.to_owned(),
-//         },
-//         sk,
-//         &blkstructs::melscript::Script::always_true(),
-//     );
-//     log::info!("starting spamming with {} txx", txx.len());
-//     //let txx = &txx[1..];
-//     for tx in txx {
-//         Timer::after(Duration::from_millis(1000)).await;
-//         auditor
-//             .send_ret(|s| AuditorMsg::SendTx(tx, s))
-//             .await
-//             .unwrap();
-//     }
-// }

@@ -79,6 +79,7 @@ impl NodeProtocol {
     }
 }
 
+#[tracing::instrument(skip(network, state))]
 async fn blksync_loop(network: melnet::NetState, state: SharedStorage) {
     let tag = || {
         format!(
@@ -92,7 +93,7 @@ async fn blksync_loop(network: melnet::NetState, state: SharedStorage) {
     loop {
         let random_peer = network.routes().first().cloned();
         if let Some(peer) = random_peer {
-            log::debug!("{}: picked random peer {} for blksync", tag(), peer);
+            log::trace!("{}: picked random peer {} for blksync", tag(), peer);
             let last_state = state.read().last_block();
             let res = blksync::sync_state(
                 peer,
@@ -103,25 +104,24 @@ async fn blksync_loop(network: melnet::NetState, state: SharedStorage) {
             .await;
             match res {
                 Err(e) => {
-                    log::warn!("{}: failed to blksync with {}: {:?}", tag(), peer, e);
+                    log::trace!("{}: failed to blksync with {}: {:?}", tag(), peer, e);
                 }
                 Ok(None) => {
-                    log::debug!("{}: {} didn't have the next block", tag(), peer);
+                    log::trace!("{}: {} didn't have the next block", tag(), peer);
                 }
                 Ok(Some((blk, cproof))) => {
                     let res = state.write().apply_block(blk, cproof);
                     if let Err(e) = res {
-                        log::warn!("{}: failed to apply block: {:?}", tag(), e);
+                        log::trace!("{}: failed to apply block: {:?}", tag(), e);
                     }
                 }
             }
         }
-        smol::Timer::after(Duration::from_secs(1)).await;
+        smol::Timer::after(Duration::from_millis(100)).await;
     }
 }
 
 struct AuditorResponder {
-    network: melnet::NetState,
     storage: SharedStorage,
     send_tx_bcast: Sender<Transaction>,
 }
@@ -133,7 +133,6 @@ impl AuditorResponder {
             smolscale::spawn(tx_bcast_loop(network.clone(), recv_tx_bcast.clone())).detach();
         }
         Self {
-            network,
             storage,
             send_tx_bcast,
         }
@@ -181,6 +180,7 @@ impl AuditorResponder {
 }
 
 /// CSP process that processes transaction broadcasts sequentially. Many are spawned to increase concurrency.
+#[tracing::instrument(skip(network, recv_tx_bcast))]
 async fn tx_bcast_loop(
     network: melnet::NetState,
     recv_tx_bcast: Receiver<Transaction>,

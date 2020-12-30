@@ -1,7 +1,7 @@
 use derivative::Derivative;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
-pub const BFT_THRESHOLD: f64 = 0.7;
+pub const BFT_THRESHOLD: f64 = 0.67;
 
 #[derive(Derivative)]
 #[derivative(Debug)]

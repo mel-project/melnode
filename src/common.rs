@@ -28,61 +28,6 @@ async fn guess_my_ip() -> Result<String> {
     Ok(response.text()?.trim().to_owned())
 }
 
-/// Actor is a wrapper around a smol Task that comes with an asynchronous mailbox similar to that of Erlang. Unlike with channels, using the mailbox is infallible, because the sender can only be dropped if the task is dropped, yet if the task is dropped it is cancelled.
-#[derive(Debug)]
-pub struct Actor<ChType> {
-    sender: Sender<ChType>,
-    _task: Task<()>,
-}
-
-impl<ChType> Actor<ChType> {
-    /// Spawn spawns a new Actor.
-    pub fn spawn<T: Future<Output = ()> + 'static + Send, F: FnOnce(Mailbox<ChType>) -> T>(
-        closure: F,
-    ) -> Self {
-        let (send, recv) = smol::channel::unbounded();
-        let fut = closure(Mailbox(recv));
-        let task = smolscale::spawn(async move {
-            fut.await;
-            panic!("Actors aren't supposed to 'normally' die")
-        });
-        Actor {
-            sender: send,
-            _task: task,
-        }
-    }
-
-    /// Sends a message to the Actor.
-    pub fn send(&self, msg: ChType) {
-        self.sender
-            .try_send(msg)
-            .expect("mailbox send invariant failed?!")
-    }
-
-    /// Helper to send a message to the Actor that has a return channel.
-    pub async fn send_ret<T>(&self, msg_gen: impl FnOnce(Sender<T>) -> ChType) -> T {
-        let (send, recv) = smol::channel::unbounded();
-        let msg = msg_gen(send);
-        self.send(msg);
-        recv.recv()
-            .await
-            .expect("mailbox send_ret invariant failed?!")
-    }
-}
-
-/// Mailbox is an opaque mailbox passed into the closure that an Actor runs.
-pub struct Mailbox<T>(Receiver<T>);
-
-impl<T> Mailbox<T> {
-    /// Receives the next message from the mailbox.
-    pub async fn recv(&mut self) -> T {
-        self.0
-            .next()
-            .await
-            .expect("mailbox recv invariant failed?!")
-    }
-}
-
 /// Creates a new melnet state with a default route.
 pub async fn new_melnet(listener: &TcpListener, name: &str) -> Result<melnet::NetState> {
     let my_ip = guess_my_ip().await?;
@@ -113,9 +58,9 @@ pub struct NewBlkResponse {
 pub fn insecure_testnet_keygen(i: usize) -> (tmelcrypt::Ed25519PK, tmelcrypt::Ed25519SK) {
     let pkk = [
         "fd296a6fb3b0840a0371e950771cfcb0ab78dd47ffd7165046658fe0e6ebff69",
-        // "7c5ceef673eed1c788c0c42443fef0d8768b2970f4850358ec8b77911cd2bca1",
-        // "b8c3c3c1e3ce31ad3396cc1b95663125732113a97dda450c14bdcfff42101894",
-        // "50eea014502f98e678902fea5e385f86c295be9df9685a0c328a5a4cd6257cfb",
+        "7c5ceef673eed1c788c0c42443fef0d8768b2970f4850358ec8b77911cd2bca1",
+        "b8c3c3c1e3ce31ad3396cc1b95663125732113a97dda450c14bdcfff42101894",
+        "50eea014502f98e678902fea5e385f86c295be9df9685a0c328a5a4cd6257cfb",
         // "ff8994c927dfc7be0f155b0113f5fa1e2b93059387b22d743fa722c9e8fa1236",
         // "5f827e2ece2b4148e4d61da3f9c049a87c5c61331b9d82617115a83f5a4cc735",
         // "be9a5490aaf7ec26e9ff509fbe488f35d89355a659f72c041cf1e2e797ba0aa8",
@@ -124,9 +69,9 @@ pub fn insecure_testnet_keygen(i: usize) -> (tmelcrypt::Ed25519PK, tmelcrypt::Ed
     ];
     let skk = [
         "e3e4fce65278e1b62d3009763ec2c5f71996a1ac556d3cff3971f98f4d552229fd296a6fb3b0840a0371e950771cfcb0ab78dd47ffd7165046658fe0e6ebff69",
-        // "3361a20b7dd8981e41774a17904103b391269fe872a6e6c19cd0a91688a05e627c5ceef673eed1c788c0c42443fef0d8768b2970f4850358ec8b77911cd2bca1",
-        // "abbcd58f380175900aad75aaa00195f069aedf59dc57f7a8cf649c9536995135b8c3c3c1e3ce31ad3396cc1b95663125732113a97dda450c14bdcfff42101894",
-        // "d0caf2f9bcc9277840672eefd4fdc7c95abbc8b95d36a5533a7332089fc8b21650eea014502f98e678902fea5e385f86c295be9df9685a0c328a5a4cd6257cfb",
+        "3361a20b7dd8981e41774a17904103b391269fe872a6e6c19cd0a91688a05e627c5ceef673eed1c788c0c42443fef0d8768b2970f4850358ec8b77911cd2bca1",
+        "abbcd58f380175900aad75aaa00195f069aedf59dc57f7a8cf649c9536995135b8c3c3c1e3ce31ad3396cc1b95663125732113a97dda450c14bdcfff42101894",
+        "d0caf2f9bcc9277840672eefd4fdc7c95abbc8b95d36a5533a7332089fc8b21650eea014502f98e678902fea5e385f86c295be9df9685a0c328a5a4cd6257cfb",
         // "18f9260690a1ae01683a955bf23821da4aff977f436313e2affc9457d60f9e73ff8994c927dfc7be0f155b0113f5fa1e2b93059387b22d743fa722c9e8fa1236",
         // "d80b86807f2c0e6ed880211b0710e7092aa87816000452ab3b874bac92dc5a4f5f827e2ece2b4148e4d61da3f9c049a87c5c61331b9d82617115a83f5a4cc735",
         // "2597fdbf713f3686435ba00e16ab07354ed998767f33965e5f549a855bd036b6be9a5490aaf7ec26e9ff509fbe488f35d89355a659f72c041cf1e2e797ba0aa8",

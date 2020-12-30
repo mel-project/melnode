@@ -1,5 +1,3 @@
-use crate::client_protocol::*;
-use crate::common::*;
 use blkstructs::{melscript, CoinData, CoinDataHeight, CoinID, Header, Transaction, TxKind};
 use collections::HashMap;
 use rusqlite::{params, Connection, Result as SQLResult};

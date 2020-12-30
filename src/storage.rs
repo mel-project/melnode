@@ -5,7 +5,7 @@ use lru::LruCache;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
-//use std::path::Path;
+use tracing::instrument;
 
 /// Locked storage.
 pub type SharedStorage = Arc<RwLock<Storage>>;
@@ -26,6 +26,7 @@ const GLOBAL_STATE_KEY: &[u8] = b"global_state";
 
 impl Storage {
     /// Creates a new Storage for testing, with a genesis state that puts 1000 mel at the zero-zero coin, unlockable by the always_true script.
+    #[instrument]
     pub fn open_testnet(path: &str) -> Result<Self> {
         let (lme, lmd) = open_lmdb(path)?;
         // load the db manager
@@ -82,6 +83,7 @@ impl Storage {
     }
 
     /// Inserts a new transaction.
+    #[instrument(skip(self))]
     pub fn insert_tx(&mut self, tx: blkstructs::Transaction) -> Result<()> {
         let txhash = tx.hash_nosigs();
         if self.recent_tx.put(txhash, ()).is_some() {
@@ -97,6 +99,7 @@ impl Storage {
     }
 
     /// Syncs to disk.
+    #[instrument(skip(self))]
     pub fn sync(&mut self) {
         self.tree_db.sync();
         log::debug!("saving global state");
@@ -130,6 +133,7 @@ impl Storage {
     }
 
     /// Gets a tx by the txhash.
+    #[instrument(skip(self))]
     pub fn get_tx(&self, txhash: tmelcrypt::HashVal) -> Option<blkstructs::Transaction> {
         // first we try the current state
         if let (Some(tx), _) = self.curr_state.transactions.get(&txhash) {
@@ -146,6 +150,7 @@ impl Storage {
     }
 
     /// Gets the last block.
+    #[instrument(skip(self))]
     pub fn last_block(&self) -> Option<blkstructs::ConfirmedState> {
         self.history
             .get(&(self.curr_state.height.checked_sub(1)?))
@@ -153,6 +158,7 @@ impl Storage {
     }
 
     /// Consumes a block.
+    #[instrument(skip(self, blk, cproof))]
     pub fn apply_block(
         &mut self,
         blk: blkstructs::Block,
@@ -193,11 +199,18 @@ impl Storage {
                 .ok_or_else(|| anyhow::anyhow!("incorrect proof"))?,
         );
         self.curr_state = state.next_state();
-        self.sync();
+        log::debug!(
+            "block {}, txcount={}, hash={:?} APPLIED",
+            curr_height,
+            blk.transactions.len(),
+            blk.header.hash()
+        );
+        // self.sync();
         Ok(())
     }
 }
 
+#[instrument]
 fn open_lmdb(path: &str) -> Result<(Arc<lmdb::Environment>, lmdb::Database)> {
     let lmdb_env = lmdb::Environment::new()
         .set_max_dbs(1)
@@ -207,6 +220,7 @@ fn open_lmdb(path: &str) -> Result<(Arc<lmdb::Environment>, lmdb::Database)> {
     Ok((Arc::new(lmdb_env), db))
 }
 
+#[instrument(skip(dbm))]
 fn new_genesis(dbm: autosmt::DBManager) -> blkstructs::State {
     blkstructs::State::test_genesis(
         dbm,
