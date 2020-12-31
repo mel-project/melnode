@@ -56,7 +56,7 @@ impl ActiveWallet {
         Ok(coin)
     }
 
-    pub async fn get_coin_data_height(
+    pub async fn get_coin_data(
         &mut self,
         coin: CoinID,
     ) -> anyhow::Result<(Option<CoinDataHeight>, Header)> {
@@ -65,7 +65,7 @@ impl ActiveWallet {
         Ok((cdh, hdr))
     }
 
-    pub async fn coin_get(
+    pub async fn get_coin_data_by_id(
         &mut self,
         coin_id: &str,
     ) -> anyhow::Result<(Option<CoinDataHeight>, CoinID, autosmt::FullProof)> {
@@ -77,7 +77,7 @@ impl ActiveWallet {
         Ok((coin_data_height, coin_id, full_proof))
     }
 
-    pub async fn coin_add(
+    pub async fn add_coin(
         &mut self,
         coin_id: &CoinID,
         coin_data_height: &CoinDataHeight,

@@ -129,16 +129,15 @@ async fn run_active_wallet(
         let input = read_line(prompt.clone()).await.unwrap();
         match input.split(' ').collect::<Vec<_>>().as_slice() {
             ["faucet", number, unit] => {
+                let coin = active_wallet.send_faucet_tx(number, unit).await?;
                 eprintln!(
-                    ">> Faucet transaction for {} mels to be broadcast!",
+                    ">> Faucet transaction for {} mels broadcast!",
                     number.to_string().bold()
                 );
                 eprintln!(">> Waiting for confirmation...");
-                let coin = active_wallet.send_faucet_tx(number, unit).await?;
-
                 // loop until we get coin data height and proof from last header
                 loop {
-                    let (coin_data_height, hdr) = active_wallet.get_coin_data_height(coin).await?;
+                    let (coin_data_height, hdr) = active_wallet.get_coin_data(coin).await?;
                     match coin_data_height {
                         Some(coin_data_height) => {
                             eprintln!(
@@ -152,18 +151,16 @@ async fn run_active_wallet(
                             );
                             break;
                         }
-                        None => {
-                            eprintln!(">> Coin is not at current height: {}", hdr.height);
-                        }
+                        None => {}
                     }
                 }
             }
             ["coin-add", coin_id] => {
                 let (coin_data_height, coin_id, _full_proof) =
-                    active_wallet.coin_get(coin_id).await?;
+                    active_wallet.get_coin_data_by_id(coin_id).await?;
                 match coin_data_height {
                     None => {
-                        eprintln!("Coin data height not available");
+                        eprintln!("Coin not found");
                         continue;
                     }
                     Some(coin_data_height) => {
@@ -176,7 +173,7 @@ async fn run_active_wallet(
                                 val => format!("X-{}", hex::encode(val)),
                             }
                         );
-                        active_wallet.coin_add(&coin_id, &coin_data_height).await?;
+                        active_wallet.add_coin(&coin_id, &coin_data_height).await?;
                         eprintln!("Added coin to wallet");
                     }
                 }
