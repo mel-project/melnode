@@ -135,6 +135,7 @@ async fn run_active_wallet(
                                 )
                                 .bold()
                             );
+                            break;
                         }
                         None => {
                             eprintln!(">> Coin is not at current height: {}", hdr.height);
