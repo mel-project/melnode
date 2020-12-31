@@ -196,6 +196,7 @@ async fn run_active_wallet(
                         break;
                     }
                 }
+                active_wallet.save(wallet_name).await?;
             }
             ["balances"] => {
                 let unspent_coins = active_wallet.get_balances().await?;
