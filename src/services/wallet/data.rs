@@ -14,8 +14,8 @@ pub struct WalletData {
 
 impl WalletData {
     /// Coins
-    pub fn unspent_coins(&self) -> impl Iterator<Item = (&CoinID, &CoinDataHeight)> {
-        self.unspent_coins.iter()
+    pub fn unspent_coins(&self) -> im::HashMap<CoinID, CoinDataHeight> {
+        self.unspent_coins.clone()
     }
 
     /// Create a new data.
