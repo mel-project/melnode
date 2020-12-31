@@ -176,6 +176,7 @@ async fn run_active_wallet(
                         eprintln!("Added coin to wallet");
                     }
                 }
+                active_wallet.save(wallet_name).await?;
             }
             ["tx-send", dest_addr, amount, unit] => {
                 let tx = active_wallet.send_tx(dest_addr, amount, unit).await?;
@@ -215,7 +216,6 @@ async fn run_active_wallet(
                 }
             }
             ["exit"] => {
-                active_wallet.save(wallet_name).await?;
                 return Ok(());
             }
             _ => {
