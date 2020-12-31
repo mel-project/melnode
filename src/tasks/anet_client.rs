@@ -8,6 +8,7 @@ use tabwriter::TabWriter;
 
 use crate::config::VERSION;
 use crate::services::{ActiveWallet, AvailableWallets, WalletData};
+use anyhow::Error;
 use tmelcrypt::Ed25519SK;
 
 #[derive(Debug, StructOpt)]
@@ -66,9 +67,24 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                         }
                         prompt_stack.push(format!("({})", wallet_name).yellow().to_string());
                         let prompt = format!("[anet client {}]% ", prompt_stack.join(" "));
-                        run_active_wallet(wallet_secret, wallet, cfg.bootstrap, &prompt)
-                            .await
-                            .expect("Internal error with active wallet");
+                        loop {
+                            let res = run_active_wallet(
+                                wallet_secret,
+                                wallet.clone(),
+                                cfg.bootstrap,
+                                &prompt,
+                            )
+                            .await;
+                            match res {
+                                Ok(_) => {
+                                    break;
+                                }
+                                Err(_) => {
+                                    eprintln!("Error encountered when running active wallet");
+                                    continue;
+                                }
+                            }
+                        }
                         prompt_stack.pop();
                     }
                 }
