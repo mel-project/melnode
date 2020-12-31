@@ -1,6 +1,6 @@
 use crate::services::WalletData;
 use blkstructs::{
-    CoinData, CoinDataHeight, CoinID, Transaction, TxKind, COINTYPE_TMEL, MICRO_CONVERTER,
+    CoinData, CoinDataHeight, CoinID, Header, Transaction, TxKind, COINTYPE_TMEL, MICRO_CONVERTER,
 };
 use smol::net::SocketAddr;
 use tmelcrypt::Ed25519SK;
@@ -23,7 +23,7 @@ impl ActiveWallet {
         };
     }
 
-    pub async fn faucet(&mut self, number: &str, unit: &str) -> anyhow::Result<CoinDataHeight> {
+    pub async fn send_faucet_tx(&mut self, number: &str, unit: &str) -> anyhow::Result<CoinID> {
         // validate input
         let number: u64 = number.parse()?;
         assert_eq!(unit, "TML");
@@ -52,18 +52,16 @@ impl ActiveWallet {
             .await
             .expect("Error in broadcast_tx");
 
-        // loop until we get coin data height and proof from last header
-        loop {
-            let (hdr, _) = self.client.last_header().await?;
-            let (coin_data_height, _proof) = self.client.get_coin(hdr, coin).await?;
-            match coin_data_height {
-                Some(coin_data_height) => return Ok(coin_data_height),
-                None => {
-                    eprintln!(">> Not at height {}...", hdr.height);
-                    continue;
-                }
-            }
-        }
+        Ok(coin)
+    }
+
+    pub async fn get_coin_data_height(
+        &mut self,
+        coin: CoinID,
+    ) -> anyhow::Result<(Option<CoinDataHeight>, Header)> {
+        let (hdr, _) = self.client.last_header().await?;
+        let (cdh, proof) = self.client.get_coin(hdr, coin).await?;
+        Ok((cdh, hdr))
     }
 
     pub async fn coin_get(

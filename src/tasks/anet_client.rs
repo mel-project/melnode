@@ -117,12 +117,30 @@ async fn run_active_wallet(
                     number.to_string().bold()
                 );
                 eprintln!(">> Waiting for confirmation...");
-                let coin_data_height = active_wallet.faucet(number, unit).await?;
-                eprintln!(">> Confirmed at height {}!", coin_data_height.height);
-                eprintln!(
-                    ">> CID = {}",
-                    hex::encode(bincode::serialize(&coin_data_height.coin_data).unwrap()).bold()
-                );
+                let coin = active_wallet.send_faucet_tx(number, unit).await?;
+
+                // loop until we get coin data height and proof from last header
+                loop {
+                    let (coin_data_height, hdr) = active_wallet.get_coin_data_height(coin).await?;
+                    match coin_data_height {
+                        Some(coin_data_height) => {
+                            eprintln!(
+                                ">>> Coin is confirmed at current height {}",
+                                coin_data_height.height
+                            );
+                            eprintln!(
+                                ">> CID = {}",
+                                hex::encode(
+                                    bincode::serialize(&coin_data_height.coin_data).unwrap()
+                                )
+                                .bold()
+                            );
+                        }
+                        None => {
+                            eprintln!(">> Coin is not at current height: {}", hdr.height);
+                        }
+                    }
+                }
             }
             ["coin-add", coin_id] => {
                 let (coin_data_height, coin_id, _full_proof) =
