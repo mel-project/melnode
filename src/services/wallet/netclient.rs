@@ -52,6 +52,7 @@ impl NetClient {
         header: Header,
         coin: CoinID,
     ) -> anyhow::Result<(Option<CoinDataHeight>, autosmt::FullProof)> {
+        log::debug!("get_coin at height {} for coin {:?}", header.height, coin);
         let res: (Option<CoinDataHeight>, autosmt::CompressedProof) = melnet::g_client()
             .request(
                 self.remote,

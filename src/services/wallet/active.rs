@@ -106,6 +106,7 @@ impl ActiveWallet {
         eprintln!(">> Syncing state...");
         self.client.broadcast_tx(to_send.clone()).await?;
         eprintln!(">> Transaction {:?} broadcast!", to_send.hash_nosigs());
+        self.wallet.spend(to_send.clone())?;
         Ok(to_send)
     }
 
