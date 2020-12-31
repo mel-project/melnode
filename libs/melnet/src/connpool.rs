@@ -95,7 +95,7 @@ impl Client {
             })?;
         let response = match response.kind.as_ref() {
             "Ok" => bincode::deserialize::<TOutput>(&response.body)
-                .map_err(|_| MelnetError::Custom("rlp error".to_owned()))?,
+                .map_err(|_| MelnetError::Custom("bincode error".to_owned()))?,
             "NoVerb" => return Err(MelnetError::VerbNotFound),
             _ => {
                 return Err(MelnetError::Custom(

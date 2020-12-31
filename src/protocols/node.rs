@@ -1,13 +1,12 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
-use blkstructs::{Header, Transaction};
+use blkstructs::{CoinDataHeight, CoinID, Transaction};
 use melnet::MelnetError;
-use serde::{Deserialize, Serialize};
 use smol::channel::{Receiver, Sender};
 use symphonia::QuorumCert;
 use tmelcrypt::HashVal;
 
-use crate::{storage, SharedStorage};
+use crate::services::storage::SharedStorage;
 
 use super::blksync::{self, AbbreviatedBlock};
 
@@ -19,7 +18,7 @@ pub struct NodeProtocol {
     _blksync_task: smol::Task<()>,
 }
 
-const NETNAME: &str = "testnet-auditor";
+pub const NODE_NETNAME: &str = "testnet-auditor";
 
 impl NodeProtocol {
     /// Creates a new AuditorProtocol listening on the given address with the given AuditorState.
@@ -28,7 +27,7 @@ impl NodeProtocol {
         bootstrap: Vec<SocketAddr>,
         state: SharedStorage,
     ) -> anyhow::Result<Self> {
-        let network = melnet::NetState::new_with_name(NETNAME);
+        let network = melnet::NetState::new_with_name(NODE_NETNAME);
         for addr in bootstrap {
             network.add_route(addr);
         }
@@ -49,6 +48,30 @@ impl NodeProtocol {
             melnet::anon_responder(move |req: melnet::Request<u64, _>| {
                 let body = req.body;
                 req.respond(rr.resp_get_state(body))
+            }),
+        );
+        let rr = responder.clone();
+        network.register_verb(
+            "get_coin_at",
+            melnet::anon_responder(move |req: melnet::Request<(u64, CoinID), _>| {
+                let body = req.body;
+                req.respond(rr.resp_get_coin_at(body.0, body.1))
+            }),
+        );
+        let rr = responder.clone();
+        network.register_verb(
+            "get_tx_at",
+            melnet::anon_responder(move |req: melnet::Request<(u64, HashVal), _>| {
+                let body = req.body;
+                req.respond(rr.resp_get_tx_at(body.0, body.1))
+            }),
+        );
+        let rr = responder.clone();
+        network.register_verb(
+            "get_last_state",
+            melnet::anon_responder(move |req: melnet::Request<(), _>| {
+                let _body = req.body;
+                req.respond(rr.resp_get_last_state())
             }),
         );
         let rr = responder.clone();
@@ -97,7 +120,7 @@ async fn blksync_loop(network: melnet::NetState, state: SharedStorage) {
             let last_state = state.read().last_block();
             let res = blksync::sync_state(
                 peer,
-                NETNAME,
+                NODE_NETNAME,
                 last_state.as_ref().map(|v| v.inner().inner_ref()),
                 |tx| state.read().get_tx(tx),
             )
@@ -166,6 +189,46 @@ impl AuditorResponder {
         ))
     }
 
+    fn resp_get_last_state(&self) -> melnet::Result<(AbbreviatedBlock, QuorumCert)> {
+        let storage = self.storage.read();
+        let last_block = storage
+            .last_block()
+            .ok_or_else(|| MelnetError::Custom("no last block".into()))?;
+        // create mapping
+        Ok((
+            AbbreviatedBlock::from_state(last_block.inner()),
+            last_block.cproof().clone(),
+        ))
+    }
+
+    fn resp_get_coin_at(
+        &self,
+        height: u64,
+        coin_id: CoinID,
+    ) -> melnet::Result<(Option<CoinDataHeight>, autosmt::CompressedProof)> {
+        let storage = self.storage.read();
+        let old_state = storage
+            .history
+            .get(&height)
+            .ok_or_else(|| MelnetError::Custom("no such block in history".into()))?;
+        let (res, proof) = old_state.inner().inner_ref().coins.get(&coin_id);
+        Ok((res, proof.compress()))
+    }
+
+    fn resp_get_tx_at(
+        &self,
+        height: u64,
+        txhash: HashVal,
+    ) -> melnet::Result<(Option<Transaction>, autosmt::CompressedProof)> {
+        let storage = self.storage.read();
+        let old_state = storage
+            .history
+            .get(&height)
+            .ok_or_else(|| MelnetError::Custom("no such block in history".into()))?;
+        let (res, proof) = old_state.inner().inner_ref().transactions.get(&txhash);
+        Ok((res, proof.compress()))
+    }
+
     fn resp_get_txx(&self, txx: Vec<tmelcrypt::HashVal>) -> melnet::Result<Vec<Transaction>> {
         let storage = self.storage.read();
         let mut transactions = Vec::new();
@@ -192,7 +255,7 @@ async fn tx_bcast_loop(
             log::debug!("bcast {:?} => {:?}", to_cast.hash_nosigs(), neigh);
             smolscale::spawn(melnet::g_client().request::<_, ()>(
                 neigh,
-                NETNAME,
+                NODE_NETNAME,
                 "send_tx",
                 to_cast.clone(),
             ))

@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use blkstructs::{Block, ConfirmedState, Header, State, Transaction};
+use blkstructs::{Block, Header, State, Transaction};
 use serde::{Deserialize, Serialize};
 use symphonia::QuorumCert;
 use tmelcrypt::HashVal;
@@ -79,3 +79,31 @@ impl AbbreviatedBlock {
         Self { header, txhashes }
     }
 }
+
+// TODO: where does this test go?
+// async fn test_spam_txx(auditor: Auditor) {
+//     let (_, sk) = tmelcrypt::ed25519_keygen();
+//     let txx = blkstructs::testing::random_valid_txx(
+//         &mut rand::thread_rng(),
+//         blkstructs::CoinID {
+//             txhash: tmelcrypt::HashVal::default(),
+//             index: 0,
+//         },
+//         blkstructs::CoinData {
+//             conshash: blkstructs::melscript::Script::always_true().hash(),
+//             value: blkstructs::MICRO_CONVERTER * 1000,
+//             cointype: blkstructs::COINTYPE_TMEL.to_owned(),
+//         },
+//         sk,
+//         &blkstructs::melscript::Script::always_true(),
+//     );
+//     log::info!("starting spamming with {} txx", txx.len());
+//     //let txx = &txx[1..];
+//     for tx in txx {
+//         Timer::after(Duration::from_millis(1000)).await;
+//         auditor
+//             .send_ret(|s| AuditorMsg::SendTx(tx, s))
+//             .await
+//             .unwrap();
+//     }
+// }

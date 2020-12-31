@@ -1,14 +1,13 @@
-use std::{
-    net::SocketAddr,
-    sync::Arc,
-    time::{Duration, SystemTime, SystemTimeError},
-};
-
-use crate::{common::insecure_testnet_keygen, SharedStorage};
-use blkstructs::{Block, StakeMapping, Transaction, STAKE_EPOCH};
+use crate::services::storage::SharedStorage;
+use blkstructs::{Block, StakeMapping, STAKE_EPOCH};
 use melnet::Request;
 use smol::channel::{Receiver, Sender};
 use smol::prelude::*;
+use std::{
+    net::SocketAddr,
+    sync::Arc,
+    time::{Duration, SystemTime},
+};
 use symphonia::Decider;
 use tmelcrypt::{Ed25519PK, Ed25519SK};
 
@@ -81,7 +80,7 @@ async fn staker_loop(
                 })
             },
             // view_leader right now is hardcoded
-            view_leader: { Arc::new(move |_view: u64| insecure_testnet_keygen(0).0) },
+            view_leader: { Arc::new(move |_view: u64| stakes.val_iter().next().unwrap().pubkey) },
             is_valid_prop: {
                 Arc::new(|_prop_msg: &[u8]| {
                     log::debug!("is_valid_prop forcing true");
@@ -102,7 +101,6 @@ async fn staker_loop(
             Incoming(symphonia::SignedMessage),
             Outgoing(symphonia::DestMsg),
             Decision(symphonia::QuorumCert),
-            OobDecision,
         }
         let decision = loop {
             let incoming_evt = async {
@@ -117,55 +115,38 @@ async fn staker_loop(
                 let decision = pacemaker.decision().await;
                 Ok::<_, anyhow::Error>(Evt::Decision(decision))
             };
-            let oob_evt = async {
-                loop {
-                    let last_blk = storage.read().last_block();
-                    if let Some(last_blk) = last_blk {
-                        if last_blk.inner().header().height >= height {
-                            log::warn!("symphonia cancelled out of band");
-                            break Ok::<_, anyhow::Error>(Evt::OobDecision);
-                        }
-                    }
-                    smol::Timer::after(Duration::from_millis(100)).await;
-                }
-            };
-            let evt: Evt = decision_evt
-                .or(incoming_evt)
-                .or(outgoing_evt)
-                .or(oob_evt)
-                .await?;
+            let evt: Evt = decision_evt.or(incoming_evt).or(outgoing_evt).await?;
             match evt {
                 Evt::Incoming(msg) => pacemaker.process_input(msg),
                 Evt::Outgoing(dmsg) => {
                     smolscale::spawn(symphonia_mcast(network.clone(), dmsg)).detach()
                 }
-                Evt::Decision(decision) => break Some(decision),
-                Evt::OobDecision => break None,
+                Evt::Decision(decision) => break decision,
             }
         };
         // DECISION!
-        if let Some(decision) = decision {
-            log::debug!("DECISION REACHED! Committing to storage...");
-            let blk: Block = bincode::deserialize(&decision.node.prop)
-                .expect("symphonia decided on an invalidly formatted block");
-            storage
-                .write()
-                .apply_block(blk, decision)
-                .expect("unable to apply just-decided block to storage!");
-        }
+        log::debug!("DECISION REACHED! Committing to storage...");
+        let blk: Block = bincode::deserialize(&decision.node.prop)
+            .expect("symphonia decided on an invalidly formatted block");
+        storage
+            .write()
+            .apply_block(blk, decision)
+            .expect("unable to apply just-decided block to storage!");
     }
 }
 
 /// multicasts a message
-#[tracing::instrument(skip(network, dmsg))]
 async fn symphonia_mcast(
     network: melnet::NetState,
     dmsg: symphonia::DestMsg,
 ) -> anyhow::Result<()> {
     // TODO: more intelligent routing
     let (_dest, msg) = dmsg;
+    if msg.msg.phase == symphonia::Phase::Prepare {
+        log::debug!("waiting a bit for prepare");
+        smol::Timer::after(Duration::from_secs(1)).await;
+    }
     for route in network.routes() {
-        log::debug!("mcast {:?} to {}", msg.msg.phase, route);
         smolscale::spawn(melnet::g_client().request::<_, ()>(
             route,
             NETNAME,

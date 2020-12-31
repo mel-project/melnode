@@ -1,11 +1,13 @@
-use crate::common::*;
 use blkstructs::FinalizedState;
 use lmdb::Transaction;
 use lru::LruCache;
+use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 use tracing::instrument;
+
+use super::insecure_testnet_keygen;
 
 /// Locked storage.
 pub type SharedStorage = Arc<RwLock<Storage>>;
@@ -27,7 +29,7 @@ const GLOBAL_STATE_KEY: &[u8] = b"global_state";
 impl Storage {
     /// Creates a new Storage for testing, with a genesis state that puts 1000 mel at the zero-zero coin, unlockable by the always_true script.
     #[instrument]
-    pub fn open_testnet(path: &str) -> Result<Self> {
+    pub fn open_testnet(path: &str) -> anyhow::Result<Self> {
         let (lme, lmd) = open_lmdb(path)?;
         // load the db manager
         let dbm = autosmt::DBManager::load(autosmt::ondisk::LMDB::new(lme.clone(), None).unwrap());
@@ -84,8 +86,11 @@ impl Storage {
 
     /// Inserts a new transaction.
     #[instrument(skip(self))]
-    pub fn insert_tx(&mut self, tx: blkstructs::Transaction) -> Result<()> {
+    pub fn insert_tx(&mut self, tx: blkstructs::Transaction) -> anyhow::Result<()> {
+        println!("Test");
+        log::warn!("insert_tx");
         let txhash = tx.hash_nosigs();
+        println!("self.recent_tx {:?}", self.recent_tx);
         if self.recent_tx.put(txhash, ()).is_some() {
             anyhow::bail!("already seen tx")
         }
@@ -163,7 +168,7 @@ impl Storage {
         &mut self,
         blk: blkstructs::Block,
         cproof: symphonia::QuorumCert,
-    ) -> Result<()> {
+    ) -> anyhow::Result<()> {
         if blk.header.height != self.curr_state.height {
             anyhow::bail!(
                 "apply_block wrong height {} {}",
@@ -211,7 +216,7 @@ impl Storage {
 }
 
 #[instrument]
-fn open_lmdb(path: &str) -> Result<(Arc<lmdb::Environment>, lmdb::Database)> {
+fn open_lmdb(path: &str) -> anyhow::Result<(Arc<lmdb::Environment>, lmdb::Database)> {
     let lmdb_env = lmdb::Environment::new()
         .set_max_dbs(1)
         .set_map_size(1 << 40)

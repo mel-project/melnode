@@ -1,7 +1,6 @@
 use structopt::StructOpt;
-use themelio_core::*;
+use themelio_core::{run_main, Config};
 use tracing::instrument;
-use tracing_log::LogTracer;
 
 #[instrument]
 fn main() {
