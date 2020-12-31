@@ -167,6 +167,7 @@ async fn run_active_wallet(
             }
             ["tx-send", dest_addr, amount, unit] => {
                 let tx = active_wallet.send_tx(dest_addr, amount, unit).await?;
+                eprintln!(">> Sent tx.  Waiting to verify.");
                 loop {
                     let (coin_data_height, _proof) = active_wallet.verify_tx(tx.clone()).await?;
                     if let Some(out) = coin_data_height {
