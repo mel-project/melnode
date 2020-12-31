@@ -1,6 +1,6 @@
 use std::{convert::TryInto, net::SocketAddr};
 
-use blkstructs::melscript;
+use blkstructs::{melscript, CoinID};
 use colored::Colorize;
 use std::io::prelude::*;
 use structopt::StructOpt;
@@ -165,7 +165,22 @@ async fn run_active_wallet(
                 }
             }
             ["tx-send", dest_addr, amount, unit] => {
-                let _height = active_wallet.send_tx(dest_addr, amount, unit).await?;
+                let tx = active_wallet.send_tx(dest_addr, amount, unit).await?;
+                loop {
+                    let (coin_data_height, _proof) = active_wallet.verify_tx(tx.clone()).await?;
+                    if let Some(out) = coin_data_height {
+                        let their_coin = CoinID {
+                            txhash: tx.hash_nosigs(),
+                            index: 0,
+                        };
+                        eprintln!(">> Confirmed at height {}!", out.height);
+                        eprintln!(
+                            ">> CID = {}",
+                            hex::encode(bincode::serialize(&their_coin).unwrap()).bold()
+                        );
+                        break;
+                    }
+                }
             }
             ["balances"] => {
                 let unspent_coins = active_wallet.get_balances().await?;

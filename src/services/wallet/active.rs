@@ -6,6 +6,7 @@ use smol::net::SocketAddr;
 use tmelcrypt::Ed25519SK;
 
 use super::netclient::NetClient;
+use autosmt::FullProof;
 use std::collections::HashMap;
 
 pub struct ActiveWallet {
@@ -91,7 +92,7 @@ impl ActiveWallet {
         dest_addr: &str,
         amount: &str,
         unit: &str,
-    ) -> anyhow::Result<CoinDataHeight> {
+    ) -> anyhow::Result<Transaction> {
         let number: u64 = amount.parse()?;
         assert_eq!(unit, "TML");
         let dest_addr = tmelcrypt::HashVal::from_addr(dest_addr)
@@ -105,28 +106,23 @@ impl ActiveWallet {
         eprintln!(">> Syncing state...");
         self.client.broadcast_tx(to_send.clone()).await?;
         eprintln!(">> Transaction {:?} broadcast!", to_send.hash_nosigs());
-        eprintln!(">> Waiting for confirmation...");
-        loop {
-            let header = self.client.last_header().await?.0;
-            let first_change = CoinID {
-                txhash: to_send.hash_nosigs(),
-                index: 1,
-            };
-            let their_coin = CoinID {
-                txhash: to_send.hash_nosigs(),
-                index: 0,
-            };
-            let (coin_data_height, _full_proof) =
-                self.client.get_coin(header, first_change).await?;
-            if let Some(out) = coin_data_height {
-                eprintln!(">> Confirmed at height {}!", out.height);
-                eprintln!(
-                    ">> CID = {}",
-                    hex::encode(bincode::serialize(&their_coin).unwrap()) // .bold()
-                );
-                return Ok(out);
-            }
-        }
+        Ok(to_send)
+    }
+
+    pub async fn verify_tx(
+        &mut self,
+        tx: Transaction,
+    ) -> anyhow::Result<(Option<CoinDataHeight>, FullProof)> {
+        let header = self.client.last_header().await?.0;
+        let first_change = CoinID {
+            txhash: tx.hash_nosigs(),
+            index: 1,
+        };
+        let their_coin = CoinID {
+            txhash: tx.hash_nosigs(),
+            index: 0,
+        };
+        Ok(self.client.get_coin(header, first_change).await?)
     }
 
     pub async fn get_balances(&mut self) -> anyhow::Result<HashMap<CoinID, CoinDataHeight>> {
