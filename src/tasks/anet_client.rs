@@ -128,12 +128,10 @@ async fn run_active_wallet(
                                 ">>> Coin is confirmed at current height {}",
                                 coin_data_height.height
                             );
+
                             eprintln!(
                                 ">> CID = {}",
-                                hex::encode(
-                                    bincode::serialize(&coin_data_height.coin_data).unwrap()
-                                )
-                                .bold()
+                                hex::encode(bincode::serialize(&coin).unwrap()).bold()
                             );
                             break;
                         }
@@ -148,11 +146,10 @@ async fn run_active_wallet(
                     active_wallet.coin_get(coin_id).await?;
                 match coin_data_height {
                     None => {
+                        eprintln!("Coin data height not available");
                         continue;
                     }
                     Some(coin_data_height) => {
-                        active_wallet.coin_add(&coin_id, &coin_data_height).await?;
-                        // display coin_add
                         eprintln!(
                             ">> Coin found at height {}! Added {} {} to data",
                             coin_data_height.height,
@@ -162,7 +159,9 @@ async fn run_active_wallet(
                                 val => format!("X-{}", hex::encode(val)),
                             }
                         );
-                        return Ok(());
+                        active_wallet.coin_add(&coin_id, &coin_data_height).await?;
+                        eprintln!("Added coin to wallet");
+                        break;
                     }
                 }
             }
