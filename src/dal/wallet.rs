@@ -35,6 +35,15 @@ pub fn insert(conn: &Connection, wallet_name: &str, encoded_data: &Vec<u8>) -> R
     Ok(())
 }
 
+/// Update a wallet record in db
+pub fn update_by_name(conn: &Connection, wallet_name: &str, encoded_data: &Vec<u8>) -> Result<()> {
+    conn.execute(
+        "UPDATE wallet SET encoded_data=(?2) where wallet_name=(?1)",
+        params![wallet_name.clone(), encoded_data.clone()],
+    );
+    Ok(())
+}
+
 /// Read a wallet record from db using a wallet name
 pub fn read_by_name(conn: &Connection, wallet_name: &str) -> anyhow::Result<WalletRecord> {
     let mut stmt =

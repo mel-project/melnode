@@ -52,7 +52,7 @@ impl NetClient {
         header: Header,
         coin: CoinID,
     ) -> anyhow::Result<(Option<CoinDataHeight>, autosmt::FullProof)> {
-        log::debug!("get_coin at height {} for coin {:?}", header.height, coin);
+        // log::debug!("get_coin at height {} for coin {:?}", header.height, coin);
         let res: (Option<CoinDataHeight>, autosmt::CompressedProof) = melnet::g_client()
             .request(
                 self.remote,
@@ -70,7 +70,7 @@ impl NetClient {
         //     tmelcrypt::hash_single(&bincode::serialize(value)),
         //     val,
         // )
-        log::warn!("not verifying merkle tree branch");
+        // log::warn!("not verifying merkle tree branch");
         Ok((res.0, proof))
     }
 
@@ -97,7 +97,7 @@ impl NetClient {
         //     tmelcrypt::hash_single(&bincode::serialize(value)),
         //     val,
         // )
-        log::warn!("not verifying merkle tree branch");
+        // log::warn!("not verifying merkle tree branch");
         Ok((res.0, proof))
     }
 

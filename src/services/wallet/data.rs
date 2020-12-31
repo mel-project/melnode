@@ -17,6 +17,7 @@ impl WalletData {
     pub fn unspent_coins(&self) -> impl Iterator<Item = (&CoinID, &CoinDataHeight)> {
         self.unspent_coins.iter()
     }
+
     /// Create a new data.
     pub fn new(my_script: melscript::Script) -> Self {
         WalletData {
@@ -26,12 +27,14 @@ impl WalletData {
             my_script,
         }
     }
+
     /// Generates wallet data from script based on keypair
     pub fn generate() -> (Ed25519SK, Ed25519PK, Self) {
         let (pk, sk) = tmelcrypt::ed25519_keygen();
         let script = melscript::Script::std_ed25519_pk(pk);
         (sk, pk, WalletData::new(script.clone()))
     }
+
     /// Inserts a coin into the data, returning whether or not the coin already exists.
     pub fn insert_coin(&mut self, coin_id: CoinID, coin_data_height: CoinDataHeight) -> bool {
         self.spent_coins.get(&coin_id).is_none()

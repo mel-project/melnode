@@ -68,13 +68,14 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                         prompt_stack.push(format!("({})", wallet_name).yellow().to_string());
                         let prompt = format!("[anet client {}]% ", prompt_stack.join(" "));
                         loop {
-                            let res = run_active_wallet(
+                            let mut active_wallet = ActiveWallet::new(
                                 wallet_secret,
                                 wallet.clone(),
                                 cfg.bootstrap,
-                                &prompt,
-                            )
-                            .await;
+                                &cfg.storage_path,
+                            );
+                            let res =
+                                run_active_wallet(wallet_name, &mut active_wallet, &prompt).await;
                             match res {
                                 Ok(_) => {
                                     break;
@@ -119,12 +120,10 @@ async fn read_line(prompt: String) -> anyhow::Result<String> {
 
 /// Handle command line inputs for active wallet mode
 async fn run_active_wallet(
-    wallet_sk: Ed25519SK,
-    wallet_data: WalletData,
-    route: SocketAddr,
+    wallet_name: &str,
+    active_wallet: &mut ActiveWallet,
     prompt: &String,
 ) -> anyhow::Result<()> {
-    let mut active_wallet = ActiveWallet::new(wallet_sk, wallet_data, route);
     loop {
         let input = read_line(prompt.clone()).await.unwrap();
         match input.split(' ').collect::<Vec<_>>().as_slice() {
@@ -215,7 +214,10 @@ async fn run_active_wallet(
                     );
                 }
             }
-            ["exit"] => return Ok(()),
+            ["exit"] => {
+                active_wallet.save(wallet_name).await?;
+                return Ok(());
+            }
             _ => {
                 eprintln!("Invalid command for active wallet");
                 continue;

@@ -1,3 +1,4 @@
+use crate::dal::wallet;
 use crate::services::WalletData;
 use blkstructs::{
     CoinData, CoinDataHeight, CoinID, Header, Transaction, TxKind, COINTYPE_TMEL, MICRO_CONVERTER,
@@ -7,21 +8,28 @@ use tmelcrypt::Ed25519SK;
 
 use super::netclient::NetClient;
 use autosmt::FullProof;
+use rusqlite::{Connection, Error};
 use std::collections::HashMap;
+use std::path::Path;
 
 pub struct ActiveWallet {
     client: NetClient,
     sk: Ed25519SK,
     wallet: WalletData,
+    conn: Connection,
 }
 
 impl ActiveWallet {
-    pub fn new(sk: Ed25519SK, wallet: WalletData, remote: SocketAddr) -> Self {
-        return ActiveWallet {
+    pub fn new(sk: Ed25519SK, wallet: WalletData, remote: SocketAddr, path: &String) -> Self {
+        let path = Path::new(path);
+        let conn = Connection::open(path).expect("SQLite connection failure");
+        wallet::init(&conn);
+        ActiveWallet {
             sk,
             wallet,
             client: NetClient::new(remote),
-        };
+            conn,
+        }
     }
 
     pub async fn send_faucet_tx(&mut self, number: &str, unit: &str) -> anyhow::Result<CoinID> {
@@ -132,5 +140,12 @@ impl ActiveWallet {
             unspent_coins.insert(coin_id.clone(), coin_data.clone());
         }
         Ok(unspent_coins)
+    }
+
+    pub async fn save(&mut self, wallet_name: &str) -> anyhow::Result<()> {
+        let encoded_data = bincode::serialize(&self.wallet).unwrap();
+        wallet::update_by_name(&self.conn, &wallet_name, &encoded_data)
+            .expect("Failed to update wallet");
+        Ok(())
     }
 }
