@@ -65,6 +65,7 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
                             ))?;
                         }
                         prompt_stack.push(format!("({})", wallet_name).yellow().to_string());
+                        let prompt = format!("[anet client {}]% ", prompt_stack.join(" "));
                         run_active_wallet(wallet_secret, wallet, cfg.bootstrap, &prompt)
                             .await
                             .expect("Internal error with active wallet");
