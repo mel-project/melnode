@@ -12,7 +12,7 @@ blkstructs={path="libs/blkstructs"}
 tmelcrypt={path="libs/tmelcrypt"}
 melpow={path="libs/melpow"}
 symphonia={path="libs/symphonia"}
-melnet={path="libs/melnet"}
+melnet={path="libs/melnet"} 
 hex= "0.4.2"
 futures= "0.3.6"
 smol= "1.2.3"
@@ -32,13 +32,22 @@ lmdb= "0.8.0"
 derive_more= "0.99.11"
 defmac= "0.2.1"
 structopt= "0.3.18"
-rlp= "0.4.6"
-rlp-derive= "0.1.0"
-im= "15.0.0"
+serde = {version="1.0.116", features=["derive"]}
+bincode = "1.3.1"
+im = { version = "15.0.0", features = ["serde"] }
+rusqlite = "0.24.0"
+smolscale="0.1.2"
+
+tracing = { version = "0.1.22", features=["log"] }
+tracing-log = "0.1.1"
+tracing-futures="0.2"
+tracing-subscriber = "0.2"
+
 
 
 [profile.dev]
 panic = "abort"
+opt-level = 1
 
 [profile.release]
 panic = "abort"

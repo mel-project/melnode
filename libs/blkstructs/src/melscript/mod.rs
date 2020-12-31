@@ -1,14 +1,17 @@
-use crate::transaction as txn;
+use crate::Transaction;
 use arbitrary::Arbitrary;
-use rlp::{Decodable, Encodable};
+use primitive_types::U256;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryInto;
 
-#[derive(Clone, Eq, PartialEq, Debug, Arbitrary)]
+mod lexer;
+
+#[derive(Clone, Eq, PartialEq, Debug, Arbitrary, Serialize, Deserialize)]
 pub struct Script(pub Vec<u8>);
 
 impl Script {
-    pub fn check(&self, tx: &txn::Transaction) -> bool {
+    pub fn check(&self, tx: &Transaction) -> bool {
         self.check_opt(tx).is_some()
     }
 
@@ -28,9 +31,8 @@ impl Script {
         tmelcrypt::hash_single(&self.0)
     }
 
-    fn check_opt(&self, tx: &txn::Transaction) -> Option<()> {
-        let txb = rlp::encode(tx);
-        let tx_val: Value = rlp::decode(&txb).unwrap();
+    fn check_opt(&self, tx: &Transaction) -> Option<()> {
+        let tx_val = Value::from_serde(&tx)?;
         let ops = self.to_ops()?;
         let mut hm = HashMap::new();
         hm.insert(0, tx_val);
@@ -47,7 +49,7 @@ impl Script {
             OpCode::VREF,
             OpCode::PUSHB(pk.0.to_vec()),
             OpCode::LOADIMM(1),
-            OpCode::SIGEOK,
+            OpCode::SIGEOK(32),
         ])
         .unwrap()
     }
@@ -93,9 +95,9 @@ impl Script {
             0x23 => output.push(OpCode::NOT),
             0x24 => output.push(OpCode::EQL),
             // cryptography
-            0x30 => output.push(OpCode::HASH),
+            0x30 => output.push(OpCode::HASH(u16arg(bcode)?)),
             //0x31 => output.push(OpCode::SIGE),
-            0x32 => output.push(OpCode::SIGEOK),
+            0x32 => output.push(OpCode::SIGEOK(u16arg(bcode)?)),
             // storage
             0x40 => output.push(OpCode::LOAD),
             0x41 => output.push(OpCode::STORE),
@@ -136,7 +138,7 @@ impl Script {
                 for r in buf.iter_mut() {
                     *r = bcode.pop()?
                 }
-                output.push(OpCode::PUSHI(bigint::U256::from_big_endian(&buf)))
+                output.push(OpCode::PUSHI(U256::from_big_endian(&buf)))
             }
             _ => return None,
         }
@@ -173,19 +175,25 @@ impl Script {
             OpCode::NOT => output.push(0x23),
             OpCode::EQL => output.push(0x24),
             // cryptography
-            OpCode::HASH => output.push(0x30),
+            OpCode::HASH(n) => {
+                output.push(0x30);
+                output.extend(&n.to_be_bytes());
+            }
             //OpCode::SIGE => output.push(0x31),
-            OpCode::SIGEOK => output.push(0x32),
+            OpCode::SIGEOK(n) => {
+                output.push(0x32);
+                output.extend(&n.to_be_bytes())
+            }
             // storage
             OpCode::LOAD => output.push(0x40),
             OpCode::STORE => output.push(0x41),
             OpCode::LOADIMM(idx) => {
                 output.push(0x42);
-                output.extend_from_slice(&idx.to_be_bytes());
+                output.extend(&idx.to_be_bytes());
             }
             OpCode::STOREIMM(idx) => {
                 output.push(0x43);
-                output.extend_from_slice(&idx.to_be_bytes());
+                output.extend(&idx.to_be_bytes());
             }
             // vectors
             OpCode::VREF => output.push(0x50),
@@ -217,6 +225,8 @@ impl Script {
                     Script::assemble_one(op, output)?
                 }
             }
+            // type conversions
+
             // literals
             OpCode::PUSHB(bts) => {
                 output.push(0xf0);
@@ -234,19 +244,6 @@ impl Script {
             }
         }
         Some(())
-    }
-}
-
-impl Encodable for Script {
-    fn rlp_append(&self, s: &mut rlp::RlpStream) {
-        (self.0).rlp_append(s)
-    }
-}
-
-impl Decodable for Script {
-    fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-        let raw = Vec::decode(rlp)?;
-        Ok(Script(raw))
     }
 }
 
@@ -296,17 +293,25 @@ impl Executor {
                 self.do_binop(|x, y| Some(Value::Int(x.as_int()?.overflowing_mul(y.as_int()?).0)))?
             }
             OpCode::DIV => self.do_binop(|x, y| {
-                if y.as_int()? == bigint::U256::zero() {
+                if y.as_int()? == U256::zero() {
                     None
                 } else {
-                    Some(Value::Int(x.as_int()?.overflowing_div(y.as_int()?).0))
+                    Some(Value::Int(
+                        x.as_int()?
+                            .checked_add(y.as_int()?)
+                            .unwrap_or_else(|| 0.into()),
+                    ))
                 }
             })?,
             OpCode::REM => self.do_binop(|x, y| {
-                if y.as_int()? == bigint::U256::zero() {
+                if y.as_int()? == U256::zero() {
                     None
                 } else {
-                    Some(Value::Int(x.as_int()?.overflowing_rem(y.as_int()?).0))
+                    Some(Value::Int(
+                        x.as_int()?
+                            .checked_rem(y.as_int()?)
+                            .unwrap_or_else(|| 0.into()),
+                    ))
                 }
             })?,
             // logic
@@ -318,23 +323,39 @@ impl Executor {
                 let x = x.as_int()?;
                 let y = y.as_int()?;
                 if x == y {
-                    Some(Value::Int(bigint::U256::one()))
+                    Some(Value::Int(U256::one()))
                 } else {
-                    Some(Value::Int(bigint::U256::zero()))
+                    Some(Value::Int(U256::zero()))
                 }
             })?,
             // cryptography
-            OpCode::HASH => self.do_monop(|to_hash| {
+            OpCode::HASH(n) => self.do_monop(|to_hash| {
                 let to_hash = to_hash.as_bytes()?;
-                let hash = tmelcrypt::hash_single(&to_hash);
+                if to_hash.len() > *n as usize {
+                    return None;
+                }
+                let hash = tmelcrypt::hash_single(&to_hash.iter().cloned().collect::<Vec<_>>());
                 Some(Value::from_bytes(&hash.0))
             })?,
-            OpCode::SIGEOK => self.do_triop(|message, public_key, signature| {
+            OpCode::SIGEOK(n) => self.do_triop(|message, public_key, signature| {
                 //println!("SIGEOK({:?}, {:?}, {:?})", message, public_key, signature);
-                let public_key = tmelcrypt::Ed25519PK::from_bytes(&public_key.as_bytes()?)?;
-                Some(Value::from_bool(
-                    public_key.verify(&message.as_bytes()?, &signature.as_bytes()?),
-                ))
+                let pk = public_key.as_bytes()?;
+                if pk.len() > 32 {
+                    return Some(Value::from_bool(false));
+                }
+                let pk_b: Vec<u8> = pk.iter().cloned().collect();
+                let public_key = tmelcrypt::Ed25519PK::from_bytes(&pk_b)?;
+                let message = message.as_bytes()?;
+                if message.len() > *n as usize {
+                    return None;
+                }
+                let message: Vec<u8> = message.iter().cloned().collect();
+                let signature = signature.as_bytes()?;
+                if signature.len() > 64 {
+                    return Some(Value::from_bool(false));
+                }
+                let signature: Vec<u8> = signature.iter().cloned().collect();
+                Some(Value::from_bool(public_key.verify(&message, &signature)))
             })?,
             // storage access
             OpCode::STORE => {
@@ -359,7 +380,7 @@ impl Executor {
             OpCode::VREF => self.do_binop(|vec, idx| {
                 let idx = idx.as_u16()? as usize;
                 match vec {
-                    Value::Bytes(bts) => Some(Value::Int(bigint::U256::from(*bts.get(idx)?))),
+                    Value::Bytes(bts) => Some(Value::Int(U256::from(*bts.get(idx)?))),
                     Value::Vector(elems) => Some(elems.get(idx)?.clone()),
                     _ => None,
                 }
@@ -385,12 +406,12 @@ impl Executor {
                 }
             })?,
             OpCode::VLENGTH => self.do_monop(|vec| match vec {
-                Value::Vector(vec) => Some(Value::Int(bigint::U256::from(vec.len()))),
-                Value::Bytes(vec) => Some(Value::Int(bigint::U256::from(vec.len()))),
+                Value::Vector(vec) => Some(Value::Int(U256::from(vec.len()))),
+                Value::Bytes(vec) => Some(Value::Int(U256::from(vec.len()))),
                 _ => None,
             })?,
-            OpCode::VEMPTY => self.stack.push(Value::Vector(im_rc::Vector::new())),
-            OpCode::BEMPTY => self.stack.push(Value::Bytes(im_rc::Vector::new())),
+            OpCode::VEMPTY => self.stack.push(Value::Vector(im::Vector::new())),
+            OpCode::BEMPTY => self.stack.push(Value::Bytes(im::Vector::new())),
             OpCode::VPUSH => self.do_binop(|vec, val| match vec {
                 Value::Vector(mut vec) => {
                     vec.push_back(val);
@@ -398,7 +419,7 @@ impl Executor {
                 }
                 Value::Bytes(mut vec) => {
                     let bts = val.as_int()?;
-                    if bts > bigint::U256::from(255) {
+                    if bts > U256::from(255) {
                         return None;
                     }
                     let bts = bts.low_u32() as u8;
@@ -411,14 +432,14 @@ impl Executor {
             OpCode::BEZ(jgap) => {
                 let top = self.stack.pop()?;
                 self.stack.push(top.clone());
-                if top == Value::Int(bigint::U256::zero()) {
+                if top == Value::Int(U256::zero()) {
                     return Some(pc + 1 + *jgap as u32);
                 }
             }
             OpCode::BNZ(jgap) => {
                 let top = self.stack.pop()?;
                 self.stack.push(top.clone());
-                if top != Value::Int(bigint::U256::zero()) {
+                if top != Value::Int(U256::zero()) {
                     return Some(pc + 1 + *jgap as u32);
                 }
             }
@@ -449,7 +470,7 @@ impl Executor {
         self.run_bare(ops);
         match self.stack.pop()? {
             Value::Int(b) => {
-                if b == bigint::U256::zero() {
+                if b == U256::zero() {
                     None
                 } else {
                     Some(())
@@ -475,10 +496,10 @@ pub enum OpCode {
     NOT,
     EQL,
     // cryptographyy
-    HASH,
+    HASH(u16),
     //SIGE,
     //SIGQ,
-    SIGEOK,
+    SIGEOK(u16),
     //SIGQOK,
     // "heap" access
     STORE,
@@ -499,9 +520,15 @@ pub enum OpCode {
     BNZ(u16),
     JMP(u16),
     LOOP(u16, Vec<OpCode>),
+
+    // type conversions
+    // ITOB,
+    // BTOI,
+    // SERIAL(u16),
+
     // literals
     PUSHB(Vec<u8>),
-    PUSHI(bigint::U256),
+    PUSHI(U256),
 }
 
 impl OpCode {
@@ -519,8 +546,8 @@ impl OpCode {
             OpCode::NOT => 4,
             OpCode::EQL => 4,
 
-            OpCode::HASH => 50,
-            OpCode::SIGEOK => 100,
+            OpCode::HASH(n) => 50 + *n as u64,
+            OpCode::SIGEOK(n) => 100 + *n as u64,
 
             OpCode::STORE => 50,
             OpCode::LOAD => 50,
@@ -551,13 +578,13 @@ impl OpCode {
 
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub enum Value {
-    Int(bigint::U256),
-    Bytes(im_rc::Vector<u8>),
-    Vector(im_rc::Vector<Value>),
+    Int(U256),
+    Bytes(im::Vector<u8>),
+    Vector(im::Vector<Value>),
 }
 
 impl Value {
-    fn as_int(&self) -> Option<bigint::U256> {
+    fn as_int(&self) -> Option<U256> {
         match self {
             Value::Int(bi) => Some(*bi),
             _ => None,
@@ -565,14 +592,14 @@ impl Value {
     }
     fn as_u16(&self) -> Option<u16> {
         let num = self.as_int()?;
-        if num > bigint::U256::from(65535) {
+        if num > U256::from(65535) {
             None
         } else {
             Some(num.low_u32() as u16)
         }
     }
     fn from_bytes(bts: &[u8]) -> Self {
-        let mut new = im_rc::Vector::new();
+        let mut new = im::Vector::new();
         for b in bts {
             new.push_back(*b);
         }
@@ -580,38 +607,57 @@ impl Value {
     }
     fn from_bool(b: bool) -> Self {
         if b {
-            Value::Int(bigint::U256::one())
+            Value::Int(U256::one())
         } else {
-            Value::Int(bigint::U256::zero())
+            Value::Int(U256::zero())
         }
     }
 
-    fn as_bytes(&self) -> Option<Vec<u8>> {
+    fn as_bytes(&self) -> Option<im::Vector<u8>> {
         match self {
-            Value::Int(bi) => {
-                let mut out = vec![0; 32];
-                bi.to_little_endian(&mut out);
-                Some(out)
-            }
-            Value::Bytes(bts) => Some(bts.iter().copied().collect()),
-            Value::Vector(_) => None,
+            Value::Bytes(bts) => Some(bts.clone()),
+            _ => None,
         }
     }
-}
 
-impl Decodable for Value {
-    fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-        if rlp.is_list() {
-            let vec: Vec<Value> = rlp.as_list()?;
-            Ok(Value::Vector(vec.try_into().unwrap()))
-        } else if rlp.is_data() {
-            let vec: Vec<u8> = rlp.as_val()?;
-            Ok(Value::Bytes(vec.try_into().unwrap()))
-        } else if rlp.is_int() {
-            let int: u64 = rlp.as_val()?;
-            Ok(Value::Int(int.try_into().unwrap()))
-        } else {
-            Err(rlp::DecoderError::Custom("not int, list, or data"))
+    fn from_serde(ss: &impl Serialize) -> Option<Self> {
+        let ss = serde_json::to_string(ss).ok()?;
+        let ss: serde_json::Value = serde_json::from_str(&ss).ok()?;
+        Self::from_serde_json(ss)
+    }
+
+    fn from_serde_json(j_value: serde_json::Value) -> Option<Self> {
+        match j_value {
+            serde_json::Value::Null => None,
+            serde_json::Value::String(_) => None,
+            serde_json::Value::Number(num) => Some(Self::Int(num.as_u64()?.into())),
+            serde_json::Value::Bool(v) => {
+                Some(Self::Int(if v { 1u64.into() } else { 0u64.into() }))
+            }
+            serde_json::Value::Array(vec) => {
+                // if all the subelements are bytes, then we encode as a byte array
+                if vec.iter().find(|v| !v.is_number()).is_none() {
+                    let mut bb: im::Vector<u8> = im::Vector::new();
+                    for elem in vec {
+                        if let serde_json::Value::Number(num) = elem {
+                            let num = num.as_u64()?;
+                            bb.push_back(num as u8);
+                        }
+                    }
+                    Some(Self::Bytes(bb))
+                } else {
+                    let vec: Option<im::Vector<Self>> =
+                        vec.into_iter().map(Self::from_serde_json).collect();
+                    Some(Self::Vector(vec?))
+                }
+            }
+            serde_json::Value::Object(obj) => {
+                let mut vec: im::Vector<Self> = im::Vector::new();
+                for (_, v) in obj {
+                    vec.push_back(Self::from_serde_json(v)?)
+                }
+                Some(Self::Vector(vec))
+            }
         }
     }
 }
@@ -658,19 +704,19 @@ mod tests {
                 OpCode::VREF,
                 OpCode::PUSHB(pk.0.to_vec()),
                 OpCode::LOADIMM(1),
-                OpCode::SIGEOK,
+                OpCode::SIGEOK(32),
             ],
         )])
         .unwrap();
         println!("script length is {}", check_sig_script.0.len());
-        let mut tx = txn::Transaction::empty_test().sign_ed25519(sk);
+        let tx = Transaction::empty_test().sign_ed25519(sk);
         assert!(check_sig_script.check(&tx));
     }
 
     #[quickcheck]
     fn loop_once_is_identity(bitcode: Vec<u8>) -> bool {
         let ops = Script(bitcode.clone()).to_ops();
-        let tx = txn::Transaction::empty_test();
+        let tx = Transaction::empty_test();
         match ops {
             None => true,
             Some(ops) => {
@@ -685,7 +731,7 @@ mod tests {
     #[quickcheck]
     fn deterministic_execution(bitcode: Vec<u8>) -> bool {
         let ops = Script(bitcode.clone()).to_ops();
-        let tx = txn::Transaction::empty_test();
+        let tx = Transaction::empty_test();
         match ops {
             None => true,
             Some(ops) => {

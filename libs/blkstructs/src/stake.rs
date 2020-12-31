@@ -1,11 +1,11 @@
 use crate::SmtMapping;
-use rlp_derive::*;
+use serde::{Deserialize, Serialize};
 
 /// A stake epoch is 500,000 blocks.
 pub const STAKE_EPOCH: u64 = 500_000;
 
-/// StakeDoc is a stake document.
-#[derive(RlpDecodable, RlpEncodable, Debug)]
+/// StakeDoc is a stake document. It encapsulates all the information needed to verify consensus proofs.
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct StakeDoc {
     /// Public key.
     pub pubkey: tmelcrypt::Ed25519PK,
@@ -16,6 +16,9 @@ pub struct StakeDoc {
     /// Number of mets staked.
     pub mets_staked: u64,
 }
+
+/// A stake mapping
+pub type StakeMapping = SmtMapping<tmelcrypt::HashVal, StakeDoc>;
 
 impl SmtMapping<tmelcrypt::HashVal, StakeDoc> {
     /// Gets the voting power, as a floating-point number, for a given public key and a given epoch.
@@ -36,7 +39,7 @@ impl SmtMapping<tmelcrypt::HashVal, StakeDoc> {
     /// Filter out all the elements that no longer matter.
     pub fn remove_stale(&mut self, epoch: u64) {
         let stale_key_hashes = self.mapping.iter().filter_map(|(kh, v)| {
-            let v: StakeDoc = rlp::decode(&v).unwrap();
+            let v: StakeDoc = bincode::deserialize(&v).unwrap();
             if epoch > v.e_post_end {
                 Some(kh)
             } else {

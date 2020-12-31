@@ -1,23 +1,24 @@
+use derivative::Derivative;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use rlp::{Decodable, Encodable};
-use rlp_derive::*;
-use std::convert::TryFrom;
+use serde::{Deserialize, Serialize};
+pub const BFT_THRESHOLD: f64 = 0.67;
 
-pub const BFT_THRESHOLD: f64 = 0.7;
-
-#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, RlpEncodable, RlpDecodable)]
+#[derive(Derivative)]
+#[derivative(Debug)]
+#[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Message {
     pub phase: Phase,
     pub node: Node,
     pub justify: Option<QuorumCert>,
     pub sender: tmelcrypt::Ed25519PK,
     pub view_number: u64,
+    #[derivative(Debug = "ignore")]
     pub partial_sig: Option<Vec<u8>>,
 }
 
 impl Message {
     pub fn sign(self, sk: tmelcrypt::Ed25519SK) -> SignedMessage {
-        let msg_bts = rlp::encode(&self);
+        let msg_bts = bincode::serialize(&self).unwrap();
         let sig = sk.sign(&msg_bts);
         SignedMessage {
             msg: self,
@@ -28,11 +29,12 @@ impl Message {
     pub fn validate_vote(&self) -> bool {
         match &self.partial_sig {
             Some(sig) => {
-                let msg = rlp::encode(&PVN {
+                let msg = bincode::serialize(&PVN {
                     phase: self.phase,
                     view_number: self.view_number,
                     node: self.node.clone(),
-                });
+                })
+                .unwrap();
                 self.sender.verify(&msg, &sig)
             }
             None => false,
@@ -40,15 +42,17 @@ impl Message {
     }
 }
 
-#[derive(RlpEncodable, RlpDecodable, Clone, Debug)]
+#[derive(Derivative, Serialize, Deserialize, Clone)]
+#[derivative(Debug)]
 pub struct SignedMessage {
     pub msg: Message,
+    #[derivative(Debug = "ignore")]
     pub signature: Vec<u8>,
 }
 
 impl SignedMessage {
     pub fn validate(self) -> Option<Message> {
-        let msg_bts = rlp::encode(&self.msg);
+        let msg_bts = bincode::serialize(&self.msg).unwrap();
         if self.msg.sender.verify(&msg_bts, &self.signature) {
             Some(self.msg)
         } else {
@@ -57,7 +61,19 @@ impl SignedMessage {
     }
 }
 
-#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Copy, IntoPrimitive, TryFromPrimitive)]
+#[derive(
+    Clone,
+    Debug,
+    Ord,
+    PartialOrd,
+    Eq,
+    PartialEq,
+    Copy,
+    IntoPrimitive,
+    TryFromPrimitive,
+    Serialize,
+    Deserialize,
+)]
 #[repr(u8)]
 pub enum Phase {
     NewView = 0x01,
@@ -67,34 +83,21 @@ pub enum Phase {
     Decide = 0x05,
 }
 
-impl Encodable for Phase {
-    fn rlp_append(&self, s: &mut rlp::RlpStream) {
-        (*self as u8).rlp_append(s)
-    }
-}
-
-impl Decodable for Phase {
-    fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-        let raw = u8::decode(rlp)?;
-        if let Ok(x) = Phase::try_from(raw) {
-            Ok(x)
-        } else {
-            Err(rlp::DecoderError::Custom("bad phase"))
-        }
-    }
-}
-
-#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, RlpEncodable, RlpDecodable)]
+#[derive(Clone, Derivative, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
+#[derivative(Debug)]
 pub struct QuorumCert {
     pub phase: Phase,
     pub view_number: u64,
     pub node: Node,
+    #[derivative(Debug = "ignore")]
     pub signatures: Vec<QCSig>,
 }
 
-#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, RlpEncodable, RlpDecodable)]
+#[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize, Derivative)]
+#[derivative(Debug)]
 pub struct QCSig {
     pub sender: tmelcrypt::Ed25519PK,
+    #[derivative(Debug = "ignore")]
     pub signature: Vec<u8>,
 }
 
@@ -122,7 +125,7 @@ impl QuorumCert {
     }
 }
 
-#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, RlpEncodable, RlpDecodable, Default)]
+#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize, Default)]
 pub struct Node {
     pub parent_hash: tmelcrypt::HashVal,
     pub prop: Vec<u8>,
@@ -139,11 +142,11 @@ impl Node {
         }
     }
     pub fn hash(&self) -> tmelcrypt::HashVal {
-        tmelcrypt::hash_single(&rlp::encode(self))
+        tmelcrypt::hash_single(&bincode::serialize(self).unwrap())
     }
 }
 
-#[derive(RlpEncodable)]
+#[derive(Serialize, Deserialize)]
 pub struct PVN {
     pub phase: Phase,
     pub view_number: u64,

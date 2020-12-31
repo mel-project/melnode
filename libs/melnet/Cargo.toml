@@ -7,8 +7,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rlp="0.4"
-rlp-derive="0.1"
 thiserror="1"
 parking_lot="0.10"
 min-max-heap = "1"
@@ -24,3 +22,6 @@ rand="0.7"
 lazy_static="1"
 async-net="1"
 anyhow="1"
+serde = {version="1.0.116", features=["derive"]}
+bincode="1"
+smolscale="0.1.2"

@@ -1,14 +1,28 @@
 use arbitrary::Arbitrary;
-use rlp::{Decodable, Encodable};
+use ed25519_dalek::{Signer, Verifier};
+use rand::prelude::*;
+use serde::{Deserialize, Serialize};
+use serde_big_array::big_array;
+use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Arbitrary, Ord, PartialOrd, Default)]
+big_array! { BigArray; }
+
+#[derive(
+    Copy, Clone, Eq, PartialEq, Hash, Arbitrary, Ord, PartialOrd, Default, Serialize, Deserialize,
+)]
+/// Represents an 256-byte hash value.
 pub struct HashVal(pub [u8; 32]);
 
 impl HashVal {
+    /// Randomly generates a HashVal. This will almost certainly not collide with the actual hash of anything.
+    pub fn random() -> Self {
+        HashVal(rand::thread_rng().gen())
+    }
+
     pub fn to_addr(&self) -> String {
         let raw_base32 = base32::encode(base32::Alphabet::Crockford {}, &self.0);
         let checksum = hash_keyed(b"address-checksum", &self.0).0[0] % 10;
@@ -55,36 +69,19 @@ impl fmt::Debug for HashVal {
     }
 }
 
-impl Encodable for HashVal {
-    fn rlp_append(&self, s: &mut rlp::RlpStream) {
-        let arr = self.0.as_ref();
-        arr.rlp_append(s)
-    }
-}
-
-impl Decodable for HashVal {
-    fn decode(r: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-        let v = Vec::decode(r)?;
-        if v.len() != 32 {
-            Err(rlp::DecoderError::Custom("HashVal not 32 bytes"))
-        } else {
-            let v = v.as_slice();
-            let v = v.try_into().unwrap();
-            Ok(HashVal(v))
-        }
-    }
-}
-
+/// Hashes a single value.
 pub fn hash_single(val: &[u8]) -> HashVal {
     let b3h = blake3::hash(val);
     HashVal((*b3h.as_bytes().as_ref()).try_into().unwrap())
 }
 
+/// Hashes a value with the given key.
 pub fn hash_keyed(key: &[u8], val: &[u8]) -> HashVal {
     let b3h = blake3::keyed_hash(&hash_single(key).0, val);
     HashVal((*b3h.as_bytes().as_ref()).try_into().unwrap())
 }
 
+/// Generates an ed25519 keypair.
 pub fn ed25519_keygen() -> (Ed25519PK, Ed25519SK) {
     let mut csprng = rand::thread_rng();
     let keypair = ed25519_dalek::Keypair::generate(&mut csprng);
@@ -94,14 +91,15 @@ pub fn ed25519_keygen() -> (Ed25519PK, Ed25519SK) {
     )
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
+/// An ed25519 public key.
 pub struct Ed25519PK(pub [u8; 32]);
 
 impl Ed25519PK {
     pub fn verify(&self, msg: &[u8], sig: &[u8]) -> bool {
         let pk = ed25519_dalek::PublicKey::from_bytes(&self.0);
         match pk {
-            Ok(pk) => match ed25519_dalek::Signature::from_bytes(sig) {
+            Ok(pk) => match ed25519_dalek::Signature::try_from(sig) {
                 Ok(sig) => pk.verify(msg, &sig).is_ok(),
                 Err(_) => false,
             },
@@ -122,32 +120,12 @@ impl Ed25519PK {
 
 impl fmt::Debug for Ed25519PK {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("EdPK({})", hex::encode(&self.0)))
+        f.write_fmt(format_args!("EdPK_{}", hex::encode(&self.0)))
     }
 }
-
-impl Encodable for Ed25519PK {
-    fn rlp_append(&self, s: &mut rlp::RlpStream) {
-        let arr = self.0.as_ref();
-        arr.rlp_append(s)
-    }
-}
-
-impl Decodable for Ed25519PK {
-    fn decode(r: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-        let v = Vec::decode(r)?;
-        if v.len() != 32 {
-            Err(rlp::DecoderError::Custom("Ed25519PK not 32 bytes"))
-        } else {
-            let v = v.as_slice();
-            let v = v.try_into().unwrap();
-            Ok(Ed25519PK(v))
-        }
-    }
-}
-
-#[derive(Copy, Clone)]
-pub struct Ed25519SK(pub [u8; 64]);
+#[derive(Copy, Clone, Serialize, Deserialize)]
+/// An ed25519 secret key.
+pub struct Ed25519SK(#[serde(with = "BigArray")] pub [u8; 64]);
 
 impl PartialEq for Ed25519SK {
     fn eq(&self, other: &Self) -> bool {
@@ -197,26 +175,5 @@ impl Ed25519SK {
 impl fmt::Debug for Ed25519SK {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("EdSK({})", hex::encode(self.0.as_ref())))
-    }
-}
-
-impl Encodable for Ed25519SK {
-    fn rlp_append(&self, s: &mut rlp::RlpStream) {
-        let arr = self.0.as_ref();
-        arr.rlp_append(s)
-    }
-}
-
-impl Decodable for Ed25519SK {
-    fn decode(r: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-        let v = Vec::decode(r)?;
-        if v.len() != 64 {
-            Err(rlp::DecoderError::Custom("Ed25519SK not 64 bytes"))
-        } else {
-            let v = v.as_slice();
-            let mut w = [0; 64];
-            w.clone_from_slice(v);
-            Ok(Ed25519SK(w))
-        }
     }
 }

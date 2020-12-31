@@ -37,7 +37,7 @@ impl DBManager {
         for (k, v) in self.cache.write().drain() {
             kvv.push((k, v))
         }
-        //log::debug!("sync cache of {}", kvv.len());
+        log::debug!("sync cache of {}", kvv.len());
         raw.set_batch(kvv);
         // sync roots
         let mut roots = Vec::new();
@@ -49,7 +49,7 @@ impl DBManager {
             newtrees.insert(k, v);
         }
         *trees = newtrees;
-        //log::debug!("sync roots of {}", roots.len());
+        log::debug!("sync roots of {}", roots.len());
         raw.set_gc_roots(&roots)
     }
     /// Spawns out a tree at the given hash.
@@ -277,10 +277,12 @@ impl RawDB for MemDB {
         for (k, v) in kvv {
             self.mapping.insert(k, v);
         }
+        // self.gc();
     }
 
     fn set_gc_roots(&mut self, roots: &[tmelcrypt::HashVal]) {
         self.roots = roots.to_owned();
+        log::debug!("set_gc_roots({})", roots.len());
         self.gc()
     }
 
@@ -292,11 +294,6 @@ impl RawDB for MemDB {
 impl MemDB {
     fn gc(&mut self) {
         if self.mapping.len() > self.gc_mark {
-            log::debug!(
-                "len {} > gc_mark {}, gcing",
-                self.mapping.len(),
-                self.gc_mark
-            );
             // trivial copying GC
             let mut new_mapping = HashMap::new();
             let mut stack = self.roots.clone();
@@ -312,6 +309,12 @@ impl MemDB {
                     stack.push(outptr)
                 }
             }
+            log::debug!(
+                "len {} > gc_mark {}, gcing -> {}",
+                self.mapping.len(),
+                self.gc_mark,
+                new_mapping.len()
+            );
             // replace the mapping
             self.mapping = new_mapping;
             self.gc_mark = self.mapping.len() * 2

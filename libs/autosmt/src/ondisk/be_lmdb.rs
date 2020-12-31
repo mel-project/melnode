@@ -145,7 +145,7 @@ impl LMDB {
         txn.put(
             db,
             b"gc_mark",
-            &(mark_ctr * 3 / 2 as u32).to_be_bytes(),
+            &((mark_ctr * 3 / 2) as u32).to_be_bytes(),
             lmdb::WriteFlags::empty(),
         )
         .unwrap();

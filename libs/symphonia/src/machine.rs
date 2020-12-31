@@ -15,7 +15,7 @@ struct MachVars {
 }
 
 impl MachVars {
-    fn msgs_in_view<'a>(&'a mut self, view: u64) -> &'a mut BTreeSet<Message> {
+    fn msgs_in_view(&mut self, view: u64) -> &mut BTreeSet<Message> {
         let new = BTreeSet::new();
         let out = self.seen_msgs.insert(view, new);
         if let Some(old) = out {
@@ -24,12 +24,13 @@ impl MachVars {
         self.seen_msgs.get_mut(&view).unwrap()
     }
 
-    fn msgs_in_curr_view<'a>(&'a mut self) -> &'a mut BTreeSet<Message> {
+    fn msgs_in_curr_view(&mut self) -> &mut BTreeSet<Message> {
         let v = self.curr_view;
         self.msgs_in_view(v)
     }
 }
 
+/// Machine implements a HotStuff-like central state machine.
 pub struct Machine {
     globals: MachVars,
     curr_phase: Phase,
@@ -101,6 +102,7 @@ impl Machine {
         let is_leader = leader_pk == self.config.my_pk;
         loop {
             let curr_view = self.globals.curr_view;
+            trace!("PK={:?}", self.config.my_pk);
             match self.curr_phase {
                 // Prepare phase
                 Phase::Prepare => {
@@ -352,13 +354,11 @@ impl Machine {
                 }
                 Phase::NewView => {
                     let next_leader = (self.config.view_leader)(self.globals.curr_view + 1);
+                    let node = Node::default();
+                    trace!("phase new view {:?}", node);
                     self.broadcast(
                         Some(next_leader),
-                        self.make_vote_msg(
-                            Phase::NewView,
-                            Node::default(),
-                            self.globals.prepare_qc.clone(),
-                        ),
+                        self.make_vote_msg(Phase::NewView, node, self.globals.prepare_qc.clone()),
                     );
                     self.globals.curr_view += 1;
                     self.curr_phase = Phase::Prepare;
@@ -386,11 +386,16 @@ impl Machine {
             justify,
             view_number: self.globals.curr_view,
             sender: self.config.my_pk,
-            partial_sig: Some(sk.sign(&rlp::encode(&PVN {
-                phase,
-                view_number: self.globals.curr_view,
-                node,
-            }))),
+            partial_sig: Some(
+                sk.sign(
+                    &bincode::serialize(&PVN {
+                        phase,
+                        view_number: self.globals.curr_view,
+                        node,
+                    })
+                    .unwrap(),
+                ),
+            ),
         }
     }
 

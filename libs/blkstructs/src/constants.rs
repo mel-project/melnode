@@ -1,8 +1,8 @@
 /// Mel cointype
-pub const COINTYPE_TMEL: &[u8] = b"l";
+pub const COINTYPE_TMEL: &[u8] = b"m";
 
-/// Met cointype
-pub const COINTYPE_TMET: &[u8] = b"t";
+/// Sym cointype
+pub const COINTYPE_TSYM: &[u8] = b"s";
 
 /// DOSC cointype
 pub fn cointype_dosc(bn: u64) -> Vec<u8> {

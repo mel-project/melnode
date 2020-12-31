@@ -1,14 +1,24 @@
-use crate::constants::*;
-use crate::melscript::*;
+use crate::{constants::*, melscript};
 use arbitrary::Arbitrary;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use rlp::{Decodable, Encodable};
-use rlp_derive::*;
+use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::collections::HashMap;
-use std::convert::TryFrom;
 
-#[derive(Clone, Copy, IntoPrimitive, TryFromPrimitive, Eq, PartialEq, Arbitrary, Debug)]
+#[derive(
+    Clone,
+    Copy,
+    IntoPrimitive,
+    TryFromPrimitive,
+    Eq,
+    PartialEq,
+    Arbitrary,
+    Debug,
+    Serialize_repr,
+    Deserialize_repr,
+)]
 #[repr(u8)]
+/// An enumeration of all the different possible transaction kinds. Currently contains a "faucet" kind that will be (obviously) removed in production.
 pub enum TxKind {
     Normal = 0x00,
     Stake = 0x10,
@@ -20,36 +30,17 @@ pub enum TxKind {
     Faucet = 0xff,
 }
 
-impl Encodable for TxKind {
-    fn rlp_append(&self, s: &mut rlp::RlpStream) {
-        (*self as u8).rlp_append(s)
-    }
-}
-
-impl Decodable for TxKind {
-    fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-        let raw = u8::decode(rlp)?;
-        if let Ok(x) = TxKind::try_from(raw) {
-            Ok(x)
-        } else {
-            Err(rlp::DecoderError::Custom("bad txkind"))
-        }
-    }
-}
-
-/// Transaction represents an individual, RLP-serializable Themelio transaction.
-#[derive(RlpEncodable, RlpDecodable, Clone, Arbitrary, Debug)]
+/// Transaction represents an individual, serializable Themelio transaction.
+#[derive(Clone, Arbitrary, Debug, Serialize, Deserialize)]
 pub struct Transaction {
     pub kind: TxKind,
     pub inputs: Vec<CoinID>,
     pub outputs: Vec<CoinData>,
     pub fee: u64,
-    pub scripts: Vec<Script>,
+    pub scripts: Vec<melscript::Script>,
     pub data: Vec<u8>,
-    pub sigs: Vec<Vecu8>,
+    pub sigs: Vec<Vec<u8>>,
 }
-
-type Vecu8 = Vec<u8>;
 
 impl Transaction {
     pub fn empty_test() -> Self {
@@ -83,7 +74,7 @@ impl Transaction {
     pub fn hash_nosigs(&self) -> tmelcrypt::HashVal {
         let mut s = self.clone();
         s.sigs = vec![];
-        let self_bytes = rlp::encode(&s);
+        let self_bytes = bincode::serialize(&s).unwrap();
         tmelcrypt::hash_single(&self_bytes)
     }
     /// sign_ed25519 appends an ed25519 signature to the transaction.
@@ -103,7 +94,7 @@ impl Transaction {
         toret
     }
     /// scripts_as_map returns a HashMap mapping the hash of each script in the transaction to the script itself.
-    pub fn script_as_map(&self) -> HashMap<tmelcrypt::HashVal, Script> {
+    pub fn script_as_map(&self) -> HashMap<tmelcrypt::HashVal, melscript::Script> {
         let mut toret = HashMap::new();
         for s in self.scripts.iter() {
             toret.insert(s.hash(), s.clone());
@@ -113,23 +104,34 @@ impl Transaction {
 }
 
 #[derive(
-    RlpEncodable, RlpDecodable, Clone, Debug, Copy, Arbitrary, Ord, PartialOrd, Eq, PartialEq, Hash,
+    Serialize, Deserialize, Clone, Debug, Copy, Arbitrary, Ord, PartialOrd, Eq, PartialEq, Hash,
 )]
+/// A coin ID, consisting of a transaction hash and index. Uniquely identifies a coin in Themelio's history.
 pub struct CoinID {
     pub txhash: tmelcrypt::HashVal,
     pub index: u8,
 }
 
-#[derive(
-    RlpEncodable, RlpDecodable, Clone, Arbitrary, Debug, Ord, PartialOrd, Eq, PartialEq, Hash,
-)]
+impl CoinID {
+    /// The genesis coin of "zero-zero".
+    pub fn zero_zero() -> Self {
+        Self {
+            txhash: tmelcrypt::HashVal::default(),
+            index: 0,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Arbitrary, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
+/// The data bound to a coin ID. Contains the "contents" of a coin, i.e. its constraint hash, value, and coin type.
 pub struct CoinData {
     pub conshash: tmelcrypt::HashVal,
     pub value: u64,
     pub cointype: Vec<u8>,
 }
 
-#[derive(RlpEncodable, RlpDecodable, Clone, Arbitrary, Debug)]
+#[derive(Serialize, Deserialize, Clone, Arbitrary, Debug)]
+/// A `CoinData` but coupled with a block height. This is what actually gets stored in the global state, allowing constraints and the validity-checking algorithm to easily access the age of a coin.
 pub struct CoinDataHeight {
     pub coin_data: CoinData,
     pub height: u64,
