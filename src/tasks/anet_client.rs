@@ -161,7 +161,6 @@ async fn run_active_wallet(
                         );
                         active_wallet.coin_add(&coin_id, &coin_data_height).await?;
                         eprintln!("Added coin to wallet");
-                        break;
                     }
                 }
             }
