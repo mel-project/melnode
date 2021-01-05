@@ -2144,7 +2144,6 @@ dependencies = [
  "derivative",
  "derive_builder",
  "env_logger",
- "futures",
  "log",
  "num_enum",
  "parking_lot 0.10.2",
