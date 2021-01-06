@@ -8,8 +8,6 @@ use tabwriter::TabWriter;
 
 use crate::config::VERSION;
 use crate::services::{ActiveWallet, AvailableWallets, WalletData};
-use anyhow::Error;
-use tmelcrypt::Ed25519SK;
 
 #[derive(Debug, StructOpt)]
 pub struct AnetClientConfig {
@@ -142,7 +140,7 @@ async fn run_active_wallet(
                 eprintln!(">> Waiting for confirmation...");
                 // loop until we get coin data height and proof from last header
                 loop {
-                    let (coin_data_height, hdr) = active_wallet.get_coin_data(coin).await?;
+                    let (coin_data_height, _hdr) = active_wallet.get_coin_data(coin).await?;
                     match coin_data_height {
                         Some(coin_data_height) => {
                             eprintln!(
@@ -174,7 +172,7 @@ async fn run_active_wallet(
                             coin_data_height.height,
                             coin_data_height.coin_data.value,
                             match coin_data_height.coin_data.cointype.as_slice() {
-                                COINTYPE_TMEL => "μmel".to_string(),
+                                // COINTYPE_TMEL => "μmel".to_string(),
                                 val => format!("X-{}", hex::encode(val)),
                             }
                         );

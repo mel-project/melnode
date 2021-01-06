@@ -28,7 +28,6 @@ use rand::prelude::*;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use reqs::*;
-use smol::prelude::*;
 use smol::Timer;
 use smol_timeout::TimeoutExt;
 use std::time::Duration;
