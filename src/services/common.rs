@@ -1,6 +1,6 @@
 pub use anyhow::Result;
-pub use futures::prelude::*;
 pub use parking_lot::RwLock;
+pub use smol::prelude::*;
 
 use serde::{Deserialize, Serialize};
 use smol::net::TcpListener;
