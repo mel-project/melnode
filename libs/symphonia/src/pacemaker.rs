@@ -3,8 +3,8 @@ use crate::{machine::Machine, DestMsg};
 use async_trait::async_trait;
 use log::trace;
 use smol::channel::{Receiver, Sender};
-use smol::future::FutureExt;
 use smol::prelude::*;
+use smol_timeout::TimeoutExt;
 use std::ops::DerefMut;
 use std::time::Duration;
 
@@ -74,23 +74,15 @@ async fn pacemaker_loop(
             return dec;
         }
         // wait for input, or timeout
-
-        let wait_for_input = async {
-            if let Some(s_msg) = recv_input.next().await {
-                trace!("machine process {:?}", s_msg.msg.phase);
-                machine.process_input(s_msg.clone());
+        let recieved_input = recv_input.next().timeout(tt).await;
+        if let Some(opt_msg) = recieved_input {
+            if let Some(signed_msg) = opt_msg {
+                trace!("machine process {:?}", signed_msg.msg.phase);
+                machine.process_input(signed_msg.clone());
             } else {
                 panic!("pacemaker stopped because recv_input dead");
             }
-            false
-        };
-        let wait_for_timeout = async {
-            smol::Timer::after(Duration::from_secs(5)).await;
-            true
-        };
-
-        let timed_out = wait_for_input.race(wait_for_timeout).await;
-        if timed_out {
+        } else {
             trace!("pacemaker forcing a new view after {:?}", timeout);
             timeout = timeout * 10 / 9;
             trace!("new timeout {:?}", timeout);

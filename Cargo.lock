@@ -909,7 +909,7 @@ dependencies = [
  "futures-io",
  "memchr",
  "parking",
- "pin-project-lite",
+ "pin-project-lite 0.2.0",
  "waker-fn",
 ]
 
@@ -1548,6 +1548,12 @@ dependencies = [
 
 [[package]]
 name = "pin-project-lite"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c917123afa01924fc84bb20c4c03f004d9c38e5127e3c039bbf7f4b9c76a2f6b"
+
+[[package]]
+name = "pin-project-lite"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6b063f57ec186e6140e2b8b6921e5f1bd89c7356dda5b33acc5401203ca6131c"
@@ -2063,6 +2069,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "smol-timeout"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "847d777e2c6c166bad26264479e80a9820f3d364fcb4a0e23cd57bbfa8e94961"
+dependencies = [
+ "async-io",
+ "pin-project-lite 0.1.11",
+]
+
+[[package]]
 name = "smolscale"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2076,7 +2092,7 @@ dependencies = [
  "event-listener",
  "futures-lite",
  "once_cell",
- "pin-project-lite",
+ "pin-project-lite 0.2.0",
  "scopeguard",
  "slab",
 ]
@@ -2151,6 +2167,7 @@ dependencies = [
  "rand_distr",
  "serde",
  "smol",
+ "smol-timeout",
  "smolscale",
  "structopt",
  "tmelcrypt",
@@ -2334,7 +2351,7 @@ checksum = "9f47026cdc4080c07e49b37087de021820269d996f581aac150ef9e5583eefe3"
 dependencies = [
  "cfg-if 1.0.0",
  "log",
- "pin-project-lite",
+ "pin-project-lite 0.2.0",
  "tracing-attributes",
  "tracing-core",
 ]
