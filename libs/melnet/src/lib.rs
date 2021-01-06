@@ -23,15 +23,16 @@ mod reqs;
 use async_net::{TcpListener, TcpStream};
 mod common;
 pub use common::*;
-use futures::prelude::*;
-use futures::select;
 use parking_lot::{Mutex, RwLock};
 use rand::prelude::*;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use reqs::*;
+use smol::prelude::*;
 use smol::Timer;
+use smol_timeout::TimeoutExt;
 use std::time::Duration;
+
 #[derive(Derivative, Clone, Default)]
 #[derivative(Debug)]
 /// A clonable structure representing a melnet state. All copies share the same routing table.
@@ -54,9 +55,7 @@ impl NetState {
             smolscale::spawn(async move {
                 let mut rng = rand::rngs::OsRng {};
                 loop {
-                    let mut tmr = async { Timer::after(Duration::from_secs_f32(0.2)).await }
-                        .boxed()
-                        .fuse();
+                    let tmr = Timer::after(Duration::from_secs_f32(0.2));
                     let routes = state.routes.read().to_vec();
                     if !routes.is_empty() {
                         let (rand_neigh, _) = routes[rng.gen::<usize>() % routes.len()];
@@ -71,13 +70,18 @@ impl NetState {
                                     addr: rand_route.to_string(),
                                 },
                             )
-                            .fuse();
-                        select! {
-                            output = Box::pin(to_wait) => {
-                                trace!("addrspam sent {:?} to {:?}, output {:?}", rand_route, rand_neigh, output);
+                            .await;
+                        match to_wait {
+                            Ok(output) => {
+                                trace!(
+                                    "addrspam sent {:?} to {:?}, output {:?}",
+                                    rand_route,
+                                    rand_neigh,
+                                    output
+                                );
                                 tmr.await;
                             }
-                            _ = tmr => {
+                            Err(_) => {
                                 trace!("addrspam timer expired on {:?}, switching...", rand_neigh)
                             }
                         }
@@ -110,9 +114,15 @@ impl NetState {
 
     async fn server_handle(&self, mut conn: TcpStream) -> anyhow::Result<()> {
         loop {
-            select! {
-                x = self.server_handle_one(&mut conn).fuse() => x?,
-                _ = async{Timer::after(Duration::from_secs(60)).await}.boxed().fuse() => break
+            let opt = self
+                .server_handle_one(&mut conn)
+                .timeout(Duration::from_secs(60))
+                .await;
+            match opt {
+                None => {
+                    break;
+                }
+                Some(res) => res?,
             }
         }
         Ok(())

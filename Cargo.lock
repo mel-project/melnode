@@ -1299,7 +1299,6 @@ dependencies = [
  "by_address",
  "derivative",
  "env_logger",
- "futures",
  "im",
  "lazy_static",
  "log",
@@ -1308,6 +1307,7 @@ dependencies = [
  "rand",
  "serde",
  "smol",
+ "smol-timeout",
  "smolscale",
  "thiserror",
 ]
