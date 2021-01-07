@@ -4,12 +4,8 @@ description: Build, test and deploy Themelio
 
 executors:
   docker:
-    parameters:
-      version:
-        type: string
-        default: latest
     docker:
-      - image: rust:stable
+      - image: cimg/rust:latest
         auth:
           username: themeliolabs
           password: $DOCKERHUB_PASSWORD
@@ -19,9 +15,6 @@ jobs:
   build:
     executor: docker
     parameters:
-      version:
-        type: string
-        default: latest
       path:
         type: string
         default: .
@@ -53,9 +46,6 @@ jobs:
   test:
     executor: docker
     parameters:
-      version:
-        type: string
-        default: latest
       path:
         type: string
         default: .
@@ -80,9 +70,6 @@ jobs:
 # deploy:
 #   executor: docker
 #   parameters:
-#     version:
-#       type: string
-#       default: latest
 #     path:
 #       type: string
 #       default: .
@@ -107,9 +94,6 @@ jobs:
 #   deploy:
 #     executor: docker
 #       parameters:
-#         version:
-#           type: string
-#           default: latest
 #         path:
 #           type: string
 #           default: .
