@@ -1,13 +1,148 @@
-# Use the latest 2.1 version of CircleCI pipeline process engine. See: https://circleci.com/docs/2.0/configuration-reference
 version: 2.1
-# Use a package of configuration called an orb.
-orbs:
-  # Declare a dependency on the welcome-orb
-  welcome: circleci/welcome-orb@0.4.1
-# Orchestrate or schedule a set of jobs
+
+description: Build, test and deploy Themelio
+
+executors:
+  docker:
+    parameters:
+      version:
+        type: string
+        default: latest
+    docker:
+      - image: circleci/rust:stable
+        auth:
+          username: themeliolabs
+          password: $DOCKERHUB_PASSWORD
+
+jobs:
+
+  build:
+    executor: docker
+    parameters:
+      version:
+        type: string
+        default: latest
+      path:
+        type: string
+        default: .
+      release:
+        type: boolean
+        default: false
+    steps:
+      - install_deps
+      - checkout
+      - restore_cache:
+          keys:
+            - cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock" }}
+            - cargo-cache-v1-{{ arch }}-
+      - run:
+          name: Build
+          command: |
+            cd <<parameters.path>>
+            if [ "<<parameters.release>>" == "true" ]; then
+              cargo build --release
+            else
+              cargo build
+            fi
+      - save_cache:
+          key: cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock"
+            }}
+          paths:
+            - <<parameters.path>>/target
+
+  test:
+    executor: docker
+    parameters:
+      version:
+        type: string
+        default: latest
+      path:
+        type: string
+        default: .
+    steps:
+      - install_deps
+      - checkout
+      - restore_cache:
+          keys:
+            - cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock" }}
+            - cargo-cache-v1-{{ arch }}-
+      - run:
+          name: Run tests
+          command: |
+            cd <<parameters.path>>
+            cargo test
+      - save_cache:
+          key: cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock"
+            }}
+          paths:
+            - <<parameters.path>>/target
+
+# deploy:
+#   executor: docker
+#   parameters:
+#     version:
+#       type: string
+#       default: latest
+#     path:
+#       type: string
+#       default: .
+#   steps:
+#     - install_deps
+#     - checkout
+#     - restore_cache:
+#         keys:
+#           - cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock" }}
+#           - cargo-cache-v1-{{ arch }}-
+#     - run:
+#         name: Run tests
+#         command: |
+#           cd <<parameters.path>>
+#           cargo test
+#     - save_cache:
+#         key: cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock"
+#           }}
+#         paths:
+#           - <<parameters.path>>/target
+
+#   deploy:
+#     executor: docker
+#       parameters:
+#         version:
+#           type: string
+#           default: latest
+#         path:
+#           type: string
+#           default: .
+#     steps:
+#       - install_deps
+#       - checkout
+#       - restore_cache:
+#           keys:
+#             - cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock" }}
+#             - cargo-cache-v1-{{ arch }}-
+#       - deploy_deps
+
+commands:
+  install_deps:
+    steps:
+      - run:
+          name: Install deps
+          command: |
+            apt-get update
+            apt-get install -y git
+  # deploy_build:
+  #   steps:
+  #     - run:
+  #         name: Deploy deps
+  #         command: |
+  #           echo "Deploying..."
+
 workflows:
-  # Name the workflow "welcome"
-  welcome:
-    # Run the welcome/run job in its own container
+  build-test-release:
     jobs:
-      - welcome/run
+      - build
+      - test
+      # - deploy
+      #   filters:
+      #     branches:
+      #       only: master
