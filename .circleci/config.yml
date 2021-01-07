@@ -112,8 +112,8 @@ commands:
       - run:
           name: Install deps
           command: |
-            apt-get update
-            apt-get install -y sqlite3 libsqlite3-dev
+            sudo apt-get update
+            sudo apt-get install -y sqlite3 libsqlite3-dev
   # deploy_build:
   #   steps:
   #     - run:
