@@ -1,18 +1,15 @@
 version: 2.1
 
-description: Build, test and deploy Themelio
-
-executors:
-  docker:
-    - image: cimg/rust:1.45.0
-      auth:
-        username: themeliolabs
-        password: $DOCKERHUB_PASSWORD
+description: Build, test and deploy T
 
 jobs:
 
   build:
-    executor: docker
+    docker:
+      - image: cimg/rust:1.45.0
+        auth:
+          username: themeliolabs
+          password: $DOCKERHUB_PASSWORD
     parameters:
       path:
         type: string
@@ -43,7 +40,11 @@ jobs:
             - <<parameters.path>>/target
 
   test:
-    executor: docker
+    docker:
+      - image: cimg/rust:1.45.0
+        auth:
+          username: themeliolabs
+          password: $DOCKERHUB_PASSWORD
     parameters:
       path:
         type: string
