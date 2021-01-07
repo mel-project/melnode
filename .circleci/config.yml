@@ -18,7 +18,7 @@ jobs:
         type: boolean
         default: false
     steps:
-      - install_deps
+      # - install_deps
       - checkout
       - restore_cache:
           keys:
@@ -50,7 +50,7 @@ jobs:
         type: string
         default: .
     steps:
-      - install_deps
+      # - install_deps
       - checkout
       - restore_cache:
           keys:
