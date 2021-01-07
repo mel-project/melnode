@@ -4,11 +4,10 @@ description: Build, test and deploy Themelio
 
 executors:
   docker:
-    docker:
-      - image: cimg/rust:latest
-        auth:
-          username: themeliolabs
-          password: $DOCKERHUB_PASSWORD
+    - image: cimg/rust:1.45.0
+      auth:
+        username: themeliolabs
+        password: $DOCKERHUB_PASSWORD
 
 jobs:
 
