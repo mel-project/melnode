@@ -29,9 +29,9 @@ jobs:
           command: |
             cd <<parameters.path>>
             if [ "<<parameters.release>>" == "true" ]; then
-              cargo build --release
+              cargo build --release --verbose
             else
-              cargo build
+              cargo build --verbose
             fi
       - save_cache:
           key: cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock"
@@ -60,7 +60,7 @@ jobs:
           name: Run tests
           command: |
             cd <<parameters.path>>
-            cargo test
+            cargo test --verbose
       - save_cache:
           key: cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock"
             }}
