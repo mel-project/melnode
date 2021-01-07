@@ -1,0 +1,132 @@
+version: 2.1
+
+description: Build, test and deploy T
+
+jobs:
+
+  build:
+    docker:
+      - image: cimg/rust:1.45.0
+        auth:
+          username: themeliolabs
+          password: $DOCKERHUB_PASSWORD
+    parameters:
+      path:
+        type: string
+        default: .
+      release:
+        type: boolean
+        default: false
+    steps:
+      # - install_deps
+      - checkout
+      - restore_cache:
+          keys:
+            - cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock" }}
+            - cargo-cache-v1-{{ arch }}-
+      - run:
+          name: Build
+          command: |
+            cd <<parameters.path>>
+            if [ "<<parameters.release>>" == "true" ]; then
+              cargo build --release --verbose
+            else
+              cargo build --verbose
+            fi
+      - save_cache:
+          key: cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock"
+            }}
+          paths:
+            - <<parameters.path>>/target
+
+  test:
+    docker:
+      - image: cimg/rust:1.45.0
+        auth:
+          username: themeliolabs
+          password: $DOCKERHUB_PASSWORD
+    parameters:
+      path:
+        type: string
+        default: .
+    steps:
+      # - install_deps
+      - checkout
+      - restore_cache:
+          keys:
+            - cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock" }}
+            - cargo-cache-v1-{{ arch }}-
+      - run:
+          name: Run tests
+          command: |
+            cd <<parameters.path>>
+            cargo test --verbose
+      - save_cache:
+          key: cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock"
+            }}
+          paths:
+            - <<parameters.path>>/target
+
+# deploy:
+#   executor: docker
+#   parameters:
+#     path:
+#       type: string
+#       default: .
+#   steps:
+#     - install_deps
+#     - checkout
+#     - restore_cache:
+#         keys:
+#           - cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock" }}
+#           - cargo-cache-v1-{{ arch }}-
+#     - run:
+#         name: Run tests
+#         command: |
+#           cd <<parameters.path>>
+#           cargo test
+#     - save_cache:
+#         key: cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock"
+#           }}
+#         paths:
+#           - <<parameters.path>>/target
+
+#   deploy:
+#     executor: docker
+#       parameters:
+#         path:
+#           type: string
+#           default: .
+#     steps:
+#       - install_deps
+#       - checkout
+#       - restore_cache:
+#           keys:
+#             - cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock" }}
+#             - cargo-cache-v1-{{ arch }}-
+#       - deploy_deps
+
+commands:
+  install_deps:
+    steps:
+      - run:
+          name: Install deps
+          command: |
+            apt-get update
+            apt-get install -y git
+  # deploy_build:
+  #   steps:
+  #     - run:
+  #         name: Deploy deps
+  #         command: |
+  #           echo "Deploying..."
+
+workflows:
+  build-test-release:
+    jobs:
+      - build
+      - test
+      # - deploy
+      #   filters:
+      #     branches:
+      #       only: master

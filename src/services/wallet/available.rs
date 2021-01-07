@@ -12,7 +12,7 @@ impl AvailableWallets {
     pub fn new(path: &String) -> Self {
         let path = Path::new(path);
         let conn = Connection::open(path).expect("SQLite connection failure");
-        wallet::init(&conn);
+        wallet::init(&conn).expect("Failed to load wallets");
         AvailableWallets { conn }
     }
 

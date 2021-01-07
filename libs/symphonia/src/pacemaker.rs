@@ -1,10 +1,10 @@
 use crate::{common::*, Decider};
 use crate::{machine::Machine, DestMsg};
 use async_trait::async_trait;
-use futures::prelude::*;
-use futures::select;
 use log::trace;
 use smol::channel::{Receiver, Sender};
+use smol::prelude::*;
+use smol_timeout::TimeoutExt;
 use std::ops::DerefMut;
 use std::time::Duration;
 
@@ -36,7 +36,7 @@ impl Decider for Pacemaker {
     async fn next_output(&self) -> DestMsg {
         match self.recv_output.recv().await {
             Ok(msg) => msg,
-            _ => future::pending().await,
+            _ => smol::future::pending().await,
         }
     }
 
@@ -61,12 +61,12 @@ async fn pacemaker_loop(
     let mut timeout = Duration::from_millis(5000);
     loop {
         let tt = timeout;
-        let mut timeout_chan = async move { smol::Timer::after(tt).await }.boxed().fuse();
+        // let mut timeout_chan = async move { smol::Timer::after(tt).await }.boxed().fuse();
         //thread::sleep_ms(1000);
         // send outputs
         let outputs = machine.drain_output();
         for msg in outputs {
-            trace!("machine send {:?}", msg.1.msg);
+            // trace!("machine send {:?}", msg.1.msg);
             let _ = send_output.send(msg).await;
         }
         if let Some(dec) = machine.decision() {
@@ -74,21 +74,19 @@ async fn pacemaker_loop(
             return dec;
         }
         // wait for input, or timeout
-        select! {
-            s_msg = recv_input.next().fuse() => {
-                if let Some(s_msg) = s_msg {
-                    //trace!("machine process {:?}", s_msg.msg.phase);
-                    machine.process_input(s_msg.clone());
-                } else {
-                    panic!("pacemaker stopped because recv_input dead");
-                }
+        let recieved_input = recv_input.next().timeout(tt).await;
+        if let Some(opt_msg) = recieved_input {
+            if let Some(signed_msg) = opt_msg {
+                trace!("machine process {:?}", signed_msg.msg.phase);
+                machine.process_input(signed_msg.clone());
+            } else {
+                panic!("pacemaker stopped because recv_input dead");
             }
-            _ = timeout_chan => {
-                trace!("pacemaker forcing a new view after {:?}", timeout);
-                timeout = timeout * 10 / 9;
-                trace!("new timeout {:?}", timeout);
-                machine.new_view();
-            }
+        } else {
+            trace!("pacemaker forcing a new view after {:?}", timeout);
+            timeout = timeout * 10 / 9;
+            trace!("new timeout {:?}", timeout);
+            machine.new_view();
         }
     }
 }

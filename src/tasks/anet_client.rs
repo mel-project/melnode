@@ -8,8 +8,6 @@ use tabwriter::TabWriter;
 
 use crate::config::VERSION;
 use crate::services::{ActiveWallet, AvailableWallets, WalletData};
-use anyhow::Error;
-use tmelcrypt::Ed25519SK;
 
 #[derive(Debug, StructOpt)]
 pub struct AnetClientConfig {
@@ -30,84 +28,90 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
     let mut prompt_stack: Vec<String> = vec![format!("v{}", VERSION).green().to_string()];
     loop {
         let prompt = format!("[anet client {}]% ", prompt_stack.join(" "));
-        let res: anyhow::Result<()> = try {
-            let input = read_line(prompt.clone()).await.unwrap();
-            let mut tw = TabWriter::new(vec![]);
+        let res = try_run_prompt(&mut prompt_stack, &prompt, &available_wallets, &cfg).await;
 
-            match input.split(' ').collect::<Vec<_>>().as_slice() {
-                &["wallet-new", wallet_name] => {
-                    if let Some(_) = available_wallets.get(wallet_name) {
-                        eprintln!(">> {}: data already exists", "ERROR".red().bold());
-                        continue;
-                    }
-                    let (sk, _pk, wallet_data) = WalletData::generate();
-                    let wallet = available_wallets.insert(wallet_name, &wallet_data);
-                    assert!(!wallet, "Internal error: DB state inconsistent");
-                    writeln!(tw, ">> New data:\t{}", wallet_name.bold()).unwrap();
-                    writeln!(
-                        tw,
-                        ">> Address:\t{}",
-                        wallet_data.my_script.hash().to_addr().yellow()
-                    )
-                    .unwrap();
-                    writeln!(tw, ">> Secret:\t{}", hex::encode(sk.0).dimmed()).unwrap();
-                    tw.flush().unwrap();
-                }
-                &["wallet-unlock", wallet_name, wallet_secret] => {
-                    if let Some(wallet) = available_wallets.get(&wallet_name) {
-                        let wallet_secret = hex::decode(wallet_secret)?;
-                        let wallet_secret =
-                            tmelcrypt::Ed25519SK(wallet_secret.as_slice().try_into()?);
-                        if melscript::Script::std_ed25519_pk(wallet_secret.to_public())
-                            != wallet.my_script
-                        {
-                            Err(anyhow::anyhow!(
-                                "unlocking failed, make sure you have the right secret!"
-                            ))?;
-                        }
-                        prompt_stack.push(format!("({})", wallet_name).yellow().to_string());
-                        let prompt = format!("[anet client {}]% ", prompt_stack.join(" "));
-                        loop {
-                            let mut active_wallet = ActiveWallet::new(
-                                wallet_secret,
-                                wallet.clone(),
-                                cfg.bootstrap,
-                                &cfg.storage_path,
-                            );
-                            let res =
-                                run_active_wallet(wallet_name, &mut active_wallet, &prompt).await;
-                            match res {
-                                Ok(_) => {
-                                    break;
-                                }
-                                Err(_) => {
-                                    eprintln!("Error encountered when running active wallet");
-                                    continue;
-                                }
-                            }
-                        }
-                        prompt_stack.pop();
-                    }
-                }
-                &["wallet-list"] => {
-                    let wallets = available_wallets.get_all();
-                    writeln!(tw, ">> [NAME]\t[ADDRESS]")?;
-                    for (name, wallet) in wallets.iter() {
-                        writeln!(tw, ">> {}\t{}", name, wallet.my_script.hash().to_addr())?;
-                    }
-                }
-                other => {
-                    eprintln!("no such command: {:?}", other);
-                    continue;
-                }
-            }
-            tw.flush()?;
-            eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
-        };
         if let Err(err) = res {
             eprintln!(">> {}: {}", "ERROR".red().bold(), err);
         }
     }
+}
+
+async fn try_run_prompt(
+    prompt_stack: &mut Vec<String>,
+    prompt: &String,
+    available_wallets: &AvailableWallets,
+    cfg: &AnetClientConfig,
+) -> anyhow::Result<()> {
+    let input = read_line(prompt.clone()).await.unwrap();
+    let mut tw = TabWriter::new(vec![]);
+
+    match input.split(' ').collect::<Vec<_>>().as_slice() {
+        &["wallet-new", wallet_name] => {
+            if let Some(_) = available_wallets.get(wallet_name) {
+                eprintln!(">> {}: data already exists", "ERROR".red().bold());
+                return Ok(());
+            }
+            let (sk, _pk, wallet_data) = WalletData::generate();
+            let wallet = available_wallets.insert(wallet_name, &wallet_data);
+            assert!(!wallet, "Internal error: DB state inconsistent");
+            writeln!(tw, ">> New data:\t{}", wallet_name.bold()).unwrap();
+            writeln!(
+                tw,
+                ">> Address:\t{}",
+                wallet_data.my_script.hash().to_addr().yellow()
+            )
+            .unwrap();
+            writeln!(tw, ">> Secret:\t{}", hex::encode(sk.0).dimmed()).unwrap();
+            tw.flush().unwrap();
+        }
+        &["wallet-unlock", wallet_name, wallet_secret] => {
+            if let Some(wallet) = available_wallets.get(&wallet_name) {
+                let wallet_secret = hex::decode(wallet_secret)?;
+                let wallet_secret = tmelcrypt::Ed25519SK(wallet_secret.as_slice().try_into()?);
+                if melscript::Script::std_ed25519_pk(wallet_secret.to_public()) != wallet.my_script
+                {
+                    return Err(anyhow::anyhow!(
+                        "unlocking failed, make sure you have the right secret!"
+                    ))?;
+                }
+                prompt_stack.push(format!("({})", wallet_name).yellow().to_string());
+                let prompt = format!("[anet client {}]% ", prompt_stack.join(" "));
+                loop {
+                    let mut active_wallet = ActiveWallet::new(
+                        wallet_secret,
+                        wallet.clone(),
+                        cfg.bootstrap,
+                        &cfg.storage_path,
+                    );
+                    let res = run_active_wallet(wallet_name, &mut active_wallet, &prompt).await;
+                    match res {
+                        Ok(_) => {
+                            break;
+                        }
+                        Err(_) => {
+                            eprintln!("Error encountered when running active wallet");
+                            continue;
+                        }
+                    }
+                }
+                prompt_stack.pop();
+            }
+        }
+        &["wallet-list"] => {
+            let wallets = available_wallets.get_all();
+            writeln!(tw, ">> [NAME]\t[ADDRESS]")?;
+            for (name, wallet) in wallets.iter() {
+                writeln!(tw, ">> {}\t{}", name, wallet.my_script.hash().to_addr())?;
+            }
+        }
+        other => {
+            eprintln!("no such command: {:?}", other);
+            return Ok(());
+        }
+    }
+    tw.flush()?;
+    eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
+    Ok(())
 }
 
 async fn read_line(prompt: String) -> anyhow::Result<String> {
@@ -136,7 +140,7 @@ async fn run_active_wallet(
                 eprintln!(">> Waiting for confirmation...");
                 // loop until we get coin data height and proof from last header
                 loop {
-                    let (coin_data_height, hdr) = active_wallet.get_coin_data(coin).await?;
+                    let (coin_data_height, _hdr) = active_wallet.get_coin_data(coin).await?;
                     match coin_data_height {
                         Some(coin_data_height) => {
                             eprintln!(
@@ -168,7 +172,7 @@ async fn run_active_wallet(
                             coin_data_height.height,
                             coin_data_height.coin_data.value,
                             match coin_data_height.coin_data.cointype.as_slice() {
-                                COINTYPE_TMEL => "μmel".to_string(),
+                                // COINTYPE_TMEL => "μmel".to_string(),
                                 val => format!("X-{}", hex::encode(val)),
                             }
                         );

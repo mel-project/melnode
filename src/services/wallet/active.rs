@@ -8,7 +8,7 @@ use tmelcrypt::Ed25519SK;
 
 use super::netclient::NetClient;
 use autosmt::FullProof;
-use rusqlite::{Connection, Error};
+use rusqlite::Connection;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -23,7 +23,7 @@ impl ActiveWallet {
     pub fn new(sk: Ed25519SK, wallet: WalletData, remote: SocketAddr, path: &String) -> Self {
         let path = Path::new(path);
         let conn = Connection::open(path).expect("SQLite connection failure");
-        wallet::init(&conn);
+        wallet::init(&conn).expect("Failed to load wallet");
         ActiveWallet {
             sk,
             wallet,
@@ -69,7 +69,7 @@ impl ActiveWallet {
         coin: CoinID,
     ) -> anyhow::Result<(Option<CoinDataHeight>, Header)> {
         let (hdr, _) = self.client.last_header().await?;
-        let (cdh, proof) = self.client.get_coin(hdr, coin).await?;
+        let (cdh, _proof) = self.client.get_coin(hdr, coin).await?;
         Ok((cdh, hdr))
     }
 
@@ -127,7 +127,7 @@ impl ActiveWallet {
             txhash: tx.hash_nosigs(),
             index: 1,
         };
-        let their_coin = CoinID {
+        let _their_coin = CoinID {
             txhash: tx.hash_nosigs(),
             index: 0,
         };

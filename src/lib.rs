@@ -1,7 +1,7 @@
 //! [Themelio](https://themelio.org) is a public blockchain focused
 //! on security, performance, and long-term stability.
 
-#![feature(try_blocks)]
+// #![feature(try_blocks)]
 
 mod config;
 mod dal;
