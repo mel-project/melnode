@@ -9,7 +9,7 @@ executors:
         type: string
         default: latest
     docker:
-      - image: library/rust:stable
+      - image: cimg/rust:stable
         auth:
           username: themeliolabs
           password: $DOCKERHUB_PASSWORD
