@@ -67,44 +67,38 @@ jobs:
           paths:
             - <<parameters.path>>/target
 
-# deploy:
-#   executor: docker
-#   parameters:
-#     path:
-#       type: string
-#       default: .
-#   steps:
-#     - install_deps
-#     - checkout
-#     - restore_cache:
-#         keys:
-#           - cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock" }}
-#           - cargo-cache-v1-{{ arch }}-
-#     - run:
-#         name: Run tests
-#         command: |
-#           cd <<parameters.path>>
-#           cargo test
-#     - save_cache:
-#         key: cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock"
-#           }}
-#         paths:
-#           - <<parameters.path>>/target
-
-#   deploy:
-#     executor: docker
-#       parameters:
-#         path:
-#           type: string
-#           default: .
-#     steps:
-#       - install_deps
-#       - checkout
-#       - restore_cache:
-#           keys:
-#             - cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock" }}
-#             - cargo-cache-v1-{{ arch }}-
-#       - deploy_deps
+  deploy:
+    docker:
+      - image: cimg/rust:1.45.0
+        auth:
+          username: themeliolabs
+          password: $DOCKERHUB_PASSWORD
+    parameters:
+      path:
+        type: string
+        default: .
+      server_path:
+        type: string
+        default: $SERVER_PATH
+      server_address:
+        type: string
+        default: $SERVER_ADDRESS
+    steps:
+      - install_deps
+      - checkout
+      - restore_cache:
+          keys:
+            - cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock" }}
+            - cargo-cache-v1-{{ arch }}-
+      - run:
+          name: Build release
+          command: |
+            cd <<parameters.path>>
+            cargo build --verbose --release
+      - run:
+          name: Deploy release
+          command: |
+            rsync -avrt --delete --rsh='ssh -p 22' root@<<parameters.server_address>>:<<parameters.server_path>> <<parameters.path>>
 
 commands:
   install_deps:
@@ -113,20 +107,14 @@ commands:
           name: Install deps
           command: |
             sudo apt-get update
-            sudo apt-get install -y sqlite3 libsqlite3-dev
-  # deploy_build:
-  #   steps:
-  #     - run:
-  #         name: Deploy deps
-  #         command: |
-  #           echo "Deploying..."
+            sudo apt-get install -y sqlite3 libsqlite3-dev rsync
 
 workflows:
   build-test-release:
     jobs:
       - build
       - test
-      # - deploy
+      - deploy
       #   filters:
       #     branches:
       #       only: master
