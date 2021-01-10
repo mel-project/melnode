@@ -251,6 +251,9 @@ impl FinalizedState {
         let inner = &self.0;
         // panic!()
         Header {
+            previous: (inner.height.checked_sub(1))
+                .map(|height| inner.history.get(&height).0.unwrap().hash())
+                .unwrap_or_default(),
             height: inner.height,
             history_hash: inner.history.root_hash(),
             coins_hash: inner.coins.root_hash(),
@@ -332,6 +335,7 @@ impl ConfirmedState {
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
 /// A block header.
 pub struct Header {
+    pub previous: HashVal,
     pub height: u64,
     pub history_hash: HashVal,
     pub coins_hash: HashVal,

@@ -22,11 +22,11 @@ pub fn init(conn: &Connection) -> Result<()> {
 }
 
 /// Create a wallet record in db
-pub fn insert(conn: &Connection, wallet_name: &str, encoded_data: &Vec<u8>) -> Result<()> {
+pub fn insert(conn: &Connection, wallet_name: &str, encoded_data: &[u8]) -> Result<()> {
     let wr = WalletRecord {
         id: 0,
         wallet_name: String::from(wallet_name),
-        encoded_data: encoded_data.clone(),
+        encoded_data: encoded_data.into(),
     };
     conn.execute(
         "INSERT INTO wallet (wallet_name, encoded_data) VALUES (?1, ?2)",
@@ -36,11 +36,11 @@ pub fn insert(conn: &Connection, wallet_name: &str, encoded_data: &Vec<u8>) -> R
 }
 
 /// Update a wallet record in db
-pub fn update_by_name(conn: &Connection, wallet_name: &str, encoded_data: &Vec<u8>) -> Result<()> {
+pub fn update_by_name(conn: &Connection, wallet_name: &str, encoded_data: &[u8]) -> Result<()> {
     conn.execute(
         "UPDATE wallet SET encoded_data=(?2) where wallet_name=(?1)",
-        params![wallet_name.clone(), encoded_data.clone()],
-    );
+        params![wallet_name, encoded_data],
+    )?;
     Ok(())
 }
 
