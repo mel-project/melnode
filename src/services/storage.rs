@@ -1,4 +1,4 @@
-use blkstructs::FinalizedState;
+use blkstructs::SealedState;
 use lmdb::Transaction;
 use lru::LruCache;
 use parking_lot::RwLock;
@@ -53,13 +53,13 @@ impl Storage {
         let history = {
             let txn = lme.begin_ro_txn()?;
             let mut toret = HashMap::new();
-            let mut last_state: Option<FinalizedState>;
+            let mut last_state: Option<SealedState>;
             for height in (0..state.height).rev() {
                 let key = format!("history_{}", height);
                 if let Ok(res) = txn.get(lmd, &key.as_bytes()) {
                     log::debug!("loading history at height {}...", height);
                     let state =
-                        blkstructs::FinalizedState::from_partial_encoding_infallible(&res, &dbm);
+                        blkstructs::SealedState::from_partial_encoding_infallible(&res, &dbm);
                     last_state = Some(state.clone());
                     let proof_key = format!("proof_{}", height);
                     let proof = bincode::deserialize(&txn.get(lmd, &proof_key.as_bytes()).unwrap())
@@ -192,7 +192,7 @@ impl Storage {
                 .next_state()
         };
         last_state.apply_tx_batch(&blk.transactions)?;
-        let state = last_state.finalize();
+        let state = last_state.seal();
         if state.header() != blk.header {
             anyhow::bail!("header mismatch");
         }

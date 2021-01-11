@@ -1,4 +1,6 @@
-use blkstructs::FinalizedState;
+use std::collections::HashSet;
+
+use blkstructs::SealedState;
 use tmelcrypt::{Ed25519PK, HashVal};
 
 use crate::msg;
@@ -18,7 +20,7 @@ pub struct ChainState {
 
 impl ChainState {
     /// Create a new ChainState based on a given known last good block
-    pub fn new(genesis: FinalizedState, stakes: blkstructs::StakeMapping, epoch: u64) -> Self {
+    pub fn new(genesis: SealedState, stakes: blkstructs::StakeMapping, epoch: u64) -> Self {
         let genhash = genesis.header().hash();
         let mut blocks = im::HashMap::new();
         blocks.insert(
@@ -66,7 +68,14 @@ impl ChainState {
 
     /// Process a vote.
     pub fn process_vote(&mut self, voter: Ed25519PK, vote_for: HashVal) -> anyhow::Result<()> {
-        self.get_block_mut(vote_for)?.votes.insert(voter);
+        let blk = self.get_block_mut(vote_for)?;
+        blk.votes.insert(voter);
+        log::debug!(
+            "added vote from {:?}; now {} votes for {:?}",
+            voter,
+            blk.votes.len(),
+            blk.state.header().hash()
+        );
         Ok(())
     }
 
@@ -84,7 +93,7 @@ impl ChainState {
         }
         // add "prosthetic" empty blocks
         while prop_ancestor.header().height + 1 < prop.height() {
-            prop_ancestor = prop_ancestor.next_state().finalize();
+            prop_ancestor = prop_ancestor.next_state().seal();
             this.insert_block(CsBlock {
                 state: prop_ancestor.clone(),
                 votes: Default::default(),
@@ -93,7 +102,7 @@ impl ChainState {
         // process the actual block
         let mut state = prop_ancestor.next_state();
         state.apply_tx_batch(&prop.block.transactions)?;
-        let state = state.finalize();
+        let state = state.seal();
         if state.header() != prop.block.header {
             anyhow::bail!("header mismatch after applying transactions to parent");
         }
@@ -103,6 +112,30 @@ impl ChainState {
         });
         *self = this;
         Ok(())
+    }
+
+    /// Produces a string representing a GraphViz visualization of the block state.
+    pub fn graphviz(&self) -> String {
+        let mut buff = String::new();
+        buff.push_str("digraph G {\n");
+
+        for (node_id, node) in self.blocks.iter() {
+            buff.push_str(&format!(
+                "\"{:?}\" [shape=rectangle, xlabel=\"{} votes\", style=filled, {}];\n",
+                node_id,
+                node.votes.len(),
+                if self.get_lnc_tip() == *node_id {
+                    "fillcolor=aquamarine"
+                } else {
+                    ""
+                }
+            ));
+            let parent_id = node.parent();
+            buff.push_str(&format!("\"{:?}\" -> \"{:?}\"\n", node_id, parent_id));
+        }
+
+        buff.push('}');
+        buff
     }
 
     /// Insert a block
@@ -127,22 +160,31 @@ impl ChainState {
     }
 
     /// Notarized tips
-    fn notarized_tips(&self) -> Vec<HashVal> {
+    fn notarized_tips(&self) -> im::HashSet<HashVal> {
         // if there's only one, that's it
         if self.blocks.len() == 1 {
-            return vec![*self.blocks.keys().next().unwrap()];
+            return im::hashset![*self.blocks.keys().next().unwrap()];
         }
         self.tips
             .iter()
-            .filter(|v| {
-                let blk = self.blocks.get(v).unwrap();
-                blk.votes
-                    .iter()
-                    .map(|k| self.stakes.vote_power(self.epoch, *k))
-                    .sum::<f64>()
-                    > 0.7
-            })
             .cloned()
+            .map(|mut v| {
+                let mut toret = v;
+                while let Some(blk) = self.blocks.get(&v) {
+                    toret = v;
+                    if blk
+                        .votes
+                        .iter()
+                        .map(|k| self.stakes.vote_power(self.epoch, *k))
+                        .sum::<f64>()
+                        > 0.7
+                    {
+                        return v;
+                    }
+                    v = blk.parent();
+                }
+                toret
+            })
             .collect()
     }
 }
@@ -150,7 +192,7 @@ impl ChainState {
 /// An individual entry in the chainstate
 #[derive(Clone)]
 pub(crate) struct CsBlock {
-    pub state: FinalizedState,
+    pub state: SealedState,
     votes: im::HashSet<Ed25519PK>,
 }
 

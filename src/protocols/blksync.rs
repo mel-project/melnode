@@ -68,7 +68,7 @@ pub(crate) struct AbbreviatedBlock {
 }
 
 impl AbbreviatedBlock {
-    pub fn from_state(state: &blkstructs::FinalizedState) -> Self {
+    pub fn from_state(state: &blkstructs::SealedState) -> Self {
         let header = state.header();
         let txhashes: Vec<HashVal> = state
             .inner_ref()

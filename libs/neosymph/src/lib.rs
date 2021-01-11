@@ -1,5 +1,6 @@
-mod msg;
+pub mod msg;
 mod streamlet;
+pub use streamlet::*;
 
 #[cfg(test)]
 mod tests {

@@ -47,9 +47,9 @@ tracing-subscriber = "0.2"
 
 [profile.dev]
 panic = "abort"
-opt-level = 1
+opt-level = 0
 
 [profile.release]
 panic = "abort"
-opt-level = 'z'
-#lto = true
+opt-level = 3
+lto = "thin"

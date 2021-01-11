@@ -135,7 +135,7 @@ mod tests {
         let (pk, sk) = tmelcrypt::ed25519_keygen();
         let scr = melscript::Script::std_ed25519_pk(pk);
         let genesis = State::test_genesis(db, MICRO_CONVERTER * 1000, scr.hash(), &[]);
-        let first_block = genesis.finalize();
+        let first_block = genesis.seal();
         let mut trng = rand::thread_rng();
         let mut txx = random_valid_txx(
             &mut trng,
@@ -157,14 +157,14 @@ mod tests {
             for tx in txx.iter() {
                 state.apply_tx(tx).expect("failed application");
             }
-            state.finalize().header().hash()
+            state.seal().header().hash()
         };
         let copies: Vec<tmelcrypt::HashVal> = (0..2)
             .map(|i| {
                 let mut state = dbg!(first_block.next_state());
                 txx.shuffle(&mut trng);
                 state.apply_tx_batch(&txx).expect("failed application");
-                state.finalize().header().hash()
+                state.seal().header().hash()
             })
             .collect();
         for c in copies {

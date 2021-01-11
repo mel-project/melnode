@@ -204,9 +204,9 @@ impl State {
     }
 
     /// Finalizes a state into a block. This consumes the state.
-    pub fn finalize(self) -> FinalizedState {
+    pub fn seal(self) -> SealedState {
         // create the finalized state
-        FinalizedState(Arc::new(self))
+        SealedState(Arc::new(self))
     }
 
     // ----------- helpers start here ------------
@@ -229,11 +229,11 @@ impl State {
     }
 }
 
-/// FinalizedState represents an immutable state at a finalized block height. It cannot be constructed except through finalizing a State or restoring from persistent storage.
+/// SealedState represents an immutable state at a finalized block height. It cannot be constructed except through sealiong a State or restoring from persistent storage.
 #[derive(Clone, Debug)]
-pub struct FinalizedState(Arc<State>);
+pub struct SealedState(Arc<State>);
 
-impl FinalizedState {
+impl SealedState {
     /// Returns a reference to the State finalized within.
     pub fn inner_ref(&self) -> &State {
         &self.0
@@ -244,7 +244,7 @@ impl FinalizedState {
     }
     /// Partial encoding.
     pub fn from_partial_encoding_infallible(bts: &[u8], db: &autosmt::DBManager) -> Self {
-        FinalizedState(Arc::new(State::from_partial_encoding_infallible(bts, db)))
+        SealedState(Arc::new(State::from_partial_encoding_infallible(bts, db)))
     }
     /// Returns the block header represented by the finalized state.
     pub fn header(&self) -> Header {
@@ -314,13 +314,13 @@ impl FinalizedState {
 /// ConfirmedState represents a fully confirmed state with a consensus proof.
 #[derive(Clone, Debug)]
 pub struct ConfirmedState {
-    state: FinalizedState,
+    state: SealedState,
     cproof: symphonia::QuorumCert,
 }
 
 impl ConfirmedState {
     /// Returns the wrapped finalized state
-    pub fn inner(&self) -> &FinalizedState {
+    pub fn inner(&self) -> &SealedState {
         &self.state
     }
 
