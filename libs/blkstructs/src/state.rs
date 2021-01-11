@@ -1,7 +1,7 @@
-use crate::constants::*;
-use crate::smtmapping::*;
 pub use crate::stake::*;
 use crate::transaction as txn;
+use crate::{constants::*, CoinID};
+use crate::{smtmapping::*, CoinData, CoinDataHeight};
 use defmac::defmac;
 use parking_lot::RwLock;
 use rayon::prelude::*;
@@ -25,6 +25,8 @@ pub enum TxApplicationError {
     NonexistentCoin(txn::CoinID),
     #[error("unbalanced inputs and outputs")]
     UnbalancedInOut,
+    #[error("insufficient fees (requires {0})")]
+    InsufficientFees(u64),
     #[error("referenced non-existent script {:?}", .0)]
     NonexistentScript(tmelcrypt::HashVal),
     #[error("does not satisfy script {:?}", .0)]
@@ -46,6 +48,7 @@ pub struct State {
 
     pub fee_pool: u64,
     pub fee_multiplier: u64,
+    pub tips: u64,
 
     pub dosc_multiplier: u64,
     pub auction_bids: SmtMapping<HashVal, txn::Transaction>,
@@ -72,6 +75,7 @@ impl State {
 
         out.extend_from_slice(&self.fee_pool.to_be_bytes());
         out.extend_from_slice(&self.fee_multiplier.to_be_bytes());
+        out.extend_from_slice(&self.tips.to_be_bytes());
 
         out.extend_from_slice(&self.dosc_multiplier.to_be_bytes());
         out.extend_from_slice(&self.auction_bids.root_hash());
@@ -95,6 +99,7 @@ impl State {
 
         let fee_pool = readu64!();
         let fee_multiplier = readu64!();
+        let tips = readu64!();
 
         let dosc_multiplier = readu64!();
         let auction_bids = readtree!();
@@ -110,6 +115,7 @@ impl State {
 
             fee_pool,
             fee_multiplier,
+            tips,
 
             dosc_multiplier,
             auction_bids,
@@ -204,7 +210,39 @@ impl State {
     }
 
     /// Finalizes a state into a block. This consumes the state.
-    pub fn finalize(self) -> FinalizedState {
+    pub fn finalize(mut self, action: Option<ProposerAction>) -> FinalizedState {
+        // apply the proposer action
+        if let Some(action) = action {
+            // first let's move the fee multiplier
+            let max_movement = (self.fee_multiplier >> 7) as i64;
+            let scaled_movement = max_movement * action.fee_multiplier_delta as i64 / 128;
+            log::debug!(
+                "changing fee multiplier {} by {}",
+                self.fee_multiplier,
+                scaled_movement
+            );
+            if scaled_movement >= 0 {
+                self.fee_multiplier += scaled_movement as u64;
+            } else {
+                self.fee_multiplier -= scaled_movement.abs() as u64;
+            }
+            // then it's time to collect the fees dude! we synthesize a coin with 1/65536 of the fee pool and all the tips.
+            let base_fees = self.fee_pool >> 16;
+            self.fee_pool -= base_fees;
+            let tips = self.tips;
+            self.tips = 0;
+            let pseudocoin_id = reward_coin_pseudoid(self.height);
+            let pseudocoin_data = CoinDataHeight {
+                coin_data: CoinData {
+                    conshash: action.reward_dest,
+                    value: base_fees + tips,
+                    cointype: COINTYPE_TMEL.into(),
+                },
+                height: self.height,
+            };
+            // insert the fake coin
+            self.coins.insert(pseudocoin_id, pseudocoin_data);
+        }
         // create the finalized state
         FinalizedState(Arc::new(self))
     }
@@ -221,12 +259,30 @@ impl State {
             fee_pool: 1000000,
             fee_multiplier: 1000,
             dosc_multiplier: 1,
+            tips: 0,
             auction_bids: SmtMapping::new(empty_tree.clone()),
             met_price: MICRO_CONVERTER,
             mel_price: MICRO_CONVERTER,
             stakes: SmtMapping::new(empty_tree),
         }
     }
+}
+
+/// Reward coin pseudohash.
+pub fn reward_coin_pseudoid(height: u64) -> CoinID {
+    CoinID {
+        txhash: tmelcrypt::hash_keyed(b"reward_coin_pseudoid", &height.to_be_bytes()),
+        index: 0,
+    }
+}
+
+/// ProposerAction describes the standard action that the proposer takes when proposing a block.
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
+pub struct ProposerAction {
+    /// Change in fee. This is scaled to the proper size.
+    pub fee_multiplier_delta: i8,
+    /// Where to sweep fees.
+    pub reward_dest: HashVal,
 }
 
 /// FinalizedState represents an immutable state at a finalized block height. It cannot be constructed except through finalizing a State or restoring from persistent storage.
@@ -266,9 +322,9 @@ impl FinalizedState {
     }
     /// Returns the final state represented as a "block" (header + transactions).
     pub fn to_block(&self) -> Block {
-        let mut txx = Vec::new();
+        let mut txx = im::HashSet::new();
         for tx in self.0.transactions.val_iter() {
-            txx.push(tx);
+            txx.insert(tx);
         }
         Block {
             header: self.header(),
@@ -283,6 +339,8 @@ impl FinalizedState {
         new.height += 1;
         new.stakes.remove_stale(new.height / STAKE_EPOCH);
         new.transactions.clear();
+        // no tips ever "carry through"
+        new.tips = 0;
         // synthesize auction fill as needed
         if new.height % AUCTION_INTERVAL == 0 && !new.auction_bids.is_empty() {
             melmint::synthesize_afill(&mut new)
@@ -367,5 +425,5 @@ impl Header {
 /// A (serialized) block.
 pub struct Block {
     pub header: Header,
-    pub transactions: Vec<Transaction>,
+    pub transactions: im::HashSet<Transaction>,
 }

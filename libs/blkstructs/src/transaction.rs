@@ -16,6 +16,7 @@ use std::collections::HashMap;
     Debug,
     Serialize_repr,
     Deserialize_repr,
+    Hash,
 )]
 #[repr(u8)]
 /// An enumeration of all the different possible transaction kinds. Currently contains a "faucet" kind that will be (obviously) removed in production.
@@ -31,7 +32,7 @@ pub enum TxKind {
 }
 
 /// Transaction represents an individual, serializable Themelio transaction.
-#[derive(Clone, Arbitrary, Debug, Serialize, Deserialize)]
+#[derive(Clone, Arbitrary, Debug, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct Transaction {
     pub kind: TxKind,
     pub inputs: Vec<CoinID>,
@@ -100,6 +101,29 @@ impl Transaction {
             toret.insert(s.hash(), s.clone());
         }
         toret
+    }
+    /// Returns the weight of the transaction. Takes in an adjustment factor that should be a generous estimate of signature size.
+    pub fn weight(&self, adjust: u64) -> u64 {
+        let raw_length = bincode::serialize(self).unwrap().len() as u64 + adjust;
+        let script_weights: u64 = self
+            .scripts
+            .iter()
+            .map(|scr| scr.weight().unwrap_or_default())
+            .sum();
+        // we price in the net state "burden".
+        // how much is that? let's assume that history is stored for 1 month. this means that "stored" bytes are around 240 times more expensive than "temporary" bytes.
+        // we also take into account that stored stuff is probably going to be stuffed into something much cheaper (e.g. HDD rather than RAM), almost certainly more than 24 times cheaper.
+        // so it's probably "safe-ish" to say that stored things are 10 times more expensive than temporary things.
+        // econ efficiency/market stability wise it's probably okay to overprice storage, but probably not okay to underprice it.
+        // blockchain-spamming-as-HDD arbitrage is going to be really bad for the blockchain.
+        // penalize 1000 for every output and boost 1000 for every input. "non-refundable" because the fee can't be subzero
+        let output_penalty = self.outputs.len() as u64 * 1000;
+        let input_boon = self.inputs.len() as u64 * 1000;
+
+        raw_length
+            .saturating_add(script_weights)
+            .saturating_add(output_penalty)
+            .saturating_sub(input_boon)
     }
 }
 

@@ -79,7 +79,7 @@ fn main() {
         genesis.apply_tx_batch(&txx).unwrap();
         eprintln!("inserted {} batches", count);
         eprintln!("FINALIZING AND CONTINUING!");
-        genesis = genesis.finalize().next_state();
+        genesis = genesis.finalize(None).next_state();
 
         db.sync()
     }
