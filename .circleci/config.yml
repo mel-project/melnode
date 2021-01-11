@@ -108,10 +108,10 @@ jobs:
             ls -R <<parameters.path>>
             if [ "${CIRCLE_BRANCH}" = "master" ]; then
               echo "Master branch"
-              rsync -avce ssh <<parameters.path>> <<parameters.user>>@<<parameters.server_address>>:<<parameters.server_path>>
+              rsync -avce ssh <<parameters.path>> <<parameters.user>>@<<parameters.server_address>>:<<parameters.server_path>>themelio
             else
               echo "Not master branch"
-              rsync -avce ssh <<parameters.path>> <<parameters.user>>@<<parameters.server_address>>:<<parameters.server_path>>
+              rsync -avce ssh <<parameters.path>> <<parameters.user>>@<<parameters.server_address>>:<<parameters.server_path>>themelio
             fi
 
 commands:
