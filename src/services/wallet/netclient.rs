@@ -114,6 +114,7 @@ impl NetClient {
 //     use super::*;
 //
 //     // TODO: Fix these require endpoint to be running so can't be run in CI?
+//     // Perhaps these need to be run as integration tests after a deploy
 //     #[test]
 //     fn last_header() {
 //         smol::block_on(async {
