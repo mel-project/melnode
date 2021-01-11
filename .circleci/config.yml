@@ -95,10 +95,20 @@ jobs:
           command: |
             cd <<parameters.path>>
             cargo build --verbose --release
+      - add_ssh_keys:
+          fingerprints:
+            - "32:e8:15:64:9c:2f:e9:08:4a:85:2b:72:63:bd:46:7d"
+      - run: echo $REMOTE_HOSTKEY >> ~/.ssh/known_hosts
       - run:
           name: Deploy release
           command: |
-            rsync -avrt --delete --rsh='ssh -p 22' root@<<parameters.server_address>>:<<parameters.server_path>> <<parameters.path>>
+            ls -R <<parameters.path>>
+            if [ "${CIRCLE_BRANCH}" = "master" ]; then
+              echo "Master branch"
+            else
+              echo "Not master branch"
+              rsync -avce ssh <<parameters.path>> <<parameters.user>>@<<parameters.server_address>>:<<parameters.server_path>>
+            fi
 
 commands:
   install_deps:
