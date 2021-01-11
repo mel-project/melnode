@@ -100,7 +100,7 @@ jobs:
             cargo build --verbose --release
       - add_ssh_keys:
           fingerprints:
-            - "32:e8:15:64:9c:2f:e9:08:4a:85:2b:72:63:bd:46:7d"
+            - "4d:90:8d:31:47:7d:ce:29:31:d8:85:3c:ee:52:24:af"
       - run: echo $REMOTE_HOSTKEY >> ~/.ssh/known_hosts
       - run:
           name: Deploy release
