@@ -104,7 +104,7 @@ jobs:
       - run: echo $REMOTE_HOSTKEY >> ~/.ssh/known_hosts
       - run:
           name: Avoid hosts unknown for Themelio
-          command: echo -e "Host themelio.org\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
+          command: echo -e "Host thule.themelio.org\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
       - run:
           name: Deploy release
           command: |
