@@ -103,6 +103,9 @@ jobs:
             - "4d:90:8d:31:47:7d:ce:29:31:d8:85:3c:ee:52:24:af"
       - run: echo $REMOTE_HOSTKEY >> ~/.ssh/known_hosts
       - run:
+          name: Avoid hosts unknown for Themelio
+          command: mkdir ~/.ssh/ && echo -e "Host themelio.org\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
+      - run:
           name: Deploy release
           command: |
             ls -R <<parameters.path>>
