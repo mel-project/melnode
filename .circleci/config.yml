@@ -83,6 +83,9 @@ jobs:
       server_address:
         type: string
         default: $SERVER_ADDRESS
+      user:
+        type: string
+        default: $SERVER_USER
     steps:
       - install_deps
       - checkout
