@@ -110,7 +110,7 @@ jobs:
               echo "Master branch"
             else
               echo "Not master branch"
-              rsync -avce ssh <<parameters.path>> <<parameters.user>>@<<parameters.server_address>>:<<parameters.server_path>>
+              rsync -avce ssh <<parameters.path>> <<parameters.user>>@<<parameters.server_address>>:<<parameters.server_path>>themelio
             fi
 
 commands:
