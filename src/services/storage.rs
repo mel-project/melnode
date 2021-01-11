@@ -192,7 +192,7 @@ impl Storage {
                 .next_state()
         };
         last_state.apply_tx_batch(&blk.transactions)?;
-        let state = last_state.seal();
+        let state = last_state.seal(None);
         if state.header() != blk.header {
             anyhow::bail!("header mismatch");
         }

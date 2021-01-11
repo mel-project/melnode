@@ -58,6 +58,15 @@ pub(crate) fn apply_tx_inputs(
             }
         }
     }
+    // fees
+    let min_fee = lself.read().fee_multiplier.saturating_mul(tx.weight(0));
+    if tx.fee < min_fee {
+        return Err(TxApplicationError::InsufficientFees(min_fee));
+    }
+    let tips = tx.fee - min_fee;
+    let mut lself = lself.write();
+    lself.fee_pool += min_fee;
+    lself.tips += tips;
     Ok(())
 }
 // apply outputs

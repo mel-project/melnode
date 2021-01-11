@@ -66,7 +66,7 @@ async fn staker_loop(
 ) -> anyhow::Result<()> {
     loop {
         next_consensus_time().await;
-        let proposal = Arc::new(storage.read().curr_state.clone().seal());
+        let proposal = Arc::new(storage.read().curr_state.clone().seal(None));
         let height = proposal.inner_ref().height;
         let stakes: StakeMapping = proposal.inner_ref().stakes.clone();
         // create a configuration

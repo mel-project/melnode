@@ -25,6 +25,8 @@ pub enum TxApplicationError {
     NonexistentCoin(txn::CoinID),
     #[error("unbalanced inputs and outputs")]
     UnbalancedInOut,
+    #[error("insufficient fees (requires {0})")]
+    InsufficientFees(u64),
     #[error("referenced non-existent script {:?}", .0)]
     NonexistentScript(tmelcrypt::HashVal),
     #[error("does not satisfy script {:?}", .0)]
@@ -46,6 +48,7 @@ pub struct State {
 
     pub fee_pool: u64,
     pub fee_multiplier: u64,
+    pub tips: u64,
 
     pub dosc_multiplier: u64,
     pub auction_bids: SmtMapping<HashVal, txn::Transaction>,
@@ -72,6 +75,7 @@ impl State {
 
         out.extend_from_slice(&self.fee_pool.to_be_bytes());
         out.extend_from_slice(&self.fee_multiplier.to_be_bytes());
+        out.extend_from_slice(&self.tips.to_be_bytes());
 
         out.extend_from_slice(&self.dosc_multiplier.to_be_bytes());
         out.extend_from_slice(&self.auction_bids.root_hash());
@@ -95,6 +99,7 @@ impl State {
 
         let fee_pool = readu64!();
         let fee_multiplier = readu64!();
+        let tips = readu64!();
 
         let dosc_multiplier = readu64!();
         let auction_bids = readtree!();
@@ -110,6 +115,7 @@ impl State {
 
             fee_pool,
             fee_multiplier,
+            tips,
 
             dosc_multiplier,
             auction_bids,
@@ -204,7 +210,39 @@ impl State {
     }
 
     /// Finalizes a state into a block. This consumes the state.
-    pub fn seal(self) -> SealedState {
+    pub fn seal(mut self, action: Option<ProposerAction>) -> SealedState {
+        // apply the proposer action
+        if let Some(action) = action {
+            // first let's move the fee multiplier
+            let max_movement = (self.fee_multiplier >> 7) as i64;
+            let scaled_movement = max_movement * action.fee_multiplier_delta as i64 / 128;
+            log::debug!(
+                "changing fee multiplier {} by {}",
+                self.fee_multiplier,
+                scaled_movement
+            );
+            if scaled_movement >= 0 {
+                self.fee_multiplier += scaled_movement as u64;
+            } else {
+                self.fee_multiplier -= scaled_movement.abs() as u64;
+            }
+            // then it's time to collect the fees dude! we synthesize a coin with 1/65536 of the fee pool and all the tips.
+            let base_fees = self.fee_pool >> 16;
+            self.fee_pool -= base_fees;
+            let tips = self.tips;
+            self.tips = 0;
+            let pseudocoin_id = reward_coin_pseudoid(self.height);
+            let pseudocoin_data = CoinDataHeight {
+                coin_data: CoinData {
+                    conshash: action.reward_dest,
+                    value: base_fees + tips,
+                    cointype: COINTYPE_TMEL.into(),
+                },
+                height: self.height,
+            };
+            // insert the fake coin
+            self.coins.insert(pseudocoin_id, pseudocoin_data);
+        }
         // create the finalized state
         SealedState(Arc::new(self))
     }
@@ -371,5 +409,5 @@ impl Header {
 /// A (serialized) block.
 pub struct Block {
     pub header: Header,
-    pub transactions: Vec<Transaction>,
+    pub transactions: im::HashSet<Transaction>,
 }

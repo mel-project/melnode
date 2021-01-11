@@ -43,7 +43,7 @@ impl Harness {
         });
         let pp = self.participants.clone();
         let view_leader = Arc::new(move |view: u64| pp[view as usize % pp.len()].0.to_public());
-        let is_valid_prop = Arc::new(|prop: &[u8]| prop.len() != 0 && prop[0] % 2 == 0);
+        let is_valid_prop = Arc::new(|prop: &[u8]| !prop.is_empty() && prop[0] % 2 == 0);
         let gen_proposal = Arc::new(|| String::from("nuuunuuNUUU!").as_bytes().to_vec());
         let mut pacemakers = HashMap::new();
         let (send_decision, recv_decision) = smol::channel::unbounded();

@@ -56,7 +56,7 @@ pub async fn sync_state(
     // now we should be able to construct the state
     let new_block = Block {
         header: remote_state.0.header,
-        transactions: all_txx,
+        transactions: all_txx.into(),
     };
     Ok(Some((new_block, remote_state.1)))
 }

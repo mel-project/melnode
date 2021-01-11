@@ -7,7 +7,7 @@ use std::convert::TryInto;
 
 mod lexer;
 
-#[derive(Clone, Eq, PartialEq, Debug, Arbitrary, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Arbitrary, Serialize, Deserialize, Hash)]
 pub struct Script(pub Vec<u8>);
 
 impl Script {
