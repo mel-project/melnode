@@ -1,7 +1,7 @@
-use crate::constants::*;
-use crate::smtmapping::*;
 pub use crate::stake::*;
 use crate::transaction as txn;
+use crate::{constants::*, CoinDataHeight};
+use crate::{smtmapping::*, CoinData};
 use defmac::defmac;
 use parking_lot::RwLock;
 use rayon::prelude::*;
@@ -259,6 +259,7 @@ impl State {
             fee_pool: 1000000,
             fee_multiplier: 1000,
             dosc_multiplier: 1,
+            tips: 0,
             auction_bids: SmtMapping::new(empty_tree.clone()),
             met_price: MICRO_CONVERTER,
             mel_price: MICRO_CONVERTER,
@@ -307,9 +308,9 @@ impl SealedState {
     }
     /// Returns the final state represented as a "block" (header + transactions).
     pub fn to_block(&self) -> Block {
-        let mut txx = Vec::new();
+        let mut txx = im::HashSet::new();
         for tx in self.0.transactions.val_iter() {
-            txx.push(tx);
+            txx.insert(tx);
         }
         Block {
             header: self.header(),
@@ -347,6 +348,15 @@ impl SealedState {
             cproof,
         })
     }
+}
+
+/// ProposerAction describes the standard action that the proposer takes when proposing a block.
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
+pub struct ProposerAction {
+    /// Change in fee. This is scaled to the proper size.
+    pub fee_multiplier_delta: i8,
+    /// Where to sweep fees.
+    pub reward_dest: HashVal,
 }
 
 /// ConfirmedState represents a fully confirmed state with a consensus proof.
