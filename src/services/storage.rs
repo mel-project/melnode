@@ -191,7 +191,7 @@ impl Storage {
                 .inner()
                 .next_state()
         };
-        last_state.apply_tx_batch(&blk.transactions)?;
+        last_state.apply_tx_batch(&blk.transactions.iter().cloned().collect::<Vec<_>>())?;
         let state = last_state.seal(None);
         if state.header() != blk.header {
             anyhow::bail!("header mismatch");

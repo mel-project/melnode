@@ -93,7 +93,7 @@ impl ChainState {
         }
         // add "prosthetic" empty blocks
         while prop_ancestor.header().height + 1 < prop.height() {
-            prop_ancestor = prop_ancestor.next_state().seal();
+            prop_ancestor = prop_ancestor.next_state().seal(None);
             this.insert_block(CsBlock {
                 state: prop_ancestor.clone(),
                 votes: Default::default(),
@@ -101,8 +101,8 @@ impl ChainState {
         }
         // process the actual block
         let mut state = prop_ancestor.next_state();
-        state.apply_tx_batch(&prop.block.transactions)?;
-        let state = state.seal();
+        state.apply_tx_batch(&prop.block.transactions.iter().cloned().collect::<Vec<_>>())?;
+        let state = state.seal(None);
         if state.header() != prop.block.header {
             anyhow::bail!("header mismatch after applying transactions to parent");
         }

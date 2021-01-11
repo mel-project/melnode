@@ -151,7 +151,7 @@ impl<N: Network, L: TxLookup> Streamlet<N, L> {
                 to_move.push(ActualProposal {
                     block: Block {
                         header: partial.proposal.header,
-                        transactions: actual_txx,
+                        transactions: actual_txx.into(),
                     },
                     last_nonempty: partial.last_nonempty,
                 });

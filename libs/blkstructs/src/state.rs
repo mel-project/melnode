@@ -1,7 +1,7 @@
 pub use crate::stake::*;
-use crate::transaction as txn;
 use crate::{constants::*, CoinDataHeight};
 use crate::{smtmapping::*, CoinData};
+use crate::{transaction as txn, CoinID};
 use defmac::defmac;
 use parking_lot::RwLock;
 use rayon::prelude::*;
@@ -265,6 +265,13 @@ impl State {
             mel_price: MICRO_CONVERTER,
             stakes: SmtMapping::new(empty_tree),
         }
+    }
+}
+
+pub fn reward_coin_pseudoid(height: u64) -> CoinID {
+    CoinID {
+        txhash: tmelcrypt::hash_keyed(b"reward_coin_pseudoid", &height.to_be_bytes()),
+        index: 0,
     }
 }
 

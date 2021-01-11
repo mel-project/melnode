@@ -49,10 +49,10 @@ async fn run_instance(net: MockNet, idx: usize) {
                         height,
                         lnc_tip.as_ref().map(|lnc_tip| lnc_tip.header().hash())
                     );
-                    let mut next = ss.next_state().seal();
+                    let mut next = ss.next_state().seal(None);
                     let mut last_nonempty = None;
                     while next.header().height < height {
-                        next = next.next_state().seal();
+                        next = next.next_state().seal(None);
                         last_nonempty = Some((ss.header().height, ss.header().hash()));
                     }
                     sender
@@ -86,7 +86,7 @@ fn gen_cfg(net: MockNet, idx: usize) -> StreamletCfg<MockNet, TrivialLookup> {
     StreamletCfg {
         network: net,
         lookup: TrivialLookup {},
-        genesis: genesis_state.seal(),
+        genesis: genesis_state.seal(None),
         stakes,
         epoch: 0,
         start_time: SystemTime::now(),
