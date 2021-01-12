@@ -100,11 +100,11 @@ jobs:
             cargo build --verbose --release
       - add_ssh_keys:
           fingerprints:
-            - "4d:90:8d:31:47:7d:ce:29:31:d8:85:3c:ee:52:24:af"
+            - "32:e8:15:64:9c:2f:e9:08:4a:85:2b:72:63:bd:46:7d"
       - run: echo $REMOTE_HOSTKEY >> ~/.ssh/known_hosts
       - run:
           name: Avoid hosts unknown for Themelio
-          command: echo -e "Host thule.themelio.org\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
+          command: echo -e "Host tm-3.themelio.org\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
       - run:
           name: Deploy release
           command: |
@@ -113,7 +113,7 @@ jobs:
               echo "Deploying to alphanet."
             else
               echo "Deploying to staging."
-              rsync -avce ssh <<parameters.path>> <<parameters.user>>@<<parameters.server_address>>:<<parameters.server_path>>themelio
+              rsync -avpz --stats --progress --timeout=30 --size-only <<parameters.path>>/target/release/themelio-core <<parameters.user>>@tm-3.themelio.org:<<parameters.server_path>>
             fi
 
 commands:
