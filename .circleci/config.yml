@@ -110,9 +110,9 @@ jobs:
           command: |
             ls -R <<parameters.path>>
             if [ "${CIRCLE_BRANCH}" = "master" ]; then
-              echo "Deploying to alphanet"
+              echo "Deploying to alphanet."
             else
-              echo "Deploying to staging"
+              echo "Deploying to staging."
               rsync -avce ssh <<parameters.path>> <<parameters.user>>@<<parameters.server_address>>:<<parameters.server_path>>themelio
             fi
 
