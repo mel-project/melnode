@@ -109,30 +109,32 @@ impl NetClient {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn last_header() {
-        smol::block_on(async {
-            let mut client = NetClient::new("94.237.109.116:11814".parse().unwrap());
-            dbg!(client.last_header().await.unwrap());
-        });
-    }
-
-    #[test]
-    fn get_coin() {
-        smol::block_on(async {
-            let mut client = NetClient::new("94.237.109.116:11814".parse().unwrap());
-            let header = client.last_header().await.unwrap().0;
-            dbg!(
-                client
-                    .get_coin(header, CoinID::zero_zero())
-                    .await
-                    .unwrap()
-                    .0
-            );
-        });
-    }
-}
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//
+//     // TODO: Fix these require endpoint to be running so can't be run in CI?
+//     // Perhaps these need to be run as integration tests after a deploy
+//     #[test]
+//     fn last_header() {
+//         smol::block_on(async {
+//             let mut client = NetClient::new("94.237.109.116:11814".parse().unwrap());
+//             dbg!(client.last_header().await.unwrap());
+//         });
+//     }
+//
+//     #[test]
+//     fn get_coin() {
+//         smol::block_on(async {
+//             let mut client = NetClient::new("94.237.109.116:11814".parse().unwrap());
+//             let header = client.last_header().await.unwrap().0;
+//             dbg!(
+//                 client
+//                     .get_coin(header, CoinID::zero_zero())
+//                     .await
+//                     .unwrap()
+//                     .0
+//             );
+//         });
+//     }
+// }
