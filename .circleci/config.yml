@@ -1,6 +1,6 @@
 version: 2.1
 
-description: Build, test and deploy T
+description: Build, test and deploy Themelio.
 
 jobs:
 
@@ -18,7 +18,7 @@ jobs:
         type: boolean
         default: false
     steps:
-      # - install_deps
+      - install_deps
       - checkout
       - restore_cache:
           keys:
@@ -50,7 +50,7 @@ jobs:
         type: string
         default: .
     steps:
-      # - install_deps
+      - install_deps
       - checkout
       - restore_cache:
           keys:
@@ -67,44 +67,54 @@ jobs:
           paths:
             - <<parameters.path>>/target
 
-# deploy:
-#   executor: docker
-#   parameters:
-#     path:
-#       type: string
-#       default: .
-#   steps:
-#     - install_deps
-#     - checkout
-#     - restore_cache:
-#         keys:
-#           - cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock" }}
-#           - cargo-cache-v1-{{ arch }}-
-#     - run:
-#         name: Run tests
-#         command: |
-#           cd <<parameters.path>>
-#           cargo test
-#     - save_cache:
-#         key: cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock"
-#           }}
-#         paths:
-#           - <<parameters.path>>/target
-
-#   deploy:
-#     executor: docker
-#       parameters:
-#         path:
-#           type: string
-#           default: .
-#     steps:
-#       - install_deps
-#       - checkout
-#       - restore_cache:
-#           keys:
-#             - cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock" }}
-#             - cargo-cache-v1-{{ arch }}-
-#       - deploy_deps
+  deploy:
+    docker:
+      - image: cimg/rust:1.45.0
+        auth:
+          username: themeliolabs
+          password: $DOCKERHUB_PASSWORD
+    parameters:
+      path:
+        type: string
+        default: .
+      server_path:
+        type: string
+        default: $SERVER_PATH
+      server_address:
+        type: string
+        default: $SERVER_ADDRESS
+      user:
+        type: string
+        default: $SERVER_USER
+    steps:
+      - install_deps
+      - checkout
+      - restore_cache:
+          keys:
+            - cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock" }}
+            - cargo-cache-v1-{{ arch }}-
+      - run:
+          name: Build release
+          command: |
+            cd <<parameters.path>>
+            cargo build --verbose --release
+      - add_ssh_keys:
+          fingerprints:
+            - "32:e8:15:64:9c:2f:e9:08:4a:85:2b:72:63:bd:46:7d"
+      - run: echo $REMOTE_HOSTKEY >> ~/.ssh/known_hosts
+      - run:
+          name: Avoid hosts unknown for Themelio
+          command: echo -e "Host tm-3.themelio.org\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
+      - run:
+          name: Deploy release
+          command: |
+            ls -R <<parameters.path>>
+            if [ "${CIRCLE_BRANCH}" = "master" ]; then
+              echo "Deploying to alphanet."
+            else
+              echo "Deploying to staging."
+              rsync -avpz --stats --progress --timeout=30 --size-only <<parameters.path>>/target/release/themelio-core <<parameters.user>>@tm-3.themelio.org:<<parameters.server_path>>
+            fi
 
 commands:
   install_deps:
@@ -112,21 +122,16 @@ commands:
       - run:
           name: Install deps
           command: |
-            apt-get update
-            apt-get install -y git
-  # deploy_build:
-  #   steps:
-  #     - run:
-  #         name: Deploy deps
-  #         command: |
-  #           echo "Deploying..."
+            sudo apt-get update
+            sudo apt-get install -y sqlite3 libsqlite3-dev rsync
 
 workflows:
   build-test-release:
     jobs:
       - build
-      - test
-      # - deploy
-      #   filters:
-      #     branches:
-      #       only: master
+      - test:
+          requires:
+            - build
+      - deploy:
+          requires:
+            - test
