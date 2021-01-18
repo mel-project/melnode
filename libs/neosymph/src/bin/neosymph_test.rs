@@ -6,7 +6,7 @@ use once_cell::sync::Lazy;
 use smol::prelude::*;
 use tmelcrypt::{Ed25519SK, HashVal};
 
-const COUNT: usize = 3;
+const COUNT: usize = 1;
 
 /// Bunch of secret keys for testing
 static TEST_SKK: Lazy<Vec<Ed25519SK>> =

@@ -163,14 +163,19 @@ impl ChainState {
         }
         toret.reverse();
         // then we "reset"
-        if let Some(tip) = toret.last() {
-            let mut new_self = Self::new(tip.state.clone(), self.stakes.clone(), self.epoch);
+        if let Some(finalized_tip) = toret.last() {
+            let finalized_hash = finalized_tip.state.header().hash();
+            let mut new_self =
+                Self::new(finalized_tip.state.clone(), self.stakes.clone(), self.epoch);
             // copy all branches that root at the new tip
             for &tip in self.tips.iter() {
                 let branch = self.get_branch(tip);
-                if branch.iter().any(|v| v.state.header().hash() == tip) {
+                if branch
+                    .iter()
+                    .any(|v| v.state.header().hash() == finalized_hash)
+                {
                     for elem in branch {
-                        if elem.state.header().hash() == tip {
+                        if elem.state.header().hash() == finalized_hash {
                             break;
                         }
                         new_self.insert_block(elem.clone())
@@ -182,6 +187,7 @@ impl ChainState {
             if let Some(penultimate) = toret.get(toret.len() - 2) {
                 new_self.insert_block(penultimate.clone());
             }
+            assert_eq!(self.get_lnc_tip(), new_self.get_lnc_tip());
             *self = new_self;
         }
         toret.into_iter().map(|v| v.state).collect()
