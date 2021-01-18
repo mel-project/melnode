@@ -12,7 +12,7 @@ use crate::services::{ActiveWallet, AvailableWallets, WalletData};
 #[derive(Debug, StructOpt)]
 pub struct AnetClientConfig {
     /// Address for bootstrapping into the network
-    #[structopt(long, default_value = "94.237.109.116:11814")]
+    #[structopt(long, default_value = "94.237.109.44:11814")]
     bootstrap: SocketAddr,
 
     /// Path to db storage
@@ -72,7 +72,7 @@ async fn try_run_prompt(
                 {
                     return Err(anyhow::anyhow!(
                         "unlocking failed, make sure you have the right secret!"
-                    ))?;
+                    ));
                 }
                 prompt_stack.push(format!("({})", wallet_name).yellow().to_string());
                 let prompt = format!("[anet client {}]% ", prompt_stack.join(" "));
