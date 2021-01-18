@@ -1,12 +1,11 @@
-use crate::dal::wallet;
 use crate::services::WalletData;
+use crate::{dal::wallet, protocols::NetClient};
 use blkstructs::{
     CoinData, CoinDataHeight, CoinID, Header, Transaction, TxKind, COINTYPE_TMEL, MICRO_CONVERTER,
 };
 use smol::net::SocketAddr;
 use tmelcrypt::Ed25519SK;
 
-use super::netclient::NetClient;
 use autosmt::FullProof;
 use rusqlite::Connection;
 use std::collections::HashMap;
