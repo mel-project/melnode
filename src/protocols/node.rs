@@ -1,6 +1,6 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
-use blkstructs::{CoinDataHeight, CoinID, Transaction};
+use blkstructs::{CoinDataHeight, CoinID, ConsensusProof, Transaction};
 use melnet::MelnetError;
 use smol::channel::{Receiver, Sender};
 use symphonia::QuorumCert;
@@ -133,7 +133,7 @@ async fn blksync_loop(network: melnet::NetState, state: SharedStorage) {
                     log::trace!("{}: {} didn't have the next block", tag(), peer);
                 }
                 Ok(Some((blk, cproof))) => {
-                    let res = state.write().apply_block(blk, cproof);
+                    let res = state.write().apply_confirmed_block(blk, cproof);
                     if let Err(e) = res {
                         log::trace!("{}: failed to apply block: {:?}", tag(), e);
                     }
@@ -176,11 +176,10 @@ impl AuditorResponder {
         Ok(())
     }
 
-    fn resp_get_state(&self, height: u64) -> melnet::Result<(AbbreviatedBlock, QuorumCert)> {
+    fn resp_get_state(&self, height: u64) -> melnet::Result<(AbbreviatedBlock, ConsensusProof)> {
         let storage = self.storage.read();
         let last_block = storage
-            .history
-            .get(&height)
+            .get_history(height)
             .ok_or_else(|| MelnetError::Custom(format!("block {} not confirmed yet", height)))?;
         // create mapping
         Ok((
@@ -189,7 +188,7 @@ impl AuditorResponder {
         ))
     }
 
-    fn resp_get_last_state(&self) -> melnet::Result<(AbbreviatedBlock, QuorumCert)> {
+    fn resp_get_last_state(&self) -> melnet::Result<(AbbreviatedBlock, ConsensusProof)> {
         let storage = self.storage.read();
         let last_block = storage
             .last_block()
@@ -208,8 +207,7 @@ impl AuditorResponder {
     ) -> melnet::Result<(Option<CoinDataHeight>, autosmt::CompressedProof)> {
         let storage = self.storage.read();
         let old_state = storage
-            .history
-            .get(&height)
+            .get_history(height)
             .ok_or_else(|| MelnetError::Custom("no such block in history".into()))?;
         let (res, proof) = old_state.inner().inner_ref().coins.get(&coin_id);
         Ok((res, proof.compress()))
@@ -222,8 +220,7 @@ impl AuditorResponder {
     ) -> melnet::Result<(Option<Transaction>, autosmt::CompressedProof)> {
         let storage = self.storage.read();
         let old_state = storage
-            .history
-            .get(&height)
+            .get_history(height)
             .ok_or_else(|| MelnetError::Custom("no such block in history".into()))?;
         let (res, proof) = old_state.inner().inner_ref().transactions.get(&txhash);
         Ok((res, proof.compress()))

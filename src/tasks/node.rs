@@ -7,7 +7,7 @@ use smol::Timer;
 use std::sync::Arc;
 use std::time::Duration;
 use structopt::StructOpt;
-
+use tracing::instrument;
 #[derive(Debug, StructOpt)]
 pub struct NodeConfig {
     /// Listen address
@@ -36,6 +36,7 @@ pub struct NodeConfig {
 }
 
 /// Runs the main function for a node.
+#[instrument(skip(opt))]
 pub async fn run_node(opt: NodeConfig) {
     let _ = std::fs::create_dir_all(&opt.database);
     log::info!("themelio-core v{} initializing...", VERSION);
@@ -60,10 +61,7 @@ pub async fn run_node(opt: NodeConfig) {
 
     // Storage syncer
     loop {
-        Timer::after(Duration::from_secs(1)).await;
-        {
-            let storage = storage.clone();
-            smol::unblock(move || storage.write().sync()).await;
-        }
+        Timer::after(Duration::from_secs(10)).await;
+        storage.write().sync();
     }
 }

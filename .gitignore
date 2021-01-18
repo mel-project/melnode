@@ -2,3 +2,5 @@
 **/.idea/**
 .DS_Store
 sql.db
+perf.data
+perf.data*

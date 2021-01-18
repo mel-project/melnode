@@ -1,15 +1,12 @@
-use std::{collections::BTreeSet, time::SystemTime};
+use std::time::SystemTime;
 
-use blkstructs::{melscript, Transaction};
-use neosymph::{
-    msg::{AbbrBlock, ProposalMsg},
-    MockNet, Streamlet, StreamletCfg, StreamletEvt, TxLookup,
-};
+use blkstructs::{melscript, AbbrBlock, ProposerAction, Transaction};
+use neosymph::{msg::ProposalMsg, MockNet, Streamlet, StreamletCfg, StreamletEvt, TxLookup};
 use once_cell::sync::Lazy;
 use smol::prelude::*;
 use tmelcrypt::{Ed25519SK, HashVal};
 
-const COUNT: usize = 16;
+const COUNT: usize = 3;
 
 /// Bunch of secret keys for testing
 static TEST_SKK: Lazy<Vec<Ed25519SK>> =
@@ -34,7 +31,6 @@ async fn run_instance(net: MockNet, idx: usize) {
         let mut lnc_tip = None;
         loop {
             let (evt, chain) = events.recv().await.unwrap();
-            eprintln!("[{}] event: {:?}", idx, evt);
             if idx == 0 {
                 eprintln!("{}", chain.graphviz());
             }
@@ -44,26 +40,43 @@ async fn run_instance(net: MockNet, idx: usize) {
                 }
                 StreamletEvt::SolicitProp(ss, height, sender) => {
                     eprintln!(
-                        "soliciting with {:?},{} while current is {:?}",
+                        "[{}] soliciting with {:?},{} while current is {:?}",
+                        idx,
                         ss.header().hash(),
                         height,
                         lnc_tip.as_ref().map(|lnc_tip| lnc_tip.header().hash())
                     );
-                    let mut next = ss.next_state().seal(None);
+
+                    let action = Some(ProposerAction {
+                        fee_multiplier_delta: 0,
+                        reward_dest: melscript::Script::std_ed25519_pk(TEST_SKK[idx].to_public())
+                            .hash(),
+                    });
+
+                    let mut basis = ss.clone();
                     let mut last_nonempty = None;
-                    while next.header().height < height {
-                        next = next.next_state().seal(None);
+                    while basis.header().height + 1 < height {
+                        basis = basis.next_state().seal(None);
                         last_nonempty = Some((ss.header().height, ss.header().hash()));
                     }
+                    let next = basis.next_state().seal(action);
                     sender
                         .send(ProposalMsg {
                             proposal: AbbrBlock {
                                 header: next.header(),
-                                txhashes: BTreeSet::new(),
+                                txhashes: im::HashSet::new(),
+                                proposer_action: action,
                             },
                             last_nonempty,
                         })
                         .unwrap();
+                }
+                StreamletEvt::Finalize(fin) => {
+                    eprintln!(
+                        "[{}] ***** FINALIZED ***** up to {}",
+                        idx,
+                        fin.last().unwrap().header().height
+                    );
                 }
             }
         }

@@ -3,10 +3,10 @@ use bloomfilter::Bloom;
 use lmdb::Cursor;
 use lmdb::Transaction;
 use snap::raw;
-use std::convert::TryInto;
-use std::error::Error;
 use std::sync::Arc;
 use std::time::Instant;
+use std::{collections::HashSet, error::Error};
+use std::{collections::VecDeque, convert::TryInto};
 
 pub struct LMDB {
     env: Arc<lmdb::Environment>,
@@ -101,27 +101,32 @@ impl LMDB {
         // TODO on-disk marking data structure
         // Imprecise bloomfilter is totally fine
         let mut marked = Bloom::new_for_fp_rate(env.stat().unwrap().entries(), 0.1);
-        let mut stack = roots;
+        let mut queue: VecDeque<_> = roots.into();
+        let mut enqueued = HashSet::new();
         let mut mark_ctr = 0;
         let mut sweep_ctr = 0;
         let start = Instant::now();
-        while !stack.is_empty() {
-            let top = stack.pop().unwrap();
+        while !queue.is_empty() {
+            let top = queue.pop_back().unwrap();
             if top == tmelcrypt::HashVal::default() {
                 continue;
             }
             marked.set(top.as_ref());
             log::trace!(
-                "gc: marking {}, stack size {}",
+                "gc: marking {}, queue size {}",
                 hex::encode(top),
-                stack.len()
+                queue.len()
             );
             let nd = smt::DBNode::from_bytes(
                 &raw::Decoder::new()
                     .decompress_vec(txn.get(db, &top).expect("LMDB error"))
                     .unwrap(),
             );
-            stack.extend_from_slice(&nd.out_ptrs());
+            for p in nd.out_ptrs() {
+                if p != Default::default() && enqueued.insert(p) {
+                    queue.push_back(p);
+                }
+            }
             mark_ctr += 1;
         }
         // SWEEP phase

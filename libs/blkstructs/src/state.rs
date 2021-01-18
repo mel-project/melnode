@@ -2,23 +2,24 @@ pub use crate::stake::*;
 use crate::{constants::*, CoinDataHeight};
 use crate::{smtmapping::*, CoinData};
 use crate::{transaction as txn, CoinID};
+use bytes::Bytes;
 use defmac::defmac;
 use parking_lot::RwLock;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
 use std::fmt::Debug;
 use std::io::Read;
 use std::sync::Arc;
+use std::{collections::BTreeMap, convert::TryInto};
 use thiserror::Error;
-use tmelcrypt::HashVal;
+use tmelcrypt::{Ed25519PK, HashVal};
 use txn::Transaction;
 mod helpers;
 mod melmint;
 
 #[derive(Error, Debug)]
 /// A error that happens while applying a transaction to a state
-pub enum TxApplicationError {
+pub enum StateError {
     #[error("malformed transaction")]
     MalformedTx,
     #[error("attempted to spend non-existent coin {:?}", .0)]
@@ -35,6 +36,8 @@ pub enum TxApplicationError {
     InvalidMelPoW,
     #[error("auction bid at wrong time")]
     BidWrongTime,
+    #[error("block has wrong header after applying to previous block")]
+    WrongHeader,
 }
 
 /// World state of the Themelio blockchain
@@ -165,18 +168,18 @@ impl State {
         empty
     }
     /// Applies a single transaction.
-    pub fn apply_tx(&mut self, tx: &txn::Transaction) -> Result<(), TxApplicationError> {
+    pub fn apply_tx(&mut self, tx: &txn::Transaction) -> Result<(), StateError> {
         self.apply_tx_batch(std::slice::from_ref(tx))
     }
 
     /// Applies a batch of transactions. The order of the transactions in txx do not matter.
-    pub fn apply_tx_batch(&mut self, txx: &[txn::Transaction]) -> Result<(), TxApplicationError> {
+    pub fn apply_tx_batch(&mut self, txx: &[txn::Transaction]) -> Result<(), StateError> {
         // clone self first
         let mut newself = self.clone();
         // first ensure that all the transactions are well-formed
         for tx in txx {
             if !tx.is_well_formed() {
-                return Err(TxApplicationError::MalformedTx);
+                return Err(StateError::MalformedTx);
             }
             newself.transactions.insert(tx.hash_nosigs(), tx.clone());
         }
@@ -185,13 +188,13 @@ impl State {
         txx.par_iter()
             .for_each(|tx| helpers::apply_tx_outputs(&lnewself, tx));
         // then we apply the inputs in parallel
-        let res: Result<Vec<()>, TxApplicationError> = txx
+        let res: Result<Vec<()>, StateError> = txx
             .par_iter()
             .map(|tx| helpers::apply_tx_inputs(&lnewself, tx))
             .collect();
         res?;
         // then we apply the nondefault checks in parallel
-        let res: Result<Vec<()>, TxApplicationError> = txx
+        let res: Result<Vec<()>, StateError> = txx
             .par_iter()
             .filter(|tx| tx.kind != txn::TxKind::Normal && tx.kind != txn::TxKind::Faucet)
             .map(|tx| helpers::apply_tx_special(&lnewself, tx))
@@ -244,7 +247,7 @@ impl State {
             self.coins.insert(pseudocoin_id, pseudocoin_data);
         }
         // create the finalized state
-        SealedState(Arc::new(self))
+        SealedState(Arc::new(self), action)
     }
 
     // ----------- helpers start here ------------
@@ -277,20 +280,29 @@ pub fn reward_coin_pseudoid(height: u64) -> CoinID {
 
 /// SealedState represents an immutable state at a finalized block height. It cannot be constructed except through sealiong a State or restoring from persistent storage.
 #[derive(Clone, Debug)]
-pub struct SealedState(Arc<State>);
+pub struct SealedState(Arc<State>, Option<ProposerAction>);
 
 impl SealedState {
     /// Returns a reference to the State finalized within.
     pub fn inner_ref(&self) -> &State {
         &self.0
     }
+    /// Returns whether or not it's empty.
+    pub fn is_empty(&self) -> bool {
+        self.1.is_none() && self.inner_ref().transactions.root_hash() == Default::default()
+    }
     /// Partial encoding.
     pub fn partial_encoding(&self) -> Vec<u8> {
-        self.0.partial_encoding()
+        let tmp = (self.0.partial_encoding(), &self.1);
+        bincode::serialize(&tmp).unwrap()
     }
     /// Partial encoding.
     pub fn from_partial_encoding_infallible(bts: &[u8], db: &autosmt::DBManager) -> Self {
-        SealedState(Arc::new(State::from_partial_encoding_infallible(bts, db)))
+        let tmp: (Vec<u8>, Option<ProposerAction>) = bincode::deserialize(&bts).unwrap();
+        SealedState(
+            Arc::new(State::from_partial_encoding_infallible(&tmp.0, db)),
+            tmp.1,
+        )
     }
     /// Returns the block header represented by the finalized state.
     pub fn header(&self) -> Header {
@@ -322,6 +334,7 @@ impl SealedState {
         Block {
             header: self.header(),
             transactions: txx,
+            proposer_action: self.1,
         }
     }
     /// Creates a new unfinalized state representing the next block.
@@ -339,12 +352,23 @@ impl SealedState {
         new
     }
 
+    /// Applies a block to this state.
+    pub fn apply_block(&self, block: &Block) -> Result<SealedState, StateError> {
+        let mut basis = self.next_state();
+        basis.apply_tx_batch(&block.transactions.iter().cloned().collect::<Vec<_>>())?;
+        let basis = basis.seal(block.proposer_action);
+        if basis.header() != block.header {
+            return Err(StateError::WrongHeader);
+        }
+        Ok(basis)
+    }
+
     /// Confirms a state with a given consensus proof. This function is supposed to be called to *verify* the consensus proof; `ConfirmedState`s cannot be constructed without checking the consensus proof as a result.
     ///
     /// **TODO**: Right now it DOES NOT check the consensus proof!
     pub fn confirm(
         self,
-        cproof: symphonia::QuorumCert,
+        cproof: ConsensusProof,
         previous_state: Option<&State>,
     ) -> Option<ConfirmedState> {
         if previous_state.is_none() {
@@ -366,11 +390,13 @@ pub struct ProposerAction {
     pub reward_dest: HashVal,
 }
 
+pub type ConsensusProof = BTreeMap<Ed25519PK, Bytes>;
+
 /// ConfirmedState represents a fully confirmed state with a consensus proof.
 #[derive(Clone, Debug)]
 pub struct ConfirmedState {
     state: SealedState,
-    cproof: symphonia::QuorumCert,
+    cproof: ConsensusProof,
 }
 
 impl ConfirmedState {
@@ -380,7 +406,7 @@ impl ConfirmedState {
     }
 
     /// Returns the proof
-    pub fn cproof(&self) -> &symphonia::QuorumCert {
+    pub fn cproof(&self) -> &ConsensusProof {
         &self.cproof
     }
 }
@@ -411,7 +437,7 @@ impl Header {
 
     pub fn validate_cproof(
         &self,
-        _cproof: &symphonia::QuorumCert,
+        _cproof: &ConsensusProof,
         previous_state: Option<&State>,
     ) -> bool {
         if previous_state.is_none() && self.height != 0 {
@@ -427,4 +453,24 @@ impl Header {
 pub struct Block {
     pub header: Header,
     pub transactions: im::HashSet<Transaction>,
+    pub proposer_action: Option<ProposerAction>,
+}
+
+impl Block {
+    /// Abbreviate a block
+    pub fn abbreviate(&self) -> AbbrBlock {
+        AbbrBlock {
+            header: self.header,
+            txhashes: self.transactions.iter().map(|v| v.hash_nosigs()).collect(),
+            proposer_action: self.proposer_action,
+        }
+    }
+}
+
+/// An abbreviated block
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct AbbrBlock {
+    pub header: Header,
+    pub txhashes: im::HashSet<HashVal>,
+    pub proposer_action: Option<ProposerAction>,
 }

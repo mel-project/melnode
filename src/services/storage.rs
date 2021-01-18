@@ -1,10 +1,10 @@
-use blkstructs::SealedState;
-use lmdb::Transaction;
+use blkstructs::{ConfirmedState, ConsensusProof, SealedState, Transaction};
 use lru::LruCache;
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
+use tmelcrypt::HashVal;
 use tracing::instrument;
 
 use super::insecure_testnet_keygen;
@@ -14,11 +14,14 @@ pub type SharedStorage = Arc<RwLock<Storage>>;
 
 /// Storage represents the persistent storage of the system.
 pub struct Storage {
-    pub curr_state: blkstructs::State,
-    pub history: HashMap<u64, blkstructs::ConfirmedState>,
+    /// Provisional state that is used as a "mempool"
+    pub provis_state: Option<blkstructs::State>,
+
+    postconfirm_state: blkstructs::State,
+    history: HashMap<u64, ConfirmedState>,
     tree_db: autosmt::DBManager,
 
-    recent_tx: LruCache<tmelcrypt::HashVal, ()>,
+    recent_tx: LruCache<HashVal, Transaction>,
 
     lmdb_env: Arc<lmdb::Environment>,
     lmdb_db: lmdb::Database,
@@ -26,13 +29,22 @@ pub struct Storage {
 
 const GLOBAL_STATE_KEY: &[u8] = b"global_state";
 
+impl neosymph::TxLookup for Storage {
+    fn lookup(&self, hash: HashVal) -> Option<Transaction> {
+        self.get_tx(hash)
+    }
+}
+
 impl Storage {
     /// Creates a new Storage for testing, with a genesis state that puts 1000 mel at the zero-zero coin, unlockable by the always_true script.
     #[instrument]
     pub fn open_testnet(path: &str) -> anyhow::Result<Self> {
+        use lmdb::Transaction;
         let (lme, lmd) = open_lmdb(path)?;
         // load the db manager
+
         let dbm = autosmt::DBManager::load(autosmt::ondisk::LMDB::new(lme.clone(), None).unwrap());
+
         // recover the state
         let state = {
             let txn = lme.begin_ro_txn()?;
@@ -73,7 +85,9 @@ impl Storage {
             toret
         };
         Ok(Storage {
-            curr_state: state,
+            provis_state: None,
+
+            postconfirm_state: state,
             tree_db: dbm,
             history,
 
@@ -84,35 +98,42 @@ impl Storage {
         })
     }
 
+    /// Gets a historical item
+    pub fn get_history(&self, height: u64) -> Option<&ConfirmedState> {
+        self.history.get(&height)
+    }
+
     /// Inserts a new transaction.
     #[instrument(skip(self))]
     pub fn insert_tx(&mut self, tx: blkstructs::Transaction) -> anyhow::Result<()> {
-        println!("Test");
-        log::warn!("insert_tx");
+        let state = self
+            .provis_state
+            .as_mut()
+            .unwrap_or(&mut self.postconfirm_state);
         let txhash = tx.hash_nosigs();
-        println!("self.recent_tx {:?}", self.recent_tx);
-        if self.recent_tx.put(txhash, ()).is_some() {
+        if self.recent_tx.put(txhash, tx.clone()).is_some() {
             anyhow::bail!("already seen tx")
         }
         log::debug!(
             "attempting to apply tx {:?} onto state {:?}",
             txhash,
-            self.curr_state.coins.root_hash()
+            state.coins.root_hash()
         );
-        self.curr_state.apply_tx(&tx)?;
+        state.apply_tx(&tx)?;
         Ok(())
     }
 
     /// Syncs to disk.
     #[instrument(skip(self))]
     pub fn sync(&mut self) {
+        use lmdb::Transaction;
         self.tree_db.sync();
         log::debug!("saving global state");
         let mut txn = self.lmdb_env.begin_rw_txn().unwrap();
         txn.put(
             self.lmdb_db,
             &GLOBAL_STATE_KEY,
-            &self.curr_state.partial_encoding(),
+            &self.postconfirm_state.partial_encoding(),
             lmdb::WriteFlags::empty(),
         )
         .unwrap();
@@ -140,8 +161,12 @@ impl Storage {
     /// Gets a tx by the txhash.
     #[instrument(skip(self))]
     pub fn get_tx(&self, txhash: tmelcrypt::HashVal) -> Option<blkstructs::Transaction> {
+        // first we try the cache
+        if let Some(val) = self.recent_tx.peek(&txhash) {
+            return Some(val.clone());
+        }
         // first we try the current state
-        if let (Some(tx), _) = self.curr_state.transactions.get(&txhash) {
+        if let (Some(tx), _) = self.postconfirm_state.transactions.get(&txhash) {
             return Some(tx);
         }
         // nope that didn't work. scan through history
@@ -158,31 +183,36 @@ impl Storage {
     #[instrument(skip(self))]
     pub fn last_block(&self) -> Option<blkstructs::ConfirmedState> {
         self.history
-            .get(&(self.curr_state.height.checked_sub(1)?))
+            .get(&(self.postconfirm_state.height.checked_sub(1)?))
             .cloned()
+    }
+
+    /// Last state.
+    pub fn genesis(&self) -> SealedState {
+        new_genesis(self.tree_db.clone()).seal(None)
     }
 
     /// Consumes a block.
     #[instrument(skip(self, blk, cproof))]
-    pub fn apply_block(
+    pub fn apply_confirmed_block(
         &mut self,
         blk: blkstructs::Block,
-        cproof: symphonia::QuorumCert,
+        cproof: ConsensusProof,
     ) -> anyhow::Result<()> {
-        if blk.header.height != self.curr_state.height {
+        if blk.header.height != self.postconfirm_state.height {
             anyhow::bail!(
                 "apply_block wrong height {} {}",
                 blk.header.height,
-                self.curr_state.height
+                self.postconfirm_state.height
             );
         }
-        let curr_height = self.curr_state.height;
+        let curr_height = self.postconfirm_state.height;
         log::debug!(
             "apply_block at height {} with {} transactions",
             curr_height,
             blk.transactions.len()
         );
-        let mut last_state = if self.curr_state.height == 0 {
+        let mut last_state = if self.postconfirm_state.height == 0 {
             log::debug!("apply_block special case when height is zero");
             new_genesis(self.tree_db.clone())
         } else {
@@ -192,9 +222,14 @@ impl Storage {
                 .next_state()
         };
         last_state.apply_tx_batch(&blk.transactions.iter().cloned().collect::<Vec<_>>())?;
-        let state = last_state.seal(None);
+        let state = last_state.seal(blk.proposer_action);
         if state.header() != blk.header {
-            anyhow::bail!("header mismatch");
+            anyhow::bail!(
+                "header mismatch! got {:#?}, expected {:#?}, after applying block {:#?}",
+                state.header(),
+                blk.header,
+                blk
+            );
         }
         self.history.insert(
             curr_height,
@@ -203,7 +238,7 @@ impl Storage {
                 .confirm(cproof, Some(state.inner_ref()))
                 .ok_or_else(|| anyhow::anyhow!("incorrect proof"))?,
         );
-        self.curr_state = state.next_state();
+        self.postconfirm_state = state.next_state();
         log::debug!(
             "block {}, txcount={}, hash={:?} APPLIED",
             curr_height,

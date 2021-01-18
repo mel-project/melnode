@@ -1,4 +1,4 @@
-use blkstructs::{Block, Header};
+use blkstructs::{AbbrBlock, Block, Header};
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -118,11 +118,4 @@ pub struct GetConfirmMsg {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ConfirmResp {
     pub signatures: BTreeMap<Ed25519PK, Bytes>,
-}
-
-/// An abbreviated block
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct AbbrBlock {
-    pub header: Header,
-    pub txhashes: BTreeSet<HashVal>,
 }

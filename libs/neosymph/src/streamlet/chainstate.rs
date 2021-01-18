@@ -28,6 +28,7 @@ impl ChainState {
             CsBlock {
                 state: genesis,
                 votes: im::HashSet::new(),
+                vote_weight: 1.0,
             },
         );
         Self {
@@ -68,8 +69,11 @@ impl ChainState {
 
     /// Process a vote.
     pub fn process_vote(&mut self, voter: Ed25519PK, vote_for: HashVal) -> anyhow::Result<()> {
+        let vote_power = self.stakes.vote_power(self.epoch, voter);
         let blk = self.get_block_mut(vote_for)?;
-        blk.votes.insert(voter);
+        if blk.votes.insert(voter).is_none() {
+            blk.vote_weight += vote_power;
+        }
         log::debug!(
             "added vote from {:?}; now {} votes for {:?}",
             voter,
@@ -97,18 +101,15 @@ impl ChainState {
             this.insert_block(CsBlock {
                 state: prop_ancestor.clone(),
                 votes: Default::default(),
+                vote_weight: 0.0,
             });
         }
         // process the actual block
-        let mut state = prop_ancestor.next_state();
-        state.apply_tx_batch(&prop.block.transactions.iter().cloned().collect::<Vec<_>>())?;
-        let state = state.seal(None);
-        if state.header() != prop.block.header {
-            anyhow::bail!("header mismatch after applying transactions to parent");
-        }
+        let state = prop_ancestor.apply_block(&prop.block)?;
         this.insert_block(CsBlock {
             state,
             votes: Default::default(),
+            vote_weight: 0.0,
         });
         *self = this;
         Ok(())
@@ -116,16 +117,28 @@ impl ChainState {
 
     /// Produces a string representing a GraphViz visualization of the block state.
     pub fn graphviz(&self) -> String {
+        let finalized: im::HashSet<HashVal> = self
+            .clone()
+            .drain_finalized()
+            .into_iter()
+            .map(|v| v.header().hash())
+            .collect();
         let mut buff = String::new();
         buff.push_str("digraph G {\n");
 
         for (node_id, node) in self.blocks.iter() {
             buff.push_str(&format!(
-                "\"{:?}\" [shape=rectangle, xlabel=\"{} votes\", style=filled, {}];\n",
+                "\"{:?}\" [shape=rectangle, label=\"{:?} ({}%, w={})\", style=filled, {}];\n",
                 node_id,
-                node.votes.len(),
+                node_id,
+                (node.vote_weight * 100.0) as i32,
+                self.get_weight(*node_id),
                 if self.get_lnc_tip() == *node_id {
                     "fillcolor=aquamarine"
+                } else if finalized.contains(node_id) {
+                    "fillcolor=darkseagreen1"
+                } else if self.tips.contains(&node_id) {
+                    "fillcolor=azure"
                 } else {
                     ""
                 }
@@ -138,14 +151,89 @@ impl ChainState {
         buff
     }
 
+    /// Drain all finalized blocks out of the system. Prunes the chainstate to start from the last finalized block, discarding absolutely everything else.
+    pub fn drain_finalized(&mut self) -> Vec<SealedState> {
+        // first we find the last finalized block
+        let mut toret = Vec::new();
+        if let Some(mut tip) = self.find_finalized() {
+            while let Some(blk) = self.blocks.get(&tip) {
+                toret.push(blk.clone());
+                tip = blk.parent();
+            }
+        }
+        toret.reverse();
+        // then we "reset"
+        if let Some(tip) = toret.last() {
+            let mut new_self = Self::new(tip.state.clone(), self.stakes.clone(), self.epoch);
+            // copy all branches that root at the new tip
+            for &tip in self.tips.iter() {
+                let branch = self.get_branch(tip);
+                if branch.iter().any(|v| v.state.header().hash() == tip) {
+                    for elem in branch {
+                        if elem.state.header().hash() == tip {
+                            break;
+                        }
+                        new_self.insert_block(elem.clone())
+                    }
+                }
+            }
+            // we also insert the parent of the last finalized block into the new self.
+            // this way, we can immediately finalize the next block because there will be a "three-in-a-row".
+            if let Some(penultimate) = toret.get(toret.len() - 2) {
+                new_self.insert_block(penultimate.clone());
+            }
+            *self = new_self;
+        }
+        toret.into_iter().map(|v| v.state).collect()
+    }
+
+    fn find_finalized(&self) -> Option<HashVal> {
+        self.notarized_tips()
+            .iter()
+            .filter_map(|v| self.finalized_portion(*v))
+            .max_by_key(|v| v.header().height)
+            .map(|v| v.header().hash())
+    }
+
+    fn get_branch(&self, tip: HashVal) -> Vec<&CsBlock> {
+        let mut tip = tip;
+        let mut accum = Vec::new();
+        while let Some(blk) = self.blocks.get(&tip) {
+            accum.push(blk);
+            tip = blk.parent();
+        }
+        accum
+    }
+
+    fn finalized_portion(&self, tip: HashVal) -> Option<&SealedState> {
+        // "linearize" into a vector
+        let full_branch = {
+            let mut tip = tip;
+            let mut accum = Vec::new();
+            while let Some(blk) = self.blocks.get(&tip) {
+                accum.push(&blk.state);
+                tip = blk.parent();
+            }
+            accum
+        };
+        // find three consecutive non-empty blocks
+        for idx in 1..full_branch.len() - 1 {
+            if !full_branch[idx - 1].is_empty()
+                && !full_branch[idx].is_empty()
+                && !full_branch[idx + 1].is_empty()
+            {
+                return Some(full_branch[idx]);
+            }
+        }
+        None
+    }
+
     /// Insert a block
     fn insert_block(&mut self, block: CsBlock) {
         let header = block.state.header();
-        let tip_removed = self.tips.remove(&header.previous);
+        self.tips.remove(&header.previous);
         self.blocks.insert(header.hash(), block);
-        if tip_removed.is_some() {
-            self.tips.insert(header.hash());
-        }
+        self.tips.insert(header.hash());
     }
 
     /// Length of the chain, minus empty blocks, minus some pruning constant
@@ -153,7 +241,7 @@ impl ChainState {
         match self.blocks.get(&hash) {
             None => 0,
             Some(csb) => {
-                let curr = if csb.is_empty() { 0 } else { 1 };
+                let curr = if csb.state.is_empty() { 0 } else { 1 };
                 curr + self.get_weight(csb.parent())
             }
         }
@@ -161,29 +249,17 @@ impl ChainState {
 
     /// Notarized tips
     fn notarized_tips(&self) -> im::HashSet<HashVal> {
-        // if there's only one, that's it
-        if self.blocks.len() == 1 {
-            return im::hashset![*self.blocks.keys().next().unwrap()];
-        }
         self.tips
             .iter()
             .cloned()
-            .map(|mut v| {
-                let mut toret = v;
+            .filter_map(|mut v| {
                 while let Some(blk) = self.blocks.get(&v) {
-                    toret = v;
-                    if blk
-                        .votes
-                        .iter()
-                        .map(|k| self.stakes.vote_power(self.epoch, *k))
-                        .sum::<f64>()
-                        > 0.7
-                    {
-                        return v;
+                    if blk.is_notarized() {
+                        return Some(v);
                     }
                     v = blk.parent();
                 }
-                toret
+                None
             })
             .collect()
     }
@@ -194,11 +270,12 @@ impl ChainState {
 pub(crate) struct CsBlock {
     pub state: SealedState,
     votes: im::HashSet<Ed25519PK>,
+    vote_weight: f64,
 }
 
 impl CsBlock {
-    fn is_empty(&self) -> bool {
-        self.state.inner_ref().transactions.root_hash() == HashVal::default()
+    fn is_notarized(&self) -> bool {
+        self.vote_weight >= 0.7
     }
 
     fn parent(&self) -> HashVal {

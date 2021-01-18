@@ -4,7 +4,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use anyhow::{Chain, Context};
+use anyhow::Context;
 use async_trait::async_trait;
 use blkstructs::{Block, SealedState, StakeMapping, Transaction};
 use broadcaster::BroadcastChannel;
@@ -18,7 +18,7 @@ use crate::msg::{self, VoteMsg};
 
 mod chainstate;
 
-const BLOCK_INTERVAL_SECS: u64 = 1;
+const BLOCK_INTERVAL_SECS: u64 = 30;
 
 /// A Streamlet is a single-epoch  instance of Symphonia.
 pub struct Streamlet<N: Network, L: TxLookup> {
@@ -152,6 +152,7 @@ impl<N: Network, L: TxLookup> Streamlet<N, L> {
                     block: Block {
                         header: partial.proposal.header,
                         transactions: actual_txx.into(),
+                        proposer_action: partial.proposal.proposer_action,
                     },
                     last_nonempty: partial.last_nonempty,
                 });
@@ -189,6 +190,11 @@ impl<N: Network, L: TxLookup> Streamlet<N, L> {
             self.event(StreamletEvt::LastNotarizedTip(
                 self.chain.get_block(lnc_tip_hash).unwrap().state.clone(),
             ))
+        }
+        // drain
+        let drained = self.chain.drain_finalized();
+        if !drained.is_empty() {
+            self.event(StreamletEvt::Finalize(drained));
         }
     }
 
@@ -229,6 +235,7 @@ impl<N: Network, L: TxLookup> Streamlet<N, L> {
 pub enum StreamletEvt {
     SolicitProp(SealedState, u64, async_oneshot::Sender<ProposalMsg>),
     LastNotarizedTip(SealedState),
+    Finalize(Vec<SealedState>),
 }
 
 /// Configuration for a pacemaker.

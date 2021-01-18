@@ -1,8 +1,8 @@
 use std::net::SocketAddr;
 
-use blkstructs::{Block, Header, State, Transaction};
+use blkstructs::{Block, ConsensusProof, Header, State, Transaction};
 use serde::{Deserialize, Serialize};
-use symphonia::QuorumCert;
+
 use tmelcrypt::HashVal;
 
 /// This cancellable async function synchronizes the block state with some other node. If the other node has the *next* block, it is returned; otherwise None is returned.
@@ -14,12 +14,12 @@ pub async fn sync_state(
     netname: &str,
     my_last_state: Option<&State>,
     mut get_cached_tx: impl FnMut(HashVal) -> Option<Transaction>,
-) -> anyhow::Result<Option<(Block, QuorumCert)>> {
+) -> anyhow::Result<Option<(Block, ConsensusProof)>> {
     let log_tag = format!("sync_state({}, {})", remote, netname);
     // start with get_state
     let next_height = my_last_state.map(|v| v.height + 1).unwrap_or(0);
     log::trace!("next_height = {}", next_height);
-    let remote_state: (AbbreviatedBlock, QuorumCert) = melnet::g_client()
+    let remote_state: (AbbreviatedBlock, ConsensusProof) = melnet::g_client()
         .request(remote, netname, "get_state", next_height)
         .await?;
     log::trace!(
@@ -57,6 +57,7 @@ pub async fn sync_state(
     let new_block = Block {
         header: remote_state.0.header,
         transactions: all_txx.into(),
+        proposer_action: None,
     };
     Ok(Some((new_block, remote_state.1)))
 }

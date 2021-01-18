@@ -11,7 +11,7 @@ pub struct RoutingTable {
 impl RoutingTable {
     /// Adds a route to the routing table, asserting that the route is up to date.
     pub fn add_route(&mut self, addr: SocketAddr) {
-        log::debug!("add route {}", addr);
+        log::trace!("add route {}", addr);
         self.clean_up();
         self.addr_last_seen.insert(addr, Instant::now());
     }

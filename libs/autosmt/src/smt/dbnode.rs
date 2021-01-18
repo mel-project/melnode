@@ -1,6 +1,7 @@
 use crate::smt::*;
 use enum_dispatch::enum_dispatch;
 use std::convert::TryInto;
+use tmelcrypt::HashVal;
 
 // Internal nodes have 16 children and are identified by their 16-ary hash. Each child is 4 levels closer to the bottom.
 // Data nodes represent subtrees that only have one element. They include a bitvec representing remaining steps and the value itself.
@@ -28,6 +29,19 @@ impl DBNode {
         }
     }
 
+    /// Returns a vector of hash values representing outgoing non-null pointers.
+    pub fn out_ptrs_nonnull(&self) -> Vec<tmelcrypt::HashVal> {
+        match self {
+            Internal(int) => int
+                .gggc_hashes
+                .iter()
+                .filter(|v| **v != HashVal::default())
+                .cloned()
+                .collect(),
+            _ => vec![],
+        }
+    }
+
     /// From bytes.
     pub fn from_bytes(bts: &[u8]) -> Self {
         match bts[0] {
@@ -39,13 +53,12 @@ impl DBNode {
 
     /// To bytes.
     pub fn to_bytes(&self) -> Vec<u8> {
-        let out = match self {
+        // assert_eq!(self, &DBNode::from_bytes(&out));
+        match self {
             Internal(int) => int.to_bytes(),
             Data(dat) => dat.to_bytes(),
             Zero => vec![],
-        };
-        assert_eq!(self, &DBNode::from_bytes(&out));
-        out
+        }
     }
 
     /// Root-hash.
