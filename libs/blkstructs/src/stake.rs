@@ -11,10 +11,10 @@ pub struct StakeDoc {
     pub pubkey: tmelcrypt::Ed25519PK,
     /// Starting epoch.
     pub e_start: u64,
-    /// Ending epoch. This is the epoch *after* the last epoch in which the mets are effective.
+    /// Ending epoch. This is the epoch *after* the last epoch in which the syms are effective.
     pub e_post_end: u64,
-    /// Number of mets staked.
-    pub mets_staked: u64,
+    /// Number of syms staked.
+    pub syms_staked: u64,
 }
 
 /// A stake mapping
@@ -27,9 +27,9 @@ impl SmtMapping<tmelcrypt::HashVal, StakeDoc> {
         let mut target_votes = 0.0;
         for sdoc in self.val_iter() {
             if epoch >= sdoc.e_start && epoch < sdoc.e_post_end {
-                total_votes += sdoc.mets_staked as f64;
+                total_votes += sdoc.syms_staked as f64;
                 if sdoc.pubkey == pubkey {
-                    target_votes += sdoc.mets_staked as f64;
+                    target_votes += sdoc.syms_staked as f64;
                 }
             }
         }
@@ -62,7 +62,7 @@ mod tests {
     use tmelcrypt::Ed25519SK;
     use std::collections::HashMap;
 
-    /// Create a state from a staker mapping from sk to syms staking token for an epoch
+    /// Create a state using a mapping from sk to syms staked for an epoch
     fn create_state(stakers: &HashMap<Ed25519SK, u64>, epoch_start: u64) -> State {
         // Create emtpy state
         let db = autosmt::DBManager::load(autosmt::MemDB::default());
@@ -87,14 +87,14 @@ mod tests {
         );
 
         // Insert data need for staking proofs
-        for (i, (sk, mets_staked)) in stakers.iter().enumerate() {
+        for (i, (sk, syms_staked)) in stakers.iter().enumerate() {
             state.stakes.insert(
                 tmelcrypt::hash_single(&(i as u64).to_be_bytes()),
                 StakeDoc {
                     pubkey: sk.to_public(),
                     e_start: epoch_start,
                     e_post_end: 1000000000,
-                    mets_staked: *mets_staked,
+                    syms_staked: *syms_staked,
                 },
             );
         }

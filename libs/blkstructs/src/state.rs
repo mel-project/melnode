@@ -161,7 +161,7 @@ impl State {
                     pubkey: *stakeholder,
                     e_start: 0,
                     e_post_end: 1000000000,
-                    mets_staked: 100,
+                    syms_staked: 100,
                 },
             );
         }
