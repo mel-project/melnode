@@ -68,8 +68,8 @@ pub mod testing {
 #[cfg(test)]
 mod tests {
     // extern crate test;
-    use super::testing::*;
-    use super::*;
+    // use super::testing::*;
+    // use super::*;
     // use test::Bencher;
 
     // TODO: Replace benchmarking to use criterion crate
@@ -127,9 +127,9 @@ mod tests {
     //         }
     //     })
     // }
-
-    use rand::prelude::*;
-
+    //
+    // use rand::prelude::*;
+    //
     // #[test]
     // fn state_simple_order_independence() {
     //     let db = autosmt::DBManager::load(autosmt::MemDB::default());

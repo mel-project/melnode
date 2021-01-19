@@ -252,7 +252,7 @@ impl State {
 
     // ----------- helpers start here ------------
 
-    fn new_empty(db: autosmt::DBManager) -> Self {
+    pub(crate) fn new_empty(db: autosmt::DBManager) -> Self {
         let empty_tree = db.get_tree(tmelcrypt::HashVal::default());
         State {
             height: 0,
