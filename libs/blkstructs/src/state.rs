@@ -160,7 +160,7 @@ impl State {
                 StakeDoc {
                     pubkey: *stakeholder,
                     e_start: 0,
-                    e_post_end: 1000000000,
+                    e_post_end: 1000000000, // TODO: Isn't this supposed to be STAKE_EPOCH?
                     mets_staked: 100,
                 },
             );
