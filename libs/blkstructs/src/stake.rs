@@ -62,8 +62,8 @@ mod tests {
     use tmelcrypt::Ed25519SK;
     use std::collections::HashMap;
 
-    /// Create a genesis state from a staker mapping from sk to syms staking token
-    fn create_genesis_state(stakers: &HashMap<Ed25519SK, u64>) -> State {
+    /// Create a state from a staker mapping from sk to syms staking token for an epoch
+    fn create_state(stakers: &HashMap<Ed25519SK, u64>, epoch_start: u64) -> State {
         // Create emtpy state
         let db = autosmt::DBManager::load(autosmt::MemDB::default());
         let mut state = State::new_empty(db);
@@ -92,8 +92,8 @@ mod tests {
                 tmelcrypt::hash_single(&(i as u64).to_be_bytes()),
                 StakeDoc {
                     pubkey: sk.to_public(),
-                    e_start: 0,
-                    e_post_end: STAKE_EPOCH,
+                    e_start: epoch_start,
+                    e_post_end: 1000000000,
                     mets_staked: *mets_staked,
                 },
             );
@@ -106,7 +106,7 @@ mod tests {
         // Generate genesis block for stakers
         let staked_syms =vec![100 as u64; 3];
         let stakers = staked_syms.into_iter().map(|e| (tmelcrypt::ed25519_keygen().1, e)).collect();
-        let genesis = create_genesis_state(&stakers);
+        let genesis = create_state(&stakers, 0);
 
         // call vote_power for a key pair who is not a staker
         let (pk, _sk) = tmelcrypt::ed25519_keygen();
@@ -117,81 +117,38 @@ mod tests {
     }
 
     #[test]
-    fn test_staker_has_vote_power_in_current_epoch() {
-        // Generate genesis block for stakers
-        let staked_syms =vec![100 as u64; 3];
+    fn test_staker_has_correct_vote_power_in_epoch() {
+        // Generate state for stakers
+        let staked_syms =vec![100 as u64, 200 as u64, 300 as u64];
+        let total_staked_syms: u64 = staked_syms.iter().sum();
         let stakers = staked_syms.into_iter().map(|e| (tmelcrypt::ed25519_keygen().1, e)).collect();
-        let genesis = create_genesis_state(&stakers);
+        let state = create_state(&stakers, 0);
 
-        // Check the vote power of each staker in epoch
-        for (sk, _vote) in stakers.iter() {
-            let vote_power = genesis.stakes.vote_power(STAKE_EPOCH-1, sk.to_public());
-            assert_ne!(vote_power, 0 as f64);
+        // Check the vote power of each staker in epoch 0 has expected value
+        for (sk, vote) in stakers.iter() {
+            let vote_power = state.stakes.vote_power(0, sk.to_public());
+            let expected_vote_power = (*vote as f64) / (total_staked_syms as f64);
+            assert_eq!(expected_vote_power - vote_power, 0.0 as f64);
         }
     }
 
     #[test]
-    fn test_staker_has_no_vote_power_in_next_epoch() {
-        // Generate genesis block for stakers
+    fn test_staker_has_no_vote_power_in_previous_epoch() {
+        // Generate state for stakers
         let staked_syms =vec![100 as u64; 3];
         let stakers = staked_syms.into_iter().map(|e| (tmelcrypt::ed25519_keygen().1, e)).collect();
-        let genesis = create_genesis_state(&stakers);
+        let state = create_state(&stakers, 1);
 
-        // Check the vote power of each staker in epoch
+        // Check the vote power of each staker in epoch 0 has expected value
         for (sk, _vote) in stakers.iter() {
-            let vote_power = genesis.stakes.vote_power(STAKE_EPOCH, sk.to_public());
-            assert_eq!(vote_power, 0 as f64);
+            let vote_power = state.stakes.vote_power(0, sk.to_public());
+            let expected_vote_power = 0.0 as f64;
+            assert_eq!(vote_power, expected_vote_power);
         }
     }
 
     // #[test]
-    // fn test_vote_power_staker_weight_is_valid() {
-    //     let staker_key_pairs: Vec<(Ed25519PK, Ed25519SK)> = vec![
-    //         tmelcrypt::ed25519_keygen(),
-    //         tmelcrypt::ed25519_keygen(),
-    //         tmelcrypt::ed25519_keygen(),
-    //     ];
-    //     let sk_stakers: Vec<Ed25519SK> = staker_key_pairs.iter().map(|e| e.1).collect();
-    //
-    //     let genesis_state = State::test_genesis(autosmt::DBManager::load(autosmt::MemDB::default()), 10000, melscript::Script::always_true().hash(), sk_stakers
-    //         .iter()
-    //         .map(|v| v.to_public())
-    //         .collect::<Vec<_>>()
-    //         .as_slice(),);
-    //
-    //     let stakes = genesis_state.stakes.clone();
-    //
-    //     let (pk, sk) = tmelcrypt::ed25519_keygen();
-    //     let vote_power = stakes.vote_power(0, pk);
-    //
-    //     assert_eq!(vote_power, 0 as f64)
-    // }
-    //
-    // #[test]
     // fn test_vote_power_single_staker_is_total() {
-    //     let staker_key_pairs: Vec<(Ed25519PK, Ed25519SK)> = vec![
-    //         tmelcrypt::ed25519_keygen(),
-    //         tmelcrypt::ed25519_keygen(),
-    //         tmelcrypt::ed25519_keygen(),
-    //     ];
-    //     let sk_stakers: Vec<Ed25519SK> = staker_key_pairs.iter().map(|e| e.1).collect();
-    //
-    //     let genesis_state = State::test_genesis(autosmt::DBManager::load(autosmt::MemDB::default()), 10000, melscript::Script::always_true().hash(), sk_stakers
-    //         .iter()
-    //         .map(|v| v.to_public())
-    //         .collect::<Vec<_>>()
-    //         .as_slice(),);
-    //
-    //     let stakes = genesis_state.stakes.clone();
-    //
-    //     let (pk, sk) = tmelcrypt::ed25519_keygen();
-    //     let vote_power = stakes.vote_power(0, pk);
-    //
-    //     assert_eq!(vote_power, 0 as f64)
-    // }
-    //
-    // #[test]
-    // fn test_vote_power_eac_staker_is_valid() {
     //     let staker_key_pairs: Vec<(Ed25519PK, Ed25519SK)> = vec![
     //         tmelcrypt::ed25519_keygen(),
     //         tmelcrypt::ed25519_keygen(),
