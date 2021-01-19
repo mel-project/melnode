@@ -53,3 +53,147 @@ impl SmtMapping<tmelcrypt::HashVal, StakeDoc> {
         self.mapping = new_tree
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::melscript;
+    use crate::State;
+    use tmelcrypt::{Ed25519SK, Ed25519PK};
+    use crate::TxKind::Stake;
+
+    #[test]
+    fn test_vote_power_non_staker() {
+        let staker_key_pairs: Vec<(Ed25519PK, Ed25519SK)> = vec![
+            tmelcrypt::ed25519_keygen(),
+            tmelcrypt::ed25519_keygen(),
+            tmelcrypt::ed25519_keygen(),
+        ];
+        let sk_stakers: Vec<Ed25519SK> = staker_key_pairs.iter().map(|e| e.1).collect();
+
+        let genesis_state = State::test_genesis(autosmt::DBManager::load(autosmt::MemDB::default()), 10000, melscript::Script::always_true().hash(), sk_stakers
+            .iter()
+            .map(|v| v.to_public())
+            .collect::<Vec<_>>()
+            .as_slice(),);
+
+        let stakes = genesis_state.stakes.clone();
+
+        let (pk, sk) = tmelcrypt::ed25519_keygen();
+        let vote_power = stakes.vote_power(0, pk);
+
+        assert_eq!(vote_power, 0 as f64)
+    }
+
+    #[test]
+    fn test_vote_power_staker_not_in_epoch() {
+        let staker_key_pairs: Vec<(Ed25519PK, Ed25519SK)> = vec![
+            tmelcrypt::ed25519_keygen(),
+            tmelcrypt::ed25519_keygen(),
+            tmelcrypt::ed25519_keygen(),
+        ];
+        let sk_stakers: Vec<Ed25519SK> = staker_key_pairs.iter().map(|e| e.1).collect();
+
+        let genesis_state = State::test_genesis(autosmt::DBManager::load(autosmt::MemDB::default()), 10000, melscript::Script::always_true().hash(), sk_stakers
+            .iter()
+            .map(|v| v.to_public())
+            .collect::<Vec<_>>()
+            .as_slice(),);
+
+        let stakes = genesis_state.stakes.clone();
+
+        let (pk, sk) = tmelcrypt::ed25519_keygen();
+        let vote_power = stakes.vote_power(0, pk);
+
+        assert_eq!(vote_power, 0 as f64)
+    }
+
+    #[test]
+    fn test_vote_power_staker() {
+        let staker_key_pairs: Vec<(Ed25519PK, Ed25519SK)> = vec![
+            tmelcrypt::ed25519_keygen(),
+            tmelcrypt::ed25519_keygen(),
+            tmelcrypt::ed25519_keygen(),
+        ];
+        let sk_stakers: Vec<Ed25519SK> = staker_key_pairs.iter().map(|e| e.1).collect();
+
+        let genesis_state = State::test_genesis(autosmt::DBManager::load(autosmt::MemDB::default()), 10000, melscript::Script::always_true().hash(), sk_stakers
+            .iter()
+            .map(|v| v.to_public())
+            .collect::<Vec<_>>()
+            .as_slice(),);
+
+        let stakes = genesis_state.stakes.clone();
+
+        let (pk, sk) = tmelcrypt::ed25519_keygen();
+        let vote_power = stakes.vote_power(0, pk);
+
+        assert_eq!(vote_power, 0 as f64)
+    }
+
+    #[test]
+    fn test_vote_power_single_staker() {
+        let staker_key_pairs: Vec<(Ed25519PK, Ed25519SK)> = vec![
+            tmelcrypt::ed25519_keygen(),
+            tmelcrypt::ed25519_keygen(),
+            tmelcrypt::ed25519_keygen(),
+        ];
+        let sk_stakers: Vec<Ed25519SK> = staker_key_pairs.iter().map(|e| e.1).collect();
+
+        let genesis_state = State::test_genesis(autosmt::DBManager::load(autosmt::MemDB::default()), 10000, melscript::Script::always_true().hash(), sk_stakers
+            .iter()
+            .map(|v| v.to_public())
+            .collect::<Vec<_>>()
+            .as_slice(),);
+
+        let stakes = genesis_state.stakes.clone();
+
+        let (pk, sk) = tmelcrypt::ed25519_keygen();
+        let vote_power = stakes.vote_power(0, pk);
+
+        assert_eq!(vote_power, 0 as f64)
+    }
+
+    #[test]
+    fn test_vote_power_multiple_stakers() {
+        let staker_key_pairs: Vec<(Ed25519PK, Ed25519SK)> = vec![
+            tmelcrypt::ed25519_keygen(),
+            tmelcrypt::ed25519_keygen(),
+            tmelcrypt::ed25519_keygen(),
+        ];
+        let sk_stakers: Vec<Ed25519SK> = staker_key_pairs.iter().map(|e| e.1).collect();
+
+        let genesis_state = State::test_genesis(autosmt::DBManager::load(autosmt::MemDB::default()), 10000, melscript::Script::always_true().hash(), sk_stakers
+            .iter()
+            .map(|v| v.to_public())
+            .collect::<Vec<_>>()
+            .as_slice(),);
+
+        let stakes = genesis_state.stakes.clone();
+
+        let (pk, sk) = tmelcrypt::ed25519_keygen();
+        let vote_power = stakes.vote_power(0, pk);
+
+        assert_eq!(vote_power, 0 as f64)
+    }
+
+    #[test]
+    fn test_vote_power_no_stakers() {
+
+    }
+
+    #[test]
+    fn test_remove_stale() {
+
+    }
+
+    #[test]
+    fn test_keep_non_stale() {
+
+    }
+
+    #[test]
+    fn test_remove_stale_multiple_stakers() {
+
+    }
+}
