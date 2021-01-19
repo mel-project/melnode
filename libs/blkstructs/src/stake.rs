@@ -156,36 +156,37 @@ mod tests {
         stakers.insert(sk, staked_syms);
         let state = create_state(&stakers, 0);
 
-        assert_eq!(state.stakes.vote_power(0, pk), 1.0);
+        // Ensure staker has 1.0 voting power as expected
+        let expected_voting_power = 1.0;
+        assert_eq!(state.stakes.vote_power(0, pk), expected_voting_power);
     }
-    // #[test]
-    // fn test_vote_power_single_staker_is_total() {
-    //     let staker_key_pairs: Vec<(Ed25519PK, Ed25519SK)> = vec![
-    //         tmelcrypt::ed25519_keygen(),
-    //         tmelcrypt::ed25519_keygen(),
-    //         tmelcrypt::ed25519_keygen(),
-    //     ];
-    //     let sk_stakers: Vec<Ed25519SK> = staker_key_pairs.iter().map(|e| e.1).collect();
-    //
-    //     let genesis_state = State::test_genesis(autosmt::DBManager::load(autosmt::MemDB::default()), 10000, melscript::Script::always_true().hash(), sk_stakers
-    //         .iter()
-    //         .map(|v| v.to_public())
-    //         .collect::<Vec<_>>()
-    //         .as_slice(),);
-    //
-    //     let stakes = genesis_state.stakes.clone();
-    //
-    //     let (pk, sk) = tmelcrypt::ed25519_keygen();
-    //     let vote_power = stakes.vote_power(0, pk);
-    //
-    //     assert_eq!(vote_power, 0 as f64)
-    // }
-    //
-    // #[test]
-    // fn test_vote_power_no_stakers() {
-    //
-    // }
-    //
+    /// TODO: This should probably panic or return NaN instead of returning zero
+    #[test]
+    fn test_vote_power_no_stakers() {
+        let stakers = HashMap::new();
+        let state = create_state(&stakers, 0);
+
+        let voting_power = state.stakes.vote_power(0, tmelcrypt::ed25519_keygen().0);
+        assert_eq!(voting_power, 0.0);
+    }
+
+    /// TODO: This should probably panic or return NaN instead of returning zero
+    #[test]
+    fn test_no_vote_power_multiple_stakers() {
+        // Generate state for stakers
+        let staked_syms =vec![0 as u64, 0 as u64, 0 as u64];
+        let total_staked_syms: u64 = staked_syms.iter().sum();
+        let stakers = staked_syms.into_iter().map(|e| (tmelcrypt::ed25519_keygen().1, e)).collect();
+        let state = create_state(&stakers, 0);
+
+        // Check the vote power of each staker in epoch 0 has expected value
+        for (sk, vote) in stakers.iter() {
+            let vote_power = state.stakes.vote_power(0, sk.to_public());
+            let expected_vote_power = (*vote as f64) / (total_staked_syms as f64);
+            assert_eq!(vote_power, 0.0 as f64);
+        }
+    }
+
     // #[test]
     // fn test_remove_stale() {
     //
