@@ -147,6 +147,17 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_vote_power_single_staker_is_total() {
+        // Add in a single staker to get a state at epoch 0
+        let staked_syms: u64 = 123;
+        let (pk, sk) = tmelcrypt::ed25519_keygen();
+        let mut stakers = HashMap::new();
+        stakers.insert(sk, staked_syms);
+        let state = create_state(&stakers, 0);
+
+        assert_eq!(state.stakes.vote_power(0, pk), 1.0);
+    }
     // #[test]
     // fn test_vote_power_single_staker_is_total() {
     //     let staker_key_pairs: Vec<(Ed25519PK, Ed25519SK)> = vec![
