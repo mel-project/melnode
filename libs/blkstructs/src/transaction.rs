@@ -160,3 +160,105 @@ pub struct CoinDataHeight {
     pub coin_data: CoinData,
     pub height: u64,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    fn test_is_not_well_formed_if_value_gt_max() {
+
+    }
+
+    fn test_is_not_well_formed_if_fee_gt_max () {
+
+    }
+
+    fn test_is_not_well_formed_if_io_gt_max() {
+
+    }
+
+    fn test_is_well_formed() {
+
+    }
+
+    fn test_hash_no_sigs() {
+        // create a transaction from fixture
+
+        // calculate hash
+
+        // sign it and
+
+        // call hash_no_sigs
+
+        // verify that hash matches expected value
+
+    }
+
+    fn test_sign_sigs() {
+        // create a transaction
+
+        // verify it has 0 sigs
+
+        // sign it N times
+
+        // verify it has N signatures
+
+        // sign it M times
+
+        // verify it has N + M signatures
+    }
+
+    fn test_sign_sigs() {
+        // create a transaction
+
+        // sign it
+
+        // verify it is signed by expected key
+
+        // sign it with another key
+
+        // verify it is signed by expected key and previou sis still signed by expected
+
+        // verify there are only two signatures
+    }
+
+    fn test_total_output() {
+        // create transaction
+
+        // insert various coin types
+
+        // insert COINTYPE_MEL
+
+        // verify totals for all coin types match
+    }
+
+    fn test_script_as_map() {
+        // create transaction
+
+        // add scripts
+
+        // call script_as_map
+
+        // verify num scripts = length of returned hashmap
+
+        // verify hashes match expected value
+    }
+
+    fn test_weight_adjust() {
+        // create a transaction
+
+        // call weight with 0 and store
+
+        // call weight with N as adjust and ensure difference is adjust
+    }
+
+    fn test_weight_does_not_exceed_max_u64() {
+        // create a transaction
+
+        // call weight with max u64 size
+
+        // verify result is max u64 size
+    }
+
+}

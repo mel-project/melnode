@@ -191,7 +191,7 @@ mod tests {
         staked_syms => [vec![0 as u64], vec![0 as u64; 3], vec![0 as u64; 100]]
     )]
     fn test_vote_power_is_zero_when_stakers_are_staking_zero(staked_syms: Vec<u64>) {
-        // let total_staked_syms: u64 = staked_syms.iter().sum();
+        // Generate state for stakers
         let stakers = staked_syms.into_iter().map(|e| (tmelcrypt::ed25519_keygen().1, e)).collect();
         let state = create_state(&stakers, 0);
 
@@ -201,6 +201,25 @@ mod tests {
             // let expected_vote_power = (*vote as f64) / (total_staked_syms as f64);
             assert_eq!(vote_power, 0.0 as f64);
         }
+    }
+
+    // TODO: add test case for epoch end test case
+
+    /// Filter out all the elements that no longer matter.
+    pub fn remove_stale(&mut self, epoch: u64) {
+        let stale_key_hashes = self.mapping.iter().filter_map(|(kh, v)| {
+            let v: StakeDoc = bincode::deserialize(&v).unwrap();
+            if epoch > v.e_post_end {
+                Some(kh)
+            } else {
+                None
+            }
+        });
+        let mut new_tree = self.mapping.clone();
+        for stale_key in stale_key_hashes {
+            new_tree = new_tree.set(stale_key, b"");
+        }
+        self.mapping = new_tree
     }
 
     // TODO: implement tests below
