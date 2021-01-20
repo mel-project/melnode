@@ -190,7 +190,6 @@ mod tests {
     #[rstest(
         staked_syms => [vec![0 as u64], vec![0 as u64; 3], vec![0 as u64; 100]]
     )]
-    #[test]
     fn test_vote_power_is_zero_when_stakers_are_staking_zero(staked_syms: Vec<u64>) {
         // let total_staked_syms: u64 = staked_syms.iter().sum();
         let stakers = staked_syms.into_iter().map(|e| (tmelcrypt::ed25519_keygen().1, e)).collect();
