@@ -17,6 +17,11 @@ use txn::Transaction;
 mod helpers;
 mod melmint;
 
+// TODO: Move these structs into state package
+// ie: split this into modules such as
+// error.rs header.rs seal.rs propser.rs block.rs state.rs and mod.rs
+// and put them into the state folder or rename state folder to blk folder
+
 #[derive(Error, Debug)]
 /// A error that happens while applying a transaction to a state
 pub enum StateError {
@@ -473,4 +478,99 @@ pub struct AbbrBlock {
     pub header: Header,
     pub txhashes: im::HashSet<HashVal>,
     pub proposer_action: Option<ProposerAction>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    fn test_apply_tx_batch() {
+
+    }
+
+
+    // /// Applies a batch of transactions. The order of the transactions in txx do not matter.
+    // pub fn apply_tx_batch(&mut self, txx: &[txn::Transaction]) -> Result<(), StateError> {
+    //     // clone self first
+    //     let mut newself = self.clone();
+    //     // first ensure that all the transactions are well-formed
+    //     for tx in txx {
+    //         if !tx.is_well_formed() {
+    //             return Err(StateError::MalformedTx);
+    //         }
+    //         newself.transactions.insert(tx.hash_nosigs(), tx.clone());
+    //     }
+    //     let lnewself = RwLock::new(newself);
+    //     // then we apply the outputs in parallel
+    //     txx.par_iter()
+    //         .for_each(|tx| helpers::apply_tx_outputs(&lnewself, tx));
+    //     // then we apply the inputs in parallel
+    //     let res: Result<Vec<()>, StateError> = txx
+    //         .par_iter()
+    //         .map(|tx| helpers::apply_tx_inputs(&lnewself, tx))
+    //         .collect();
+    //     res?;
+    //     // then we apply the nondefault checks in parallel
+    //     let res: Result<Vec<()>, StateError> = txx
+    //         .par_iter()
+    //         .filter(|tx| tx.kind != txn::TxKind::Normal && tx.kind != txn::TxKind::Faucet)
+    //         .map(|tx| helpers::apply_tx_special(&lnewself, tx))
+    //         .collect();
+    //     res?;
+    //     // we commit the changes
+    //     //panic!("COMMIT?!");
+    //     log::debug!(
+    //         "applied a batch of {} txx to {:?} => {:?}",
+    //         txx.len(),
+    //         self.coins.root_hash(),
+    //         lnewself.read().coins.root_hash()
+    //     );
+    //     *self = lnewself.read().clone();
+    //     Ok(())
+    // }
+    //
+
+
+    fn test_seal() {
+
+    }
+
+    // /// Finalizes a state into a block. This consumes the state.
+    // pub fn seal(mut self, action: Option<ProposerAction>) -> SealedState {
+    //     // apply the proposer action
+    //     if let Some(action) = action {
+    //         // first let's move the fee multiplier
+    //         let max_movement = (self.fee_multiplier >> 7) as i64;
+    //         let scaled_movement = max_movement * action.fee_multiplier_delta as i64 / 128;
+    //         log::debug!(
+    //             "changing fee multiplier {} by {}",
+    //             self.fee_multiplier,
+    //             scaled_movement
+    //         );
+    //         if scaled_movement >= 0 {
+    //             self.fee_multiplier += scaled_movement as u64;
+    //         } else {
+    //             self.fee_multiplier -= scaled_movement.abs() as u64;
+    //         }
+    //         // then it's time to collect the fees dude! we synthesize a coin with 1/65536 of the fee pool and all the tips.
+    //         let base_fees = self.fee_pool >> 16;
+    //         self.fee_pool -= base_fees;
+    //         let tips = self.tips;
+    //         self.tips = 0;
+    //         let pseudocoin_id = reward_coin_pseudoid(self.height);
+    //         let pseudocoin_data = CoinDataHeight {
+    //             coin_data: CoinData {
+    //                 conshash: action.reward_dest,
+    //                 value: base_fees + tips,
+    //                 cointype: COINTYPE_TMEL.into(),
+    //             },
+    //             height: self.height,
+    //         };
+    //         // insert the fake coin
+    //         self.coins.insert(pseudocoin_id, pseudocoin_data);
+    //     }
+    //     // create the finalized state
+    //     SealedState(Arc::new(self), action)
+    // }
 }
