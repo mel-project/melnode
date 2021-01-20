@@ -57,6 +57,7 @@ impl SmtMapping<tmelcrypt::HashVal, StakeDoc> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::rstest;
     use crate::{melscript, COINTYPE_TMEL, CoinID, CoinDataHeight, CoinData};
     use crate::State;
     use tmelcrypt::Ed25519SK;
@@ -187,18 +188,19 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn test_remove_stale() {
-    //
-    // }
-    //
-    // #[test]
-    // fn test_keep_non_stale() {
-    //
-    // }
-    //
-    // #[test]
-    // fn test_remove_stale_multiple_stakers() {
-    //
-    // }
+    // TODO: implement tests below
+    #[test]
+    fn test_remove_stale() {
+
+    }
+
+    #[test]
+    fn test_keep_non_stale() {
+
+    }
+
+    #[test]
+    fn test_remove_stale_multiple_stakers() {
+
+    }
 }
