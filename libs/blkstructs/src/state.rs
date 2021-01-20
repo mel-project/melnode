@@ -489,7 +489,6 @@ mod tests {
 
     }
 
-
     // /// Applies a batch of transactions. The order of the transactions in txx do not matter.
     // pub fn apply_tx_batch(&mut self, txx: &[txn::Transaction]) -> Result<(), StateError> {
     //     // clone self first
