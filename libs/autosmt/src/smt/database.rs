@@ -33,7 +33,7 @@ impl DBManager {
     /// Syncs the information into the database. DBManager is guaranteed to only sync to database when sync is called.
     pub fn sync(&self) {
         // self.local_gc();
-        // hold the gc lock writeably now
+        // hold the gc lock writable now
         let _guard = self.gc_lock.write();
         let mut cache = self.cache.write();
         let mut raw = self.raw.write();

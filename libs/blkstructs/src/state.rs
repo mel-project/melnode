@@ -17,6 +17,11 @@ use txn::Transaction;
 mod helpers;
 mod melmint;
 
+// TODO: Move these structs into state package
+// ie: split this into modules such as
+// error.rs header.rs seal.rs propser.rs block.rs state.rs and lib
+// and put them into the state folder or rename state folder to blk folder
+
 #[derive(Error, Debug)]
 /// A error that happens while applying a transaction to a state
 pub enum StateError {
@@ -161,7 +166,7 @@ impl State {
                     pubkey: *stakeholder,
                     e_start: 0,
                     e_post_end: 1000000000,
-                    mets_staked: 100,
+                    syms_staked: 100,
                 },
             );
         }
@@ -252,7 +257,7 @@ impl State {
 
     // ----------- helpers start here ------------
 
-    fn new_empty(db: autosmt::DBManager) -> Self {
+    pub(crate) fn new_empty(db: autosmt::DBManager) -> Self {
         let empty_tree = db.get_tree(tmelcrypt::HashVal::default());
         State {
             height: 0,
@@ -473,4 +478,32 @@ pub struct AbbrBlock {
     pub header: Header,
     pub txhashes: im::HashSet<HashVal>,
     pub proposer_action: Option<ProposerAction>,
+}
+
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use crate::Transaction;
+    use rstest::*;
+    use crate::testing::fixtures::valid_txx;
+
+    #[rstest]
+    #[ignore]
+    fn test_apply_tx_batch_not_well_formed_errors() {
+        // create a batch of transactions
+        // ensure at least one of them is not well formed
+        // call apply tx batch
+        // verify you get a state error
+    }
+
+    #[rstest]
+    #[ignore]
+    fn test_apply_tx_batch(valid_txx: Vec<Transaction>) {
+        // create a batch of transactions
+        // valid_txx()
+        // call apply tx batch
+
+        // verify result is ok
+    }
+    // TODO: add tests for State::seal & SealedState methods
 }

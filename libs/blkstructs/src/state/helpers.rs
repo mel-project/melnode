@@ -136,7 +136,7 @@ pub(crate) fn apply_tx_special_auctionbid(
     if tx.data.len() != 32 {
         return Err(StateError::MalformedTx);
     }
-    // first output stores the price bid for the mets
+    // first output stores the price bid for the syms
     let first_output = tx.outputs.get(0).ok_or(StateError::MalformedTx)?;
     if first_output.cointype != cointype_dosc(lself.height) {
         return Err(StateError::MalformedTx);

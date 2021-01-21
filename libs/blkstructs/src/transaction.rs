@@ -160,3 +160,167 @@ pub struct CoinDataHeight {
     pub coin_data: CoinData,
     pub height: u64,
 }
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use rstest::*;
+    use crate::testing::fixtures::valid_txx;
+    use crate::{Transaction, MAX_COINVAL, CoinData};
+
+    #[rstest]
+    fn test_is_well_formed(valid_txx: Vec<Transaction>) {
+        for valid_tx in valid_txx.iter() {
+            assert!(valid_tx.is_well_formed());
+        }
+    }
+
+    #[rstest]
+    fn test_is_not_well_formed_if_value_gt_max(valid_txx: Vec<Transaction>) {
+        // Extract out first coin data from first transaction in valid transactions
+        let valid_tx = valid_txx.iter().next().unwrap().clone();
+        let valid_outputs = valid_tx.outputs;
+        let valid_output = valid_outputs.iter().next().unwrap().clone();
+
+        // Create an invalid tx by setting an invalid output value
+        let invalid_output_value = MAX_COINVAL + 1;
+        let invalid_output = CoinData {
+            value: invalid_output_value,
+            ..valid_output
+        };
+        let invalid_outputs = vec![invalid_output];
+        let invalid_tx = Transaction {
+            outputs: invalid_outputs,
+            ..valid_tx
+        };
+
+        // Ensure transaction is not well formed
+        assert_eq!(invalid_tx.is_well_formed(), false);
+    }
+
+    #[rstest(
+        offset => [1 as u64, 2 as u64, 100 as u64]
+    )]
+    fn test_is_not_well_formed_if_fee_gt_max (offset: u64, valid_txx: Vec<Transaction>) {
+        // Extract out first coin data from first transaction in valid transactions
+        let valid_tx = valid_txx.iter().next().unwrap().clone();
+
+        // Create an invalid tx by setting an invalid fee value
+        let invalid_tx = Transaction {
+            fee: MAX_COINVAL + offset,
+            ..valid_tx
+        };
+
+        // Ensure transaction is not well formed
+        assert_eq!(invalid_tx.is_well_formed(), false);
+    }
+
+    #[rstest(
+        offset => [1, 2, 100]
+    )]
+    fn test_is_not_well_formed_if_io_gt_max(offset: usize, valid_txx: Vec<Transaction>) {
+        // Extract out first coin data from first transaction in valid transactions
+        let valid_tx = valid_txx.iter().next().unwrap().clone();
+        let valid_outputs = valid_tx.outputs;
+        let valid_output = valid_outputs.iter().next().unwrap().clone();
+
+        // Create an invalid tx by setting an invalid output value
+        let invalid_output_count = 255 + offset;
+        let invalid_outputs = vec![valid_output; invalid_output_count];
+        let invalid_tx = Transaction {
+            outputs: invalid_outputs,
+            ..valid_tx
+        };
+
+        // Ensure transaction is not well formed
+        assert_eq!(invalid_tx.is_well_formed(), false);
+
+        // TODO: add case for input_count exceeding limit
+    }
+
+    #[rstest]
+    fn test_hash_no_sigs() {
+        // create a transaction from fixture
+
+        // calculate hash
+
+        // sign it and
+
+        // call hash_no_sigs
+
+        // verify that hash matches expected value
+
+    }
+
+    #[rstest]
+    fn test_sign_sigs() {
+        // create a transaction
+
+        // verify it has 0 sigs
+
+        // sign it N times
+
+        // verify it has N signatures
+
+        // sign it M times
+
+        // verify it has N + M signatures
+    }
+
+    #[rstest]
+    fn test_sign_sigs_2() {
+        // create a transaction
+
+        // sign it
+
+        // verify it is signed by expected key
+
+        // sign it with another key
+
+        // verify it is signed by expected key and previou sis still signed by expected
+
+        // verify there are only two signatures
+    }
+
+    #[rstest]
+    fn test_total_output() {
+        // create transaction
+
+        // insert various coin types
+
+        // insert COINTYPE_MEL
+
+        // verify totals for all coin types match
+    }
+
+    #[rstest]
+    fn test_script_as_map() {
+        // create transaction
+
+        // add scripts
+
+        // call script_as_map
+
+        // verify num scripts = length of returned hashmap
+
+        // verify hashes match expected value
+    }
+
+    #[rstest]
+    fn test_weight_adjust() {
+        // create a transaction
+
+        // call weight with 0 and store
+
+        // call weight with N as adjust and ensure difference is adjust
+    }
+
+    #[rstest]
+    fn test_weight_does_not_exceed_max_u64() {
+        // create a transaction
+
+        // call weight with max u64 size
+
+        // verify result is max u64 size
+    }
+
+}
