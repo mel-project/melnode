@@ -72,7 +72,7 @@ mod tests {
 
     #[test]
     fn simple() {
-        let mut lex = Token::lexer(
+        let lex = Token::lexer(
             r"using globals::CURRENT_TX
             using std
             
