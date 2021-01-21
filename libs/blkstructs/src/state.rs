@@ -481,30 +481,30 @@ pub struct AbbrBlock {
 }
 
 
-#[cfg(test)]
-pub(crate) mod tests {
-    use rstest::*;
-    use crate::testing::fixtures::valid_txx;
-    use crate::Transaction;
-
-    fn test_apply_tx_batch_not_well_formed_errors() {
-        // create a batch of transactions
-
-        // ensure at least one of them is not well formed
-
-        // call apply tx batch
-
-        // verify you get a state error
-    }
-
-    #[rstest]
-    fn test_apply_tx_batch(valid_txx: Vec<Transaction>) {
-        // create a batch of transactions
-        // valid_txx()
-        // call apply tx batch
-
-        // verify result is ok
-    }
-
-    // TODO: add tests for State::seal & SealedState methods
-}
+// #[cfg(test)]
+// pub(crate) mod tests {
+//     use rstest::*;
+//     use crate::testing::fixtures::valid_txx;
+//     use crate::Transaction;
+//
+//     fn test_apply_tx_batch_not_well_formed_errors() {
+//         // create a batch of transactions
+//
+//         // ensure at least one of them is not well formed
+//
+//         // call apply tx batch
+//
+//         // verify you get a state error
+//     }
+//
+//     #[rstest]
+//     fn test_apply_tx_batch(valid_txx: Vec<Transaction>) {
+//         // create a batch of transactions
+//         // valid_txx()
+//         // call apply tx batch
+//
+//         // verify result is ok
+//     }
+//
+//     // TODO: add tests for State::seal & SealedState methods
+// }

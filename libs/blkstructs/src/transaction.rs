@@ -237,6 +237,7 @@ pub(crate) mod tests {
         // TODO: add case for input_count exceeding limit
     }
 
+    #[rstest]
     fn test_hash_no_sigs() {
         // create a transaction from fixture
 
@@ -250,6 +251,7 @@ pub(crate) mod tests {
 
     }
 
+    #[rstest]
     fn test_sign_sigs() {
         // create a transaction
 
@@ -264,6 +266,7 @@ pub(crate) mod tests {
         // verify it has N + M signatures
     }
 
+    #[rstest]
     fn test_sign_sigs_2() {
         // create a transaction
 
@@ -278,6 +281,7 @@ pub(crate) mod tests {
         // verify there are only two signatures
     }
 
+    #[rstest]
     fn test_total_output() {
         // create transaction
 
@@ -288,6 +292,7 @@ pub(crate) mod tests {
         // verify totals for all coin types match
     }
 
+    #[rstest]
     fn test_script_as_map() {
         // create transaction
 
@@ -300,6 +305,7 @@ pub(crate) mod tests {
         // verify hashes match expected value
     }
 
+    #[rstest]
     fn test_weight_adjust() {
         // create a transaction
 
@@ -308,6 +314,7 @@ pub(crate) mod tests {
         // call weight with N as adjust and ensure difference is adjust
     }
 
+    #[rstest]
     fn test_weight_does_not_exceed_max_u64() {
         // create a transaction
 

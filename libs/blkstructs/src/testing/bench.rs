@@ -1,4 +1,10 @@
-//
+// use crate::{SmtMapping, ProposerAction, melscript, CoinData, MICRO_CONVERTER, COINTYPE_TMEL, CoinID, State};
+// use crate::testing::utils::random_valid_txx;
+// use tmelcrypt::Ed25519SK;
+// use once_cell::sync::Lazy;
+// use rand::prelude::SliceRandom;
+use crate::SmtMapping;
+
 // // TODO: Replace benchmarking to use criterion crate
 // #[bench]
 // fn batch_insertion(b: &mut Bencher) {
@@ -59,6 +65,12 @@
 // use test::Bencher;
 // use crate::{melscript, CoinID, CoinData, MICRO_CONVERTER, COINTYPE_TMEL, State, SmtMapping, ProposerAction};
 // use crate::testing::utils::random_valid_txx;
+
+// const COUNT: usize = 1;
+// /// Bunch of secret keys for testing
+// ///
+// static TEST_SKK: Lazy<Vec<Ed25519SK>> =
+//     Lazy::new(|| (0..COUNT).map(|_| tmelcrypt::ed25519_keygen().1).collect());
 //
 // #[test]
 // fn state_simple_order_independence() {
@@ -95,6 +107,7 @@
 //         }
 //         state.seal(None).header().hash()
 //     };
+//
 //     let action = Some(ProposerAction {
 //         fee_multiplier_delta: 0,
 //         reward_dest: melscript::Script::std_ed25519_pk(TEST_SKK[idx].to_public())
@@ -113,34 +126,36 @@
 //         assert_eq!(c, seq_copy);
 //     }
 // }
-//
-// #[test]
-// fn smt_mapping() {
-//     let db = autosmt::DBManager::load(autosmt::MemDB::default());
-//     let tree = db.get_tree(tmelcrypt::HashVal::default());
-//     let mut map: SmtMapping<u64, u64> = SmtMapping::new(tree.clone());
-//     for i in 0..10 {
-//         map.insert(i, i);
-//     }
-//     // assert_eq!(
-//     //     hex::encode(&map.mapping.root_hash()),
-//     //     "c817ba6ba9cadabb754ed5195232be8d22dbd98a1eeca0379921c3cc0b414110"
-//     // );
-//     dbg!(&map);
-//     let mut mapbak = map.clone();
-//     dbg!(&mapbak);
-//     for i in 0..10 {
-//         assert_eq!(Some(i), map.get(&i).0);
-//     }
-//     map.delete(&5);
-//     assert_eq!(None, map.get(&5).0);
-//     for i in 0..10 {
-//         map.delete(&i);
-//     }
-//     dbg!(&mapbak);
-//     eprintln!("{}", db.debug_graphviz());
-//     for i in 0..10 {
-//         assert_eq!(Some(i), mapbak.get(&i).0);
-//     }
-//     // assert_eq!(&map.mapping.root_hash(), [0; 32]);
-// }
+
+
+// TODO: Create an integration/smp_mapping.rs integration test and move this there.
+#[test]
+fn smt_mapping() {
+    let db = autosmt::DBManager::load(autosmt::MemDB::default());
+    let tree = db.get_tree(tmelcrypt::HashVal::default());
+    let mut map: SmtMapping<u64, u64> = SmtMapping::new(tree.clone());
+    for i in 0..10 {
+        map.insert(i, i);
+    }
+    // assert_eq!(
+    //     hex::encode(&map.mapping.root_hash()),
+    //     "c817ba6ba9cadabb754ed5195232be8d22dbd98a1eeca0379921c3cc0b414110"
+    // );
+    dbg!(&map);
+    let mapbak = map.clone();
+    dbg!(&mapbak);
+    for i in 0..10 {
+        assert_eq!(Some(i), map.get(&i).0);
+    }
+    map.delete(&5);
+    assert_eq!(None, map.get(&5).0);
+    for i in 0..10 {
+        map.delete(&i);
+    }
+    dbg!(&mapbak);
+    eprintln!("{}", db.debug_graphviz());
+    for i in 0..10 {
+        assert_eq!(Some(i), mapbak.get(&i).0);
+    }
+    // assert_eq!(&map.mapping.root_hash(), [0; 32]);
+}
