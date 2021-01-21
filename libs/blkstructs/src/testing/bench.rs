@@ -1,9 +1,5 @@
-// use crate::{SmtMapping, ProposerAction, melscript, CoinData, MICRO_CONVERTER, COINTYPE_TMEL, CoinID, State};
-// use crate::testing::utils::random_valid_txx;
-// use tmelcrypt::Ed25519SK;
-// use once_cell::sync::Lazy;
-// use rand::prelude::SliceRandom;
-use crate::SmtMapping;
+use crate::{SmtMapping, melscript, CoinID, CoinData, MICRO_CONVERTER, COINTYPE_TMEL, State};
+use crate::testing::utils::random_valid_txx;
 
 // // TODO: Replace benchmarking to use criterion crate
 // #[bench]
@@ -61,10 +57,6 @@ use crate::SmtMapping;
 //     })
 // }
 //
-// use rand::prelude::*;
-// use test::Bencher;
-// use crate::{melscript, CoinID, CoinData, MICRO_CONVERTER, COINTYPE_TMEL, State, SmtMapping, ProposerAction};
-// use crate::testing::utils::random_valid_txx;
 
 // const COUNT: usize = 1;
 // /// Bunch of secret keys for testing
