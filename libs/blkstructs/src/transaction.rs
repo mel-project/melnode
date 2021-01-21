@@ -162,42 +162,10 @@ pub struct CoinDataHeight {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
+pub(crate) mod tests {
     use rstest::*;
-
-    use crate::testing::random_valid_txx;
-    use tmelcrypt::{Ed25519SK, Ed25519PK};
-
-    /// Return a keypair
-    #[fixture]
-    fn keypair() -> (Ed25519PK, Ed25519SK) {
-        tmelcrypt::ed25519_keygen()
-    }
-
-    /// Return a bundle of transactions for a specific keypair
-    #[fixture]
-    fn valid_txx(keypair: (Ed25519PK, Ed25519SK)) -> Vec<Transaction> {
-        let (pk, sk) = keypair;
-        let scr = melscript::Script::std_ed25519_pk(pk);
-        let mut trng = rand::thread_rng();
-        let txx = random_valid_txx(
-            &mut trng,
-            CoinID {
-                txhash: tmelcrypt::HashVal([0; 32]),
-                index: 0,
-            },
-            CoinData {
-                conshash: scr.hash(),
-                value: MICRO_CONVERTER * 1000,
-                cointype: COINTYPE_TMEL.to_owned(),
-            },
-            sk,
-            &scr,
-        );
-        txx
-    }
-
+    use crate::testing::fixtures::valid_txx;
+    use crate::{Transaction, MAX_COINVAL, CoinData};
 
     #[rstest]
     fn test_is_well_formed(valid_txx: Vec<Transaction>) {
