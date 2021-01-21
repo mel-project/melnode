@@ -7,3 +7,5 @@ pub(crate) use blksync::AbbreviatedBlock;
 pub use staker::*;
 
 mod client_protocol;
+mod netclient;
+pub use netclient::*;
