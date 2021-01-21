@@ -7,10 +7,10 @@ use defmac::defmac;
 use parking_lot::RwLock;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::fmt::Debug;
 use std::io::Read;
 use std::sync::Arc;
 use std::{collections::BTreeMap, convert::TryInto};
+use std::{collections::HashMap, fmt::Debug};
 use thiserror::Error;
 use tmelcrypt::{Ed25519PK, HashVal};
 use txn::Transaction;
@@ -38,6 +38,19 @@ pub enum StateError {
     BidWrongTime,
     #[error("block has wrong header after applying to previous block")]
     WrongHeader,
+}
+
+/// Configuration of a genesis state. Serializable via serde.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GenesisConfig {
+    /// Initial supply of free mels. This will be put at the zero-zero coin ID.
+    pub init_micromels: u64,
+    /// The covenant hash of the owner of the initial free mels.
+    pub init_covhash: HashVal,
+    /// Mapping of initial stakeholders.
+    pub stakes: HashMap<HashVal, StakeDoc>,
+    /// Initial fee pool, in micromels.
+    pub init_fee_pool: u64,
 }
 
 /// World state of the Themelio blockchain

@@ -46,8 +46,12 @@ pub(crate) fn apply_tx_inputs(lself: &RwLock<State>, tx: &Transaction) -> Result
     }
     // balance inputs and outputs. ignore outputs with empty cointype (they create a new token kind)
     let out_coins = tx.total_outputs();
-    if tx.kind != TxKind::DoscMint && tx.kind != TxKind::Faucet {
+    if tx.kind != TxKind::Faucet {
         for (currency, value) in out_coins.iter() {
+            // we skip the created doscs for a DoscMint transaction
+            if tx.kind == TxKind::DoscMint && currency == &cointype_dosc(lself.read().height) {
+                continue;
+            }
             if !currency.is_empty() && *value != *in_coins.get(currency).unwrap_or(&u64::MAX) {
                 return Err(StateError::UnbalancedInOut);
             }
