@@ -205,23 +205,6 @@ mod tests {
 
     // TODO: add test case for epoch end test case
 
-    /// Filter out all the elements that no longer matter.
-    pub fn remove_stale(&mut self, epoch: u64) {
-        let stale_key_hashes = self.mapping.iter().filter_map(|(kh, v)| {
-            let v: StakeDoc = bincode::deserialize(&v).unwrap();
-            if epoch > v.e_post_end {
-                Some(kh)
-            } else {
-                None
-            }
-        });
-        let mut new_tree = self.mapping.clone();
-        for stale_key in stale_key_hashes {
-            new_tree = new_tree.set(stale_key, b"");
-        }
-        self.mapping = new_tree
-    }
-
     // TODO: implement tests below
     #[test]
     fn test_remove_stale() {

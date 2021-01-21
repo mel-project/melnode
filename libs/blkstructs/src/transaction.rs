@@ -164,21 +164,88 @@ pub struct CoinDataHeight {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rstest::rstest;
+    use rstest::*;
 
-    fn test_is_not_well_formed_if_value_gt_max() {
+    use crate::testing::random_valid_txx;
+    use tmelcrypt::{Ed25519SK, Ed25519PK};
 
+    /// Return a keypair
+    #[fixture]
+    fn keypair() -> (Ed25519PK, Ed25519SK) {
+        tmelcrypt::ed25519_keygen()
+    }
+    /// Return a bundle of transactions for a specific keypair
+    #[fixture]
+    fn valid_txx(keypair: (Ed25519PK, Ed25519SK)) -> Vec<Transaction> {
+        let (pk, sk) = keypair;
+        let scr = melscript::Script::std_ed25519_pk(pk);
+        let mut trng = rand::thread_rng();
+        let txx = random_valid_txx(
+            &mut trng,
+            CoinID {
+                txhash: tmelcrypt::HashVal([0; 32]),
+                index: 0,
+            },
+            CoinData {
+                conshash: scr.hash(),
+                value: MICRO_CONVERTER * 1000,
+                cointype: COINTYPE_TMEL.to_owned(),
+            },
+            sk,
+            &scr,
+        );
+        txx
     }
 
-    fn test_is_not_well_formed_if_fee_gt_max () {
 
+    #[rstest]
+    fn test_is_well_formed(valid_txx: Vec<Transaction>) {
+        for valid_tx in valid_txx.iter() {
+            assert!(valid_tx.is_well_formed());
+        }
+    }
+
+    #[rstest]
+    fn test_is_not_well_formed_if_value_gt_max(valid_txx: Vec<Transaction>) {
+        // Extract out first coin data from first transaction in valid transactions
+        let valid_tx = valid_txx.iter().next().unwrap().clone();
+        let valid_outputs = valid_tx.outputs;
+        let valid_output = valid_outputs.iter().next().unwrap().clone();
+
+        // Create an invalid tx by setting an invalid output value
+        let invalid_output_value = MAX_COINVAL + 1;
+        let invalid_output = CoinData {
+            value: invalid_output_value,
+            ..valid_output
+        };
+        let invalid_outputs = vec![invalid_output];
+        let invalid_tx = Transaction {
+            outputs: invalid_outputs,
+            ..valid_tx
+        };
+
+        // Ensure transaction is not well formed
+        assert_eq!(invalid_tx.is_well_formed(), false);
+    }
+
+    #[rstest(
+        offset => [1 as u64, 2 as u64, 100 as u64]
+    )]
+    fn test_is_not_well_formed_if_fee_gt_max (offset: u64, valid_txx: Vec<Transaction>) {
+        // Extract out first coin data from first transaction in valid transactions
+        let valid_tx = valid_txx.iter().next().unwrap().clone();
+
+        // Create an invalid tx by setting an invalid fee value
+        let invalid_tx = Transaction {
+            fee: MAX_COINVAL + offset,
+            ..valid_tx
+        };
+
+        // Ensure transaction is not well formed
+        assert_eq!(invalid_tx.is_well_formed(), false);
     }
 
     fn test_is_not_well_formed_if_io_gt_max() {
-
-    }
-
-    fn test_is_well_formed() {
 
     }
 
@@ -209,19 +276,19 @@ mod tests {
         // verify it has N + M signatures
     }
 
-    fn test_sign_sigs() {
-        // create a transaction
-
-        // sign it
-
-        // verify it is signed by expected key
-
-        // sign it with another key
-
-        // verify it is signed by expected key and previou sis still signed by expected
-
-        // verify there are only two signatures
-    }
+    // fn test_sign_sigs() {
+    //     // create a transaction
+    //
+    //     // sign it
+    //
+    //     // verify it is signed by expected key
+    //
+    //     // sign it with another key
+    //
+    //     // verify it is signed by expected key and previou sis still signed by expected
+    //
+    //     // verify there are only two signatures
+    // }
 
     fn test_total_output() {
         // create transaction
