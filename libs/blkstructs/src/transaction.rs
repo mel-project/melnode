@@ -174,6 +174,7 @@ mod tests {
     fn keypair() -> (Ed25519PK, Ed25519SK) {
         tmelcrypt::ed25519_keygen()
     }
+
     /// Return a bundle of transactions for a specific keypair
     #[fixture]
     fn valid_txx(keypair: (Ed25519PK, Ed25519SK)) -> Vec<Transaction> {
@@ -245,8 +246,27 @@ mod tests {
         assert_eq!(invalid_tx.is_well_formed(), false);
     }
 
-    fn test_is_not_well_formed_if_io_gt_max() {
+    #[rstest(
+        offset => [1, 2, 100]
+    )]
+    fn test_is_not_well_formed_if_io_gt_max(offset: usize, valid_txx: Vec<Transaction>) {
+        // Extract out first coin data from first transaction in valid transactions
+        let valid_tx = valid_txx.iter().next().unwrap().clone();
+        let valid_outputs = valid_tx.outputs;
+        let valid_output = valid_outputs.iter().next().unwrap().clone();
 
+        // Create an invalid tx by setting an invalid output value
+        let invalid_output_count = 255 + offset;
+        let invalid_outputs = vec![valid_output; invalid_output_count];
+        let invalid_tx = Transaction {
+            outputs: invalid_outputs,
+            ..valid_tx
+        };
+
+        // Ensure transaction is not well formed
+        assert_eq!(invalid_tx.is_well_formed(), false);
+
+        // TODO: add case for input_count exceeding limit
     }
 
     fn test_hash_no_sigs() {
@@ -276,19 +296,19 @@ mod tests {
         // verify it has N + M signatures
     }
 
-    // fn test_sign_sigs() {
-    //     // create a transaction
-    //
-    //     // sign it
-    //
-    //     // verify it is signed by expected key
-    //
-    //     // sign it with another key
-    //
-    //     // verify it is signed by expected key and previou sis still signed by expected
-    //
-    //     // verify there are only two signatures
-    // }
+    fn test_sign_sigs_2() {
+        // create a transaction
+
+        // sign it
+
+        // verify it is signed by expected key
+
+        // sign it with another key
+
+        // verify it is signed by expected key and previou sis still signed by expected
+
+        // verify there are only two signatures
+    }
 
     fn test_total_output() {
         // create transaction
