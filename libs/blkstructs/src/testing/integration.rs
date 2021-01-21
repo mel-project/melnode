@@ -46,7 +46,7 @@ fn state_simple_order_independence() {
     });
 
     let copies: Vec<tmelcrypt::HashVal> = (0..2)
-        .map(|i| {
+        .map(|_i| {
             let mut state = dbg!(first_block.next_state());
             txx.shuffle(&mut trng);
             state.apply_tx_batch(&txx).expect("failed application");
