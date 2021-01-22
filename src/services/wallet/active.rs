@@ -114,9 +114,9 @@ impl ActiveWallet {
         let (header, _instant) = self.client.last_header().await?;
         let fee_multiplier = header.fee_multiplier;
 
-        let to_send = self.wallet.pre_spend(outputs, fee_multiplier)?.sign_ed25519(self.sk);
+        let tx = self.wallet.pre_spend(outputs, fee_multiplier)?.sign_ed25519(self.sk);
 
-        Ok((to_send))
+        Ok(tx)
     }
 
     pub async fn send_tx(

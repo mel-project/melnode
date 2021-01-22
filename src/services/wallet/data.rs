@@ -51,7 +51,7 @@ impl WalletData {
             kind: TxKind::Normal,
             inputs: vec![],
             outputs,
-            fee,
+            fee: 0,
             scripts: vec![self.my_script.clone()],
             data: vec![],
             sigs: vec![],
