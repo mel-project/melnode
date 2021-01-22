@@ -44,7 +44,7 @@ impl ActiveWallet {
                 conshash: self.wallet.my_script.hash(),
                 value: number * MICRO_CONVERTER,
             }],
-            fee: 0,
+            fee: 1098000,
             scripts: vec![],
             sigs: vec![],
             data: vec![],
@@ -110,6 +110,8 @@ impl ActiveWallet {
             conshash: dest_addr,
         };
         let to_send = self.wallet.pre_spend(vec![output])?.sign_ed25519(self.sk);
+        // to_send.weight()
+        // fee_multiplier.saturating_mul(tx.weight(0)
         eprintln!(">> Syncing state...");
         self.client.broadcast_tx(to_send.clone()).await?;
         eprintln!(">> Transaction {:?} broadcast!", to_send.hash_nosigs());

@@ -29,7 +29,6 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
     loop {
         let prompt = format!("[anet client {}]% ", prompt_stack.join(" "));
         let res = try_run_prompt(&mut prompt_stack, &prompt, &available_wallets, &cfg).await;
-
         if let Err(err) = res {
             eprintln!(">> {}: {}", "ERROR".red().bold(), err);
         }
@@ -88,8 +87,8 @@ async fn try_run_prompt(
                         Ok(_) => {
                             break;
                         }
-                        Err(_) => {
-                            eprintln!("Error encountered when running active wallet");
+                        Err(err) => {
+                            eprintln!("Error encountered when running active wallet {}", err);
                             continue;
                         }
                     }
