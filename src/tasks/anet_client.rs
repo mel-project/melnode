@@ -178,10 +178,10 @@ async fn run_active_wallet(
                 }
             }
             ["tx-send", dest_addr, amount, unit] => {
-                let (outputs, fee) = active_wallet.calc_tx_fee(dest_addr, amount, unit).await?;
-                eprintln!(">> Tx fee is {}", fee);
+                let tx = active_wallet.create_tx(dest_addr, amount, unit).await?;
+                eprintln!(">> Tx fee is {}", tx.fee);
 
-                let tx = active_wallet.send_tx(outputs, fee).await?;
+                let tx = active_wallet.send_tx(tx).await?;
                 eprintln!(">> Sent tx.  Waiting to verify.");
                 loop {
                     let (coin_data_height, _proof) = active_wallet.verify_tx(tx.clone()).await?;

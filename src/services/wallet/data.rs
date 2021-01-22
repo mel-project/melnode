@@ -45,7 +45,7 @@ impl WalletData {
     }
 
     /// Creates an **unsigned** transaction out of the coins in the data. Does not spend it yet.
-    pub fn pre_spend(&self, outputs: Vec<CoinData>, fee: u64) -> anyhow::Result<Transaction> {
+    pub fn pre_spend(&self, outputs: Vec<CoinData>, fee_multiplier: u64) -> anyhow::Result<Transaction> {
         // find coins that might match
         let mut txn = Transaction {
             kind: TxKind::Normal,
@@ -56,6 +56,8 @@ impl WalletData {
             data: vec![],
             sigs: vec![],
         };
+        txn.fee = fee_multiplier.saturating_mul(txn.weight(100));
+
         let output_sum = txn.total_outputs();
         let mut input_sum: collections::HashMap<Vec<u8>, u64> = collections::HashMap::new();
         for (coin, data) in self.unspent_coins.iter() {
