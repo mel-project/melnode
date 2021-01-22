@@ -1,5 +1,5 @@
 use crate::protocols::{AbbreviatedBlock, NODE_NETNAME};
-use blkstructs::{CoinDataHeight, CoinID, Header, Transaction};
+use blkstructs::{CoinDataHeight, CoinID, ConsensusProof, Header, Transaction};
 use std::time::Instant;
 use std::{net::SocketAddr, time::Duration};
 use symphonia::QuorumCert;
@@ -24,7 +24,7 @@ impl NetClient {
     }
     // update last header and cache state variables
     async fn sync_with_net(&mut self) -> anyhow::Result<()> {
-        let remote_state: (AbbreviatedBlock, QuorumCert) = melnet::g_client()
+        let remote_state: (AbbreviatedBlock, ConsensusProof) = melnet::g_client()
             .request(self.remote, NODE_NETNAME, "get_last_state", ())
             .await?;
         log::warn!("not actually validating QuorumCert for last state");
@@ -45,10 +45,28 @@ impl NetClient {
             self.sync_with_net().await?;
         }
     }
+
+    /// Obtain and verify an old header.
+    pub async fn old_header(&self, curr_header: Header, height: u64) -> anyhow::Result<Header> {
+        if height > curr_header.height {
+            anyhow::bail!("can't get future header")
+        }
+        let (hdr, proof): (Header, autosmt::CompressedProof) = melnet::g_client()
+            .request(
+                self.remote,
+                NODE_NETNAME,
+                "get_history_at",
+                (curr_header.height, height),
+            )
+            .await?;
+        // TODO: verify proof
+        Ok(hdr)
+    }
+
     // translate the master client to current system (be in protocols folder)
     /// Get and verify a specific coin.
     pub async fn get_coin(
-        &mut self,
+        &self,
         header: Header,
         coin: CoinID,
     ) -> anyhow::Result<(Option<CoinDataHeight>, autosmt::FullProof)> {
@@ -76,7 +94,7 @@ impl NetClient {
 
     /// Get and verify a specific transaction at a specific height
     pub async fn get_tx(
-        &mut self,
+        &self,
         header: Header,
         txhash: HashVal,
     ) -> anyhow::Result<(Option<Transaction>, autosmt::FullProof)> {

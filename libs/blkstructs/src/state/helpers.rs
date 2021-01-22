@@ -107,8 +107,11 @@ pub(crate) fn apply_tx_special_doscmint(
     tx: &Transaction,
 ) -> Result<(), StateError> {
     let lself = lself.read();
+    let coin_id = *tx.inputs.get(0).ok_or(StateError::MalformedTx)?;
+    let coin_data = lself.coins.get(&coin_id).0.ok_or(StateError::MalformedTx)?;
     // construct puzzle seed
-    let chi = tmelcrypt::hash_single(
+    let chi = tmelcrypt::hash_keyed(
+        &lself.get_height_entropy(coin_data.height),
         &bincode::serialize(tx.inputs.get(0).ok_or(StateError::MalformedTx)?).unwrap(),
     );
     // compute difficulty

@@ -49,7 +49,7 @@ pub fn synthesize_afill(state: &mut State) {
     };
     // set the variables
     if let Some(winner) = auction_winner {
-        state.met_price = winner.outputs[0].value
+        state.sym_price = winner.outputs[0].value
     }
     // clear the auction and insert the transaction
     state.auction_bids.clear();

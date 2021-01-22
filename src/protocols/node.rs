@@ -1,6 +1,6 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
-use blkstructs::{CoinDataHeight, CoinID, ConsensusProof, Transaction};
+use blkstructs::{CoinDataHeight, CoinID, ConsensusProof, Header, Transaction};
 use melnet::MelnetError;
 use smol::channel::{Receiver, Sender};
 use symphonia::QuorumCert;
@@ -56,6 +56,14 @@ impl NodeProtocol {
             melnet::anon_responder(move |req: melnet::Request<(u64, CoinID), _>| {
                 let body = req.body;
                 req.respond(rr.resp_get_coin_at(body.0, body.1))
+            }),
+        );
+        let rr = responder.clone();
+        network.register_verb(
+            "get_history_at",
+            melnet::anon_responder(move |req: melnet::Request<(u64, u64), _>| {
+                let body = req.body;
+                req.respond(rr.resp_get_history_at(body.0, body.1))
             }),
         );
         let rr = responder.clone();
@@ -211,6 +219,22 @@ impl AuditorResponder {
             .ok_or_else(|| MelnetError::Custom("no such block in history".into()))?;
         let (res, proof) = old_state.inner().inner_ref().coins.get(&coin_id);
         Ok((res, proof.compress()))
+    }
+
+    fn resp_get_history_at(
+        &self,
+        height: u64,
+        history_height: u64,
+    ) -> melnet::Result<(Header, autosmt::CompressedProof)> {
+        let storage = self.storage.read();
+        let old_state = storage
+            .get_history(height)
+            .ok_or_else(|| MelnetError::Custom("no such block in history".into()))?;
+        let (res, proof) = old_state.inner().inner_ref().history.get(&history_height);
+        Ok((
+            res.ok_or_else(|| MelnetError::Custom("height is in the future".into()))?,
+            proof.compress(),
+        ))
     }
 
     fn resp_get_tx_at(

@@ -84,7 +84,7 @@ async fn run_instance(net: MockNet, idx: usize) {
     evts_loop.race(streamlet.run()).await
 }
 
-pub fn gen_cfg(net: MockNet, idx: usize) -> StreamletCfg<MockNet, TrivialLookup> {
+fn gen_cfg(net: MockNet, idx: usize) -> StreamletCfg<MockNet, TrivialLookup> {
     let genesis_state = blkstructs::State::test_genesis(
         autosmt::DBManager::load(autosmt::MemDB::default()),
         10000,

@@ -73,7 +73,7 @@ pub struct State {
 
     pub dosc_multiplier: u64,
     pub auction_bids: SmtMapping<HashVal, txn::Transaction>,
-    pub met_price: u64,
+    pub sym_price: u64,
     pub mel_price: u64,
 
     pub stakes: SmtMapping<HashVal, StakeDoc>,
@@ -100,7 +100,7 @@ impl State {
 
         out.extend_from_slice(&self.dosc_multiplier.to_be_bytes());
         out.extend_from_slice(&self.auction_bids.root_hash());
-        out.extend_from_slice(&self.met_price.to_be_bytes());
+        out.extend_from_slice(&self.sym_price.to_be_bytes());
         out.extend_from_slice(&self.mel_price.to_be_bytes());
 
         out.extend_from_slice(&self.stakes.root_hash());
@@ -124,7 +124,7 @@ impl State {
 
         let dosc_multiplier = readu64!();
         let auction_bids = readtree!();
-        let met_price = readu64!();
+        let sym_price = readu64!();
         let mel_price = readu64!();
 
         let stakes = readtree!();
@@ -140,7 +140,7 @@ impl State {
 
             dosc_multiplier,
             auction_bids,
-            met_price,
+            sym_price,
             mel_price,
 
             stakes,
@@ -282,10 +282,19 @@ impl State {
             dosc_multiplier: 1,
             tips: 0,
             auction_bids: SmtMapping::new(empty_tree.clone()),
-            met_price: MICRO_CONVERTER,
+            sym_price: MICRO_CONVERTER,
             mel_price: MICRO_CONVERTER,
             stakes: SmtMapping::new(empty_tree),
         }
+    }
+
+    pub fn get_height_entropy(&self, height: u64) -> HashVal {
+        // TODO something robust, like bitwise majority "voting"
+        self.history
+            .get(&height)
+            .0
+            .map(|v| v.hash())
+            .unwrap_or_default()
     }
 }
 
@@ -338,7 +347,7 @@ impl SealedState {
             fee_multiplier: inner.fee_multiplier,
             dosc_multiplier: inner.dosc_multiplier,
             auction_bids_hash: inner.auction_bids.root_hash(),
-            met_price: inner.met_price,
+            sym_price: inner.sym_price,
             mel_price: inner.mel_price,
             stake_doc_hash: inner.stakes.root_hash(),
         }
@@ -443,7 +452,7 @@ pub struct Header {
     pub fee_multiplier: u64,
     pub dosc_multiplier: u64,
     pub auction_bids_hash: HashVal,
-    pub met_price: u64,
+    pub sym_price: u64,
     pub mel_price: u64,
     pub stake_doc_hash: HashVal,
 }
@@ -493,12 +502,11 @@ pub struct AbbrBlock {
     pub proposer_action: Option<ProposerAction>,
 }
 
-
 #[cfg(test)]
 pub(crate) mod tests {
+    use crate::testing::fixtures::valid_txx;
     use crate::Transaction;
     use rstest::*;
-    use crate::testing::fixtures::valid_txx;
 
     #[rstest]
     #[ignore]

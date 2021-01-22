@@ -109,7 +109,8 @@ fn gen_gammas(puzzle: &[u8], difficulty: usize) -> Vec<node::Node> {
             let g_seed = hash::bts_key(puzzle, format!("gamma-{}", i).as_bytes());
             let g_int = u64::from_le_bytes(g_seed[0..8].try_into().unwrap());
             let shift = 64 - difficulty;
-            let g_int = (g_int << shift) >> shift;
+            let g_int = (g_int >> shift) << shift;
+            let g_int = g_int.reverse_bits();
             node::Node::new(g_int, difficulty)
         })
         .collect()
