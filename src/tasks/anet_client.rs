@@ -200,7 +200,7 @@ async fn run_active_wallet(
                     }
                 }
             }
-            ["balances"] => {
+            ["balances",] => {
                 let unspent_coins = active_wallet.get_balances().await?;
                 eprintln!(">> **** COINS ****");
                 eprintln!(">> [CoinID]\t[Height]\t[Amount]\t[CoinType]");
@@ -212,13 +212,13 @@ async fn run_active_wallet(
                         coin_data.height.to_string(),
                         coin_data.coin_data.value.to_string(),
                         match coin_data.coin_data.cointype.as_slice() {
-                            COINTYPE_TMEL => "μTML",
-                            _ => "(other)",
+                            _COINTYPE_TMEL => "μTML",
+                            // _ => "(other)",
                         },
                     );
                 }
             }
-            ["exit"] => {
+            ["exit",] => {
                 return Ok(());
             }
             _ => {

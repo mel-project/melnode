@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    sync::Arc,
     time::{Duration, SystemTime},
 };
 
@@ -271,7 +270,7 @@ pub trait Network {
 /// A mock network based on channels.
 #[derive(Clone)]
 pub struct MockNet {
-    bus: BroadcastChannel<SignedMessage>,
+    bus: BroadcastChannel<SignedMessage, S, R>,
 }
 
 impl Default for MockNet {

@@ -1,6 +1,6 @@
 use std::{net::SocketAddr, time::Instant};
 
-use blkstructs::{CoinData, CoinDataHeight, CoinID};
+use blkstructs::CoinID;
 use structopt::StructOpt;
 use tmelcrypt::HashVal;
 
