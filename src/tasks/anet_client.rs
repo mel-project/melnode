@@ -179,7 +179,7 @@ async fn run_active_wallet(
             }
             ["tx-send", dest_addr, amount, unit] => {
                 let tx = active_wallet.create_tx(dest_addr, amount, unit).await?;
-                let fee_prompt = format!("Do you wish to send a tx with a fee of {} y/n", tx.fee);
+                let fee_prompt = format!("Do you wish to send a tx with a fee of {} (y/n): ", tx.fee);
                 let fee_input = read_line(fee_prompt.to_string()).await.unwrap();
                 if !fee_input.contains("y") {
                     continue;

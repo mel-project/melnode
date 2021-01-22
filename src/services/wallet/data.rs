@@ -56,7 +56,7 @@ impl WalletData {
             data: vec![],
             sigs: vec![],
         };
-        txn.fee = fee_multiplier.saturating_mul(txn.weight(100));
+        txn.fee = fee_multiplier.saturating_mul(txn.weight(1000));
 
         let output_sum = txn.total_outputs();
         let mut input_sum: collections::HashMap<Vec<u8>, u64> = collections::HashMap::new();
