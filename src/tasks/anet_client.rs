@@ -167,9 +167,9 @@ async fn run_active_wallet(
                             ">> Coin found at height {}! Added {} {} to data",
                             coin_data_height.height,
                             coin_data_height.coin_data.value,
-                            match coin_data_height.coin_data.cointype.as_slice() {
-                                // COINTYPE_TMEL => "μmel".to_string(),
-                                val => format!("X-{}", hex::encode(val)),
+                            {
+                                let val = coin_data_height.coin_data.cointype.as_slice();
+                                format!("X-{}", hex::encode(val))
                             }
                         );
                         active_wallet.add_coin(&coin_id, &coin_data_height).await?;
@@ -181,7 +181,7 @@ async fn run_active_wallet(
                 let tx = active_wallet.create_tx(dest_addr, amount, unit).await?;
                 let fee_prompt = format!("Do you wish to send a tx with a fee of {} (y/n): ", tx.fee);
                 let fee_input = read_line(fee_prompt.to_string()).await.unwrap();
-                if !fee_input.contains("y") {
+                if !fee_input.contains('y') {
                     continue;
                 }
 
@@ -214,9 +214,9 @@ async fn run_active_wallet(
                         coin_id,
                         coin_data.height.to_string(),
                         coin_data.coin_data.value.to_string(),
-                        match coin_data.coin_data.cointype.as_slice() {
-                            _COINTYPE_TMEL => "μTML",
-                            // _ => "(other)",
+                        {
+                            // let _cointype_tmel = coin_data.coin_data.cointype.as_slice();
+                            "μTML"
                         },
                     );
                 }

@@ -99,7 +99,7 @@ impl ActiveWallet {
         dest_addr: &str,
         amount: &str,
         unit: &str,
-    ) -> anyhow::Result<(Transaction)> {
+    ) -> anyhow::Result<Transaction> {
         // Create transaction
         let number: u64 = amount.parse()?;
         assert_eq!(unit, "TML");
@@ -149,7 +149,7 @@ impl ActiveWallet {
     pub async fn get_balances(&mut self) -> anyhow::Result<HashMap<CoinID, CoinDataHeight>> {
         let mut unspent_coins = HashMap::new();
         for (coin_id, coin_data) in self.wallet.unspent_coins().iter() {
-            unspent_coins.insert(coin_id.clone(), coin_data.clone());
+            unspent_coins.insert(*coin_id, coin_data.clone());
         }
         Ok(unspent_coins)
     }
