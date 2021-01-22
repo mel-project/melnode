@@ -270,7 +270,7 @@ pub trait Network {
 /// A mock network based on channels.
 #[derive(Clone)]
 pub struct MockNet {
-    bus: BroadcastChannel<SignedMessage, S, R>,
+    bus: BroadcastChannel<SignedMessage>,
 }
 
 impl Default for MockNet {

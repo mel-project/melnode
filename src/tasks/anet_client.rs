@@ -38,16 +38,16 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
 
 async fn try_run_prompt(
     prompt_stack: &mut Vec<String>,
-    prompt: &String,
+    prompt: &str,
     available_wallets: &AvailableWallets,
     cfg: &AnetClientConfig,
 ) -> anyhow::Result<()> {
-    let input = read_line(prompt.clone()).await.unwrap();
+    let input = read_line(prompt.to_string()).await.unwrap();
     let mut tw = TabWriter::new(vec![]);
 
     match input.split(' ').collect::<Vec<_>>().as_slice() {
         &["wallet-new", wallet_name] => {
-            if let Some(_) = available_wallets.get(wallet_name) {
+            if available_wallets.get(wallet_name).is_some() {
                 eprintln!(">> {}: data already exists", "ERROR".red().bold());
                 return Ok(());
             }
@@ -126,10 +126,10 @@ async fn read_line(prompt: String) -> anyhow::Result<String> {
 async fn run_active_wallet(
     wallet_name: &str,
     active_wallet: &mut ActiveWallet,
-    prompt: &String,
+    prompt: &str,
 ) -> anyhow::Result<()> {
     loop {
-        let input = read_line(prompt.clone()).await.unwrap();
+        let input = read_line(prompt.to_string()).await.unwrap();
         match input.split(' ').collect::<Vec<_>>().as_slice() {
             ["faucet", number, unit] => {
                 let coin = active_wallet.send_faucet_tx(number, unit).await?;
@@ -141,20 +141,17 @@ async fn run_active_wallet(
                 // loop until we get coin data height and proof from last header
                 loop {
                     let (coin_data_height, _hdr) = active_wallet.get_coin_data(coin).await?;
-                    match coin_data_height {
-                        Some(coin_data_height) => {
-                            eprintln!(
-                                ">>> Coin is confirmed at current height {}",
-                                coin_data_height.height
-                            );
+                    if let Some(cd_height) = coin_data_height {
+                        eprintln!(
+                            ">>> Coin is confirmed at current height {}",
+                            cd_height.height
+                        );
 
-                            eprintln!(
-                                ">> CID = {}",
-                                hex::encode(bincode::serialize(&coin).unwrap()).bold()
-                            );
-                            break;
-                        }
-                        None => {}
+                        eprintln!(
+                            ">> CID = {}",
+                            hex::encode(bincode::serialize(&coin).unwrap()).bold()
+                        );
+                        break;
                     }
                 }
             }

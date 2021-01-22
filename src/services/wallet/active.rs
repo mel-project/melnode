@@ -19,7 +19,7 @@ pub struct ActiveWallet {
 }
 
 impl ActiveWallet {
-    pub fn new(sk: Ed25519SK, wallet: WalletData, remote: SocketAddr, path: &String) -> Self {
+    pub fn new(sk: Ed25519SK, wallet: WalletData, remote: SocketAddr, path: &str) -> Self {
         let path = Path::new(path);
         let conn = Connection::open(path).expect("SQLite connection failure");
         wallet::init(&conn).expect("Failed to load wallet");
@@ -90,7 +90,7 @@ impl ActiveWallet {
         coin_data_height: &CoinDataHeight,
     ) -> anyhow::Result<()> {
         self.wallet
-            .insert_coin(coin_id.clone(), coin_data_height.clone());
+            .insert_coin(*coin_id, coin_data_height.clone());
         Ok(())
     }
 
