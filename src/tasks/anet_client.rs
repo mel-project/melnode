@@ -178,7 +178,7 @@ async fn run_active_wallet(
                 }
             }
             ["tx-send", dest_addr, amount, unit] => {
-                let (outputs, fee) = active_wallet.calc_tx_fee(dest_addr, amout, unit).await?;
+                let (outputs, fee) = active_wallet.calc_tx_fee(dest_addr, amount, unit).await?;
                 eprintln!(">> Tx fee is {}", fee);
 
                 let tx = active_wallet.send_tx(outputs, fee).await?;

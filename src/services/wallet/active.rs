@@ -111,16 +111,17 @@ impl ActiveWallet {
             value: number * MICRO_CONVERTER,
             conshash: dest_addr,
         };
-        let outputs = vec![output];
+        let outputs = vec![output.clone()];
         let mut txn = Transaction {
             kind: TxKind::Normal,
             inputs: vec![],
             outputs,
             fee: 0,
-            scripts: vec![self.my_script.clone()],
+            scripts: vec![self.wallet.my_script.clone()],
             data: vec![],
             sigs: vec![],
         };
+
         let (header, _instant) = self.client.last_header().await?;
         let fee_multiplier = header.fee_multiplier;
         let fee = fee_multiplier.saturating_mul(txn.weight(100));
