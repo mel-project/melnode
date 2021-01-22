@@ -94,12 +94,14 @@ impl ActiveWallet {
         Ok(())
     }
 
-    pub async fn send_tx(
+    /// Calculate coin output and transaction fee
+    pub async fn calc_tx_fee(
         &mut self,
         dest_addr: &str,
         amount: &str,
         unit: &str,
-    ) -> anyhow::Result<Transaction> {
+    ) -> anyhow::Result<(Vec<CoinData>, u64)> {
+        // Create transaction
         let number: u64 = amount.parse()?;
         assert_eq!(unit, "TML");
         let dest_addr = tmelcrypt::HashVal::from_addr(dest_addr)
@@ -109,9 +111,29 @@ impl ActiveWallet {
             value: number * MICRO_CONVERTER,
             conshash: dest_addr,
         };
-        let to_send = self.wallet.pre_spend(vec![output])?.sign_ed25519(self.sk);
-        // to_send.weight()
-        // fee_multiplier.saturating_mul(tx.weight(0)
+        let outputs = vec![output];
+        let mut txn = Transaction {
+            kind: TxKind::Normal,
+            inputs: vec![],
+            outputs,
+            fee: 0,
+            scripts: vec![self.my_script.clone()],
+            data: vec![],
+            sigs: vec![],
+        };
+        let (header, _instant) = self.client.last_header().await?;
+        let fee_multiplier = header.fee_multiplier;
+        let fee = fee_multiplier.saturating_mul(txn.weight(100));
+        Ok((vec![output], fee))
+    }
+
+    pub async fn send_tx(
+        &mut self,
+        outputs: Vec<CoinData>,
+        fee: u64
+    ) -> anyhow::Result<Transaction> {
+        let to_send = self.wallet.pre_spend(outputs, fee)?.sign_ed25519(self.sk);
+
         eprintln!(">> Syncing state...");
         self.client.broadcast_tx(to_send.clone()).await?;
         eprintln!(">> Transaction {:?} broadcast!", to_send.hash_nosigs());

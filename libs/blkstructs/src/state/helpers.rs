@@ -58,7 +58,8 @@ pub(crate) fn apply_tx_inputs(lself: &RwLock<State>, tx: &Transaction) -> Result
         }
     }
     // fees
-    let min_fee = lself.read().fee_multiplier.saturating_mul(tx.weight(0));
+    let adjust = 100;
+    let min_fee = lself.read().fee_multiplier.saturating_mul(tx.weight(adjust));
     if tx.fee < min_fee {
         return Err(StateError::InsufficientFees(min_fee));
     }
