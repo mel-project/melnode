@@ -194,17 +194,25 @@ async fn run_active_wallet(
                             txhash: tx.hash_nosigs(),
                             index: 0,
                         };
+                        let first_change = CoinID {
+                            txhash: tx.hash_nosigs(),
+                            index: 1,
+                        };
                         eprintln!(">> Confirmed at height {}!", out.height);
                         eprintln!(
-                            ">> CID = {}",
+                            ">> CID (Sent) = {}",
                             hex::encode(bincode::serialize(&their_coin).unwrap()).bold()
+                        );
+                        eprintln!(
+                            ">> CID (Change) = {}",
+                            hex::encode(bincode::serialize(&first_change).unwrap()).bold()
                         );
                         break;
                     }
                 }
             }
-            ["balances",] => {
-                let unspent_coins = active_wallet.get_balances().await?;
+            ["coins",] => {
+                let unspent_coins = active_wallet.get_unspent_coins().await?;
                 eprintln!(">> **** COINS ****");
                 eprintln!(">> [CoinID]\t[Height]\t[Amount]\t[CoinType]");
                 for (coin_id, coin_data) in unspent_coins.iter() {
@@ -220,6 +228,11 @@ async fn run_active_wallet(
                         },
                     );
                 }
+            }
+            ["balance",] => {
+                let balance = active_wallet.get_balance().await?;
+                eprintln!(">> **** BALANCE ****");
+                eprintln!(">> {}", balance);
             }
             ["exit",] => {
                 return Ok(());

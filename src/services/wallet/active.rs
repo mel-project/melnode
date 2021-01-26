@@ -1,8 +1,6 @@
 use crate::services::WalletData;
 use crate::{dal::wallet, protocols::NetClient};
-use blkstructs::{
-    CoinData, CoinDataHeight, CoinID, Header, Transaction, TxKind, COINTYPE_TMEL, MICRO_CONVERTER,
-};
+use blkstructs::{CoinData, CoinDataHeight, CoinID, Header, Transaction, TxKind, COINTYPE_TMEL, MICRO_CONVERTER};
 use smol::net::SocketAddr;
 use tmelcrypt::Ed25519SK;
 
@@ -139,19 +137,24 @@ impl ActiveWallet {
             txhash: tx.hash_nosigs(),
             index: 1,
         };
-        let _their_coin = CoinID {
-            txhash: tx.hash_nosigs(),
-            index: 0,
-        };
         Ok(self.client.get_coin(header, first_change).await?)
     }
 
-    pub async fn get_balances(&mut self) -> anyhow::Result<HashMap<CoinID, CoinDataHeight>> {
+    pub async fn get_unspent_coins(&mut self) -> anyhow::Result<HashMap<CoinID, CoinDataHeight>> {
         let mut unspent_coins = HashMap::new();
         for (coin_id, coin_data) in self.wallet.unspent_coins().iter() {
             unspent_coins.insert(*coin_id, coin_data.clone());
         }
         Ok(unspent_coins)
+    }
+
+    pub async fn get_balance(&mut self) -> anyhow::Result<u64> {
+        let mut unspent_coins = self.get_unspent_coins().await?;
+        let mut total = 0;
+        for (_coin_id, coin_height) in unspent_coins.iter() {
+            total += coin_height.coin_data.value;
+        }
+        Ok(total)
     }
 
     pub async fn save(&mut self, wallet_name: &str) -> anyhow::Result<()> {
