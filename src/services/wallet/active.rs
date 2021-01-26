@@ -149,7 +149,7 @@ impl ActiveWallet {
     }
 
     pub async fn get_balance(&mut self) -> anyhow::Result<u64> {
-        let mut unspent_coins = self.get_unspent_coins().await?;
+        let unspent_coins = self.get_unspent_coins().await?;
         let mut total = 0;
         for (_coin_id, coin_height) in unspent_coins.iter() {
             total += coin_height.coin_data.value;

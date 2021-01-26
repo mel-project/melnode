@@ -8,7 +8,6 @@ use tabwriter::TabWriter;
 
 use crate::config::VERSION;
 use crate::services::{ActiveWallet, AvailableWallets, WalletData};
-use anyhow::Error;
 
 #[derive(Debug, StructOpt)]
 pub struct AnetClientConfig {
@@ -112,7 +111,7 @@ async fn try_run_prompt(
         &["exit"] => {
             return Ok(true);
         }
-        other => {
+        _other => {
             eprintln!("\nAvailable commands are: ");
             eprintln!(">> wallet-new <wallet-name>");
             eprintln!(">> wallet-unlock <wallet-name> <secret>");
@@ -225,22 +224,28 @@ async fn run_active_wallet(
                 }
             }
             ["coins",] => {
+
                 let unspent_coins = active_wallet.get_unspent_coins().await?;
                 eprintln!(">> **** COINS ****");
-                eprintln!(">> [CoinID]\t[Height]\t[Amount]\t[CoinType]");
+
+                let mut tw = TabWriter::new(vec![]);
+                writeln!(&mut tw, ">> [CoinID]\t[Height]\t[Amount]\t[CoinType]").unwrap();
+
                 for (coin_id, coin_data) in unspent_coins.iter() {
                     let coin_id = hex::encode(bincode::serialize(coin_id).unwrap());
-                    eprintln!(
-                        ">> {}\t{}\t{}\t{}",
-                        coin_id,
-                        coin_data.height.to_string(),
-                        coin_data.coin_data.value.to_string(),
-                        {
-                            // let _cointype_tmel = coin_data.coin_data.cointype.as_slice();
-                            "μTML"
-                        },
-                    );
+                    write!(&mut tw,
+                           ">> {}\t{}\t{}\t{}",
+                           coin_id,
+                           coin_data.height.to_string(),
+                           coin_data.coin_data.value.to_string(),
+                           {
+                               "μTML"
+                           },
+                    ).unwrap();
                 }
+                tw.flush().unwrap();
+                println!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap())
+
             }
             ["balance",] => {
                 let balance = active_wallet.get_balance().await?;
