@@ -113,7 +113,11 @@ async fn try_run_prompt(
             return Ok(true);
         }
         other => {
-            eprintln!("no such command: {:?}", other);
+            eprintln!("\nAvailable commands are: ");
+            eprintln!(">> wallet-new <wallet-name>");
+            eprintln!(">> wallet-unlock <wallet-name> <secret>");
+            eprintln!(">> wallet-list");
+            eprintln!(">> exit");
             return Ok(false);
         }
     }
