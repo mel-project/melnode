@@ -1,4 +1,4 @@
-use std::{convert::TryInto, net::SocketAddr};
+use std::{convert::TryInto, net::SocketAddr, env};
 
 use blkstructs::{melscript, CoinID};
 use colored::Colorize;
@@ -6,7 +6,7 @@ use std::io::prelude::*;
 use structopt::StructOpt;
 use tabwriter::TabWriter;
 
-use crate::config::VERSION;
+use crate::config::{VERSION, SQL_FILE_NAME};
 use crate::services::{ActiveWallet, AvailableWallets, WalletData};
 
 #[derive(Debug, StructOpt)]
@@ -14,21 +14,19 @@ pub struct AnetClientConfig {
     /// Address for bootstrapping into the network
     #[structopt(long, default_value = "94.237.109.44:11814")]
     bootstrap: SocketAddr,
-
-    /// Path to db storage
-    #[structopt(long, default_value = "./sql.db")]
-    storage_path: String,
 }
 
 /// Runs the alphanet client
 pub async fn run_anet_client(cfg: AnetClientConfig) {
     // wallets
-    let available_wallets = AvailableWallets::new(&cfg.storage_path);
+    let mut storage_path = env::var("CARGO_MANIFEST_DIR").unwrap();
+    storage_path.push_str(SQL_FILE_NAME);
+    let available_wallets = AvailableWallets::new(&storage_path);
 
     let mut prompt_stack: Vec<String> = vec![format!("v{}", VERSION).green().to_string()];
     loop {
         let prompt = format!("[anet client {}]% ", prompt_stack.join(" "));
-        let res = try_run_prompt(&mut prompt_stack, &prompt, &available_wallets, &cfg).await;
+        let res = try_run_prompt(&mut prompt_stack, &prompt, &available_wallets, &cfg, &storage_path).await;
         match res {
             Ok(exit) => {
                 if exit {
@@ -45,6 +43,7 @@ async fn try_run_prompt(
     prompt: &str,
     available_wallets: &AvailableWallets,
     cfg: &AnetClientConfig,
+    storage_path: &String
 ) -> anyhow::Result<bool> {
     let input = read_line(prompt.to_string()).await.unwrap();
     let mut tw = TabWriter::new(vec![]);
@@ -85,7 +84,7 @@ async fn try_run_prompt(
                         wallet_secret,
                         wallet.clone(),
                         cfg.bootstrap,
-                        &cfg.storage_path,
+                        &storage_path,
                     );
                     let res = run_active_wallet(wallet_name, &mut active_wallet, &prompt).await;
                     match res {
