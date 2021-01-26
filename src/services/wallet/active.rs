@@ -140,6 +140,14 @@ impl ActiveWallet {
         Ok(self.client.get_coin(header, first_change).await?)
     }
 
+    pub async fn get_spent_coins(&mut self) -> anyhow::Result<HashMap<CoinID, CoinDataHeight>> {
+        let mut spent_coins = HashMap::new();
+        for (coin_id, coin_data) in self.wallet.spent_coins().iter() {
+            spent_coins.insert(*coin_id, coin_data.clone());
+        }
+        Ok(spent_coins)
+    }
+
     pub async fn get_unspent_coins(&mut self) -> anyhow::Result<HashMap<CoinID, CoinDataHeight>> {
         let mut unspent_coins = HashMap::new();
         for (coin_id, coin_data) in self.wallet.unspent_coins().iter() {

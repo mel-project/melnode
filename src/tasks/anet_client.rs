@@ -223,7 +223,6 @@ async fn run_active_wallet(
                 }
             }
             ["coins",] => {
-
                 let unspent_coins = active_wallet.get_unspent_coins().await?;
                 eprintln!(">> **** COINS ****");
 
@@ -231,6 +230,29 @@ async fn run_active_wallet(
                 writeln!(&mut tw, ">> [CoinID]\t[Height]\t[Amount]\t[CoinType]").unwrap();
 
                 for (coin_id, coin_data) in unspent_coins.iter() {
+                    let coin_id = hex::encode(bincode::serialize(coin_id).unwrap());
+                    write!(&mut tw,
+                           ">> {}\t{}\t{}\t{}",
+                           coin_id,
+                           coin_data.height.to_string(),
+                           coin_data.coin_data.value.to_string(),
+                           {
+                               "μTML"
+                           },
+                    ).unwrap();
+                }
+                tw.flush().unwrap();
+                println!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap())
+
+            }
+            ["spent-coins",] => {
+                let spent_coins = active_wallet.get_spent_coins().await?;
+                eprintln!(">> **** COINS ****");
+
+                let mut tw = TabWriter::new(vec![]);
+                writeln!(&mut tw, ">> [CoinID]\t[Height]\t[Amount]\t[CoinType]").unwrap();
+
+                for (coin_id, coin_data) in spent_coins.iter() {
                     let coin_id = hex::encode(bincode::serialize(coin_id).unwrap());
                     write!(&mut tw,
                            ">> {}\t{}\t{}\t{}",
@@ -259,6 +281,7 @@ async fn run_active_wallet(
                 eprintln!(">> faucet <amount> <unit>");
                 eprintln!(">> coin-add <coin-id>");
                 eprintln!(">> coins");
+                eprintln!(">> spent-coins");
                 eprintln!(">> balance");
                 eprintln!(">> send-tx <address> <amount> <unit>");
                 eprintln!(">> exit");

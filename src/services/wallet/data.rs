@@ -13,11 +13,6 @@ pub struct WalletData {
 }
 
 impl WalletData {
-    /// Coins
-    pub fn unspent_coins(&self) -> im::HashMap<CoinID, CoinDataHeight> {
-        self.unspent_coins.clone()
-    }
-
     /// Create a new data.
     pub fn new(my_script: melscript::Script) -> Self {
         WalletData {
@@ -26,6 +21,16 @@ impl WalletData {
             tx_in_progress: im::HashMap::new(),
             my_script,
         }
+    }
+
+    /// Unspent Coins
+    pub fn unspent_coins(&self) -> im::HashMap<CoinID, CoinDataHeight> {
+        self.unspent_coins.clone()
+    }
+
+    /// Spent Coins
+    pub fn spent_coins(&self) -> im::HashMap<CoinID, CoinDataHeight> {
+        self.spent_coins.clone()
     }
 
     /// Generates wallet data from script based on keypair
