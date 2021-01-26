@@ -190,7 +190,7 @@ async fn run_active_wallet(
                     }
                 }
             }
-            ["tx-send", dest_addr, amount, unit] => {
+            ["send-tx", dest_addr, amount, unit] => {
                 let tx = active_wallet.create_tx(dest_addr, amount, unit).await?;
                 let fee_prompt = format!("Do you wish to send a tx with a fee of {} (y/n): ", tx.fee);
                 let fee_input = read_line(fee_prompt.to_string()).await.unwrap();
@@ -251,7 +251,13 @@ async fn run_active_wallet(
                 return Ok(());
             }
             _ => {
-                eprintln!("Invalid command for active wallet");
+                eprintln!("\nAvailable commands are: ");
+                eprintln!(">> faucet <amount> <unit>");
+                eprintln!(">> coin-add <coin-id>");
+                eprintln!(">> coins");
+                eprintln!(">> balance");
+                eprintln!(">> send-tx <address> <amount> <unit>");
+                eprintln!(">> exit");
                 continue;
             }
         }
