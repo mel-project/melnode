@@ -8,6 +8,7 @@ use tabwriter::TabWriter;
 
 use crate::config::VERSION;
 use crate::services::{ActiveWallet, AvailableWallets, WalletData};
+use anyhow::Error;
 
 #[derive(Debug, StructOpt)]
 pub struct AnetClientConfig {
@@ -29,8 +30,13 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
     loop {
         let prompt = format!("[anet client {}]% ", prompt_stack.join(" "));
         let res = try_run_prompt(&mut prompt_stack, &prompt, &available_wallets, &cfg).await;
-        if let Err(err) = res {
-            eprintln!(">> {}: {}", "ERROR".red().bold(), err);
+        match res {
+            Ok(exit) => {
+                if exit {
+                    break;
+                }
+            }
+            Err(err) => { eprintln!(">> {}: {}", "ERROR".red().bold(), err); }
         }
     }
 }
@@ -40,7 +46,7 @@ async fn try_run_prompt(
     prompt: &str,
     available_wallets: &AvailableWallets,
     cfg: &AnetClientConfig,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<bool> {
     let input = read_line(prompt.to_string()).await.unwrap();
     let mut tw = TabWriter::new(vec![]);
 
@@ -48,7 +54,7 @@ async fn try_run_prompt(
         &["wallet-new", wallet_name] => {
             if available_wallets.get(wallet_name).is_some() {
                 eprintln!(">> {}: data already exists", "ERROR".red().bold());
-                return Ok(());
+                return Ok(false);
             }
             let (sk, _pk, wallet_data) = WalletData::generate();
             let wallet = available_wallets.insert(wallet_name, &wallet_data);
@@ -103,14 +109,17 @@ async fn try_run_prompt(
                 writeln!(tw, ">> {}\t{}", name, wallet.my_script.hash().to_addr())?;
             }
         }
+        &["exit"] => {
+            return Ok(true);
+        }
         other => {
             eprintln!("no such command: {:?}", other);
-            return Ok(());
+            return Ok(false);
         }
     }
     tw.flush()?;
     eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
-    Ok(())
+    Ok(false)
 }
 
 async fn read_line(prompt: String) -> anyhow::Result<String> {
