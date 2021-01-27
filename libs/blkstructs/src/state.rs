@@ -305,7 +305,8 @@ pub fn reward_coin_pseudoid(height: u64) -> CoinID {
     }
 }
 
-/// SealedState represents an immutable state at a finalized block height. It cannot be constructed except through sealiong a State or restoring from persistent storage.
+/// SealedState represents an immutable state at a finalized block height.
+/// It cannot be constructed except through sealing a State or restoring from persistent storage.
 #[derive(Clone, Debug)]
 pub struct SealedState(Arc<State>, Option<ProposerAction>);
 
