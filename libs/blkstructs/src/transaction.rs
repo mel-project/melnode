@@ -351,12 +351,16 @@ pub(crate) mod tests {
     }
 
     #[rstest]
-    fn test_script_as_map() {
+    fn test_script_as_map(valid_txx: Vec<Transaction>) {
         // create transaction
+        let mut valid_tx = valid_txx.iter().next().unwrap().clone();
+        let (pk, sk) = tmelcrypt::ed25519_keygen();
+        let scr = melscript::Script::std_ed25519_pk(pk);
 
         // add scripts
 
         // call script_as_map
+        let script_map = valid_tx.script_as_map();
 
         // verify num scripts = length of returned hashmap
 
