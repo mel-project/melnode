@@ -1,6 +1,6 @@
-use rstest::*;
 use crate::testing::utils::*;
-use crate::{Transaction, melscript, CoinID, CoinData, MICRO_CONVERTER, COINTYPE_TMEL};
+use crate::{melscript, CoinData, CoinID, Transaction, DENOM_TMEL, MICRO_CONVERTER};
+use rstest::*;
 use tmelcrypt::{Ed25519PK, Ed25519SK};
 
 /// Return a keypair
@@ -22,9 +22,9 @@ pub fn valid_txx(keypair: (Ed25519PK, Ed25519SK)) -> Vec<Transaction> {
             index: 0,
         },
         CoinData {
-            conshash: scr.hash(),
+            covhash: scr.hash(),
             value: MICRO_CONVERTER * 1000,
-            cointype: COINTYPE_TMEL.to_owned(),
+            denom: DENOM_TMEL.to_owned(),
         },
         sk,
         &scr,

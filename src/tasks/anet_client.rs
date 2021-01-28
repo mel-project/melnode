@@ -171,7 +171,7 @@ async fn run_active_wallet(
                             ">> Coin found at height {}! Added {} {} to data",
                             coin_data_height.height,
                             coin_data_height.coin_data.value,
-                            match coin_data_height.coin_data.cointype.as_slice() {
+                            match coin_data_height.coin_data.denom.as_slice() {
                                 // COINTYPE_TMEL => "μmel".to_string(),
                                 val => format!("X-{}", hex::encode(val)),
                             }
@@ -211,7 +211,7 @@ async fn run_active_wallet(
                         coin_id,
                         coin_data.height.to_string(),
                         coin_data.coin_data.value.to_string(),
-                        match coin_data.coin_data.cointype.as_slice() {
+                        match coin_data.coin_data.denom.as_slice() {
                             COINTYPE_TMEL => "μTML",
                             _ => "(other)",
                         },

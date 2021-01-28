@@ -2,10 +2,11 @@ pub use crate::stake::*;
 use crate::{constants::*, CoinDataHeight};
 use crate::{smtmapping::*, CoinData};
 use crate::{transaction as txn, CoinID};
+use applytx::StateHandle;
 use bytes::Bytes;
+
 use defmac::defmac;
-use parking_lot::RwLock;
-use rayon::prelude::*;
+
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use std::sync::Arc;
@@ -14,7 +15,7 @@ use std::{collections::HashMap, fmt::Debug};
 use thiserror::Error;
 use tmelcrypt::{Ed25519PK, HashVal};
 use txn::Transaction;
-mod helpers;
+mod applytx;
 mod melmint;
 
 // TODO: Move these structs into state package
@@ -43,6 +44,8 @@ pub enum StateError {
     BidWrongTime,
     #[error("block has wrong header after applying to previous block")]
     WrongHeader,
+    #[error("tried to spend locked coin")]
+    CoinLocked,
 }
 
 /// Configuration of a genesis state. Serializable via serde.
@@ -158,9 +161,9 @@ impl State {
         let mut empty = Self::new_empty(db);
         // insert coin out of nowhere
         let init_coin = txn::CoinData {
-            conshash: start_conshash,
+            covhash: start_conshash,
             value: start_micromels,
-            cointype: COINTYPE_TMEL.to_vec(),
+            denom: DENOM_TMEL.to_vec(),
         };
         empty.coins.insert(
             txn::CoinID {
@@ -190,43 +193,17 @@ impl State {
         self.apply_tx_batch(std::slice::from_ref(tx))
     }
 
-    /// Applies a batch of transactions. The order of the transactions in txx do not matter.
     pub fn apply_tx_batch(&mut self, txx: &[txn::Transaction]) -> Result<(), StateError> {
-        // clone self first
-        let mut newself = self.clone();
-        // first ensure that all the transactions are well-formed
-        for tx in txx {
-            if !tx.is_well_formed() {
-                return Err(StateError::MalformedTx);
-            }
-            newself.transactions.insert(tx.hash_nosigs(), tx.clone());
-        }
-        let lnewself = RwLock::new(newself);
-        // then we apply the outputs in parallel
-        txx.par_iter()
-            .for_each(|tx| helpers::apply_tx_outputs(&lnewself, tx));
-        // then we apply the inputs in parallel
-        let res: Result<Vec<()>, StateError> = txx
-            .par_iter()
-            .map(|tx| helpers::apply_tx_inputs(&lnewself, tx))
-            .collect();
-        res?;
-        // then we apply the nondefault checks in parallel
-        let res: Result<Vec<()>, StateError> = txx
-            .par_iter()
-            .filter(|tx| tx.kind != txn::TxKind::Normal && tx.kind != txn::TxKind::Faucet)
-            .map(|tx| helpers::apply_tx_special(&lnewself, tx))
-            .collect();
-        res?;
-        // we commit the changes
-        //panic!("COMMIT?!");
+        let old_hash = self.coins.root_hash();
+        let handle = StateHandle::new(self);
+        handle.apply_tx_batch(txx)?;
+        handle.commit();
         log::debug!(
             "applied a batch of {} txx to {:?} => {:?}",
             txx.len(),
-            self.coins.root_hash(),
-            lnewself.read().coins.root_hash()
+            old_hash,
+            self.coins.root_hash()
         );
-        *self = lnewself.read().clone();
         Ok(())
     }
 
@@ -255,9 +232,9 @@ impl State {
             let pseudocoin_id = reward_coin_pseudoid(self.height);
             let pseudocoin_data = CoinDataHeight {
                 coin_data: CoinData {
-                    conshash: action.reward_dest,
+                    covhash: action.reward_dest,
                     value: base_fees + tips,
-                    cointype: COINTYPE_TMEL.into(),
+                    denom: DENOM_TMEL.into(),
                 },
                 height: self.height,
             };
@@ -289,12 +266,14 @@ impl State {
     }
 
     pub fn get_height_entropy(&self, height: u64) -> HashVal {
-        // TODO something robust, like bitwise majority "voting"
-        self.history
-            .get(&height)
-            .0
-            .map(|v| v.hash())
-            .unwrap_or_default()
+        // get the last 1021 block hashes
+        let hashes: Vec<HashVal> = (0..height)
+            .rev()
+            .take(ENTROPY_BLOCKS as _)
+            .map(|height| self.history.get(&height).0.unwrap().hash())
+            .collect();
+        // bitwise majority
+        tmelcrypt::majority_beacon(&hashes)
     }
 }
 
@@ -376,6 +355,7 @@ impl SealedState {
         if new.height % AUCTION_INTERVAL == 0 && !new.auction_bids.is_empty() {
             melmint::synthesize_afill(&mut new)
         }
+        // TODO: update Melmint variables
         new
     }
 

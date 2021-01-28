@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 pub const STAKE_EPOCH: u64 = 500_000;
 
 /// StakeDoc is a stake document. It encapsulates all the information needed to verify consensus proofs.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct StakeDoc {
     /// Public key.
     pub pubkey: tmelcrypt::Ed25519PK,
@@ -57,11 +57,11 @@ impl SmtMapping<tmelcrypt::HashVal, StakeDoc> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rstest::rstest;
-    use crate::{melscript, COINTYPE_TMEL, CoinID, CoinDataHeight, CoinData};
     use crate::State;
-    use tmelcrypt::Ed25519SK;
+    use crate::{melscript, CoinData, CoinDataHeight, CoinID, DENOM_TMEL};
+    use rstest::rstest;
     use std::collections::HashMap;
+    use tmelcrypt::Ed25519SK;
 
     /// Create a state using a mapping from sk to syms staked for an epoch
     fn create_state(stakers: &HashMap<Ed25519SK, u64>, epoch_start: u64) -> State {
@@ -79,9 +79,9 @@ mod tests {
             },
             CoinDataHeight {
                 coin_data: CoinData {
-                    conshash: start_conshash,
+                    covhash: start_conshash,
                     value: start_micromels,
-                    cointype: COINTYPE_TMEL.to_vec(),
+                    denom: DENOM_TMEL.to_vec(),
                 },
                 height: 0,
             },
@@ -108,7 +108,10 @@ mod tests {
     fn test_non_staker_has_no_vote_power(staked_syms: Vec<u64>) {
         // Generate genesis block for stakers
         // let staked_syms =vec![100 as u64; 3];
-        let stakers = staked_syms.into_iter().map(|e| (tmelcrypt::ed25519_keygen().1, e)).collect();
+        let stakers = staked_syms
+            .into_iter()
+            .map(|e| (tmelcrypt::ed25519_keygen().1, e))
+            .collect();
         let genesis = create_state(&stakers, 0);
 
         // call vote_power for a key pair who is not a staker
@@ -125,7 +128,10 @@ mod tests {
     fn test_staker_has_correct_vote_power_in_epoch(staked_syms: Vec<u64>) {
         // Generate state for stakers
         let total_staked_syms: u64 = staked_syms.iter().sum();
-        let stakers = staked_syms.into_iter().map(|e| (tmelcrypt::ed25519_keygen().1, e)).collect();
+        let stakers = staked_syms
+            .into_iter()
+            .map(|e| (tmelcrypt::ed25519_keygen().1, e))
+            .collect();
         let state = create_state(&stakers, 0);
 
         // Check the vote power of each staker in epoch 0 has expected value
@@ -141,8 +147,11 @@ mod tests {
     )]
     fn test_staker_has_no_vote_power_in_previous_epoch(epoch_start: u64) {
         // Generate state for stakers
-        let staked_syms =vec![100 as u64; 3];
-        let stakers = staked_syms.into_iter().map(|e| (tmelcrypt::ed25519_keygen().1, e)).collect();
+        let staked_syms = vec![100 as u64; 3];
+        let stakers = staked_syms
+            .into_iter()
+            .map(|e| (tmelcrypt::ed25519_keygen().1, e))
+            .collect();
         let state = create_state(&stakers, epoch_start);
 
         // Check the vote power of each staker in epoch has expected value
@@ -183,7 +192,9 @@ mod tests {
         let stakers = HashMap::new();
         let state = create_state(&stakers, epoch);
 
-        let voting_power = state.stakes.vote_power(epoch, tmelcrypt::ed25519_keygen().0);
+        let voting_power = state
+            .stakes
+            .vote_power(epoch, tmelcrypt::ed25519_keygen().0);
         assert_eq!(voting_power, 0.0);
     }
 
@@ -192,7 +203,10 @@ mod tests {
     )]
     fn test_vote_power_is_zero_when_stakers_are_staking_zero(staked_syms: Vec<u64>) {
         // Generate state for stakers
-        let stakers = staked_syms.into_iter().map(|e| (tmelcrypt::ed25519_keygen().1, e)).collect();
+        let stakers = staked_syms
+            .into_iter()
+            .map(|e| (tmelcrypt::ed25519_keygen().1, e))
+            .collect();
         let state = create_state(&stakers, 0);
 
         // Check the vote power of each staker in epoch 0 has expected value

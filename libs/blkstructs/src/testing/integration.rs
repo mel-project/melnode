@@ -1,20 +1,17 @@
-use crate::{SmtMapping, melscript, CoinID, CoinData, MICRO_CONVERTER, COINTYPE_TMEL, State, ProposerAction};
 use crate::testing::utils::random_valid_txx;
+use crate::{
+    melscript, CoinData, CoinID, ProposerAction, SmtMapping, State, DENOM_TMEL, MICRO_CONVERTER,
+};
 use rand::prelude::SliceRandom;
 
 #[test]
-#[ignore] // TODO: fix fee issue with this test
 fn state_simple_order_independence() {
     let db = autosmt::DBManager::load(autosmt::MemDB::default());
     let (pk, sk) = tmelcrypt::ed25519_keygen();
     let scr = melscript::Script::std_ed25519_pk(pk);
-    let genesis = State::test_genesis(db, MICRO_CONVERTER * 1000, scr.hash(), &[]);
-    let action = Some(ProposerAction {
-        fee_multiplier_delta: 10,
-        reward_dest: melscript::Script::std_ed25519_pk(pk)
-            .hash(),
-    });
-    let first_block = genesis.seal(action); // Pass in proposer action
+    let mut genesis = State::test_genesis(db, MICRO_CONVERTER * 1000, scr.hash(), &[]);
+    genesis.fee_multiplier = 0;
+    let first_block = genesis.seal(None);
     let mut trng = rand::thread_rng();
     let mut txx = random_valid_txx(
         &mut trng,
@@ -23,41 +20,33 @@ fn state_simple_order_independence() {
             index: 0,
         },
         CoinData {
-            conshash: scr.hash(),
+            covhash: scr.hash(),
             value: MICRO_CONVERTER * 1000,
-            cointype: COINTYPE_TMEL.to_owned(),
+            denom: DENOM_TMEL.to_owned(),
         },
         sk,
         &scr,
     );
     println!("transactions generated");
     let seq_copy = {
-        let mut state = dbg!(first_block.next_state());
+        let mut state = first_block.next_state();
         for tx in txx.iter() {
             state.apply_tx(tx).expect("failed application");
         }
-        state.seal(None).header().hash()
+        dbg!(state.seal(None).header()).hash()
     };
-
-    let action = Some(ProposerAction {
-        fee_multiplier_delta: 10,
-        reward_dest: melscript::Script::std_ed25519_pk(pk)
-            .hash(),
-    });
-
-    let copies: Vec<tmelcrypt::HashVal> = (0..2)
+    let copies: Vec<tmelcrypt::HashVal> = (0..8)
         .map(|_i| {
-            let mut state = dbg!(first_block.next_state());
+            let mut state = first_block.next_state();
             txx.shuffle(&mut trng);
             state.apply_tx_batch(&txx).expect("failed application");
-            state.seal(action).header().hash()
+            state.seal(None).header().hash()
         })
         .collect();
     for c in copies {
         assert_eq!(c, seq_copy);
     }
 }
-
 
 // TODO: Create an integration/smp_mapping.rs integration test and move this there.
 #[test]

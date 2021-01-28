@@ -1,4 +1,4 @@
-use crate::{CoinData, CoinID, State, Transaction, TxKind, COINTYPE_TSYM, MICRO_CONVERTER};
+use crate::{CoinData, CoinID, State, Transaction, TxKind, DENOM_TSYM, MICRO_CONVERTER};
 use std::convert::TryInto;
 
 /// Synthesizes the auction-fill transaction, given a state.
@@ -23,18 +23,18 @@ pub fn synthesize_afill(state: &mut State) {
         .val_iter()
         .filter(|tx| tx.hash_nosigs() != auction_winner.as_ref().unwrap().hash_nosigs())
         .map(|tx| CoinData {
-            conshash: tmelcrypt::HashVal(tx.data.clone().try_into().unwrap()),
+            covhash: tmelcrypt::HashVal(tx.data.clone().try_into().unwrap()),
             value: tx.outputs[0].value,
-            cointype: tx.outputs[0].cointype.clone(),
+            denom: tx.outputs[0].denom.clone(),
         })
         .collect();
     if let Some(winner) = &auction_winner {
         let chash: [u8; 32] = winner.data.clone().try_into().unwrap();
         let chash = tmelcrypt::HashVal(chash);
         let output = CoinData {
-            conshash: chash,
+            covhash: chash,
             value: MICRO_CONVERTER,
-            cointype: COINTYPE_TSYM.to_vec(),
+            denom: DENOM_TSYM.to_vec(),
         };
         outputs.push(output);
     }
