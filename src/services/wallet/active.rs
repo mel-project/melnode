@@ -1,7 +1,7 @@
 use crate::services::WalletData;
 use crate::{dal::wallet, protocols::NetClient};
 use blkstructs::{
-    CoinData, CoinDataHeight, CoinID, Header, Transaction, TxKind, COINTYPE_TMEL, MICRO_CONVERTER,
+    CoinData, CoinDataHeight, CoinID, Header, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
 };
 use smol::net::SocketAddr;
 use tmelcrypt::Ed25519SK;
@@ -40,8 +40,8 @@ impl ActiveWallet {
             kind: TxKind::Faucet,
             inputs: vec![],
             outputs: vec![CoinData {
-                cointype: COINTYPE_TMEL.to_owned(),
-                conshash: self.wallet.my_script.hash(),
+                denom: DENOM_TMEL.to_owned(),
+                covhash: self.wallet.my_script.hash(),
                 value: number * MICRO_CONVERTER,
             }],
             fee: 0,
@@ -105,9 +105,9 @@ impl ActiveWallet {
         let dest_addr = tmelcrypt::HashVal::from_addr(dest_addr)
             .ok_or_else(|| anyhow::anyhow!("can't decode as address"))?;
         let output = CoinData {
-            cointype: COINTYPE_TMEL.to_vec(),
+            denom: DENOM_TMEL.to_vec(),
             value: number * MICRO_CONVERTER,
-            conshash: dest_addr,
+            covhash: dest_addr,
         };
         let to_send = self.wallet.pre_spend(vec![output])?.sign_ed25519(self.sk);
         eprintln!(">> Syncing state...");

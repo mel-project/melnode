@@ -1,7 +1,7 @@
 use std::collections::BinaryHeap;
 
 use blkstructs::{
-    melscript, CoinData, CoinID, State, Transaction, TxKind, COINTYPE_TMEL, MICRO_CONVERTER,
+    melscript, CoinData, CoinID, State, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
 };
 use once_cell::sync::Lazy;
 use tmelcrypt::{Ed25519PK, Ed25519SK};
@@ -19,14 +19,14 @@ fn random_valid_txx(
     for _ in 0..1000 {
         // pop one item from pqueue
         let (_, to_spend, to_spend_data) = pqueue.pop().unwrap();
-        assert_eq!(to_spend_data.conshash, cons.hash());
+        assert_eq!(to_spend_data.covhash, cons.hash());
         let mut new_tx = Transaction {
             kind: TxKind::Normal,
             inputs: vec![to_spend],
             outputs: vec![CoinData {
-                conshash: cons.hash(),
+                covhash: cons.hash(),
                 value: to_spend_data.value,
-                cointype: COINTYPE_TMEL.to_owned(),
+                denom: DENOM_TMEL.to_owned(),
             }],
             fee: 0,
             scripts: vec![cons.clone()],
@@ -59,9 +59,9 @@ fn main() {
     );
     let cov = melscript::Script::std_ed25519_pk(KEYPAIR.0);
     let kmel_cd = CoinData {
-        conshash: cov.hash(),
+        covhash: cov.hash(),
         value: MICRO_CONVERTER * 1000,
-        cointype: COINTYPE_TMEL.to_owned(),
+        denom: DENOM_TMEL.to_owned(),
     };
     let mut start_coin = CoinID::zero_zero();
     for count in 0..1000 {

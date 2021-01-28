@@ -87,11 +87,11 @@ impl Transaction {
     pub fn total_outputs(&self) -> HashMap<Vec<u8>, u64> {
         let mut toret = HashMap::new();
         for output in self.outputs.iter() {
-            let old = *toret.get(&output.cointype).unwrap_or(&0);
-            toret.insert(output.cointype.clone(), old + output.value);
+            let old = *toret.get(&output.denom).unwrap_or(&0);
+            toret.insert(output.denom.clone(), old + output.value);
         }
-        let old = *toret.get(COINTYPE_TMEL).unwrap_or(&0);
-        toret.insert(COINTYPE_TMEL.to_vec(), old + self.fee);
+        let old = *toret.get(DENOM_TMEL).unwrap_or(&0);
+        toret.insert(DENOM_TMEL.to_vec(), old + self.fee);
         toret
     }
     /// scripts_as_map returns a HashMap mapping the hash of each script in the transaction to the script itself.
@@ -149,9 +149,9 @@ impl CoinID {
 #[derive(Serialize, Deserialize, Clone, Arbitrary, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
 /// The data bound to a coin ID. Contains the "contents" of a coin, i.e. its constraint hash, value, and coin type.
 pub struct CoinData {
-    pub conshash: tmelcrypt::HashVal,
+    pub covhash: tmelcrypt::HashVal,
     pub value: u64,
-    pub cointype: Vec<u8>,
+    pub denom: Vec<u8>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Arbitrary, Debug)]
@@ -163,9 +163,9 @@ pub struct CoinDataHeight {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use rstest::*;
     use crate::testing::fixtures::valid_txx;
-    use crate::{Transaction, MAX_COINVAL, CoinData};
+    use crate::{CoinData, Transaction, MAX_COINVAL};
+    use rstest::*;
 
     #[rstest]
     fn test_is_well_formed(valid_txx: Vec<Transaction>) {
@@ -200,7 +200,7 @@ pub(crate) mod tests {
     #[rstest(
         offset => [1 as u64, 2 as u64, 100 as u64]
     )]
-    fn test_is_not_well_formed_if_fee_gt_max (offset: u64, valid_txx: Vec<Transaction>) {
+    fn test_is_not_well_formed_if_fee_gt_max(offset: u64, valid_txx: Vec<Transaction>) {
         // Extract out first coin data from first transaction in valid transactions
         let valid_tx = valid_txx.iter().next().unwrap().clone();
 
@@ -248,7 +248,6 @@ pub(crate) mod tests {
         // call hash_no_sigs
 
         // verify that hash matches expected value
-
     }
 
     #[rstest]
@@ -322,5 +321,4 @@ pub(crate) mod tests {
 
         // verify result is max u64 size
     }
-
 }
