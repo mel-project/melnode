@@ -147,7 +147,7 @@ mod tests {
 
         // Check the vote power of each staker in epoch has expected value
         for (sk, _vote) in stakers.iter() {
-            // Go througha ll previous epochs before epoch_start
+            // Go through all previous epochs before epoch_start
             // and ensure no vote power
             for epoch in 0..epoch_start {
                 let vote_power = state.stakes.vote_power(epoch, sk.to_public());
@@ -198,26 +198,39 @@ mod tests {
         // Check the vote power of each staker in epoch 0 has expected value
         for (sk, _vote) in stakers.iter() {
             let vote_power = state.stakes.vote_power(0, sk.to_public());
-            // let expected_vote_power = (*vote as f64) / (total_staked_syms as f64);
             assert_eq!(vote_power, 0.0 as f64);
         }
     }
 
-    // TODO: add test case for epoch end test case
-
-    // TODO: implement tests below
     #[test]
-    fn test_remove_stale() {
+    fn test_remove_stale_all_stale() {
+        let staked_syms: Vec<u64> = vec![0 as u64; 100];
 
+        // Generate state for stakers
+        let stakers = staked_syms.into_iter().map(|e| (tmelcrypt::ed25519_keygen().1, e)).collect();
+        let mut state = create_state(&stakers, 0);
+
+        // All stakes should be stale past this epoch
+        state.stakes.remove_stale(100000000000);
+
+        for (key, value) in state.stakes.mapping.iter() {
+            assert_eq!(value, b"");
+        }
     }
 
     #[test]
-    fn test_keep_non_stale() {
+    fn test_remove_stale_no_stale() {
+        let staked_syms: Vec<u64> = vec![0 as u64; 100];
 
-    }
+        // Generate state for stakers
+        let stakers = staked_syms.into_iter().map(|e| (tmelcrypt::ed25519_keygen().1, e)).collect();
+        let mut state = create_state(&stakers, 0);
 
-    #[test]
-    fn test_remove_stale_multiple_stakers() {
+        // No stakes should be stale past this epoch
+        state.stakes.remove_stale(100);
 
+        for (key, value) in state.stakes.mapping.iter() {
+            assert_ne!(value, b"");
+        }
     }
 }

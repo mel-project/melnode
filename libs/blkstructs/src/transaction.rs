@@ -166,6 +166,7 @@ pub(crate) mod tests {
     use rstest::*;
     use crate::testing::fixtures::valid_txx;
     use crate::{Transaction, MAX_COINVAL, CoinData};
+    use logos::Source;
 
     #[rstest]
     fn test_is_well_formed(valid_txx: Vec<Transaction>) {
@@ -238,47 +239,84 @@ pub(crate) mod tests {
     }
 
     #[rstest]
-    fn test_hash_no_sigs() {
-        // create a transaction from fixture
+    fn test_hash_no_sigs(valid_txx: Vec<Transaction>) {
+        // Check that valid transaction has a non zero number of signatures
+        let valid_tx = valid_txx.iter().next().unwrap().clone();
+        assert_ne!(valid_tx.sigs.len(), 0);
 
-        // calculate hash
+        // Create a transaction from it which has no signatures
+        let mut no_sigs_tx = valid_tx.clone();
+        no_sigs_tx.sigs = vec![];
 
-        // sign it and
+        // Create a transaction from valid which has another signature
+        let more_sig_tx = valid_tx.clone();
+        let new_sk = tmelcrypt::ed25519_keygen().1;
+        let more_sig_tx = more_sig_tx.sign_ed25519(new_sk);
 
-        // call hash_no_sigs
+        // Ensure they all hash to same value
+        let h1 = valid_tx.hash_nosigs();
+        let h2 = no_sigs_tx.hash_nosigs();
+        let h3 = more_sig_tx.hash_nosigs();
 
-        // verify that hash matches expected value
-
+        assert_eq!(h1, h2);
+        assert_eq!(h1, h3);
     }
 
     #[rstest]
-    fn test_sign_sigs() {
-        // create a transaction
-
-        // verify it has 0 sigs
+    fn test_sign_sigs(valid_txx: Vec<Transaction>) {
+        // Create a transaction from it which has no signatures
+        let valid_tx = valid_txx.iter().next().unwrap().clone();
+        assert_ne!(valid_tx.sigs.len(), 0);
+        let mut no_sigs_tx = valid_tx.clone();
+        no_sigs_tx.sigs = vec![];
+        assert_eq!(no_sigs_tx.sigs.len(), 0);
 
         // sign it N times
+        let mut mult_signature_tx = no_sigs_tx.clone();
+        let n = 5;
+        for (pk, sk) in vec![tmelcrypt::ed25519_keygen(); n].iter() {
+            mult_signature_tx = mult_signature_tx.sign_ed25519(*sk);
+        }
 
         // verify it has N signatures
+        assert_eq!(mult_signature_tx.sigs.len(), n);
 
         // sign it M times
+        let m = 8;
+        for (pk, sk) in vec![tmelcrypt::ed25519_keygen(); m].iter() {
+            mult_signature_tx = mult_signature_tx.sign_ed25519(*sk);
+        }
 
         // verify it has N + M signatures
+        assert_eq!(mult_signature_tx.sigs.len(), n+m);
     }
 
     #[rstest]
-    fn test_sign_sigs_2() {
-        // create a transaction
+    fn test_sign_sigs_and_verify(valid_txx: Vec<Transaction>) {
+        // Create a transaction from it which has no signatures
+        let valid_tx = valid_txx.iter().next().unwrap().clone();
+        assert_ne!(valid_tx.sigs.len(), 0);
+        let mut no_sigs_tx = valid_tx.clone();
+        no_sigs_tx.sigs = vec![];
+        assert_eq!(no_sigs_tx.sigs.len(), 0);
+
+        // create two key pairs
+        let (pk1, sk1) = tmelcrypt::ed25519_keygen();
+        let (pk2, sk2) = tmelcrypt::ed25519_keygen();
 
         // sign it
+        let mut tx = no_sigs_tx.clone();
+        tx = tx.sign_ed25519(sk1);
+        tx = tx.sign_ed25519(sk2);
 
-        // verify it is signed by expected key
+        // verify it is signed by expected keys
+        let sig1 = tx.sigs[0].clone();
+        let sig2 = tx.sigs[1].clone();
 
-        // sign it with another key
+        pk1.verify(&tx.hash_nosigs().to_vec(), &sig1);
+        pk2.verify(&tx.hash_nosigs().to_vec(), &sig2);
 
-        // verify it is signed by expected key and previou sis still signed by expected
-
-        // verify there are only two signatures
+        assert_eq!(tx.sigs.len(), 2);
     }
 
     #[rstest]
