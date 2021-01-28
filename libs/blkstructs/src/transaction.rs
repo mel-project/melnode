@@ -149,7 +149,7 @@ impl CoinID {
 #[derive(Serialize, Deserialize, Clone, Arbitrary, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
 /// The data bound to a coin ID. Contains the "contents" of a coin, i.e. its constraint hash, value, and coin type.
 pub struct CoinData {
-    pub conshash: tmelcrypt::HashVal,
+    pub conshash: tmelcrypt::HashVal, // constraint hash
     pub value: u64,
     pub cointype: Vec<u8>,
 }
@@ -165,8 +165,9 @@ pub struct CoinDataHeight {
 pub(crate) mod tests {
     use rstest::*;
     use crate::testing::fixtures::valid_txx;
-    use crate::{Transaction, MAX_COINVAL, CoinData};
+    use crate::{Transaction, MAX_COINVAL, CoinData, COINTYPE_TMEL, melscript};
     use logos::Source;
+    use tmelcrypt::Ed25519SK;
 
     #[rstest]
     fn test_is_well_formed(valid_txx: Vec<Transaction>) {
@@ -320,14 +321,33 @@ pub(crate) mod tests {
     }
 
     #[rstest]
-    fn test_total_output() {
+    fn test_total_output(valid_txx: Vec<Transaction>) {
         // create transaction
+        let mut valid_tx = valid_txx.iter().next().unwrap().clone();
+        let (pk, sk) = tmelcrypt::ed25519_keygen();
+        let scr = melscript::Script::std_ed25519_pk(pk);
 
-        // insert various coin types
+        // insert coins
+        let val1 = 100;
+        let val2 = 200;
+        valid_tx.outputs = vec![
+            CoinData {
+                conshash: scr.hash(),
+                value: val1,
+                cointype: COINTYPE_TMEL.to_owned(),
+            },
+            CoinData {
+                conshash: scr.hash(),
+                value: val2,
+                cointype: COINTYPE_TMEL.to_owned(),
+            }
+        ];
 
-        // insert COINTYPE_MEL
+        // Check total is valid
+        let value_by_coin_type = valid_tx.total_outputs();
+        let total: u64 = value_by_coin_type.iter().map(|(k, v)| *v).sum();
 
-        // verify totals for all coin types match
+        assert_eq!(total, val1 + val2);
     }
 
     #[rstest]

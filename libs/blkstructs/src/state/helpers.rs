@@ -208,3 +208,16 @@ pub(crate) fn apply_tx_special_stake(
     }
     Ok(())
 }
+
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use rstest::*;
+    use crate::testing::fixtures::valid_txx;
+    use crate::Transaction;
+
+    fn test_apply_tx_inputs(valid_txx: Vec<Transaction>) {
+        let valid_tx = valid_txx.iter().next().unwrap().clone();
+
+    }
+}
