@@ -1,12 +1,13 @@
 use std::{convert::TryInto, sync::atomic::AtomicU64};
 
+use bytes::Bytes;
 use dashmap::DashMap;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use tmelcrypt::HashVal;
 
 use crate::{
-    cointype_dosc, CoinData, CoinDataHeight, CoinID, StakeDoc, State, StateError, Transaction,
-    TxKind, COVHASH_ABID, COVHASH_DESTROY, DENOM_TMEL, DENOM_TSYM, STAKE_EPOCH,
+    cointype_dosc, safe_deserialize, CoinData, CoinDataHeight, CoinID, StakeDoc, State, StateError,
+    Transaction, TxKind, COVHASH_ABID, COVHASH_DESTROY, DENOM_TMEL, DENOM_TSYM, STAKE_EPOCH,
 };
 
 /// A mutable "handle" to a particular State. Can be "committed" like a database transaction.
@@ -205,11 +206,23 @@ impl<'a> StateHandle<'a> {
     fn apply_tx_special_doscmint(&self, tx: &Transaction) -> Result<(), StateError> {
         let coin_id = *tx.inputs.get(0).ok_or(StateError::MalformedTx)?;
         let coin_data = self.get_coin(coin_id).ok_or(StateError::MalformedTx)?;
+        // make sure the time is long enough that we can easily measure it
+        if self.state.height - coin_data.height < 100 {
+            return Err(StateError::InvalidMelPoW);
+        }
         // construct puzzle seed
         let chi = tmelcrypt::hash_keyed(
             &self.state.history.get(&coin_data.height).0.unwrap().hash(),
             &bincode::serialize(tx.inputs.get(0).ok_or(StateError::MalformedTx)?).unwrap(),
         );
+        // get difficulty and proof
+        let (difficulty, proof): (u64, Vec<u8>) =
+            safe_deserialize(&tx.data).map_err(|_| StateError::MalformedTx)?;
+        let proof = melpow::Proof::from_bytes(&proof).ok_or(StateError::MalformedTx)?;
+        if !proof.verify(&chi, difficulty as usize) {
+            return Err(StateError::InvalidMelPoW);
+        }
+
         unimplemented!()
     }
 

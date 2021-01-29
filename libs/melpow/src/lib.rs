@@ -32,6 +32,7 @@ impl Proof {
         Proof(proof_map)
     }
     /// Verifies a MelPoW proof.
+    #[must_use]
     pub fn verify(&self, puzzle: &[u8], difficulty: usize) -> bool {
         let chi = hash::bts_key(puzzle, b"chi");
         let gammas = gen_gammas(puzzle, difficulty);
