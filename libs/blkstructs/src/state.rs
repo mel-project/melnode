@@ -481,30 +481,3 @@ pub struct AbbrBlock {
     pub txhashes: im::HashSet<HashVal>,
     pub proposer_action: Option<ProposerAction>,
 }
-
-#[cfg(test)]
-pub(crate) mod tests {
-    use crate::testing::fixtures::valid_txx;
-    use crate::Transaction;
-    use rstest::*;
-
-    #[rstest]
-    #[ignore]
-    fn test_apply_tx_batch_not_well_formed_errors() {
-        // create a batch of transactions
-        // ensure at least one of them is not well formed
-        // call apply tx batch
-        // verify you get a state error
-    }
-
-    #[rstest]
-    #[ignore]
-    fn test_apply_tx_batch(valid_txx: Vec<Transaction>) {
-        // create a batch of transactions
-        // valid_txx()
-        // call apply tx batch
-
-        // verify result is ok
-    }
-    // TODO: add tests for State::seal & SealedState methods
-}

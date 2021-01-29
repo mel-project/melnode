@@ -8,6 +8,9 @@ use crate::{
     cointype_dosc, CoinData, CoinDataHeight, CoinID, StakeDoc, State, StateError, Transaction,
     TxKind, COVHASH_ABID, COVHASH_DESTROY, DENOM_TMEL, DENOM_TSYM, STAKE_EPOCH,
 };
+use std::ops::{Deref, Try};
+use std::collections::hash_map::RandomState;
+use dashmap::mapref::one::Ref;
 
 /// A mutable "handle" to a particular State. Can be "committed" like a database transaction.
 pub(crate) struct StateHandle<'a> {
@@ -311,15 +314,28 @@ impl<'a> StateHandle<'a> {
         self.auction_bids_cache.insert(txhash, None);
     }
 
-    fn get_stake(&self, txhash: HashVal) -> Option<Transaction> {
-        self.auction_bids_cache
+    fn get_stake(&self, txhash: HashVal) -> Option<StakeDoc> {
+        self.stakes_cache
             .entry(txhash)
-            .or_insert_with(|| self.state.auction_bids.get(&txhash).0)
-            .value()
-            .clone()
+            .or_try_insert_with(|| Ok(self.state.stakes.get(&txhash).0.unwrap()))
+            .ok()
+            .as_deref()
+            .cloned()
     }
 
     fn set_stake(&self, txhash: HashVal, sdoc: StakeDoc) {
         self.stakes_cache.insert(txhash, sdoc);
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use crate::testing::fixtures::valid_txx;
+    use crate::Transaction;
+    use rstest::*;
+
+    #[rstest]
+    fn test_() {
+
     }
 }
