@@ -50,7 +50,7 @@ impl<'a> StateHandle<'a> {
     pub fn apply_tx_batch(&self, txx: &[Transaction]) -> Result<(), StateError> {
         for tx in txx {
             if !tx.is_well_formed() {
-                return Err(StateError::MalformedTx);
+                Err(StateError::MalformedTx)
             }
             self.transactions_cache.insert(tx.hash_nosigs(), tx.clone());
         }
