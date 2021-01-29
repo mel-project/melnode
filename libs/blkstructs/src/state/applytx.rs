@@ -13,6 +13,7 @@ use std::collections::hash_map::RandomState;
 use dashmap::mapref::one::Ref;
 
 /// A mutable "handle" to a particular State. Can be "committed" like a database transaction.
+/// Note: Option type values are used to indicate deletion when None
 pub(crate) struct StateHandle<'a> {
     state: &'a mut State,
 
