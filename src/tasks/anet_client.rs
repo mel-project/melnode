@@ -212,8 +212,7 @@ async fn run_active_wallet(
                         coin_data.height.to_string(),
                         coin_data.coin_data.value.to_string(),
                         match coin_data.coin_data.denom.as_slice() {
-                            COINTYPE_TMEL => "μTML",
-                            _ => "(other)",
+                            _cointype_tmel => "μTML",
                         },
                     );
                 }
