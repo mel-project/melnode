@@ -28,7 +28,7 @@ impl AvailableWallets {
         let encoded_data = bincode::serialize(&wallet_data).unwrap();
         wallet::insert(&self.conn, &wallet_name, &encoded_data)
             .expect("Failed to insert wallet data");
-        return false;
+        false
     }
 
     /// Gets a wallet with a certain name. If the wallet exists, return it; otherwise generate a fresh wallet.

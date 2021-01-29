@@ -47,7 +47,7 @@ async fn try_run_prompt(
 
     match input.split(' ').collect::<Vec<_>>().as_slice() {
         &["wallet-new", wallet_name] => {
-            if let Some(_) = available_wallets.get(wallet_name) {
+            if available_wallets.get(wallet_name).is_some() {
                 eprintln!(">> {}: data already exists", "ERROR".red().bold());
                 return Ok(());
             }

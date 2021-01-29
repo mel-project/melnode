@@ -90,7 +90,7 @@ impl ActiveWallet {
         coin_data_height: &CoinDataHeight,
     ) -> anyhow::Result<()> {
         self.wallet
-            .insert_coin(coin_id.clone(), coin_data_height.clone());
+            .insert_coin(*coin_id, coin_data_height.clone());
         Ok(())
     }
 
@@ -136,7 +136,7 @@ impl ActiveWallet {
     pub async fn get_balances(&mut self) -> anyhow::Result<HashMap<CoinID, CoinDataHeight>> {
         let mut unspent_coins = HashMap::new();
         for (coin_id, coin_data) in self.wallet.unspent_coins().iter() {
-            unspent_coins.insert(coin_id.clone(), coin_data.clone());
+            unspent_coins.insert(*coin_id, coin_data.clone());
         }
         Ok(unspent_coins)
     }
