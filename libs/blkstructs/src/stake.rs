@@ -227,7 +227,7 @@ mod tests {
         // All stakes should be stale past this epoch
         state.stakes.remove_stale(100000000000);
 
-        for (key, value) in state.stakes.mapping.iter() {
+        for (_key, value) in state.stakes.mapping.iter() {
             assert_eq!(value, b"");
         }
     }
@@ -243,7 +243,7 @@ mod tests {
         // No stakes should be stale past this epoch
         state.stakes.remove_stale(100);
 
-        for (key, value) in state.stakes.mapping.iter() {
+        for (_key, value) in state.stakes.mapping.iter() {
             assert_ne!(value, b"");
         }
     }

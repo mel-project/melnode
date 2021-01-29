@@ -193,7 +193,7 @@ impl<'a> StateHandle<'a> {
         match tx.kind {
             TxKind::DoscMint => self.apply_tx_special_doscmint(tx),
             TxKind::AuctionBid => self.apply_tx_special_auctionbid(tx),
-            TxKind::AuctionBuyout => self.apply_tx_special_auctionbuyout(tx),
+            TxKind::AuctionBuyout => self.apply_tx_special_auction_buyout(tx),
             TxKind::AuctionFill => {
                 // intentionally ignore here. the auction-fill effects are done elsewhere.
                 Ok(())
@@ -237,7 +237,7 @@ impl<'a> StateHandle<'a> {
         Ok(())
     }
 
-    fn apply_tx_special_auctionbuyout(&self, tx: &Transaction) -> Result<(), StateError> {
+    fn apply_tx_special_auction_buyout(&self, tx: &Transaction) -> Result<(), StateError> {
         let abid_txx: Vec<Transaction> = tx
             .inputs
             .iter()
@@ -329,12 +329,16 @@ impl<'a> StateHandle<'a> {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::testing::fixtures::valid_txx;
-    use crate::Transaction;
+    use crate::testing::fixtures::{valid_txx, genesis_state};
+    use crate::{Transaction, State};
     use rstest::*;
+    use crate::state::applytx::StateHandle;
 
     #[rstest]
-    fn test_() {
-
+    fn test_apply_tx_inputs(mut genesis_state: State, valid_txx: Vec<Transaction>) {
+        let s = StateHandle::new(&mut genesis_state);
+        let res = s.apply_tx_batch(valid_txx.as_slice());
+        assert!(res.is_ok());
+        println!("Test");
     }
 }

@@ -1,5 +1,5 @@
 use crate::testing::utils::*;
-use crate::{melscript, CoinData, CoinID, Transaction, DENOM_TMEL, MICRO_CONVERTER};
+use crate::{melscript, CoinData, CoinID, Transaction, DENOM_TMEL, MICRO_CONVERTER, State};
 use rstest::*;
 use tmelcrypt::{Ed25519PK, Ed25519SK};
 
@@ -30,4 +30,12 @@ pub fn valid_txx(keypair: (Ed25519PK, Ed25519SK)) -> Vec<Transaction> {
         &scr,
     );
     txx
+}
+
+/// Return a genesis state with no stakeholders
+#[fixture]
+pub fn genesis_state(keypair: (Ed25519PK, Ed25519SK)) -> State {
+    let db = autosmt::DBManager::load(autosmt::MemDB::default());
+    let scr = melscript::Script::std_ed25519_pk(keypair.0);
+    State::test_genesis(db, MICRO_CONVERTER * 1000, scr.hash(), &[])
 }

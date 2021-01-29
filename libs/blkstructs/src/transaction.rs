@@ -273,7 +273,7 @@ pub(crate) mod tests {
         // sign it N times
         let mut mult_signature_tx = no_sigs_tx.clone();
         let n = 5;
-        for (pk, sk) in vec![tmelcrypt::ed25519_keygen(); n].iter() {
+        for (_pk, sk) in vec![tmelcrypt::ed25519_keygen(); n].iter() {
             mult_signature_tx = mult_signature_tx.sign_ed25519(*sk);
         }
 
@@ -282,7 +282,7 @@ pub(crate) mod tests {
 
         // sign it M times
         let m = 8;
-        for (pk, sk) in vec![tmelcrypt::ed25519_keygen(); m].iter() {
+        for (_pk, sk) in vec![tmelcrypt::ed25519_keygen(); m].iter() {
             mult_signature_tx = mult_signature_tx.sign_ed25519(*sk);
         }
 
@@ -322,7 +322,7 @@ pub(crate) mod tests {
     fn test_total_output(valid_txx: Vec<Transaction>) {
         // create transaction
         let mut valid_tx = valid_txx.iter().next().unwrap().clone();
-        let (pk, sk) = tmelcrypt::ed25519_keygen();
+        let (pk, _sk) = tmelcrypt::ed25519_keygen();
         let scr = melscript::Script::std_ed25519_pk(pk);
 
         // insert coins
@@ -345,7 +345,7 @@ pub(crate) mod tests {
 
         // Check total is valid
         let value_by_coin_type = valid_tx.total_outputs();
-        let total: u64 = value_by_coin_type.iter().map(|(k, v)| *v).sum();
+        let total: u64 = value_by_coin_type.iter().map(|(_k, v)| *v).sum();
 
         assert_eq!(total, val1 + val2);
     }
@@ -353,14 +353,14 @@ pub(crate) mod tests {
     #[rstest]
     fn test_script_as_map(valid_txx: Vec<Transaction>) {
         // create transaction
-        let mut valid_tx = valid_txx.iter().next().unwrap().clone();
-        let (pk, sk) = tmelcrypt::ed25519_keygen();
-        let scr = melscript::Script::std_ed25519_pk(pk);
+        let valid_tx = valid_txx.iter().next().unwrap().clone();
+        let (pk, _sk) = tmelcrypt::ed25519_keygen();
+        let _scr = melscript::Script::std_ed25519_pk(pk);
 
         // add scripts
 
         // call script_as_map
-        let script_map = valid_tx.script_as_map();
+        let _script_map = valid_tx.script_as_map();
 
         // verify num scripts = length of returned hashmap
 

@@ -1,6 +1,6 @@
 use crate::testing::utils::random_valid_txx;
 use crate::{
-    melscript, CoinData, CoinID, ProposerAction, SmtMapping, State, DENOM_TMEL, MICRO_CONVERTER,
+    melscript, CoinData, CoinID, SmtMapping, State, DENOM_TMEL, MICRO_CONVERTER,
 };
 use rand::prelude::SliceRandom;
 
