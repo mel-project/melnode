@@ -8,9 +8,6 @@ use crate::{
     cointype_dosc, CoinData, CoinDataHeight, CoinID, StakeDoc, State, StateError, Transaction,
     TxKind, COVHASH_ABID, COVHASH_DESTROY, DENOM_TMEL, DENOM_TSYM, STAKE_EPOCH,
 };
-use std::ops::{Deref, Try};
-use std::collections::hash_map::RandomState;
-use dashmap::mapref::one::Ref;
 
 /// A mutable "handle" to a particular State. Can be "committed" like a database transaction.
 /// Note: Option type values are used to indicate deletion when None
@@ -51,7 +48,7 @@ impl<'a> StateHandle<'a> {
     pub fn apply_tx_batch(&self, txx: &[Transaction]) -> Result<(), StateError> {
         for tx in txx {
             if !tx.is_well_formed() {
-                Err(StateError::MalformedTx)
+                return Err(StateError::MalformedTx);
             }
             self.transactions_cache.insert(tx.hash_nosigs(), tx.clone());
         }
@@ -210,7 +207,7 @@ impl<'a> StateHandle<'a> {
         let coin_id = *tx.inputs.get(0).ok_or(StateError::MalformedTx)?;
         let coin_data = self.get_coin(coin_id).ok_or(StateError::MalformedTx)?;
         // construct puzzle seed
-        let chi = tmelcrypt::hash_keyed(
+        let _chi = tmelcrypt::hash_keyed(
             &self.state.history.get(&coin_data.height).0.unwrap().hash(),
             &bincode::serialize(tx.inputs.get(0).ok_or(StateError::MalformedTx)?).unwrap(),
         );
@@ -317,10 +314,10 @@ impl<'a> StateHandle<'a> {
 
     fn get_stake(&self, txhash: HashVal) -> Option<StakeDoc> {
         if let Some(cached_sd) = self.stakes_cache.get(&txhash).as_deref() {
-            Some(cached_sd).cloned()
+            return Some(cached_sd).cloned()
         }
         if let Some(sd) = self.state.stakes.get(&txhash).0 {
-            self.stakes_cache.insert(txhash, sd)
+            return self.stakes_cache.insert(txhash, sd)
         }
         None
     }

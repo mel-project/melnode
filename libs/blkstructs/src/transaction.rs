@@ -164,7 +164,7 @@ pub struct CoinDataHeight {
 #[cfg(test)]
 pub(crate) mod tests {
     use crate::testing::fixtures::valid_txx;
-    use crate::{CoinData, Transaction, MAX_COINVAL};
+    use crate::{CoinData, Transaction, MAX_COINVAL, melscript};
     use rstest::*;
 
     #[rstest]
@@ -330,14 +330,16 @@ pub(crate) mod tests {
         let val2 = 200;
         valid_tx.outputs = vec![
             CoinData {
-                conshash: scr.hash(),
+                covhash: scr.hash(),
                 value: val1,
-                cointype: COINTYPE_TMEL.to_owned(),
+                // cointype: COINTYPE_TMEL.to_owned(),
+                denom: vec![]
             },
             CoinData {
-                conshash: scr.hash(),
+                covhash: scr.hash(),
                 value: val2,
-                cointype: COINTYPE_TMEL.to_owned(),
+                // cointype: COINTYPE_TMEL.to_owned(),
+                denom: vec![]
             }
         ];
 

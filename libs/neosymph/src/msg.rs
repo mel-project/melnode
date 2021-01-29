@@ -1,8 +1,8 @@
-use blkstructs::{AbbrBlock, Block, Header};
+use blkstructs::{AbbrBlock, Block};
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::BTreeMap,
     sync::atomic::AtomicU64,
     time::SystemTime,
 };
