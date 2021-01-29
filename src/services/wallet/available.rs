@@ -9,7 +9,7 @@ pub struct AvailableWallets {
 }
 
 impl AvailableWallets {
-    pub fn new(path: &String) -> Self {
+    pub fn new(path: &str) -> Self {
         let path = Path::new(path);
         let conn = Connection::open(path).expect("SQLite connection failure");
         wallet::init(&conn).expect("Failed to load wallets");

@@ -19,7 +19,7 @@ pub struct ActiveWallet {
 }
 
 impl ActiveWallet {
-    pub fn new(sk: Ed25519SK, wallet: WalletData, remote: SocketAddr, path: &String) -> Self {
+    pub fn new(sk: Ed25519SK, wallet: WalletData, remote: SocketAddr, path: &str) -> Self {
         let path = Path::new(path);
         let conn = Connection::open(path).expect("SQLite connection failure");
         wallet::init(&conn).expect("Failed to load wallet");

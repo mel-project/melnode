@@ -38,11 +38,11 @@ pub async fn run_anet_client(cfg: AnetClientConfig) {
 
 async fn try_run_prompt(
     prompt_stack: &mut Vec<String>,
-    prompt: &String,
+    prompt: &str,
     available_wallets: &AvailableWallets,
     cfg: &AnetClientConfig,
 ) -> anyhow::Result<()> {
-    let input = read_line(prompt.clone()).await.unwrap();
+    let input = read_line(prompt.to_string()).await.unwrap();
     let mut tw = TabWriter::new(vec![]);
 
     match input.split(' ').collect::<Vec<_>>().as_slice() {
@@ -126,10 +126,10 @@ async fn read_line(prompt: String) -> anyhow::Result<String> {
 async fn run_active_wallet(
     wallet_name: &str,
     active_wallet: &mut ActiveWallet,
-    prompt: &String,
+    prompt: &str,
 ) -> anyhow::Result<()> {
     loop {
-        let input = read_line(prompt.clone()).await.unwrap();
+        let input = read_line(prompt.to_string()).await.unwrap();
         match input.split(' ').collect::<Vec<_>>().as_slice() {
             ["faucet", number, unit] => {
                 let coin = active_wallet.send_faucet_tx(number, unit).await?;
@@ -141,20 +141,17 @@ async fn run_active_wallet(
                 // loop until we get coin data height and proof from last header
                 loop {
                     let (coin_data_height, _hdr) = active_wallet.get_coin_data(coin).await?;
-                    match coin_data_height {
-                        Some(coin_data_height) => {
-                            eprintln!(
-                                ">>> Coin is confirmed at current height {}",
-                                coin_data_height.height
-                            );
+                    if let Some(coin_data_height) = coin_data_height {
+                        eprintln!(
+                            ">>> Coin is confirmed at current height {}",
+                            coin_data_height.height
+                        );
 
-                            eprintln!(
-                                ">> CID = {}",
-                                hex::encode(bincode::serialize(&coin).unwrap()).bold()
-                            );
-                            break;
-                        }
-                        None => {}
+                        eprintln!(
+                            ">> CID = {}",
+                            hex::encode(bincode::serialize(&coin).unwrap()).bold()
+                        );
+                        break;
                     }
                 }
             }
@@ -171,9 +168,9 @@ async fn run_active_wallet(
                             ">> Coin found at height {}! Added {} {} to data",
                             coin_data_height.height,
                             coin_data_height.coin_data.value,
-                            match coin_data_height.coin_data.denom.as_slice() {
-                                // COINTYPE_TMEL => "μmel".to_string(),
-                                val => format!("X-{}", hex::encode(val)),
+                            {
+                                let val = coin_data_height.coin_data.denom.as_slice();
+                                format!("X-{}", hex::encode(val))
                             }
                         );
                         active_wallet.add_coin(&coin_id, &coin_data_height).await?;
@@ -211,9 +208,7 @@ async fn run_active_wallet(
                         coin_id,
                         coin_data.height.to_string(),
                         coin_data.coin_data.value.to_string(),
-                        match coin_data.coin_data.denom.as_slice() {
-                            _cointype_tmel => "μTML",
-                        },
+                        "μTML",
                     );
                 }
             }
