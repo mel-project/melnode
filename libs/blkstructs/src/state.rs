@@ -1,5 +1,5 @@
 pub use crate::stake::*;
-use crate::{constants::*, CoinDataHeight};
+use crate::{constants::*, CoinDataHeight, TxKind};
 use crate::{smtmapping::*, CoinData};
 use crate::{transaction as txn, CoinID};
 use applytx::StateHandle;
@@ -74,7 +74,7 @@ pub struct State {
     pub fee_multiplier: u128,
     pub tips: u128,
 
-    pub dosc_multiplier: u128,
+    pub dosc_speed: u128,
     pub auction_bids: SmtMapping<HashVal, txn::Transaction>,
     pub sym_price: u128,
     pub mel_price: u128,
@@ -101,7 +101,7 @@ impl State {
         out.extend_from_slice(&self.fee_multiplier.to_be_bytes());
         out.extend_from_slice(&self.tips.to_be_bytes());
 
-        out.extend_from_slice(&self.dosc_multiplier.to_be_bytes());
+        out.extend_from_slice(&self.dosc_speed.to_be_bytes());
         out.extend_from_slice(&self.auction_bids.root_hash());
         out.extend_from_slice(&self.sym_price.to_be_bytes());
         out.extend_from_slice(&self.mel_price.to_be_bytes());
@@ -112,7 +112,7 @@ impl State {
 
     /// Restores a state from its partial encoding in conjunction with a database. **Does not validate data and will panic; do not use on untrusted data**
     pub fn from_partial_encoding_infallible(mut encoding: &[u8], db: &autosmt::DBManager) -> Self {
-        defmac!(readu64 => u64::from_be_bytes(read_bts(&mut encoding, 16).unwrap().as_slice().try_into().unwrap()));
+        defmac!(readu64 => u64::from_be_bytes(read_bts(&mut encoding, 8).unwrap().as_slice().try_into().unwrap()));
         defmac!(readu128 => u128::from_be_bytes(read_bts(&mut encoding, 16).unwrap().as_slice().try_into().unwrap()));
         defmac!(readtree => SmtMapping::new(db.get_tree(tmelcrypt::HashVal(
             read_bts(&mut encoding, 32).unwrap().as_slice().try_into().unwrap(),
@@ -142,7 +142,7 @@ impl State {
             fee_multiplier,
             tips,
 
-            dosc_multiplier,
+            dosc_speed: dosc_multiplier,
             auction_bids,
             sym_price,
             mel_price,
@@ -257,7 +257,7 @@ impl State {
             transactions: SmtMapping::new(empty_tree.clone()),
             fee_pool: 1000000,
             fee_multiplier: 1000,
-            dosc_multiplier: 1,
+            dosc_speed: 1,
             tips: 0,
             auction_bids: SmtMapping::new(empty_tree.clone()),
             sym_price: MICRO_CONVERTER,
@@ -325,7 +325,7 @@ impl SealedState {
             transactions_hash: inner.transactions.root_hash(),
             fee_pool: inner.fee_pool,
             fee_multiplier: inner.fee_multiplier,
-            dosc_multiplier: inner.dosc_multiplier,
+            dosc_speed: inner.dosc_speed,
             auction_bids_hash: inner.auction_bids.root_hash(),
             sym_price: inner.sym_price,
             mel_price: inner.mel_price,
@@ -347,7 +347,7 @@ impl SealedState {
     /// Creates a new unfinalized state representing the next block.
     pub fn next_state(&self) -> State {
         let mut new = self.inner_ref().clone();
-        // advance the numbers
+        // fee variables
         new.history.insert(self.0.height, self.header());
         new.height += 1;
         new.stakes.remove_stale(new.height / STAKE_EPOCH);
@@ -356,7 +356,24 @@ impl SealedState {
         if new.height % AUCTION_INTERVAL == 0 && !new.auction_bids.is_empty() {
             melmint::synthesize_afill(&mut new)
         }
-        // TODO: update Melmint variables
+        // melmint variables
+        new.dosc_speed = self
+            .0
+            .transactions
+            .val_iter()
+            .map(|tx| {
+                if tx.kind == TxKind::DoscMint {
+                    let (difficulty, _): (u32, Vec<u8>) = stdcode::deserialize(&tx.data)
+                        .map_err(|_| StateError::MalformedTx)
+                        .expect("should not see a bad DoscMint here");
+                    2u128.pow(difficulty)
+                } else {
+                    0
+                }
+            })
+            .min()
+            .unwrap_or_default()
+            .max(new.dosc_speed);
         new
     }
 
@@ -431,7 +448,7 @@ pub struct Header {
     pub transactions_hash: HashVal,
     pub fee_pool: u128,
     pub fee_multiplier: u128,
-    pub dosc_multiplier: u128,
+    pub dosc_speed: u128,
     pub auction_bids_hash: HashVal,
     pub sym_price: u128,
     pub mel_price: u128,

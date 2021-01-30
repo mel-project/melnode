@@ -8,10 +8,7 @@ pub const DENOM_TMEL: &[u8] = b"m";
 pub const DENOM_TSYM: &[u8] = b"s";
 
 /// DOSC cointype
-pub fn cointype_dosc(bn: u64) -> Vec<u8> {
-    let week = bn / 20000;
-    format!("d-{}", week).as_bytes().to_vec()
-}
+pub const DENOM_DOSC: &[u8] = b"d";
 
 /// Maximum coin value
 pub const MAX_COINVAL: u128 = 1 << 120;
