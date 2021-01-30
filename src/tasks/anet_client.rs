@@ -150,7 +150,7 @@ async fn run_active_wallet(
 
                             eprintln!(
                                 ">> CID = {}",
-                                hex::encode(bincode::serialize(&coin).unwrap()).bold()
+                                hex::encode(stdcode::serialize(&coin).unwrap()).bold()
                             );
                             break;
                         }
@@ -194,7 +194,7 @@ async fn run_active_wallet(
                         eprintln!(">> Confirmed at height {}!", out.height);
                         eprintln!(
                             ">> CID = {}",
-                            hex::encode(bincode::serialize(&their_coin).unwrap()).bold()
+                            hex::encode(stdcode::serialize(&their_coin).unwrap()).bold()
                         );
                         break;
                     }
@@ -205,7 +205,7 @@ async fn run_active_wallet(
                 eprintln!(">> **** COINS ****");
                 eprintln!(">> [CoinID]\t[Height]\t[Amount]\t[CoinType]");
                 for (coin_id, coin_data) in unspent_coins.iter() {
-                    let coin_id = hex::encode(bincode::serialize(coin_id).unwrap());
+                    let coin_id = hex::encode(stdcode::serialize(coin_id).unwrap());
                     eprintln!(
                         ">> {}\t{}\t{}\t{}",
                         coin_id,

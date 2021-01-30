@@ -33,7 +33,7 @@ pub enum StateError {
     #[error("unbalanced inputs and outputs")]
     UnbalancedInOut,
     #[error("insufficient fees (requires {0})")]
-    InsufficientFees(u64),
+    InsufficientFees(u128),
     #[error("referenced non-existent script {:?}", .0)]
     NonexistentScript(tmelcrypt::HashVal),
     #[error("does not satisfy script {:?}", .0)]
@@ -52,13 +52,13 @@ pub enum StateError {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GenesisConfig {
     /// Initial supply of free mels. This will be put at the zero-zero coin ID.
-    pub init_micromels: u64,
+    pub init_micromels: u128,
     /// The covenant hash of the owner of the initial free mels.
     pub init_covhash: HashVal,
     /// Mapping of initial stakeholders.
     pub stakes: HashMap<HashVal, StakeDoc>,
     /// Initial fee pool, in micromels.
-    pub init_fee_pool: u64,
+    pub init_fee_pool: u128,
 }
 
 /// World state of the Themelio blockchain
@@ -70,14 +70,14 @@ pub struct State {
     pub coins: SmtMapping<txn::CoinID, txn::CoinDataHeight>,
     pub transactions: SmtMapping<HashVal, txn::Transaction>,
 
-    pub fee_pool: u64,
-    pub fee_multiplier: u64,
-    pub tips: u64,
+    pub fee_pool: u128,
+    pub fee_multiplier: u128,
+    pub tips: u128,
 
-    pub dosc_multiplier: u64,
+    pub dosc_multiplier: u128,
     pub auction_bids: SmtMapping<HashVal, txn::Transaction>,
-    pub sym_price: u64,
-    pub mel_price: u64,
+    pub sym_price: u128,
+    pub mel_price: u128,
 
     pub stakes: SmtMapping<HashVal, StakeDoc>,
 }
@@ -112,7 +112,8 @@ impl State {
 
     /// Restores a state from its partial encoding in conjunction with a database. **Does not validate data and will panic; do not use on untrusted data**
     pub fn from_partial_encoding_infallible(mut encoding: &[u8], db: &autosmt::DBManager) -> Self {
-        defmac!(readu64 => u64::from_be_bytes(read_bts(&mut encoding, 8).unwrap().as_slice().try_into().unwrap()));
+        defmac!(readu64 => u64::from_be_bytes(read_bts(&mut encoding, 16).unwrap().as_slice().try_into().unwrap()));
+        defmac!(readu128 => u128::from_be_bytes(read_bts(&mut encoding, 16).unwrap().as_slice().try_into().unwrap()));
         defmac!(readtree => SmtMapping::new(db.get_tree(tmelcrypt::HashVal(
             read_bts(&mut encoding, 32).unwrap().as_slice().try_into().unwrap(),
         ))));
@@ -121,14 +122,14 @@ impl State {
         let coins = readtree!();
         let transactions = readtree!();
 
-        let fee_pool = readu64!();
-        let fee_multiplier = readu64!();
-        let tips = readu64!();
+        let fee_pool = readu128!();
+        let fee_multiplier = readu128!();
+        let tips = readu128!();
 
-        let dosc_multiplier = readu64!();
+        let dosc_multiplier = readu128!();
         let auction_bids = readtree!();
-        let sym_price = readu64!();
-        let mel_price = readu64!();
+        let sym_price = readu128!();
+        let mel_price = readu128!();
 
         let stakes = readtree!();
         State {
@@ -153,7 +154,7 @@ impl State {
     /// Generates a test genesis state, with a given starting coin.
     pub fn test_genesis(
         db: autosmt::DBManager,
-        start_micromels: u64,
+        start_micromels: u128,
         start_conshash: tmelcrypt::HashVal,
         start_stakeholders: &[tmelcrypt::Ed25519PK],
     ) -> Self {
@@ -177,7 +178,7 @@ impl State {
         );
         for (i, stakeholder) in start_stakeholders.iter().enumerate() {
             empty.stakes.insert(
-                tmelcrypt::hash_single(&(i as u64).to_be_bytes()),
+                tmelcrypt::hash_single(&(i as u128).to_be_bytes()),
                 StakeDoc {
                     pubkey: *stakeholder,
                     e_start: 0,
@@ -195,7 +196,7 @@ impl State {
 
     pub fn apply_tx_batch(&mut self, txx: &[txn::Transaction]) -> Result<(), StateError> {
         let old_hash = self.coins.root_hash();
-        let handle = StateHandle::new(self);
+        let mut handle = StateHandle::new(self);
         handle.apply_tx_batch(txx)?;
         handle.commit();
         log::debug!(
@@ -220,9 +221,9 @@ impl State {
                 scaled_movement
             );
             if scaled_movement >= 0 {
-                self.fee_multiplier += scaled_movement as u64;
+                self.fee_multiplier += scaled_movement as u128;
             } else {
-                self.fee_multiplier -= scaled_movement.abs() as u64;
+                self.fee_multiplier -= scaled_movement.abs() as u128;
             }
             // then it's time to collect the fees dude! we synthesize a coin with 1/65536 of the fee pool and all the tips.
             let base_fees = self.fee_pool >> 16;
@@ -300,11 +301,11 @@ impl SealedState {
     /// Partial encoding.
     pub fn partial_encoding(&self) -> Vec<u8> {
         let tmp = (self.0.partial_encoding(), &self.1);
-        bincode::serialize(&tmp).unwrap()
+        stdcode::serialize(&tmp).unwrap()
     }
     /// Partial encoding.
     pub fn from_partial_encoding_infallible(bts: &[u8], db: &autosmt::DBManager) -> Self {
-        let tmp: (Vec<u8>, Option<ProposerAction>) = bincode::deserialize(&bts).unwrap();
+        let tmp: (Vec<u8>, Option<ProposerAction>) = stdcode::deserialize(&bts).unwrap();
         SealedState(
             Arc::new(State::from_partial_encoding_infallible(&tmp.0, db)),
             tmp.1,
@@ -428,18 +429,18 @@ pub struct Header {
     pub history_hash: HashVal,
     pub coins_hash: HashVal,
     pub transactions_hash: HashVal,
-    pub fee_pool: u64,
-    pub fee_multiplier: u64,
-    pub dosc_multiplier: u64,
+    pub fee_pool: u128,
+    pub fee_multiplier: u128,
+    pub dosc_multiplier: u128,
     pub auction_bids_hash: HashVal,
-    pub sym_price: u64,
-    pub mel_price: u64,
+    pub sym_price: u128,
+    pub mel_price: u128,
     pub stake_doc_hash: HashVal,
 }
 
 impl Header {
     pub fn hash(&self) -> tmelcrypt::HashVal {
-        tmelcrypt::hash_single(&bincode::serialize(self).unwrap())
+        tmelcrypt::hash_single(&stdcode::serialize(self).unwrap())
     }
 
     pub fn validate_cproof(

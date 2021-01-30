@@ -14,7 +14,7 @@ pub struct StakeDoc {
     /// Ending epoch. This is the epoch *after* the last epoch in which the syms are effective.
     pub e_post_end: u64,
     /// Number of syms staked.
-    pub syms_staked: u64,
+    pub syms_staked: u128,
 }
 
 /// A stake mapping
@@ -39,7 +39,7 @@ impl SmtMapping<tmelcrypt::HashVal, StakeDoc> {
     /// Filter out all the elements that no longer matter.
     pub fn remove_stale(&mut self, epoch: u64) {
         let stale_key_hashes = self.mapping.iter().filter_map(|(kh, v)| {
-            let v: StakeDoc = bincode::deserialize(&v).unwrap();
+            let v: StakeDoc = stdcode::deserialize(&v).unwrap();
             if epoch > v.e_post_end {
                 Some(kh)
             } else {
@@ -64,13 +64,13 @@ mod tests {
     use tmelcrypt::Ed25519SK;
 
     /// Create a state using a mapping from sk to syms staked for an epoch
-    fn create_state(stakers: &HashMap<Ed25519SK, u64>, epoch_start: u64) -> State {
+    fn create_state(stakers: &HashMap<Ed25519SK, u128>, epoch_start: u64) -> State {
         // Create emtpy state
         let db = autosmt::DBManager::load(autosmt::MemDB::default());
         let mut state = State::new_empty(db);
 
         // Insert a mel coin into state so we can transact
-        let start_micromels = 10000 as u64;
+        let start_micromels = 10000;
         let start_conshash = melscript::Script::always_true().hash();
         state.coins.insert(
             CoinID {
@@ -90,7 +90,7 @@ mod tests {
         // Insert data need for staking proofs
         for (i, (sk, syms_staked)) in stakers.iter().enumerate() {
             state.stakes.insert(
-                tmelcrypt::hash_single(&(i as u64).to_be_bytes()),
+                tmelcrypt::hash_single(&(i as u128).to_be_bytes()),
                 StakeDoc {
                     pubkey: sk.to_public(),
                     e_start: epoch_start,
@@ -103,9 +103,9 @@ mod tests {
     }
 
     #[rstest(
-        staked_syms => [vec![100 as u64], vec![100 as u64, 10], vec![1 as u64, 2 as u64, 3 as u64]]
+        staked_syms => [vec![100 as u128], vec![100 as u128, 10], vec![1 as u128, 2 as u128, 3 as u128]]
     )]
-    fn test_non_staker_has_no_vote_power(staked_syms: Vec<u64>) {
+    fn test_non_staker_has_no_vote_power(staked_syms: Vec<u128>) {
         // Generate genesis block for stakers
         // let staked_syms =vec![100 as u64; 3];
         let stakers = staked_syms
@@ -123,11 +123,11 @@ mod tests {
     }
 
     #[rstest(
-        staked_syms => [vec![100 as u64, 200 as u64, 300 as u64], vec![100 as u64, 10], vec![1 as u64, 2 as u64, 30 as u64]]
+        staked_syms => [vec![100 as u128, 200 as u128, 300 as u128], vec![100 as u128, 10], vec![1 as u128, 2 as u128, 30 as u128]]
     )]
-    fn test_staker_has_correct_vote_power_in_epoch(staked_syms: Vec<u64>) {
+    fn test_staker_has_correct_vote_power_in_epoch(staked_syms: Vec<u128>) {
         // Generate state for stakers
-        let total_staked_syms: u64 = staked_syms.iter().sum();
+        let total_staked_syms: u128 = staked_syms.iter().sum();
         let stakers = staked_syms
             .into_iter()
             .map(|e| (tmelcrypt::ed25519_keygen().1, e))
@@ -143,11 +143,11 @@ mod tests {
     }
 
     #[rstest(
-        epoch_start => [1 as u64, 2 as u64, 100 as u64]
+        epoch_start => [1, 2, 100]
     )]
     fn test_staker_has_no_vote_power_in_previous_epoch(epoch_start: u64) {
         // Generate state for stakers
-        let staked_syms = vec![100 as u64; 3];
+        let staked_syms = vec![100 as u128; 3];
         let stakers = staked_syms
             .into_iter()
             .map(|e| (tmelcrypt::ed25519_keygen().1, e))
@@ -171,9 +171,9 @@ mod tests {
     }
 
     #[rstest(
-        staked_sym => [1 as u64, 2 as u64, 123 as u64]
+        staked_sym => [1, 2, 123]
     )]
-    fn test_vote_power_single_staker_is_total(staked_sym: u64) {
+    fn test_vote_power_single_staker_is_total(staked_sym: u128) {
         // Add in a single staker to get a state at epoch 0
         let (pk, sk) = tmelcrypt::ed25519_keygen();
         let mut stakers = HashMap::new();
@@ -199,9 +199,9 @@ mod tests {
     }
 
     #[rstest(
-        staked_syms => [vec![0 as u64], vec![0 as u64; 3], vec![0 as u64; 100]]
+        staked_syms => [vec![0], vec![0; 3], vec![0; 100]]
     )]
-    fn test_vote_power_is_zero_when_stakers_are_staking_zero(staked_syms: Vec<u64>) {
+    fn test_vote_power_is_zero_when_stakers_are_staking_zero(staked_syms: Vec<u128>) {
         // Generate state for stakers
         let stakers = staked_syms
             .into_iter()

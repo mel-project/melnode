@@ -14,6 +14,7 @@ melpow={path="libs/melpow"}
 symphonia={path="libs/symphonia"}
 neosymph={path="libs/neosymph"} 
 melnet={path="libs/melnet"} 
+stdcode={path="libs/stdcode"} 
 hex= "0.4.2"
 smol= "1.2.3"
 colored= "2.0.0"
@@ -33,7 +34,6 @@ derive_more= "0.99.11"
 defmac= "0.2.1"
 structopt= "0.3.18"
 serde = {version="1.0.116", features=["derive"]}
-bincode = "1.3.1"
 im = { version = "15.0.0", features = ["serde"] }
 rusqlite = "0.24.0"
 smolscale="0.1.2"

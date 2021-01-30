@@ -15,21 +15,10 @@ pub mod melscript;
 mod stake;
 mod state;
 mod transaction;
-use bincode::Options;
 pub use constants::*;
 mod smtmapping;
-use serde::de::DeserializeOwned;
 pub use smtmapping::*;
 pub use state::*;
 pub use transaction::*;
-
-/// Safe deserialize that prevents DoS attacks.
-pub fn safe_deserialize<T: DeserializeOwned>(bts: &[u8]) -> bincode::Result<T> {
-    bincode::DefaultOptions::new()
-        .with_fixint_encoding()
-        .reject_trailing_bytes()
-        .with_limit(bts.len() as u64)
-        .deserialize(bts)
-}
 
 mod testing;

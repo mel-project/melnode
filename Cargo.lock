@@ -311,7 +311,6 @@ version = "0.1.0"
 dependencies = [
  "arbitrary",
  "autosmt",
- "bincode",
  "bytes",
  "dashmap",
  "defmac",
@@ -333,7 +332,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_repr",
- "symphonia",
+ "stdcode",
  "thiserror",
  "tmelcrypt",
 ]
@@ -1363,7 +1362,6 @@ dependencies = [
  "async-oneshot",
  "async-trait",
  "autosmt",
- "bincode",
  "blkstructs",
  "broadcaster",
  "bytes",
@@ -1378,6 +1376,7 @@ dependencies = [
  "smol",
  "smol-timeout",
  "smolscale",
+ "stdcode",
  "tmelcrypt",
 ]
 
@@ -2135,6 +2134,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
+name = "stdcode"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "serde",
+]
+
+[[package]]
 name = "strsim"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2256,7 +2263,6 @@ dependencies = [
  "anyhow",
  "attohttpc",
  "autosmt",
- "bincode",
  "blkstructs",
  "clap",
  "colored",
@@ -2279,6 +2285,7 @@ dependencies = [
  "serde",
  "smol",
  "smolscale",
+ "stdcode",
  "structopt",
  "symphonia",
  "tabwriter",
