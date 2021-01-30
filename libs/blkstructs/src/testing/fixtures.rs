@@ -35,7 +35,8 @@ pub fn valid_txx(keypair: (Ed25519PK, Ed25519SK)) -> Vec<Transaction> {
 /// Return a genesis state with no stakeholders
 #[fixture]
 pub fn genesis_state(keypair: (Ed25519PK, Ed25519SK)) -> State {
+    let (pk, _sk) = tmelcrypt::ed25519_keygen();
     let db = autosmt::DBManager::load(autosmt::MemDB::default());
-    let scr = melscript::Script::std_ed25519_pk(keypair.0);
+    let scr = melscript::Script::std_ed25519_pk(pk);
     State::test_genesis(db, MICRO_CONVERTER * 1000, scr.hash(), &[])
 }

@@ -337,7 +337,8 @@ pub(crate) mod tests {
     #[rstest]
     fn test_apply_tx_inputs(mut genesis_state: State, valid_txx: Vec<Transaction>) {
         let s = StateHandle::new(&mut genesis_state);
-        let res = s.apply_tx_batch(valid_txx.as_slice());
+        let tx = valid_txx.iter().next().unwrap();
+        let res = s.apply_tx_inputs(tx);
         assert!(res.is_ok());
         println!("Test");
     }

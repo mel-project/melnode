@@ -154,14 +154,14 @@ impl State {
     pub fn test_genesis(
         db: autosmt::DBManager,
         start_micromels: u64,
-        start_conshash: tmelcrypt::HashVal,
+        start_covshash: tmelcrypt::HashVal,
         start_stakeholders: &[tmelcrypt::Ed25519PK],
     ) -> Self {
         assert!(start_micromels <= MAX_COINVAL);
         let mut empty = Self::new_empty(db);
         // insert coin out of nowhere
         let init_coin = txn::CoinData {
-            covhash: start_conshash,
+            covhash: start_covshash,
             value: start_micromels,
             denom: DENOM_TMEL.to_vec(),
         };

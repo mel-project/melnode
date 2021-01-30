@@ -23,7 +23,7 @@ pub fn random_valid_txx(
                 value: to_spend_data.value,
                 denom: DENOM_TMEL.to_owned(),
             }],
-            fee: 0,
+            fee: 300000,
             scripts: vec![cons.clone()],
             data: vec![],
             sigs: vec![],
