@@ -74,7 +74,7 @@ impl Storage {
                         blkstructs::SealedState::from_partial_encoding_infallible(&res, &dbm);
                     last_state = Some(state.clone());
                     let proof_key = format!("proof_{}", height);
-                    let proof = bincode::deserialize(&txn.get(lmd, &proof_key.as_bytes()).unwrap())
+                    let proof = stdcode::deserialize(&txn.get(lmd, &proof_key.as_bytes()).unwrap())
                         .unwrap();
                     let lala = last_state.map(|fs| fs.inner_ref().clone());
                     toret.insert(height, state.confirm(proof, lala.as_ref()).unwrap());
@@ -150,7 +150,7 @@ impl Storage {
             txn.put(
                 self.lmdb_db,
                 &proof_key,
-                &bincode::serialize(v.cproof()).unwrap(),
+                &stdcode::serialize(v.cproof()).unwrap(),
                 lmdb::WriteFlags::empty(),
             )
             .unwrap();

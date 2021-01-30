@@ -33,7 +33,7 @@ impl Signer {
             .sequence
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let to_sign =
-            tmelcrypt::hash_keyed(b"ns-msg", &bincode::serialize(&(sequence, &msg)).unwrap());
+            tmelcrypt::hash_keyed(b"ns-msg", &stdcode::serialize(&(sequence, &msg)).unwrap());
         let signature = self.sk.sign(&to_sign).into();
         SignedMessage {
             sender: self.sk.to_public(),
@@ -58,7 +58,7 @@ impl SignedMessage {
     pub fn body(&self) -> Option<&Message> {
         let to_sign = tmelcrypt::hash_keyed(
             b"ns-msg",
-            &bincode::serialize(&(self.sequence, &self.body)).unwrap(),
+            &stdcode::serialize(&(self.sequence, &self.body)).unwrap(),
         );
         let correct = self.sender.verify(&to_sign, &self.signature);
         if !correct {

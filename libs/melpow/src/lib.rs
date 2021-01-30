@@ -34,6 +34,9 @@ impl Proof {
     /// Verifies a MelPoW proof.
     #[must_use]
     pub fn verify(&self, puzzle: &[u8], difficulty: usize) -> bool {
+        if difficulty > 100 {
+            return false;
+        }
         let chi = hash::bts_key(puzzle, b"chi");
         let gammas = gen_gammas(puzzle, difficulty);
         let phi = self.0[&node::Node::new_zero()].clone();
