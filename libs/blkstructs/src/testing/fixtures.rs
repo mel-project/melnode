@@ -14,7 +14,7 @@ const GENESIS_STAKER_WEIGHT: u128 = 100;
 lazy_static! {
     pub static ref DB: autosmt::DBManager = autosmt::DBManager::load(autosmt::MemDB::default());
     pub static ref GENESIS_COV_SCRIPT_KEYPAIR: (Ed25519PK, Ed25519SK) = tmelcrypt::ed25519_keygen();
-    pub static ref GENESIS_STAKEHOLDERS: HashMap<(Ed25519PK, Ed25519SK), u64> = {
+    pub static ref GENESIS_STAKEHOLDERS: HashMap<(Ed25519PK, Ed25519SK), u128> = {
         let mut stakeholders = HashMap::new();
         for _ in 0..GENESIS_NUM_STAKERS {
             stakeholders.insert(tmelcrypt::ed25519_keygen(), GENESIS_STAKER_WEIGHT);
@@ -39,7 +39,7 @@ pub fn genesis_cov_script(genesis_cov_script_keypair: (Ed25519PK, Ed25519SK)) ->
 }
 
 #[fixture]
-pub fn genesis_stakeholders() -> HashMap<(Ed25519PK, Ed25519SK), u64> {
+pub fn genesis_stakeholders() -> HashMap<(Ed25519PK, Ed25519SK), u128> {
     (*GENESIS_STAKEHOLDERS).clone()
 }
 
@@ -75,7 +75,7 @@ pub fn genesis_mel_coin_data_height(genesis_mel_coin_data: CoinData) -> CoinData
 pub fn genesis_state(
     genesis_mel_coin_id: CoinID,
     genesis_mel_coin_data_height: CoinDataHeight,
-    genesis_stakeholders: HashMap<(Ed25519PK, Ed25519SK), u64>
+    genesis_stakeholders: HashMap<(Ed25519PK, Ed25519SK), u128>
 ) -> State {
     // Init empty state with db reference
     let mut state = State::new_empty((*DB).clone());
