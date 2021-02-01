@@ -1192,6 +1192,7 @@ version = "0.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "64d31059f22935e6c31830db5249ba2b7ecd54fd73a9909286f0a67aa55c2fbd"
 dependencies = [
+ "cc",
  "pkg-config",
  "vcpkg",
 ]
@@ -1299,7 +1300,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-net",
- "bincode",
  "by_address",
  "derivative",
  "env_logger 0.7.1",
@@ -1313,6 +1313,7 @@ dependencies = [
  "smol",
  "smol-timeout",
  "smolscale",
+ "stdcode",
  "thiserror",
 ]
 

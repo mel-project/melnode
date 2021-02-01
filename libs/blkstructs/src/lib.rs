@@ -14,6 +14,7 @@ mod constants;
 pub mod melscript;
 mod stake;
 mod state;
+pub use state::melmint::*;
 mod transaction;
 pub use constants::*;
 mod smtmapping;
