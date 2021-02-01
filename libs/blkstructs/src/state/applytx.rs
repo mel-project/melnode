@@ -172,7 +172,7 @@ impl<'a> StateHandle<'a> {
     fn apply_tx_outputs(&self, tx: &Transaction) -> Result<(), StateError> {
         let height = self.state.height;
         for (index, coin_data) in tx.outputs.iter().enumerate() {
-            // if conshash is zero, this destroys the coins permanently
+            // if covenant hash is zero, this destroys the coins permanently
             if coin_data.covhash != COVHASH_DESTROY {
                 self.set_coin(
                     CoinID {
@@ -329,23 +329,29 @@ impl<'a> StateHandle<'a> {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::testing::fixtures::{valid_txx, genesis_state, keypair};
-    use crate::{Transaction, State};
+    use crate::testing::fixtures::*;
+    use crate::{Transaction, State, TxKind};
     use rstest::*;
     use crate::state::applytx::StateHandle;
     use tmelcrypt::{Ed25519PK, Ed25519SK};
 
     #[rstest]
-    fn test_apply_tx_inputs(keypair: (Ed25519PK, Ed25519SK)) {
-        let mut state = genesis_state(keypair);
-        let txx = valid_txx(keypair);
+    fn test_apply_tx_inputs(genesis_state: State) {
+        let mut state = genesis_state.clone();
+        let state_handle = StateHandle::new(&mut state);
 
-        let s = StateHandle::new(&mut state);
-        let tx = *txx.iter().next().iter().next().unwrap();
+        let tx = Transaction {
+            kind: TxKind::Normal,
+            inputs: vec![],
+            outputs: vec![],
+            fee: 0,
+            scripts: vec![],
+            data: vec![],
+            sigs: vec![]
+        };
 
-        for tx in txx {
-            let res = s.apply_tx_inputs(&tx);
-            assert!(res.is_ok());
-        }
+        let res = state_handle.apply_tx_inputs(&tx);
+
+        assert!(res.is_ok());
     }
 }

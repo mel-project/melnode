@@ -318,6 +318,7 @@ dependencies = [
  "env_logger 0.7.1",
  "hex",
  "im",
+ "lazy_static",
  "log",
  "logos",
  "melpow",
