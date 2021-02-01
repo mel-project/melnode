@@ -36,6 +36,7 @@ impl ActiveWallet {
         let number: u128 = number.parse()?;
         assert_eq!(unit, "TML");
         // create faucet transaction and broadcast it
+        let fee = 2000000; // TODO: better fee estimation for faucet tx
         let txn = Transaction {
             kind: TxKind::Faucet,
             inputs: vec![],
@@ -44,7 +45,7 @@ impl ActiveWallet {
                 covhash: self.wallet.my_script.hash(),
                 value: number * MICRO_CONVERTER,
             }],
-            fee: 1098000,
+            fee,
             scripts: vec![],
             sigs: vec![],
             data: vec![],

@@ -291,7 +291,7 @@ mod tests {
         let _ = env_logger::try_init();
         let server_task = async {
             let ns = NetState::new_with_name("test");
-            // TODO: Fix regsiter verb
+            // TODO: Fix regsiter verb (does this require a local system up or can we use a test server?)
             // ns.register_verb("test", |_, input: String| async { Ok(input) });
             ns.register_verb("test", anon_responder(|_: responder::Request<String, String>| ()));
             ns.run_server(
