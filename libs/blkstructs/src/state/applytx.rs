@@ -216,7 +216,7 @@ impl<'a> StateHandle<'a> {
             return Err(StateError::InvalidMelPoW);
         }
         // construct puzzle seed
-        let _chi = tmelcrypt::hash_keyed(
+        let chi = tmelcrypt::hash_keyed(
             &self.state.history.get(&coin_data.height).0.unwrap().hash(),
             &stdcode::serialize(tx.inputs.get(0).ok_or(StateError::MalformedTx)?).unwrap(),
         );
