@@ -332,6 +332,7 @@ impl<'a> StateHandle<'a> {
 #[cfg(test)]
 pub(crate) mod tests {
     use crate::testing::fixtures::*;
+    use crate::testing::factory::*;
     use crate::{Transaction, State, TxKind, CoinID, CoinData, DENOM_TMEL};
     use rstest::*;
     use crate::state::applytx::StateHandle;
@@ -347,28 +348,23 @@ pub(crate) mod tests {
         genesis_cov_script: Script,
         keypair: (Ed25519PK, Ed25519SK)
     ) {
+        // Init state and state handle
         let mut state = genesis_state.clone();
         let state_handle = StateHandle::new(&mut state);
 
+        // Create a valid signed transaction from first coin
         let fee = 3000000;
-        let coin_id = genesis_mel_coin_id;
-        let script = Script::std_ed25519_pk(keypair.0).clone();
-        let tx = Transaction {
-            kind: TxKind::Normal,
-            inputs: vec![genesis_mel_coin_id],
-            outputs: vec![CoinData {
-                covhash: script.hash(),
-                value: genesis_mel_coin_data.value - fee,
-                denom: DENOM_TMEL.to_owned(),
-            }],
-            fee,
-            scripts: vec![genesis_cov_script],
-            data: vec![],
-            sigs: vec![]
-        };
+        let tx = tx_factory(
+            TxKind::Normal,
+            genesis_cov_script_keypair,
+            keypair.0,
+            genesis_mel_coin_id,
+            genesis_cov_script,
+            genesis_mel_coin_data.value,
+            fee
+        );
 
-        let tx = tx.sign_ed25519(genesis_cov_script_keypair.1);
-
+        // Apply tx inputs and verify no error
         let res = state_handle.apply_tx_inputs(&tx);
 
         assert!(res.is_ok());
