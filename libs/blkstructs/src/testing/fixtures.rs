@@ -1,10 +1,9 @@
 use crate::testing::utils::*;
-use crate::{melscript, CoinData, CoinID, Transaction, DENOM_TMEL, MICRO_CONVERTER, State, MAX_COINVAL, StakeDoc, CoinDataHeight, TxKind};
+use crate::{melscript, CoinData, CoinID, Transaction, DENOM_TMEL, MICRO_CONVERTER, State, MAX_COINVAL, StakeDoc, CoinDataHeight};
 use rstest::*;
 use tmelcrypt::{Ed25519PK, Ed25519SK};
 use crate::melscript::Script;
-use autosmt::DBManager;
-use std::collections::{HashMap, BinaryHeap};
+use std::collections::HashMap;
 
 const GENESIS_MEL_SUPPLY: u64 = 1000;
 const GENESIS_NUM_STAKERS: u64 = 10;
@@ -17,7 +16,7 @@ lazy_static! {
     pub static ref GENESIS_COV_SCRIPT_KEYPAIR: (Ed25519PK, Ed25519SK) = tmelcrypt::ed25519_keygen();
     pub static ref GENESIS_STAKEHOLDERS: HashMap<(Ed25519PK, Ed25519SK), u64> = {
         let mut stakeholders = HashMap::new();
-        for i in 0..GENESIS_NUM_STAKERS {
+        for _ in 0..GENESIS_NUM_STAKERS {
             stakeholders.insert(tmelcrypt::ed25519_keygen(), GENESIS_STAKER_WEIGHT);
         }
         stakeholders

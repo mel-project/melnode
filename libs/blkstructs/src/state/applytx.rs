@@ -331,13 +331,13 @@ impl<'a> StateHandle<'a> {
 
 #[cfg(test)]
 pub(crate) mod tests {
+    use rstest::*;
     use crate::testing::fixtures::*;
     use crate::testing::factory::*;
-    use crate::{Transaction, State, TxKind, CoinID, CoinData, DENOM_TMEL};
-    use rstest::*;
+    use crate::{State, TxKind, CoinID, CoinData};
     use crate::state::applytx::StateHandle;
-    use tmelcrypt::{Ed25519PK, Ed25519SK};
     use crate::melscript::Script;
+    use tmelcrypt::{Ed25519PK, Ed25519SK};
 
     #[rstest]
     fn test_apply_tx_inputs_single_valid_tx(
