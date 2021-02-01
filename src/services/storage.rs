@@ -1,6 +1,6 @@
 use blkstructs::{ConfirmedState, ConsensusProof, SealedState, Transaction};
 use lru::LruCache;
-use parking_lot::{Mutex, RwLock};
+use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;

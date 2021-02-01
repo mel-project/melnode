@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use blkstructs::SealedState;
 use tmelcrypt::{Ed25519PK, HashVal};
 

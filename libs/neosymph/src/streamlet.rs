@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    sync::Arc,
     time::{Duration, SystemTime},
 };
 

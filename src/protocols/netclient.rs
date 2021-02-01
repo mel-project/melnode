@@ -2,7 +2,6 @@ use crate::protocols::{AbbreviatedBlock, NODE_NETNAME};
 use blkstructs::{CoinDataHeight, CoinID, ConsensusProof, Header, Transaction};
 use std::time::Instant;
 use std::{net::SocketAddr, time::Duration};
-use symphonia::QuorumCert;
 use tmelcrypt::HashVal;
 
 /// A network client with some in-memory caching. Abstracts away melnet RPC calls.
@@ -51,7 +50,7 @@ impl NetClient {
         if height > curr_header.height {
             anyhow::bail!("can't get future header")
         }
-        let (hdr, proof): (Header, autosmt::CompressedProof) = melnet::g_client()
+        let (hdr, _proof): (Header, autosmt::CompressedProof) = melnet::g_client()
             .request(
                 self.remote,
                 NODE_NETNAME,

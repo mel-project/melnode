@@ -1,7 +1,7 @@
 use std::{convert::TryInto, net::SocketAddr, time::Instant};
 
 use crate::protocols::NetClient;
-use blkstructs::{CoinData, CoinDataHeight, CoinID, Transaction};
+use blkstructs::{CoinID, Transaction};
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
 use tmelcrypt::HashVal;
@@ -28,10 +28,10 @@ pub async fn run_anet_minter(cfg: AnetMinterConfig) {
 
     let mut netclient = NetClient::new(cfg.bootstrap);
 
-    let mut coin_tip = init_state.coin_id();
+    let coin_tip = init_state.coin_id();
     loop {
         let (latest_header, _) = netclient.last_header().await.unwrap();
-        let coin = netclient
+        let _coin = netclient
             .get_coin(latest_header, coin_tip)
             .await
             .unwrap()
@@ -85,7 +85,7 @@ pub fn minimum_difficulty() -> usize {
 /// Mint on top of an existing coin
 pub fn mint_on(coin: CoinID, height_entropy: HashVal, difficulty: usize) -> Transaction {
     let chi = tmelcrypt::hash_keyed(&height_entropy, &stdcode::serialize(&coin).unwrap());
-    let proof = melpow::Proof::generate(&chi, difficulty);
+    let _proof = melpow::Proof::generate(&chi, difficulty);
     // we assume that the coin is a zero-valued mel coin
     // let txx =
     unimplemented!()

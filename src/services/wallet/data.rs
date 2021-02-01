@@ -32,7 +32,7 @@ impl WalletData {
     pub fn generate() -> (Ed25519SK, Ed25519PK, Self) {
         let (pk, sk) = tmelcrypt::ed25519_keygen();
         let script = melscript::Script::std_ed25519_pk(pk);
-        (sk, pk, WalletData::new(script.clone()))
+        (sk, pk, WalletData::new(script))
     }
 
     /// Inserts a coin into the data, returning whether or not the coin already exists.

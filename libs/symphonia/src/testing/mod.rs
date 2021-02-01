@@ -88,7 +88,7 @@ impl Harness {
                 {
                     let pmaker = pmaker.clone();
                     let send_decision = send_decision.clone();
-                    let decider_pk = pk.clone();
+                    let decider_pk = pk;
                     let decision_metrics = metrics_gatherer.clone();
                     async move {
                         let decision = pmaker.decision().await;

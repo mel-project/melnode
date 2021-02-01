@@ -7,6 +7,7 @@ pub fn random_valid_txx(
     start_coindata: CoinData,
     signer: tmelcrypt::Ed25519SK,
     cons: &melscript::Script,
+    fee: u128
 ) -> Vec<Transaction> {
     let mut pqueue: BinaryHeap<(u64, CoinID, CoinData)> = BinaryHeap::new();
     pqueue.push((rng.gen(), start_coin, start_coindata));
@@ -20,10 +21,10 @@ pub fn random_valid_txx(
             inputs: vec![to_spend],
             outputs: vec![CoinData {
                 covhash: cons.hash(),
-                value: to_spend_data.value,
+                value: to_spend_data.value - fee,
                 denom: DENOM_TMEL.to_owned(),
             }],
-            fee: 0,
+            fee,
             scripts: vec![cons.clone()],
             data: vec![],
             sigs: vec![],

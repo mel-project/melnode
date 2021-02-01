@@ -89,7 +89,7 @@ fn read_bts(r: &mut impl Read, n: usize) -> Option<Vec<u8>> {
 }
 
 impl State {
-    /// Generates an encoding of the state that, in conjuction with a SMT database, can recover the entire state.
+    /// Generates an encoding of the state that, in conjunction with a SMT database, can recover the entire state.
     pub fn partial_encoding(&self) -> Vec<u8> {
         let mut out = Vec::new();
         out.extend_from_slice(&self.height.to_be_bytes());
@@ -154,16 +154,16 @@ impl State {
     /// Generates a test genesis state, with a given starting coin.
     pub fn test_genesis(
         db: autosmt::DBManager,
-        start_micromels: u128,
-        start_conshash: tmelcrypt::HashVal,
+        start_micro_mels: u128,
+        start_cov_hash: tmelcrypt::HashVal,
         start_stakeholders: &[tmelcrypt::Ed25519PK],
     ) -> Self {
-        assert!(start_micromels <= MAX_COINVAL);
+        assert!(start_micro_mels <= MAX_COINVAL);
         let mut empty = Self::new_empty(db);
         // insert coin out of nowhere
         let init_coin = txn::CoinData {
-            covhash: start_conshash,
-            value: start_micromels,
+            covhash: start_cov_hash,
+            value: start_micro_mels,
             denom: DENOM_TMEL.to_vec(),
         };
         empty.coins.insert(
