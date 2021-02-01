@@ -5,11 +5,11 @@ use tmelcrypt::{Ed25519PK, Ed25519SK};
 use crate::melscript::Script;
 use std::collections::HashMap;
 
-const GENESIS_MEL_SUPPLY: u64 = 1000;
+const GENESIS_MEL_SUPPLY: u128 = 1000;
 const GENESIS_NUM_STAKERS: u64 = 10;
 const GENESIS_EPOCH_START: u64 = 0;
 const GENESIS_EPOCH_POST_END: u64 = 1000;
-const GENESIS_STAKER_WEIGHT: u64 = 100;
+const GENESIS_STAKER_WEIGHT: u128 = 100;
 
 lazy_static! {
     pub static ref DB: autosmt::DBManager = autosmt::DBManager::load(autosmt::MemDB::default());

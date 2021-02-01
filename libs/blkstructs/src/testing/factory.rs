@@ -8,8 +8,8 @@ pub fn tx_factory(
     dest_pk: Ed25519PK,
     coin_id: CoinID,
     script: Script,
-    value: u64,
-    fee: u64
+    value: u128,
+    fee: u128
 ) -> Transaction {
     let tx = Transaction {
         kind,

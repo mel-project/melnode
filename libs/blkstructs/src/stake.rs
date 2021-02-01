@@ -218,7 +218,7 @@ mod tests {
 
     #[test]
     fn test_remove_stale_all_stale() {
-        let staked_syms: Vec<u64> = vec![0 as u64; 100];
+        let staked_syms: Vec<u128> = vec![0 as u128; 100];
 
         // Generate state for stakers
         let stakers = staked_syms.into_iter().map(|e| (tmelcrypt::ed25519_keygen().1, e)).collect();
@@ -234,7 +234,7 @@ mod tests {
 
     #[test]
     fn test_remove_stale_no_stale() {
-        let staked_syms: Vec<u64> = vec![0 as u64; 100];
+        let staked_syms: Vec<u128> = vec![0 as u128; 100];
 
         // Generate state for stakers
         let stakers = staked_syms.into_iter().map(|e| (tmelcrypt::ed25519_keygen().1, e)).collect();

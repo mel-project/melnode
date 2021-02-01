@@ -343,7 +343,7 @@ pub(crate) mod tests {
 
         // Check total is valid
         let value_by_coin_type = valid_tx.total_outputs();
-        let total: u64 = value_by_coin_type.iter().map(|(_k, v)| *v).sum();
+        let total: u128 = value_by_coin_type.iter().map(|(_k, v)| *v).sum();
 
         let fee = 1577000; // Temporary hack
         assert_eq!(total, val1 + val2 + fee);
