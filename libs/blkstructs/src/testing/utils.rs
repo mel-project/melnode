@@ -7,10 +7,10 @@ pub fn random_valid_txx(
     start_coindata: CoinData,
     signer: tmelcrypt::Ed25519SK,
     cons: &melscript::Script,
+    fee: u64
 ) -> Vec<Transaction> {
     let mut pqueue: BinaryHeap<(u64, CoinID, CoinData)> = BinaryHeap::new();
     pqueue.push((rng.gen(), start_coin, start_coindata));
-    let fee = 1577000;
     let mut toret = Vec::new();
     for _ in 0..100 {
         // pop one item from pqueue

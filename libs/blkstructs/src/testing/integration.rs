@@ -26,6 +26,7 @@ fn state_simple_order_independence() {
         },
         sk,
         &scr,
+        1577000
     );
     println!("transactions generated");
     let seq_copy = {

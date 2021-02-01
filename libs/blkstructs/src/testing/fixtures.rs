@@ -36,7 +36,7 @@ pub fn genesis_cov_script_keypair() -> (Ed25519PK, Ed25519SK) {
 
 #[fixture]
 pub fn genesis_cov_script(genesis_cov_script_keypair: (Ed25519PK, Ed25519SK)) -> Script {
-    melscript::Script::std_ed25519_pk(genesis_cov_script_keypair.0)
+    melscript::Script::std_ed25519_pk(genesis_cov_script_keypair.0).clone()
 }
 
 #[fixture]
@@ -100,24 +100,6 @@ pub fn genesis_state(
     state
 }
 
-// #[fixture]
-// pub fn genesis_mel_transaction(genesis_state: State) -> Transaction {
-//     let tx = Transaction {
-//         kind: TxKind::Normal,
-//         inputs: vec![to_spend],
-//         outputs: vec![CoinData {
-//             covhash: cons.hash(),
-//             value: to_spend_data.value - fee,
-//             denom: DENOM_TMEL.to_owned(),
-//         }],
-//         fee,
-//         scripts: vec![cons.clone()],
-//         data: vec![],
-//         sigs: vec![],
-//     };
-//     tx.sign_ed25519(signer)
-// }
-
 /// Return a bundle of transactions for a specific keypair
 #[fixture]
 pub fn valid_txx(keypair: (Ed25519PK, Ed25519SK)) -> Vec<Transaction> {
@@ -137,6 +119,7 @@ pub fn valid_txx(keypair: (Ed25519PK, Ed25519SK)) -> Vec<Transaction> {
         },
         sk,
         &scr,
+        1577000
     );
     txx
 }
