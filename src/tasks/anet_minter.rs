@@ -60,12 +60,12 @@ impl State {
     /// Read from file
     fn load(fname: &str) -> anyhow::Result<Self> {
         let raw_bts = std::fs::read(fname)?;
-        Ok(bincode::deserialize(&raw_bts)?)
+        Ok(stdcode::deserialize(&raw_bts)?)
     }
 
     /// Write to a file. TODO: atomically do this
     fn save(&self, fname: &str) -> anyhow::Result<()> {
-        Ok(std::fs::write(fname, bincode::serialize(self)?)?)
+        Ok(std::fs::write(fname, stdcode::serialize(self)?)?)
     }
 }
 
@@ -84,7 +84,7 @@ pub fn minimum_difficulty() -> usize {
 
 /// Mint on top of an existing coin
 pub fn mint_on(coin: CoinID, height_entropy: HashVal, difficulty: usize) -> Transaction {
-    let chi = tmelcrypt::hash_keyed(&height_entropy, &bincode::serialize(&coin).unwrap());
+    let chi = tmelcrypt::hash_keyed(&height_entropy, &stdcode::serialize(&coin).unwrap());
     let _proof = melpow::Proof::generate(&chi, difficulty);
     // we assume that the coin is a zero-valued mel coin
     // let txx =

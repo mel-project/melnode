@@ -156,7 +156,7 @@ impl Script {
         Some(output)
     }
 
-    pub fn weight(&self) -> Option<u64> {
+    pub fn weight(&self) -> Option<u128> {
         Some(self.to_ops()?.into_iter().map(|v| v.weight()).sum())
     }
 
@@ -532,7 +532,7 @@ pub enum OpCode {
 }
 
 impl OpCode {
-    pub fn weight(&self) -> u64 {
+    pub fn weight(&self) -> u128 {
         match self {
             OpCode::ADD => 4,
             OpCode::SUB => 4,
@@ -546,8 +546,8 @@ impl OpCode {
             OpCode::NOT => 4,
             OpCode::EQL => 4,
 
-            OpCode::HASH(n) => 50 + *n as u64,
-            OpCode::SIGEOK(n) => 100 + *n as u64,
+            OpCode::HASH(n) => 50 + *n as u128,
+            OpCode::SIGEOK(n) => 100 + *n as u128,
 
             OpCode::STORE => 50,
             OpCode::LOAD => 50,
@@ -566,8 +566,8 @@ impl OpCode {
             OpCode::BNZ(_) => 1,
             OpCode::JMP(_) => 1,
             OpCode::LOOP(loops, contents) => {
-                let one_iteration: u64 = contents.iter().map(|o| o.weight()).sum();
-                one_iteration.saturating_mul(*loops as u64)
+                let one_iteration: u128 = contents.iter().map(|o| o.weight()).sum();
+                one_iteration.saturating_mul(*loops as _)
             }
 
             OpCode::PUSHB(_) => 1,

@@ -37,7 +37,7 @@ pub struct Transaction {
     pub kind: TxKind,
     pub inputs: Vec<CoinID>,
     pub outputs: Vec<CoinData>,
-    pub fee: u64,
+    pub fee: u128,
     pub scripts: Vec<melscript::Script>,
     pub data: Vec<u8>,
     pub sigs: Vec<Vec<u8>>,
@@ -75,7 +75,7 @@ impl Transaction {
     pub fn hash_nosigs(&self) -> tmelcrypt::HashVal {
         let mut s = self.clone();
         s.sigs = vec![];
-        let self_bytes = bincode::serialize(&s).unwrap();
+        let self_bytes = stdcode::serialize(&s).unwrap();
         tmelcrypt::hash_single(&self_bytes)
     }
     /// sign_ed25519 appends an ed25519 signature to the transaction.
@@ -84,7 +84,7 @@ impl Transaction {
         self
     }
     /// total_outputs returns a HashMap mapping each type of coin to its total value. Fees will be included in COINTYPE_TMEL.
-    pub fn total_outputs(&self) -> HashMap<Vec<u8>, u64> {
+    pub fn total_outputs(&self) -> HashMap<Vec<u8>, u128> {
         let mut toret = HashMap::new();
         for output in self.outputs.iter() {
             let old = *toret.get(&output.denom).unwrap_or(&0);
@@ -103,9 +103,9 @@ impl Transaction {
         toret
     }
     /// Returns the weight of the transaction. Takes in an adjustment factor that should be a generous estimate of signature size.
-    pub fn weight(&self, adjust: u64) -> u64 {
-        let raw_length = bincode::serialize(self).unwrap().len() as u64 + adjust;
-        let script_weights: u64 = self
+    pub fn weight(&self, adjust: u128) -> u128 {
+        let raw_length = stdcode::serialize(self).unwrap().len() as u128 + adjust;
+        let script_weights: u128 = self
             .scripts
             .iter()
             .map(|scr| scr.weight().unwrap_or_default())
@@ -117,8 +117,8 @@ impl Transaction {
         // econ efficiency/market stability wise it's probably okay to overprice storage, but probably not okay to underprice it.
         // blockchain-spamming-as-HDD arbitrage is going to be really bad for the blockchain.
         // penalize 1000 for every output and boost 1000 for every input. "non-refundable" because the fee can't be subzero
-        let output_penalty = self.outputs.len() as u64 * 1000;
-        let input_boon = self.inputs.len() as u64 * 1000;
+        let output_penalty = self.outputs.len() as u128 * 1000;
+        let input_boon = self.inputs.len() as u128 * 1000;
 
         raw_length
             .saturating_add(script_weights)
@@ -150,7 +150,7 @@ impl CoinID {
 /// The data bound to a coin ID. Contains the "contents" of a coin, i.e. its constraint hash, value, and coin type.
 pub struct CoinData {
     pub covhash: tmelcrypt::HashVal,
-    pub value: u64,
+    pub value: u128,
     pub denom: Vec<u8>,
 }
 
@@ -198,9 +198,9 @@ pub(crate) mod tests {
     }
 
     #[rstest(
-        offset => [1 as u64, 2 as u64, 100 as u64]
+        offset => [1 as u128, 2 as u128, 100 as u128]
     )]
-    fn test_is_not_well_formed_if_fee_gt_max(offset: u64, valid_txx: Vec<Transaction>) {
+    fn test_is_not_well_formed_if_fee_gt_max(offset: u128, valid_txx: Vec<Transaction>) {
         // Extract out first coin data from first transaction in valid transactions
         let valid_tx = valid_txx.iter().next().unwrap().clone();
 

@@ -57,7 +57,7 @@ impl WalletData {
             sigs: vec![],
         };
         let output_sum = txn.total_outputs();
-        let mut input_sum: collections::HashMap<Vec<u8>, u64> = collections::HashMap::new();
+        let mut input_sum: collections::HashMap<Vec<u8>, u128> = collections::HashMap::new();
         for (coin, data) in self.unspent_coins.iter() {
             let existing_val = input_sum.get(&data.coin_data.denom).cloned().unwrap_or(0);
             if existing_val < output_sum.get(&data.coin_data.denom).cloned().unwrap_or(0) {

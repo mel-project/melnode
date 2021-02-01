@@ -41,25 +41,25 @@ impl<K: Serialize, V: Serialize + DeserializeOwned> SmtMapping<K, V> {
     }
     /// get obtains a mapping
     pub fn get(&self, key: &K) -> (Option<V>, autosmt::FullProof) {
-        let key = tmelcrypt::hash_single(&bincode::serialize(key).unwrap());
+        let key = tmelcrypt::hash_single(&stdcode::serialize(key).unwrap());
         let (v_bytes, proof) = self.mapping.get(key);
         match v_bytes.len() {
             0 => (None, proof),
             _ => {
-                let res: V = bincode::deserialize(&v_bytes).expect("SmtMapping saw invalid data");
+                let res: V = stdcode::deserialize(&v_bytes).expect("SmtMapping saw invalid data");
                 (Some(res), proof)
             }
         }
     }
     /// insert inserts a mapping, replacing any existing mapping
     pub fn insert(&mut self, key: K, val: V) {
-        let key = tmelcrypt::hash_single(&bincode::serialize(&key).unwrap());
-        let newmap = self.mapping.set(key, &bincode::serialize(&val).unwrap());
+        let key = tmelcrypt::hash_single(&stdcode::serialize(&key).unwrap());
+        let newmap = self.mapping.set(key, &stdcode::serialize(&val).unwrap());
         self.mapping = newmap
     }
     /// delete deletes a mapping, replacing the mapping with a mapping to the empty bytestring
     pub fn delete(&mut self, key: &K) {
-        let key = tmelcrypt::hash_single(&bincode::serialize(key).unwrap());
+        let key = tmelcrypt::hash_single(&stdcode::serialize(key).unwrap());
         let newmap = self.mapping.set(key, b"");
         self.mapping = newmap
     }
@@ -71,6 +71,6 @@ impl<K: Serialize, V: Serialize + DeserializeOwned> SmtMapping<K, V> {
     pub fn val_iter(&self) -> impl Iterator<Item = V> {
         self.mapping
             .iter()
-            .map(|(_, v)| bincode::deserialize::<V>(&v).unwrap())
+            .map(|(_, v)| stdcode::deserialize::<V>(&v).unwrap())
     }
 }

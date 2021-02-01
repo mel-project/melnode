@@ -1,13 +1,15 @@
-use std::{convert::TryInto, sync::atomic::AtomicU64};
+use std::convert::TryInto;
 
 use dashmap::DashMap;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use tmelcrypt::HashVal;
 
 use crate::{
-    cointype_dosc, CoinData, CoinDataHeight, CoinID, StakeDoc, State, StateError, Transaction,
-    TxKind, COVHASH_ABID, COVHASH_DESTROY, DENOM_TMEL, DENOM_TSYM, STAKE_EPOCH,
+    CoinData, CoinDataHeight, CoinID, StakeDoc, State, StateError, Transaction, TxKind,
+    COVHASH_ABID, COVHASH_DESTROY, DENOM_DOSC, DENOM_TMEL, DENOM_TSYM, STAKE_EPOCH,
 };
+
+use super::melmint;
 
 /// A mutable "handle" to a particular State. Can be "committed" like a database transaction.
 /// Note: Option type values are used to indicate deletion when None
@@ -17,8 +19,8 @@ pub(crate) struct StateHandle<'a> {
     coin_cache: DashMap<CoinID, Option<CoinDataHeight>>,
     transactions_cache: DashMap<HashVal, Transaction>,
 
-    fee_pool_cache: AtomicU64,
-    tips_cache: AtomicU64,
+    fee_pool_cache: u128,
+    tips_cache: u128,
 
     auction_bids_cache: DashMap<HashVal, Option<Transaction>>,
 
@@ -27,8 +29,8 @@ pub(crate) struct StateHandle<'a> {
 
 impl<'a> StateHandle<'a> {
     pub fn new(state: &'a mut State) -> Self {
-        let fee_pool_cache = state.fee_pool.into();
-        let tips_cache = state.tips.into();
+        let fee_pool_cache = state.fee_pool;
+        let tips_cache = state.tips;
 
         StateHandle {
             state,
@@ -45,12 +47,13 @@ impl<'a> StateHandle<'a> {
         }
     }
 
-    pub fn apply_tx_batch(&self, txx: &[Transaction]) -> Result<(), StateError> {
+    pub fn apply_tx_batch(&mut self, txx: &[Transaction]) -> Result<(), StateError> {
         for tx in txx {
             if !tx.is_well_formed() {
                 return Err(StateError::MalformedTx);
             }
             self.transactions_cache.insert(tx.hash_nosigs(), tx.clone());
+            self.apply_tx_fees(tx)?;
         }
         // apply outputs in parallel
         txx.par_iter()
@@ -82,10 +85,8 @@ impl<'a> StateHandle<'a> {
             self.state.transactions.insert(k, v);
         }
         // commit fees
-        self.state.fee_pool = self
-            .fee_pool_cache
-            .load(std::sync::atomic::Ordering::Relaxed);
-        self.state.tips = self.tips_cache.load(std::sync::atomic::Ordering::Relaxed);
+        self.state.fee_pool = self.fee_pool_cache;
+        self.state.tips = self.tips_cache;
         // commit abids
         for (k, v) in self.auction_bids_cache {
             if let Some(v) = v {
@@ -103,7 +104,7 @@ impl<'a> StateHandle<'a> {
     fn apply_tx_inputs(&self, tx: &Transaction) -> Result<(), StateError> {
         let scripts = tx.script_as_map();
         // build a map of input coins
-        let mut in_coins: im::HashMap<Vec<u8>, u64> = im::HashMap::new();
+        let mut in_coins: im::HashMap<Vec<u8>, u128> = im::HashMap::new();
         // iterate through the inputs
         for coin_id in tx.inputs.iter() {
             if self.get_stake(coin_id.txhash).is_some()
@@ -150,24 +151,26 @@ impl<'a> StateHandle<'a> {
         if tx.kind != TxKind::Faucet {
             for (currency, value) in out_coins.iter() {
                 // we skip the created doscs for a DoscMint transaction
-                if tx.kind == TxKind::DoscMint && currency == &cointype_dosc(self.state.height) {
+                if tx.kind == TxKind::DoscMint && currency == &DENOM_DOSC {
                     continue;
                 }
-                if !currency.is_empty() && *value != *in_coins.get(currency).unwrap_or(&u64::MAX) {
+                if !currency.is_empty() && *value != *in_coins.get(currency).unwrap_or(&u128::MAX) {
                     return Err(StateError::UnbalancedInOut);
                 }
             }
         }
+        Ok(())
+    }
+
+    fn apply_tx_fees(&mut self, tx: &Transaction) -> Result<(), StateError> {
         // fees
         let min_fee = self.state.fee_multiplier.saturating_mul(tx.weight(0));
         if tx.fee < min_fee {
             return Err(StateError::InsufficientFees(min_fee));
         }
         let tips = tx.fee - min_fee;
-        self.tips_cache
-            .fetch_add(tips, std::sync::atomic::Ordering::Relaxed);
-        self.fee_pool_cache
-            .fetch_add(min_fee, std::sync::atomic::Ordering::Relaxed);
+        self.tips_cache = self.tips_cache.saturating_add(tips);
+        self.fee_pool_cache = self.fee_pool_cache.saturating_add(min_fee);
         Ok(())
     }
 
@@ -208,12 +211,36 @@ impl<'a> StateHandle<'a> {
     fn apply_tx_special_doscmint(&self, tx: &Transaction) -> Result<(), StateError> {
         let coin_id = *tx.inputs.get(0).ok_or(StateError::MalformedTx)?;
         let coin_data = self.get_coin(coin_id).ok_or(StateError::MalformedTx)?;
+        // make sure the time is long enough that we can easily measure it
+        if self.state.height - coin_data.height < 100 {
+            return Err(StateError::InvalidMelPoW);
+        }
         // construct puzzle seed
         let _chi = tmelcrypt::hash_keyed(
             &self.state.history.get(&coin_data.height).0.unwrap().hash(),
-            &bincode::serialize(tx.inputs.get(0).ok_or(StateError::MalformedTx)?).unwrap(),
+            &stdcode::serialize(tx.inputs.get(0).ok_or(StateError::MalformedTx)?).unwrap(),
         );
-        unimplemented!()
+        // get difficulty and proof
+        let (difficulty, proof): (u32, Vec<u8>) =
+            stdcode::deserialize(&tx.data).map_err(|_| StateError::MalformedTx)?;
+        let proof = melpow::Proof::from_bytes(&proof).ok_or(StateError::MalformedTx)?;
+        if !proof.verify(&chi, difficulty as _) {
+            return Err(StateError::InvalidMelPoW);
+        }
+        // compute speeds
+        let my_speed = 2u128.pow(difficulty);
+        let reward_real = melmint::calculate_reward(my_speed, self.state.dosc_speed, difficulty);
+        let reward_nom = melmint::dosc_inflate_r2n(self.state.height, reward_real);
+        // ensure that the total output of DOSCs is correct
+        let total_dosc_output = tx
+            .total_outputs()
+            .get(DENOM_DOSC)
+            .cloned()
+            .unwrap_or_default();
+        if total_dosc_output > reward_nom {
+            return Err(StateError::InvalidMelPoW);
+        }
+        Ok(())
     }
 
     fn apply_tx_special_auctionbid(&self, tx: &Transaction) -> Result<(), StateError> {
@@ -227,7 +254,7 @@ impl<'a> StateHandle<'a> {
         }
         // first output stores the price bid for the syms
         let first_output = tx.outputs.get(0).ok_or(StateError::MalformedTx)?;
-        if first_output.denom != cointype_dosc(self.state.height) {
+        if first_output.denom != DENOM_DOSC {
             return Err(StateError::MalformedTx);
         }
         // first output must have a special script
@@ -265,7 +292,7 @@ impl<'a> StateHandle<'a> {
     fn apply_tx_special_stake(&self, tx: &Transaction) -> Result<(), StateError> {
         // first we check that the data is correct
         let stake_doc: StakeDoc =
-            bincode::deserialize(&tx.data).map_err(|_| StateError::MalformedTx)?;
+            stdcode::deserialize(&tx.data).map_err(|_| StateError::MalformedTx)?;
         let curr_epoch = self.state.height / STAKE_EPOCH;
         // then we check that the first coin is valid
         let first_coin = tx.outputs.get(0).ok_or(StateError::MalformedTx)?;
@@ -275,7 +302,7 @@ impl<'a> StateHandle<'a> {
         // then we check consistency
         if !(stake_doc.e_start > curr_epoch
             && stake_doc.e_post_end > stake_doc.e_start
-            && stake_doc.e_start == first_coin.value)
+            && stake_doc.syms_staked == first_coin.value)
         {
             self.set_stake(tx.hash_nosigs(), stake_doc);
         }
