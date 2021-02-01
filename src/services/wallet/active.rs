@@ -36,6 +36,7 @@ impl ActiveWallet {
         let number: u128 = number.parse()?;
         assert_eq!(unit, "TML");
         // create faucet transaction and broadcast it
+        let fee = 2000000; // TODO: better fee estimation for faucet tx
         let txn = Transaction {
             kind: TxKind::Faucet,
             inputs: vec![],
@@ -44,7 +45,7 @@ impl ActiveWallet {
                 covhash: self.wallet.my_script.hash(),
                 value: number * MICRO_CONVERTER,
             }],
-            fee: 0,
+            fee,
             scripts: vec![],
             sigs: vec![],
             data: vec![],
@@ -94,7 +95,7 @@ impl ActiveWallet {
         Ok(())
     }
 
-    pub async fn send_tx(
+    pub async fn create_tx(
         &mut self,
         dest_addr: &str,
         amount: &str,
@@ -109,7 +110,19 @@ impl ActiveWallet {
             value: number * MICRO_CONVERTER,
             covhash: dest_addr,
         };
-        let to_send = self.wallet.pre_spend(vec![output])?.sign_ed25519(self.sk);
+        let outputs = vec![output.clone()];
+        let (header, _instant) = self.client.last_header().await?;
+        let fee_multiplier = header.fee_multiplier;
+
+        let tx = self.wallet.pre_spend(outputs, fee_multiplier)?.sign_ed25519(self.sk);
+
+        Ok(tx)
+    }
+
+    pub async fn send_tx(
+        &mut self,
+        to_send: Transaction
+    ) -> anyhow::Result<Transaction> {
         eprintln!(">> Syncing state...");
         self.client.broadcast_tx(to_send.clone()).await?;
         eprintln!(">> Transaction {:?} broadcast!", to_send.hash_nosigs());
@@ -126,19 +139,32 @@ impl ActiveWallet {
             txhash: tx.hash_nosigs(),
             index: 1,
         };
-        let _their_coin = CoinID {
-            txhash: tx.hash_nosigs(),
-            index: 0,
-        };
         Ok(self.client.get_coin(header, first_change).await?)
     }
 
-    pub async fn get_balances(&mut self) -> anyhow::Result<HashMap<CoinID, CoinDataHeight>> {
+    pub async fn get_spent_coins(&mut self) -> anyhow::Result<HashMap<CoinID, CoinDataHeight>> {
+        let mut spent_coins = HashMap::new();
+        for (coin_id, coin_data) in self.wallet.spent_coins().iter() {
+            spent_coins.insert(*coin_id, coin_data.clone());
+        }
+        Ok(spent_coins)
+    }
+
+    pub async fn get_unspent_coins(&mut self) -> anyhow::Result<HashMap<CoinID, CoinDataHeight>> {
         let mut unspent_coins = HashMap::new();
         for (coin_id, coin_data) in self.wallet.unspent_coins().iter() {
             unspent_coins.insert(*coin_id, coin_data.clone());
         }
         Ok(unspent_coins)
+    }
+
+    pub async fn get_balance(&mut self) -> anyhow::Result<u128> {
+        let unspent_coins = self.get_unspent_coins().await?;
+        let mut total = 0;
+        for (_coin_id, coin_height) in unspent_coins.iter() {
+            total += coin_height.coin_data.value;
+        }
+        Ok(total)
     }
 
     pub async fn save(&mut self, wallet_name: &str) -> anyhow::Result<()> {
