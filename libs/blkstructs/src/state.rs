@@ -1,11 +1,12 @@
 pub use crate::stake::*;
-use crate::{constants::*, CoinDataHeight};
+use crate::{constants::*, CoinDataHeight, TxKind};
 use crate::{smtmapping::*, CoinData};
 use crate::{transaction as txn, CoinID};
+use applytx::StateHandle;
 use bytes::Bytes;
+
 use defmac::defmac;
-use parking_lot::RwLock;
-use rayon::prelude::*;
+
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use std::sync::Arc;
@@ -14,7 +15,7 @@ use std::{collections::HashMap, fmt::Debug};
 use thiserror::Error;
 use tmelcrypt::{Ed25519PK, HashVal};
 use txn::Transaction;
-mod helpers;
+mod applytx;
 mod melmint;
 
 // TODO: Move these structs into state package
@@ -32,7 +33,7 @@ pub enum StateError {
     #[error("unbalanced inputs and outputs")]
     UnbalancedInOut,
     #[error("insufficient fees (requires {0})")]
-    InsufficientFees(u64),
+    InsufficientFees(u128),
     #[error("referenced non-existent script {:?}", .0)]
     NonexistentScript(tmelcrypt::HashVal),
     #[error("does not satisfy script {:?}", .0)]
@@ -43,19 +44,21 @@ pub enum StateError {
     BidWrongTime,
     #[error("block has wrong header after applying to previous block")]
     WrongHeader,
+    #[error("tried to spend locked coin")]
+    CoinLocked,
 }
 
 /// Configuration of a genesis state. Serializable via serde.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GenesisConfig {
     /// Initial supply of free mels. This will be put at the zero-zero coin ID.
-    pub init_micromels: u64,
+    pub init_micromels: u128,
     /// The covenant hash of the owner of the initial free mels.
     pub init_covhash: HashVal,
     /// Mapping of initial stakeholders.
     pub stakes: HashMap<HashVal, StakeDoc>,
     /// Initial fee pool, in micromels.
-    pub init_fee_pool: u64,
+    pub init_fee_pool: u128,
 }
 
 /// World state of the Themelio blockchain
@@ -67,14 +70,14 @@ pub struct State {
     pub coins: SmtMapping<txn::CoinID, txn::CoinDataHeight>,
     pub transactions: SmtMapping<HashVal, txn::Transaction>,
 
-    pub fee_pool: u64,
-    pub fee_multiplier: u64,
-    pub tips: u64,
+    pub fee_pool: u128,
+    pub fee_multiplier: u128,
+    pub tips: u128,
 
-    pub dosc_multiplier: u64,
+    pub dosc_speed: u128,
     pub auction_bids: SmtMapping<HashVal, txn::Transaction>,
-    pub sym_price: u64,
-    pub mel_price: u64,
+    pub sym_price: u128,
+    pub mel_price: u128,
 
     pub stakes: SmtMapping<HashVal, StakeDoc>,
 }
@@ -86,7 +89,7 @@ fn read_bts(r: &mut impl Read, n: usize) -> Option<Vec<u8>> {
 }
 
 impl State {
-    /// Generates an encoding of the state that, in conjuction with a SMT database, can recover the entire state.
+    /// Generates an encoding of the state that, in conjunction with a SMT database, can recover the entire state.
     pub fn partial_encoding(&self) -> Vec<u8> {
         let mut out = Vec::new();
         out.extend_from_slice(&self.height.to_be_bytes());
@@ -98,7 +101,7 @@ impl State {
         out.extend_from_slice(&self.fee_multiplier.to_be_bytes());
         out.extend_from_slice(&self.tips.to_be_bytes());
 
-        out.extend_from_slice(&self.dosc_multiplier.to_be_bytes());
+        out.extend_from_slice(&self.dosc_speed.to_be_bytes());
         out.extend_from_slice(&self.auction_bids.root_hash());
         out.extend_from_slice(&self.sym_price.to_be_bytes());
         out.extend_from_slice(&self.mel_price.to_be_bytes());
@@ -110,6 +113,7 @@ impl State {
     /// Restores a state from its partial encoding in conjunction with a database. **Does not validate data and will panic; do not use on untrusted data**
     pub fn from_partial_encoding_infallible(mut encoding: &[u8], db: &autosmt::DBManager) -> Self {
         defmac!(readu64 => u64::from_be_bytes(read_bts(&mut encoding, 8).unwrap().as_slice().try_into().unwrap()));
+        defmac!(readu128 => u128::from_be_bytes(read_bts(&mut encoding, 16).unwrap().as_slice().try_into().unwrap()));
         defmac!(readtree => SmtMapping::new(db.get_tree(tmelcrypt::HashVal(
             read_bts(&mut encoding, 32).unwrap().as_slice().try_into().unwrap(),
         ))));
@@ -118,14 +122,14 @@ impl State {
         let coins = readtree!();
         let transactions = readtree!();
 
-        let fee_pool = readu64!();
-        let fee_multiplier = readu64!();
-        let tips = readu64!();
+        let fee_pool = readu128!();
+        let fee_multiplier = readu128!();
+        let tips = readu128!();
 
-        let dosc_multiplier = readu64!();
+        let dosc_multiplier = readu128!();
         let auction_bids = readtree!();
-        let sym_price = readu64!();
-        let mel_price = readu64!();
+        let sym_price = readu128!();
+        let mel_price = readu128!();
 
         let stakes = readtree!();
         State {
@@ -138,7 +142,7 @@ impl State {
             fee_multiplier,
             tips,
 
-            dosc_multiplier,
+            dosc_speed: dosc_multiplier,
             auction_bids,
             sym_price,
             mel_price,
@@ -150,17 +154,17 @@ impl State {
     /// Generates a test genesis state, with a given starting coin.
     pub fn test_genesis(
         db: autosmt::DBManager,
-        start_micromels: u64,
-        start_conshash: tmelcrypt::HashVal,
+        start_micro_mels: u128,
+        start_cov_hash: tmelcrypt::HashVal,
         start_stakeholders: &[tmelcrypt::Ed25519PK],
     ) -> Self {
-        assert!(start_micromels <= MAX_COINVAL);
+        assert!(start_micro_mels <= MAX_COINVAL);
         let mut empty = Self::new_empty(db);
         // insert coin out of nowhere
         let init_coin = txn::CoinData {
-            conshash: start_conshash,
-            value: start_micromels,
-            cointype: COINTYPE_TMEL.to_vec(),
+            covhash: start_cov_hash,
+            value: start_micro_mels,
+            denom: DENOM_TMEL.to_vec(),
         };
         empty.coins.insert(
             txn::CoinID {
@@ -174,7 +178,7 @@ impl State {
         );
         for (i, stakeholder) in start_stakeholders.iter().enumerate() {
             empty.stakes.insert(
-                tmelcrypt::hash_single(&(i as u64).to_be_bytes()),
+                tmelcrypt::hash_single(&(i as u128).to_be_bytes()),
                 StakeDoc {
                     pubkey: *stakeholder,
                     e_start: 0,
@@ -190,43 +194,17 @@ impl State {
         self.apply_tx_batch(std::slice::from_ref(tx))
     }
 
-    /// Applies a batch of transactions. The order of the transactions in txx do not matter.
     pub fn apply_tx_batch(&mut self, txx: &[txn::Transaction]) -> Result<(), StateError> {
-        // clone self first
-        let mut newself = self.clone();
-        // first ensure that all the transactions are well-formed
-        for tx in txx {
-            if !tx.is_well_formed() {
-                return Err(StateError::MalformedTx);
-            }
-            newself.transactions.insert(tx.hash_nosigs(), tx.clone());
-        }
-        let lnewself = RwLock::new(newself);
-        // then we apply the outputs in parallel
-        txx.par_iter()
-            .for_each(|tx| helpers::apply_tx_outputs(&lnewself, tx));
-        // then we apply the inputs in parallel
-        let res: Result<Vec<()>, StateError> = txx
-            .par_iter()
-            .map(|tx| helpers::apply_tx_inputs(&lnewself, tx))
-            .collect();
-        res?;
-        // then we apply the nondefault checks in parallel
-        let res: Result<Vec<()>, StateError> = txx
-            .par_iter()
-            .filter(|tx| tx.kind != txn::TxKind::Normal && tx.kind != txn::TxKind::Faucet)
-            .map(|tx| helpers::apply_tx_special(&lnewself, tx))
-            .collect();
-        res?;
-        // we commit the changes
-        //panic!("COMMIT?!");
+        let old_hash = self.coins.root_hash();
+        let mut handle = StateHandle::new(self);
+        handle.apply_tx_batch(txx)?;
+        handle.commit();
         log::debug!(
             "applied a batch of {} txx to {:?} => {:?}",
             txx.len(),
-            self.coins.root_hash(),
-            lnewself.read().coins.root_hash()
+            old_hash,
+            self.coins.root_hash()
         );
-        *self = lnewself.read().clone();
         Ok(())
     }
 
@@ -243,9 +221,9 @@ impl State {
                 scaled_movement
             );
             if scaled_movement >= 0 {
-                self.fee_multiplier += scaled_movement as u64;
+                self.fee_multiplier += scaled_movement as u128;
             } else {
-                self.fee_multiplier -= scaled_movement.abs() as u64;
+                self.fee_multiplier -= scaled_movement.abs() as u128;
             }
             // then it's time to collect the fees dude! we synthesize a coin with 1/65536 of the fee pool and all the tips.
             let base_fees = self.fee_pool >> 16;
@@ -255,9 +233,9 @@ impl State {
             let pseudocoin_id = reward_coin_pseudoid(self.height);
             let pseudocoin_data = CoinDataHeight {
                 coin_data: CoinData {
-                    conshash: action.reward_dest,
+                    covhash: action.reward_dest,
                     value: base_fees + tips,
-                    cointype: COINTYPE_TMEL.into(),
+                    denom: DENOM_TMEL.into(),
                 },
                 height: self.height,
             };
@@ -279,7 +257,7 @@ impl State {
             transactions: SmtMapping::new(empty_tree.clone()),
             fee_pool: 1000000,
             fee_multiplier: 1000,
-            dosc_multiplier: 1,
+            dosc_speed: 1,
             tips: 0,
             auction_bids: SmtMapping::new(empty_tree.clone()),
             sym_price: MICRO_CONVERTER,
@@ -289,12 +267,14 @@ impl State {
     }
 
     pub fn get_height_entropy(&self, height: u64) -> HashVal {
-        // TODO something robust, like bitwise majority "voting"
-        self.history
-            .get(&height)
-            .0
-            .map(|v| v.hash())
-            .unwrap_or_default()
+        // get the last 1021 block hashes
+        let hashes: Vec<HashVal> = (0..height)
+            .rev()
+            .take(ENTROPY_BLOCKS as _)
+            .map(|height| self.history.get(&height).0.unwrap().hash())
+            .collect();
+        // bitwise majority
+        tmelcrypt::majority_beacon(&hashes)
     }
 }
 
@@ -322,11 +302,11 @@ impl SealedState {
     /// Partial encoding.
     pub fn partial_encoding(&self) -> Vec<u8> {
         let tmp = (self.0.partial_encoding(), &self.1);
-        bincode::serialize(&tmp).unwrap()
+        stdcode::serialize(&tmp).unwrap()
     }
     /// Partial encoding.
     pub fn from_partial_encoding_infallible(bts: &[u8], db: &autosmt::DBManager) -> Self {
-        let tmp: (Vec<u8>, Option<ProposerAction>) = bincode::deserialize(&bts).unwrap();
+        let tmp: (Vec<u8>, Option<ProposerAction>) = stdcode::deserialize(&bts).unwrap();
         SealedState(
             Arc::new(State::from_partial_encoding_infallible(&tmp.0, db)),
             tmp.1,
@@ -346,7 +326,7 @@ impl SealedState {
             transactions_hash: inner.transactions.root_hash(),
             fee_pool: inner.fee_pool,
             fee_multiplier: inner.fee_multiplier,
-            dosc_multiplier: inner.dosc_multiplier,
+            dosc_speed: inner.dosc_speed,
             auction_bids_hash: inner.auction_bids.root_hash(),
             sym_price: inner.sym_price,
             mel_price: inner.mel_price,
@@ -368,7 +348,7 @@ impl SealedState {
     /// Creates a new unfinalized state representing the next block.
     pub fn next_state(&self) -> State {
         let mut new = self.inner_ref().clone();
-        // advance the numbers
+        // fee variables
         new.history.insert(self.0.height, self.header());
         new.height += 1;
         new.stakes.remove_stale(new.height / STAKE_EPOCH);
@@ -377,6 +357,24 @@ impl SealedState {
         if new.height % AUCTION_INTERVAL == 0 && !new.auction_bids.is_empty() {
             melmint::synthesize_afill(&mut new)
         }
+        // melmint variables
+        new.dosc_speed = self
+            .0
+            .transactions
+            .val_iter()
+            .map(|tx| {
+                if tx.kind == TxKind::DoscMint {
+                    let (difficulty, _): (u32, Vec<u8>) = stdcode::deserialize(&tx.data)
+                        .map_err(|_| StateError::MalformedTx)
+                        .expect("should not see a bad DoscMint here");
+                    2u128.pow(difficulty)
+                } else {
+                    0
+                }
+            })
+            .min()
+            .unwrap_or_default()
+            .max(new.dosc_speed);
         new
     }
 
@@ -449,18 +447,18 @@ pub struct Header {
     pub history_hash: HashVal,
     pub coins_hash: HashVal,
     pub transactions_hash: HashVal,
-    pub fee_pool: u64,
-    pub fee_multiplier: u64,
-    pub dosc_multiplier: u64,
+    pub fee_pool: u128,
+    pub fee_multiplier: u128,
+    pub dosc_speed: u128,
     pub auction_bids_hash: HashVal,
-    pub sym_price: u64,
-    pub mel_price: u64,
+    pub sym_price: u128,
+    pub mel_price: u128,
     pub stake_doc_hash: HashVal,
 }
 
 impl Header {
     pub fn hash(&self) -> tmelcrypt::HashVal {
-        tmelcrypt::hash_single(&bincode::serialize(self).unwrap())
+        tmelcrypt::hash_single(&stdcode::serialize(self).unwrap())
     }
 
     pub fn validate_cproof(

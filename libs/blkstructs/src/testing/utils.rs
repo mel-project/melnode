@@ -1,4 +1,4 @@
-use crate::{CoinID, CoinData, Transaction, melscript, TxKind, COINTYPE_TMEL};
+use crate::{melscript, CoinData, CoinID, Transaction, TxKind, DENOM_TMEL};
 use std::collections::BinaryHeap;
 
 pub fn random_valid_txx(
@@ -7,6 +7,7 @@ pub fn random_valid_txx(
     start_coindata: CoinData,
     signer: tmelcrypt::Ed25519SK,
     cons: &melscript::Script,
+    fee: u128
 ) -> Vec<Transaction> {
     let mut pqueue: BinaryHeap<(u64, CoinID, CoinData)> = BinaryHeap::new();
     pqueue.push((rng.gen(), start_coin, start_coindata));
@@ -14,16 +15,16 @@ pub fn random_valid_txx(
     for _ in 0..100 {
         // pop one item from pqueue
         let (_, to_spend, to_spend_data) = pqueue.pop().unwrap();
-        assert_eq!(to_spend_data.conshash, cons.hash());
+        assert_eq!(to_spend_data.covhash, cons.hash());
         let mut new_tx = Transaction {
             kind: TxKind::Normal,
             inputs: vec![to_spend],
             outputs: vec![CoinData {
-                conshash: cons.hash(),
-                value: to_spend_data.value,
-                cointype: COINTYPE_TMEL.to_owned(),
+                covhash: cons.hash(),
+                value: to_spend_data.value - fee,
+                denom: DENOM_TMEL.to_owned(),
             }],
-            fee: 0,
+            fee,
             scripts: vec![cons.clone()],
             data: vec![],
             sigs: vec![],

@@ -64,21 +64,13 @@ impl WalletData {
         txn.fee = fee_multiplier.saturating_mul(txn.weight(1000));
 
         let output_sum = txn.total_outputs();
-        let mut input_sum: collections::HashMap<Vec<u8>, u64> = collections::HashMap::new();
+        let mut input_sum: collections::HashMap<Vec<u8>, u128> = collections::HashMap::new();
         for (coin, data) in self.unspent_coins.iter() {
-            let existing_val = input_sum
-                .get(&data.coin_data.cointype)
-                .cloned()
-                .unwrap_or(0);
-            if existing_val
-                < output_sum
-                    .get(&data.coin_data.cointype)
-                    .cloned()
-                    .unwrap_or(0)
-            {
+            let existing_val = input_sum.get(&data.coin_data.denom).cloned().unwrap_or(0);
+            if existing_val < output_sum.get(&data.coin_data.denom).cloned().unwrap_or(0) {
                 txn.inputs.push(*coin);
                 input_sum.insert(
-                    data.coin_data.cointype.clone(),
+                    data.coin_data.denom.clone(),
                     existing_val + data.coin_data.value,
                 );
             }
@@ -94,9 +86,9 @@ impl WalletData {
                     .ok_or_else(|| anyhow::anyhow!("not enough money"))?;
                 if difference > 0 {
                     change.push(CoinData {
-                        conshash: self.my_script.hash(),
+                        covhash: self.my_script.hash(),
                         value: difference,
-                        cointype: cointype.clone(),
+                        denom: cointype.clone(),
                     })
                 }
             }

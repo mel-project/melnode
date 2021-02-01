@@ -25,7 +25,7 @@ impl AvailableWallets {
         }
 
         // Serialize wallet into encoded data and store it into db
-        let encoded_data = bincode::serialize(&wallet_data).unwrap();
+        let encoded_data = stdcode::serialize(&wallet_data).unwrap();
         wallet::insert(&self.conn, &wallet_name, &encoded_data)
             .expect("Failed to insert wallet data");
         false
@@ -36,7 +36,7 @@ impl AvailableWallets {
         // If wallet already exists, do not insert and return
         let existing_wallet = wallet::read_by_name(&self.conn, &wallet_name);
         if let Ok(wallet) = existing_wallet {
-            let wallet: WalletData = bincode::deserialize(&wallet.encoded_data).unwrap();
+            let wallet: WalletData = stdcode::deserialize(&wallet.encoded_data).unwrap();
             return Some(wallet);
         };
         None
@@ -49,7 +49,7 @@ impl AvailableWallets {
         for existing_wallet in existing_wallets {
             let wallet_name = existing_wallet.wallet_name.clone();
             let wallet_data: WalletData =
-                bincode::deserialize(&existing_wallet.encoded_data).unwrap();
+                stdcode::deserialize(&existing_wallet.encoded_data).unwrap();
             wallets_by_name.insert(wallet_name, wallet_data);
         }
         wallets_by_name

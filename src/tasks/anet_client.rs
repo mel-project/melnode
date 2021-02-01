@@ -159,7 +159,7 @@ async fn run_active_wallet(
 
                         eprintln!(
                             ">> CID = {}",
-                            hex::encode(bincode::serialize(&coin).unwrap()).bold()
+                            hex::encode(stdcode::serialize(&coin).unwrap()).bold()
                         );
                         break;
                     }
@@ -179,7 +179,7 @@ async fn run_active_wallet(
                             coin_data_height.height,
                             coin_data_height.coin_data.value,
                             {
-                                let val = coin_data_height.coin_data.cointype.as_slice();
+                                let val = coin_data_height.coin_data.denom.as_slice();
                                 format!("X-{}", hex::encode(val))
                             }
                         );
@@ -212,11 +212,11 @@ async fn run_active_wallet(
                         eprintln!(">> Confirmed at height {}!", out.height);
                         eprintln!(
                             ">> CID (Sent) = {}",
-                            hex::encode(bincode::serialize(&their_coin).unwrap()).bold()
+                            hex::encode(stdcode::serialize(&their_coin).unwrap()).bold()
                         );
                         eprintln!(
                             ">> CID (Change) = {}",
-                            hex::encode(bincode::serialize(&first_change).unwrap()).bold()
+                            hex::encode(stdcode::serialize(&first_change).unwrap()).bold()
                         );
                         break;
                     }
@@ -230,7 +230,7 @@ async fn run_active_wallet(
                 writeln!(&mut tw, ">> [CoinID]\t[Height]\t[Amount]\t[CoinType]").unwrap();
 
                 for (coin_id, coin_data) in unspent_coins.iter() {
-                    let coin_id = hex::encode(bincode::serialize(coin_id).unwrap());
+                    let coin_id = hex::encode(stdcode::serialize(coin_id).unwrap());
                     write!(&mut tw,
                            ">> {}\t{}\t{}\t{}",
                            coin_id,
@@ -253,7 +253,7 @@ async fn run_active_wallet(
                 writeln!(&mut tw, ">> [CoinID]\t[Height]\t[Amount]\t[CoinType]").unwrap();
 
                 for (coin_id, coin_data) in spent_coins.iter() {
-                    let coin_id = hex::encode(bincode::serialize(coin_id).unwrap());
+                    let coin_id = hex::encode(stdcode::serialize(coin_id).unwrap());
                     write!(&mut tw,
                            ">> {}\t{}\t{}\t{}",
                            coin_id,

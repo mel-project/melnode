@@ -49,6 +49,38 @@ impl HashVal {
     }
 }
 
+/// Computes an entropy seed from a large number of hashes using the "majority beacon".
+pub fn majority_beacon(elems: &[HashVal]) -> HashVal {
+    let bts: Vec<u8> = (0..32)
+        .map(|i| {
+            let bytes: Vec<u8> = elems.iter().map(|v| v[i]).collect();
+            bitwise_majority(&bytes)
+        })
+        .collect();
+    HashVal(bts.try_into().unwrap())
+}
+
+// helper function that takes the bitwise majority of a large number of u8's
+fn bitwise_majority(bytes: &[u8]) -> u8 {
+    let mut toret = 0u8;
+    for bit_idx in 0..8 {
+        let mut zero_count = 0;
+        let mut one_count = 0;
+        for member in bytes {
+            if member & (1 << bit_idx) == 1 {
+                one_count += 1;
+            } else {
+                zero_count += 1;
+            }
+        }
+        assert_eq!(zero_count + one_count, bytes.len());
+        if one_count > zero_count {
+            toret |= 1 << bit_idx;
+        }
+    }
+    toret
+}
+
 impl Deref for HashVal {
     type Target = [u8];
 

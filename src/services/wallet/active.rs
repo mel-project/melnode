@@ -1,6 +1,8 @@
 use crate::services::WalletData;
 use crate::{dal::wallet, protocols::NetClient};
-use blkstructs::{CoinData, CoinDataHeight, CoinID, Header, Transaction, TxKind, COINTYPE_TMEL, MICRO_CONVERTER};
+use blkstructs::{
+    CoinData, CoinDataHeight, CoinID, Header, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
+};
 use smol::net::SocketAddr;
 use tmelcrypt::Ed25519SK;
 
@@ -31,15 +33,15 @@ impl ActiveWallet {
 
     pub async fn send_faucet_tx(&mut self, number: &str, unit: &str) -> anyhow::Result<CoinID> {
         // validate input
-        let number: u64 = number.parse()?;
+        let number: u128 = number.parse()?;
         assert_eq!(unit, "TML");
         // create faucet transaction and broadcast it
         let txn = Transaction {
             kind: TxKind::Faucet,
             inputs: vec![],
             outputs: vec![CoinData {
-                cointype: COINTYPE_TMEL.to_owned(),
-                conshash: self.wallet.my_script.hash(),
+                denom: DENOM_TMEL.to_owned(),
+                covhash: self.wallet.my_script.hash(),
                 value: number * MICRO_CONVERTER,
             }],
             fee: 1098000,
@@ -77,7 +79,7 @@ impl ActiveWallet {
         eprintln!(">> Syncing state...");
         let header = self.client.last_header().await?.0;
         eprintln!(">> Retrieving coin at height {}", header.height);
-        let coin_id: CoinID = bincode::deserialize(&hex::decode(coin_id)?)?;
+        let coin_id: CoinID = stdcode::deserialize(&hex::decode(coin_id)?)?;
         let (coin_data_height, full_proof) = self.client.get_coin(header, coin_id).await?;
         Ok((coin_data_height, coin_id, full_proof))
     }
@@ -98,15 +100,14 @@ impl ActiveWallet {
         amount: &str,
         unit: &str,
     ) -> anyhow::Result<Transaction> {
-        // Create transaction
-        let number: u64 = amount.parse()?;
+        let number: u128 = amount.parse()?;
         assert_eq!(unit, "TML");
         let dest_addr = tmelcrypt::HashVal::from_addr(dest_addr)
             .ok_or_else(|| anyhow::anyhow!("can't decode as address"))?;
         let output = CoinData {
-            cointype: COINTYPE_TMEL.to_vec(),
+            denom: DENOM_TMEL.to_vec(),
             value: number * MICRO_CONVERTER,
-            conshash: dest_addr,
+            covhash: dest_addr,
         };
         let outputs = vec![output.clone()];
         let (header, _instant) = self.client.last_header().await?;
@@ -166,7 +167,7 @@ impl ActiveWallet {
     }
 
     pub async fn save(&mut self, wallet_name: &str) -> anyhow::Result<()> {
-        let encoded_data = bincode::serialize(&self.wallet).unwrap();
+        let encoded_data = stdcode::serialize(&self.wallet).unwrap();
         wallet::update_by_name(&self.conn, &wallet_name, &encoded_data)
             .expect("Failed to update wallet");
         Ok(())

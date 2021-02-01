@@ -9,3 +9,6 @@ pub mod utils;
 
 #[cfg(test)]
 pub mod integration;
+
+#[cfg(test)]
+pub mod factory;
