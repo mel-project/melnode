@@ -38,3 +38,4 @@ num="0.3"
 
 [dev-dependencies]
 rstest = "0.6.4"
+lazy_static = "1"

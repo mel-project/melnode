@@ -9,7 +9,7 @@ pub struct AvailableWallets {
 }
 
 impl AvailableWallets {
-    pub fn new(path: &String) -> Self {
+    pub fn new(path: &str) -> Self {
         let path = Path::new(path);
         let conn = Connection::open(path).expect("SQLite connection failure");
         wallet::init(&conn).expect("Failed to load wallets");
@@ -28,7 +28,7 @@ impl AvailableWallets {
         let encoded_data = stdcode::serialize(&wallet_data).unwrap();
         wallet::insert(&self.conn, &wallet_name, &encoded_data)
             .expect("Failed to insert wallet data");
-        return false;
+        false
     }
 
     /// Gets a wallet with a certain name. If the wallet exists, return it; otherwise generate a fresh wallet.

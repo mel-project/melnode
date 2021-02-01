@@ -3,7 +3,6 @@ use std::{net::SocketAddr, sync::Arc, time::Duration};
 use blkstructs::{CoinDataHeight, CoinID, ConsensusProof, Header, Transaction};
 use melnet::MelnetError;
 use smol::channel::{Receiver, Sender};
-use symphonia::QuorumCert;
 use tmelcrypt::HashVal;
 
 use crate::services::storage::SharedStorage;

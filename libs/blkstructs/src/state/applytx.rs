@@ -12,6 +12,7 @@ use crate::{
 use super::melmint;
 
 /// A mutable "handle" to a particular State. Can be "committed" like a database transaction.
+/// Note: Option type values are used to indicate deletion when None
 pub(crate) struct StateHandle<'a> {
     state: &'a mut State,
 
@@ -133,7 +134,9 @@ impl<'a> StateHandle<'a> {
                     {
                         return Err(StateError::ViolatesScript(coin_data.coin_data.covhash));
                     }
-                    // spend the coin by deleting
+                    // we need expression to be false
+                    // expression has two parts 1 & 2 seperated by an &&
+                    //
                     self.del_coin(*coin_id);
                     in_coins.insert(
                         coin_data.coin_data.denom.clone(),
@@ -174,7 +177,7 @@ impl<'a> StateHandle<'a> {
     fn apply_tx_outputs(&self, tx: &Transaction) -> Result<(), StateError> {
         let height = self.state.height;
         for (index, coin_data) in tx.outputs.iter().enumerate() {
-            // if conshash is zero, this destroys the coins permanently
+            // if covenant hash is zero, this destroys the coins permanently
             if coin_data.covhash != COVHASH_DESTROY {
                 self.set_coin(
                     CoinID {
@@ -195,7 +198,7 @@ impl<'a> StateHandle<'a> {
         match tx.kind {
             TxKind::DoscMint => self.apply_tx_special_doscmint(tx),
             TxKind::AuctionBid => self.apply_tx_special_auctionbid(tx),
-            TxKind::AuctionBuyout => self.apply_tx_special_auctionbuyout(tx),
+            TxKind::AuctionBuyout => self.apply_tx_special_auction_buyout(tx),
             TxKind::AuctionFill => {
                 // intentionally ignore here. the auction-fill effects are done elsewhere.
                 Ok(())
@@ -263,7 +266,7 @@ impl<'a> StateHandle<'a> {
         Ok(())
     }
 
-    fn apply_tx_special_auctionbuyout(&self, tx: &Transaction) -> Result<(), StateError> {
+    fn apply_tx_special_auction_buyout(&self, tx: &Transaction) -> Result<(), StateError> {
         let abid_txx: Vec<Transaction> = tx
             .inputs
             .iter()
@@ -338,15 +341,59 @@ impl<'a> StateHandle<'a> {
         self.auction_bids_cache.insert(txhash, None);
     }
 
-    fn get_stake(&self, txhash: HashVal) -> Option<Transaction> {
-        self.auction_bids_cache
-            .entry(txhash)
-            .or_insert_with(|| self.state.auction_bids.get(&txhash).0)
-            .value()
-            .clone()
+    fn get_stake(&self, txhash: HashVal) -> Option<StakeDoc> {
+        if let Some(cached_sd) = self.stakes_cache.get(&txhash).as_deref() {
+            return Some(cached_sd).cloned()
+        }
+        if let Some(sd) = self.state.stakes.get(&txhash).0 {
+            return self.stakes_cache.insert(txhash, sd)
+        }
+        None
     }
 
     fn set_stake(&self, txhash: HashVal, sdoc: StakeDoc) {
         self.stakes_cache.insert(txhash, sdoc);
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use rstest::*;
+    use crate::testing::fixtures::*;
+    use crate::testing::factory::*;
+    use crate::{State, TxKind, CoinID, CoinData};
+    use crate::state::applytx::StateHandle;
+    use crate::melscript::Script;
+    use tmelcrypt::{Ed25519PK, Ed25519SK};
+
+    #[rstest]
+    fn test_apply_tx_inputs_single_valid_tx(
+        genesis_state: State,
+        genesis_mel_coin_id: CoinID,
+        genesis_mel_coin_data: CoinData,
+        genesis_cov_script_keypair: (Ed25519PK, Ed25519SK),
+        genesis_cov_script: Script,
+        keypair: (Ed25519PK, Ed25519SK)
+    ) {
+        // Init state and state handle
+        let mut state = genesis_state.clone();
+        let state_handle = StateHandle::new(&mut state);
+
+        // Create a valid signed transaction from first coin
+        let fee = 3000000;
+        let tx = tx_factory(
+            TxKind::Normal,
+            genesis_cov_script_keypair,
+            keypair.0,
+            genesis_mel_coin_id,
+            genesis_cov_script,
+            genesis_mel_coin_data.value,
+            fee
+        );
+
+        // Apply tx inputs and verify no error
+        let res = state_handle.apply_tx_inputs(&tx);
+
+        assert!(res.is_ok());
     }
 }
