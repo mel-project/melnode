@@ -60,7 +60,7 @@ jobs:
           name: Run tests
           command: |
             cd <<parameters.path>>
-            cargo test --verbose
+            cargo test --all --verbose
       - save_cache:
           key: cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock"
             }}
