@@ -1,7 +1,7 @@
 use std::{convert::TryInto, net::SocketAddr, time::Instant};
 
 use crate::protocols::NetClient;
-use blkstructs::{CoinData, CoinDataHeight, CoinID, Header, Transaction};
+use blkstructs::{CoinID, Header, Transaction};
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
 use tmelcrypt::HashVal;
