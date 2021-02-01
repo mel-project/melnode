@@ -26,4 +26,4 @@ pub const ENTROPY_BLOCKS: usize = 1021;
 pub const COVHASH_DESTROY: HashVal = HashVal([0; 32]);
 
 /// ABID script covhash
-pub static COVHASH_ABID: Lazy<HashVal> = Lazy::new(|| tmelcrypt::hash_keyed(b"ABID", b"special"));
+pub static COVHASH_ABID: Lazy<HashVal> = Lazy::new(|| tmelcrypt::hash_keyed(b"special", b"ABID"));

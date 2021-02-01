@@ -35,7 +35,7 @@ defmac= "0.2.1"
 structopt= "0.3.18"
 serde = {version="1.0.116", features=["derive"]}
 im = { version = "15.0.0", features = ["serde"] }
-rusqlite = "0.24.0"
+rusqlite = {version="0.24.0", features=["bundled"]}
 smolscale="0.1.2"
 
 tracing = { version = "0.1.22", features=["log"] }

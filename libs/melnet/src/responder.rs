@@ -58,7 +58,7 @@ pub(crate) fn responder_to_closure<
     mut responder: impl Responder<Req, Resp> + 'static + Send,
 ) -> BoxedResponder {
     let clos = move |bts: &[u8]| {
-        let decoded: Result<Req, _> = bincode::deserialize(&bts);
+        let decoded: Result<Req, _> = stdcode::deserialize(&bts);
         match decoded {
             Ok(decoded) => {
                 let (respond, recv_respond) = smol::channel::bounded(1);
@@ -73,7 +73,7 @@ pub(crate) fn responder_to_closure<
                         .recv()
                         .await
                         .unwrap()
-                        .map(|v| bincode::serialize(&v).unwrap())
+                        .map(|v| stdcode::serialize(&v).unwrap())
                 };
                 response_fut.boxed()
             }
@@ -91,7 +91,7 @@ pub(crate) struct BoxedResponder(
     pub Box<dyn FnMut(&[u8]) -> smol::future::Boxed<crate::Result<Vec<u8>>> + Send>,
 );
 
-/// A `Request<Req, Resp>` carries a bincode-compatible request of type `Req and can be responded to with responses of type Resp.
+/// A `Request<Req, Resp>` carries a stdcode-compatible request of type `Req and can be responded to with responses of type Resp.
 pub struct Request<Req: DeserializeOwned, Resp: Serialize> {
     pub body: Req,
     pub state: crate::NetState,

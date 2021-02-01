@@ -16,7 +16,7 @@ use thiserror::Error;
 use tmelcrypt::{Ed25519PK, HashVal};
 use txn::Transaction;
 mod applytx;
-mod melmint;
+pub(crate) mod melmint;
 
 // TODO: Move these structs into state package
 // ie: split this into modules such as

@@ -125,6 +125,15 @@ impl Transaction {
             .saturating_add(output_penalty)
             .saturating_sub(input_boon)
     }
+
+    /// Convenience function that constructs a CoinID that points to a certain index of this function. Panics if the index is out of bounds.
+    pub fn get_coinid(&self, index: u8) -> CoinID {
+        assert!((index as usize) < self.outputs.len());
+        CoinID {
+            txhash: self.hash_nosigs(),
+            index,
+        }
+    }
 }
 
 #[derive(

@@ -1,7 +1,7 @@
 use std::{convert::TryInto, net::SocketAddr, time::Instant};
 
 use crate::protocols::NetClient;
-use blkstructs::{CoinID, Transaction};
+use blkstructs::{CoinData, CoinDataHeight, CoinID, Header, Transaction};
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
 use tmelcrypt::HashVal;
@@ -23,15 +23,16 @@ pub struct AnetMinterConfig {
 }
 
 pub async fn run_anet_minter(cfg: AnetMinterConfig) {
+    dbg!(minimum_difficulty());
     let init_state = State::load(&cfg.state_toml).unwrap();
     log::info!("read initial state: {:?}", init_state);
 
     let mut netclient = NetClient::new(cfg.bootstrap);
 
-    let coin_tip = init_state.coin_id();
+    let mut coin_tip = init_state.coin_id();
     loop {
         let (latest_header, _) = netclient.last_header().await.unwrap();
-        let _coin = netclient
+        let coin = netclient
             .get_coin(latest_header, coin_tip)
             .await
             .unwrap()
@@ -70,12 +71,19 @@ impl State {
 }
 
 /// Measures the difficulty required to take at least 1024 secs
-pub fn minimum_difficulty() -> usize {
-    let one_sec_difficulty = (1..)
+fn minimum_difficulty() -> usize {
+    let one_sec_difficulty = (1usize..)
         .find(|difficulty| {
             let start = Instant::now();
-            mint_on(CoinID::zero_zero(), HashVal::default(), *difficulty);
-            start.elapsed().as_millis() > 1000
+            melpow::Proof::generate(b"hello world", *difficulty);
+            // mint_on(CoinID::zero_zero(), HashVal::default(), *difficulty);
+            if start.elapsed().as_millis() > 1000 {
+                let speed = 2.0f64.powi(*difficulty as _) / start.elapsed().as_secs_f64();
+                log::info!("speed: {} H/s", speed);
+                true
+            } else {
+                false
+            }
         })
         .unwrap();
     log::info!("one_sec_difficulty = {}", one_sec_difficulty);
@@ -83,10 +91,29 @@ pub fn minimum_difficulty() -> usize {
 }
 
 /// Mint on top of an existing coin
-pub fn mint_on(coin: CoinID, height_entropy: HashVal, difficulty: usize) -> Transaction {
-    let chi = tmelcrypt::hash_keyed(&height_entropy, &stdcode::serialize(&coin).unwrap());
-    let _proof = melpow::Proof::generate(&chi, difficulty);
-    // we assume that the coin is a zero-valued mel coin
-    // let txx =
-    unimplemented!()
+fn mint_on(coin: CoinID, coin_height: u64, height_hash: HashVal, difficulty: usize) -> Solution {
+    let chi = tmelcrypt::hash_keyed(&height_hash, &stdcode::serialize(&coin).unwrap());
+    let start = Instant::now();
+    let proof = melpow::Proof::generate(&chi, difficulty);
+    Solution {
+        coin,
+        coin_height,
+        difficulty,
+        proof,
+    }
+}
+
+struct Solution {
+    coin: CoinID,
+    coin_height: u64,
+    difficulty: usize,
+    proof: melpow::Proof,
+}
+
+impl Solution {
+    /// Converts the solution to a transaction. The result is guaranteed to be valid only within the next 10 blocks!
+    pub fn into_tx(self, last_header: Header) -> Transaction {
+        assert!(last_header.height > self.coin_height);
+        unimplemented!()
+    }
 }

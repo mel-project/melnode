@@ -80,22 +80,22 @@ impl Client {
         // grab a connection
         let mut conn = self.connect(addr).await.map_err(MelnetError::Network)?;
         // send a request
-        let rr = bincode::serialize(&RawRequest {
+        let rr = stdcode::serialize(&RawRequest {
             proto_ver: PROTO_VER,
             netname: netname.to_owned(),
             verb: verb.to_owned(),
-            payload: bincode::serialize(&req).unwrap(),
+            payload: stdcode::serialize(&req).unwrap(),
         })
         .unwrap();
         write_len_bts(&mut conn, &rr).await?;
         // read the response length
         let response: RawResponse =
-            bincode::deserialize(&read_len_bts(&mut conn).await?).map_err(|e| {
+            stdcode::deserialize(&read_len_bts(&mut conn).await?).map_err(|e| {
                 MelnetError::Network(std::io::Error::new(std::io::ErrorKind::InvalidData, e))
             })?;
         let response = match response.kind.as_ref() {
-            "Ok" => bincode::deserialize::<TOutput>(&response.body)
-                .map_err(|_| MelnetError::Custom("bincode error".to_owned()))?,
+            "Ok" => stdcode::deserialize::<TOutput>(&response.body)
+                .map_err(|_| MelnetError::Custom("stdcode error".to_owned()))?,
             "NoVerb" => return Err(MelnetError::VerbNotFound),
             _ => {
                 return Err(MelnetError::Custom(

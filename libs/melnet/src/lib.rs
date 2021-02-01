@@ -1,4 +1,4 @@
-//! Melnet serves as Themelio's peer-to-peer network layer, based on a randomized topology and gossip. Peers are divided into servers, which have a publicly reachable address, and clients, which do not. It's based on a simple bincode request-response protocol, where the only way to "push" a message is to send a request to a server. There is no multiplexing --- the whole thing works like HTTP/1.1. TCP connections are pretty cheap these days.
+//! Melnet serves as Themelio's peer-to-peer network layer, based on a randomized topology and gossip. Peers are divided into servers, which have a publicly reachable address, and clients, which do not. It's based on a simple stdcode request-response protocol, where the only way to "push" a message is to send a request to a server. There is no multiplexing --- the whole thing works like HTTP/1.1. TCP connections are pretty cheap these days.
 //!
 //! This also means that clients never receive notifications, and must poll servers.
 //!
@@ -129,11 +129,11 @@ impl NetState {
 
     async fn server_handle_one(&self, conn: &mut TcpStream) -> anyhow::Result<()> {
         // read command
-        let cmd: RawRequest = bincode::deserialize(&read_len_bts(conn).await?)?;
+        let cmd: RawRequest = stdcode::deserialize(&read_len_bts(conn).await?)?;
         if cmd.proto_ver != 1 {
-            let err = bincode::serialize(&RawResponse {
+            let err = stdcode::serialize(&RawResponse {
                 kind: "Err".to_owned(),
-                body: bincode::serialize(&"bad protocol version").unwrap(),
+                body: stdcode::serialize(&"bad protocol version").unwrap(),
             })
             .unwrap();
             write_len_bts(conn, &err).await?;
@@ -162,7 +162,7 @@ impl NetState {
             Ok(resp) => {
                 write_len_bts(
                     conn,
-                    &bincode::serialize(&RawResponse {
+                    &stdcode::serialize(&RawResponse {
                         kind: "Ok".into(),
                         body: resp,
                     })
@@ -173,7 +173,7 @@ impl NetState {
             Err(MelnetError::Custom(string)) => {
                 write_len_bts(
                     conn,
-                    &bincode::serialize(&RawResponse {
+                    &stdcode::serialize(&RawResponse {
                         kind: "Err".into(),
                         body: string.as_bytes().into(),
                     })
@@ -184,7 +184,7 @@ impl NetState {
             Err(MelnetError::VerbNotFound) => {
                 write_len_bts(
                     conn,
-                    &bincode::serialize(&RawResponse {
+                    &stdcode::serialize(&RawResponse {
                         kind: "NoVerb".into(),
                         body: b"".to_vec(),
                     })

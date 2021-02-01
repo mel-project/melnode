@@ -15,7 +15,7 @@ pub fn dosc_inflate_r2n(height: u64, real: u128) -> u128 {
         .expect("dosc inflated so much it doesn't fit into a u128")
 }
 
-/// Reward calculator. Returns the value in REAL docs.
+/// Reward calculator. Returns the value in real DOSC.
 pub fn calculate_reward(my_speed: u128, dosc_speed: u128, difficulty: u32) -> u128 {
     let exp_difficulty = 2u128.pow(difficulty as _);
     // correct calculation with bigints
