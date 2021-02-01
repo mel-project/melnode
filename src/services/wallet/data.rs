@@ -50,7 +50,7 @@ impl WalletData {
     }
 
     /// Creates an **unsigned** transaction out of the coins in the data. Does not spend it yet.
-    pub fn pre_spend(&self, outputs: Vec<CoinData>, fee_multiplier: u64) -> anyhow::Result<Transaction> {
+    pub fn pre_spend(&self, outputs: Vec<CoinData>, fee_multiplier: u128) -> anyhow::Result<Transaction> {
         // find coins that might match
         let mut txn = Transaction {
             kind: TxKind::Normal,
