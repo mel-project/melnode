@@ -329,17 +329,23 @@ impl<'a> StateHandle<'a> {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::testing::fixtures::{valid_txx, genesis_state};
+    use crate::testing::fixtures::{valid_txx, genesis_state, keypair};
     use crate::{Transaction, State};
     use rstest::*;
     use crate::state::applytx::StateHandle;
+    use tmelcrypt::{Ed25519PK, Ed25519SK};
 
     #[rstest]
-    fn test_apply_tx_inputs(mut genesis_state: State, valid_txx: Vec<Transaction>) {
-        let s = StateHandle::new(&mut genesis_state);
-        let tx = valid_txx.iter().next().unwrap();
-        let res = s.apply_tx_inputs(tx);
-        assert!(res.is_ok());
-        println!("Test");
+    fn test_apply_tx_inputs(keypair: (Ed25519PK, Ed25519SK)) {
+        let mut state = genesis_state(keypair);
+        let txx = valid_txx(keypair);
+
+        let s = StateHandle::new(&mut state);
+        let tx = *txx.iter().next().iter().next().unwrap();
+
+        for tx in txx {
+            let res = s.apply_tx_inputs(&tx);
+            assert!(res.is_ok());
+        }
     }
 }

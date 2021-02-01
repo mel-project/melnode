@@ -7,9 +7,6 @@
 //! - `Transaction` represents a serializable Themelio transaction. It has some helper methods to count coins, estimate fees, etc, largely to help build wallets.
 //! - `StakeDoc`, which every `State` includes, encapsulates the Symphonia epoch-based stake information.
 //! - `SmtMapping` represents a type-safe SMT-backed mapping that is extensively used within the crate.
-
-// #![feature(test)]
-
 mod constants;
 pub mod melscript;
 mod stake;
@@ -20,5 +17,9 @@ mod smtmapping;
 pub use smtmapping::*;
 pub use state::*;
 pub use transaction::*;
+
+#[cfg(test)]
+#[macro_use]
+extern crate lazy_static;
 
 mod testing;
