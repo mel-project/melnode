@@ -142,7 +142,7 @@ commands:
         default: $SERVER_ADDRESS
       user:
         type: string
-        default: $SERVER_USER
+        default: $SERVER_USER_2
     steps:
       - run:
           name: Deploy release to alphanet nodes
