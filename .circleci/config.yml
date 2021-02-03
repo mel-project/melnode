@@ -62,8 +62,7 @@ jobs:
             cd <<parameters.path>>
             cargo test --all --verbose
       - save_cache:
-          key: cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock"
-            }}
+          key: cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock" }}
           paths:
             - <<parameters.path>>/target
 
@@ -142,7 +141,7 @@ commands:
         default: $SERVER_ADDRESS
       user:
         type: string
-        default: $SERVER_USER
+        default: $SERVER_USER_2
     steps:
       - run:
           name: Deploy release to alphanet nodes
