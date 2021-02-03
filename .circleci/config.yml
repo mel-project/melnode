@@ -151,7 +151,9 @@ commands:
 
               echo $REMOTE_NODE1_HOSTKEY >> ~/.ssh/known_hosts
               echo -e "Host 34.94.204.151\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
-              rsync -avpz --stats --progress --timeout=30 --size-only <<parameters.path>>/target/release/themelio-core <<parameters.user>>@34.94.204.151:<<parameters.server_path>>
+              pwd
+              ls -R <<parameters.path>>
+              # rsync -avpz --stats --progress --timeout=30 --size-only <<parameters.path>>/target/release/themelio-core <<parameters.user>>@34.94.204.151:<<parameters.server_path>>
             fi
 
 workflows:
