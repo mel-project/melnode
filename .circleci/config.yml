@@ -162,7 +162,6 @@ commands:
 
               echo -e "Host 35.225.253.4\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
               rsync -avpz --stats --progress --timeout=30 --size-only <<parameters.path>>/target/release/themelio-core <<parameters.user>>@35.225.253.4:<<parameters.server_path>>
-
             fi
 
 workflows:
