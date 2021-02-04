@@ -152,16 +152,16 @@ commands:
               echo $REMOTE_NODE1_HOSTKEY >> ~/.ssh/known_hosts
 
               echo -e "Host 34.94.204.151\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
-              rsync -avpz --stats --progress --timeout=30 --size-only <<parameters.path>>/target/release/themelio-core <<parameters.user>>@34.94.204.151:<<parameters.server_path>>
+              rsync -avpz --stats --progress --timeout=30 --size-only <<parameters.path>>/target/release/themelio-core circle@34.94.204.151:<<parameters.server_path>>
 
               echo -e "Host 34.65.24.23\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
-              rsync -avpz --stats --progress --timeout=30 --size-only <<parameters.path>>/target/release/themelio-core <<parameters.user>>@34.65.24.23:<<parameters.server_path>>
+              rsync -avpz --stats --progress --timeout=30 --size-only <<parameters.path>>/target/release/themelio-core circle@34.65.24.23:<<parameters.server_path>>
 
               echo -e "Host 35.229.156.9\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
-              rsync -avpz --stats --progress --timeout=30 --size-only <<parameters.path>>/target/release/themelio-core <<parameters.user>>@35.229.156.9:<<parameters.server_path>>
+              rsync -avpz --stats --progress --timeout=30 --size-only <<parameters.path>>/target/release/themelio-core circle@35.229.156.9:<<parameters.server_path>>
 
               echo -e "Host 35.225.253.4\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
-              rsync -avpz --stats --progress --timeout=30 --size-only <<parameters.path>>/target/release/themelio-core <<parameters.user>>@35.225.253.4:<<parameters.server_path>>
+              rsync -avpz --stats --progress --timeout=30 --size-only <<parameters.path>>/target/release/themelio-core circle@35.225.253.4:<<parameters.server_path>>
             fi
 
 workflows:
