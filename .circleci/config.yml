@@ -62,8 +62,7 @@ jobs:
             cd <<parameters.path>>
             cargo test --all --verbose
       - save_cache:
-          key: cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock"
-            }}
+          key: cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock" }}
           paths:
             - <<parameters.path>>/target
 
@@ -77,15 +76,6 @@ jobs:
       path:
         type: string
         default: .
-      server_path:
-        type: string
-        default: $SERVER_PATH
-      server_address:
-        type: string
-        default: $SERVER_ADDRESS
-      user:
-        type: string
-        default: $SERVER_USER
     steps:
       - install_deps
       - checkout
@@ -101,20 +91,9 @@ jobs:
       - add_ssh_keys:
           fingerprints:
             - "32:e8:15:64:9c:2f:e9:08:4a:85:2b:72:63:bd:46:7d"
-      - run: echo $REMOTE_HOSTKEY >> ~/.ssh/known_hosts
-      - run:
-          name: Avoid hosts unknown for Themelio
-          command: echo -e "Host tm-3.themelio.org\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
-      - run:
-          name: Deploy release
-          command: |
-            ls -R <<parameters.path>>
-            if [ "${CIRCLE_BRANCH}" = "master" ]; then
-              echo "Deploying to alphanet."
-            else
-              echo "Deploying to staging."
-              rsync -avpz --stats --progress --timeout=30 --size-only <<parameters.path>>/target/release/themelio-core <<parameters.user>>@tm-3.themelio.org:<<parameters.server_path>>
-            fi
+            - "7b:96:bd:d0:78:7f:83:03:e3:b3:3c:f9:f3:69:ad:83"
+      - deploy_staging
+      - deploy_master
 
 commands:
   install_deps:
@@ -124,6 +103,66 @@ commands:
           command: |
             sudo apt-get update
             sudo apt-get install -y sqlite3 libsqlite3-dev rsync
+  deploy_staging:
+    parameters:
+      path:
+        type: string
+        default: .
+      server_path:
+        type: string
+        default: $SERVER_PATH
+      server_address:
+        type: string
+        default: $SERVER_ADDRESS
+      user:
+        type: string
+        default: $SERVER_USER
+    steps:
+      - run:
+          name: Deploy release to staging node
+          command: |
+            if [ "${CIRCLE_BRANCH}" != "master" ]; then
+              echo "Deploying to staging node"
+
+              echo $REMOTE_HOSTKEY >> ~/.ssh/known_hosts
+              echo -e "Host tm-3.themelio.org\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
+              rsync -avpz --stats --progress --timeout=30 --size-only <<parameters.path>>/target/release/themelio-core <<parameters.user>>@tm-3.themelio.org:<<parameters.server_path>>
+            fi
+  deploy_master:
+    parameters:
+      path:
+        type: string
+        default: .
+      server_path:
+        type: string
+        default: $SERVER_PATH
+      server_address:
+        type: string
+        default: $SERVER_ADDRESS
+      user:
+        type: string
+        default: $SERVER_USER_2
+    steps:
+      - run:
+          name: Deploy release to alphanet nodes
+          command: |
+            if [ "${CIRCLE_BRANCH}" = "master" ]; then
+              echo "Deploying to alphanet nodes"
+
+              echo $REMOTE_NODE1_HOSTKEY >> ~/.ssh/known_hosts
+
+              echo -e "Host 34.94.204.151\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
+              rsync -avpz --stats --progress --timeout=30 --size-only <<parameters.path>>/target/release/themelio-core <<parameters.user>>@34.94.204.151:<<parameters.server_path>>
+
+              echo -e "Host 34.65.24.23\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
+              rsync -avpz --stats --progress --timeout=30 --size-only <<parameters.path>>/target/release/themelio-core <<parameters.user>>@34.65.24.23:<<parameters.server_path>>
+
+              echo -e "Host 35.229.156.9\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
+              rsync -avpz --stats --progress --timeout=30 --size-only <<parameters.path>>/target/release/themelio-core <<parameters.user>>@35.229.156.9:<<parameters.server_path>>
+
+              echo -e "Host 35.225.253.4\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
+              rsync -avpz --stats --progress --timeout=30 --size-only <<parameters.path>>/target/release/themelio-core <<parameters.user>>@35.225.253.4:<<parameters.server_path>>
+            fi
 
 workflows:
   build-test-release:
