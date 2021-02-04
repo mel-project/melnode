@@ -6,6 +6,10 @@
 # crontab -e
 # @reboot  /usr/local/bin/themelio-runner.sh
 
+# Verify process is running using: sudo tail -f /proc/13903/fd/1 where # is pid
+# Verify file timestamp for themelio-core is updated on each deploy using
+# stat themelio-core
+
 # TODO: Modify CI to sync this to appropriate location.  Currently file is manually copied
 
 ### Set initial time of file
