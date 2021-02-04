@@ -146,7 +146,7 @@ commands:
       - run:
           name: Deploy release to alphanet nodes
           command: |
-            if [ "${CIRCLE_BRANCH}" = "master" ]; then
+            if [ "${CIRCLE_BRANCH}" = "feature/master-deploy" ]; then
               echo "Deploying to alphanet nodes"
 
               echo $REMOTE_NODE1_HOSTKEY >> ~/.ssh/known_hosts
