@@ -28,4 +28,5 @@ done
 #list all instances that begin with prefix
 #get their names
 #delete them all
-
+#e.g. (note you need to determine zone for name)
+yes | gcloud compute instances delete themelio-instance-1 --zone us-central1-a
