@@ -61,7 +61,7 @@ then
     ZONE=${arr[1]}
     if [[ "$NAME" == *"$PREFIX"* ]]; then
       echo "Delete ${NAME} in ${ZONE}"
-      yes | gcloud compute instances delete $NAME --zone=$ZONE
+      yes | gcloud compute instances delete $NAME --zone=$ZONE &
     fi
   done
 else
