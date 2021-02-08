@@ -42,10 +42,10 @@ then
       # 2. Upload cross-compiled binary and runner script
       # 3. Clean stop instance
       # 4. Clean start instance
-      (yes | gcloud compute instances create test --zone ${RAND_ZONE} --machine-type ${MACHINE_TYPE} --metadata-from-file startup-script=gcloud-startup-script.sh) \
-      && (sleep 30s && gcloud compute scp ../target/x86_64-unknown-linux-musl/release/themelio-core themelio-runner.sh test:/usr/local/bin --zone ${RAND_ZONE}) \
-      && (gcloud compute instances stop ${MACHINE_TYPE} --zone ${RAND_ZONE}) \
-      && (gcloud compute instances start ${MACHINE_TYPE} --zone ${RAND_ZONE})
+      (yes | gcloud compute instances create ${MACHINE_NAME} --zone ${RAND_ZONE} --machine-type e2-micro --metadata-from-file startup-script=gcloud-startup-script.sh) \
+      && (sleep 30s && gcloud compute scp ../target/x86_64-unknown-linux-musl/release/themelio-core themelio-runner.sh ${MACHINE_NAME}:/usr/local/bin --zone ${RAND_ZONE}) \
+      && (gcloud compute instances stop ${MACHINE_NAME} --zone ${RAND_ZONE}) \
+      && (gcloud compute instances start ${MACHINE_NAME} --zone ${RAND_ZONE})
 
     done
 
