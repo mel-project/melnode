@@ -23,10 +23,11 @@ use std::collections::HashMap;
 pub enum TxKind {
     Normal = 0x00,
     Stake = 0x10,
+    
     DoscMint = 0x50,
-    AuctionBid = 0x51,
-    AuctionBuyout = 0x52,
-    AuctionFill = 0x53,
+    Swap = 0x51,
+    LiqDeposit = 0x52,
+    LiqWithdraw = 0x53,
 
     Faucet = 0xff,
 }
