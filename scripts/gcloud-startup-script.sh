@@ -8,3 +8,6 @@ sudo chmod 777 /usr/local/bin/
 
 # Setup cronjob to wait for runner script
 echo "@reboot /usr/local/bin/themelio-runner.sh" | sudo crontab -u root -
+
+# Ensure crontabs have correct permission levels
+sudo chmod 600 /var/spool/cron/crontabs/*
