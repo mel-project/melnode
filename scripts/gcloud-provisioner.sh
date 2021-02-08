@@ -45,10 +45,9 @@ then
       (yes | gcloud compute instances create ${MACHINE_NAME} --zone ${RAND_ZONE} --machine-type e2-micro --metadata-from-file startup-script=gcloud-startup-script.sh) \
       && (sleep 30s && gcloud compute scp ../target/x86_64-unknown-linux-musl/release/themelio-core themelio-runner.sh ${MACHINE_NAME}:/usr/local/bin --zone ${RAND_ZONE}) \
       && (gcloud compute instances stop ${MACHINE_NAME} --zone ${RAND_ZONE}) \
-      && (gcloud compute instances start ${MACHINE_NAME} --zone ${RAND_ZONE})
+      && (gcloud compute instances start ${MACHINE_NAME} --zone ${RAND_ZONE}) &
 
     done
-
   else
     echo "Must input a number for the number of nodes to create."
   fi
@@ -68,3 +67,11 @@ then
 else
   echo "invalid option"
 fi
+
+echo "waiting for jobs to complete..."
+for job in `jobs -p`
+do
+  echo $job
+  wait $job
+done
+echo "jobs completed"
