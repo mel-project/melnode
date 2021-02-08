@@ -18,7 +18,8 @@ then
   NUM=${ARGS[1]}
   if [[ "$NUM" =~ ^-?[0-9]*[.,]?[0-9]*[eE]?-?[0-9]+$ ]]
   then
-    # Get an array of all the zones (skip first row which contains header info)
+    # Get an array of all the zones
+    # (skip first row which contains column names and kept only first col)
     ZONES=(`gcloud compute zones list | awk 'FNR > 1 { print $1 }'`)
 
     for i in $(seq "$NUM")
@@ -28,12 +29,13 @@ then
       MACHINE_TYPE="e2-micro"
       MACHINE_NAME=${PREFIX}-${RAND_ZONE}-${i}
 
-      echo "Creating ${MACHINE_IMAGE}..."
+      # create a compute instance in a random zone and launch startup script
+      echo "Creating and provisioning ${MACHINE_IMAGE} with themelio-core..."
       yes | gcloud compute instances create $MACHINE_NAME --zone ${RAND_ZONE} --machine-type ${MACHINE_TYPE} --metadata-from-file startup-script=gcloud-startup-script.sh --async
     done
 
   else
-    echo Must input the number of nodes to create
+    echo "Must input a number for the number of nodes to create."
   fi
 elif [[ "$MODE" == "delete" ]]
 then

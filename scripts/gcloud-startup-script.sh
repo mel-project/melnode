@@ -1,23 +1,26 @@
 #!/bin/bash
 
+# Use this documentation to debug through ssh: https://cloud.google.com/compute/docs/startupscript
+
 # install package deps
 yes | sudo apt update
 yes | sudo apt upgrade
-yes | sudo apt install git curl
+yes | sudo apt install git curl build-essential
 
-# install rust
-yes | curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+# install and config rust
+curl https://sh.rustup.rs -sSf | sh -s -- -y
+source $HOME/.cargo/env
 
 # git clone (later on specify branch)
 git clone https://github.com/themeliolabs/themelio-core
-cd themelio-core || exit
+cd themelio-core/ || exit
 
 # build
 cargo build --release
 
 # copy binary and runner script
-cp ./target/release/themelio-core /usr/local/bin
-#cp ./scripts/themelio-runner.sh /usr/local/bin
+cp -p ./target/release/themelio-core /usr/local/bin
+cp -p ./scripts/themelio-runner.sh /usr/local/bin
 #sudo chmod +x /usr/local/bin/themelio-core
 #sudo chmod +x /usr/local/bin/themelio-runner.sh
 
