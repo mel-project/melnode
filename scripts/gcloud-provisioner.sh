@@ -22,6 +22,8 @@ then
     # (skip first row which contains column names and kept only first col)
     ZONES=(`gcloud compute zones list | awk 'FNR > 1 { print $1 }'`)
 
+    # TODO: create instance template here and provision and clone nodes from here
+
     for i in $(seq "$NUM")
     do
       RAND_ZONE_INDEX=$[$RANDOM % ${#ZONES[@]}]
@@ -39,11 +41,17 @@ then
   fi
 elif [[ "$MODE" == "delete" ]]
 then
-  echo "delete"
-  # gcloud compute instances list
-  # MACHINE_NAME=
-  # ZONE=
-  yes | gcloud compute instances delete themelio-europe-west6-a-1 --zone=europe-west6-a
+  NAME_TO_ZONES=(`gcloud compute instances list | awk 'FNR > 1 { print $1 ";" $2 }'`)
+  for i in "${NAME_TO_ZONES[@]}"
+  do
+    arr=(${i//;/ })
+    NAME=${arr[0]}
+    ZONE=${arr[1]}
+    if [[ "$NAME" == *"$PREFIX"* ]]; then
+      echo "Delete ${NAME} in ${ZONE}"
+      yes | gcloud compute instances delete $NAME --zone=$ZONE
+    fi
+  done
 else
   echo "invalid option"
 fi

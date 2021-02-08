@@ -26,7 +26,7 @@ do
        pkill themelio-core
        echo "RUN THEMELIO IN BACKGROUND"
        # Single node for staging:
-       # /usr/local/bin/themelio-core anet-node --listen 127.0.0.1:11814 &
+       # /usr/local/bin/themelio-core anet-node --listen 127.0.0.1:11814 &>> /var/log/themelio.org &
 
        # Multi-node auditors for alphanet:
        /usr/local/bin/themelio-core anet-node --bootstrap 94.237.109.44:11814 --listen 127.0.0.1:11814 &>> /var/log/themelio.log &
