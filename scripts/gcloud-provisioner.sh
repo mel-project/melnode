@@ -39,7 +39,7 @@ then
 
       # Four tasks are run in sequence (the whole job is async):
       # 1. create a compute instance in a random zone with launch startup script
-      # 2. Upload cross-compiled binary and runner script
+      # 2. Upload cross-compiled binary and runner script (30 sec sleep to ensure startup script done)
       # 3. Clean stop instance
       # 4. Clean start instance
       (yes | gcloud compute instances create ${MACHINE_NAME} --zone ${RAND_ZONE} --machine-type e2-micro --metadata-from-file startup-script=gcloud-startup-script.sh) \
