@@ -5,9 +5,10 @@
 # ./gcloud-provisioner delete
 #
 # Before running this script:
+# 0. Need gcc-musl dep (for mac see: https://www.andrew-thorburn.com/cross-compiling-a-simple-rust-web-app/)
 # 1. Install google cloud CLI,
-# 2. > gcloud init
-# 3. Create a service account key and activate it
+# 2. run: gcloud init
+# 3. Create a service account key from console and get the key to activate it with:
 #    - gcloud auth activate-service-account --key-file key.json
 
 PREFIX="themelio"
@@ -15,6 +16,9 @@ ARGS=("$@")
 MODE=${ARGS[0]}
 if [[ "$MODE" == "create" ]]
 then
+  # Create cross-compiled binary
+  TARGET_CC=x86_64-linux-musl-gcc RUSTFLAGS="-C linker=x86_64-linux-musl-gcc" cargo build --target=x86_64-unknown-linux-musl --release
+
   NUM=${ARGS[1]}
   if [[ "$NUM" =~ ^-?[0-9]*[.,]?[0-9]*[eE]?-?[0-9]+$ ]]
   then
@@ -26,14 +30,23 @@ then
 
     for i in $(seq "$NUM")
     do
+      echo "Creating and provisioning ${MACHINE_IMAGE} with themelio-core..."
+
       RAND_ZONE_INDEX=$[$RANDOM % ${#ZONES[@]}]
       RAND_ZONE=${ZONES[$RAND_ZONE_INDEX]}
       MACHINE_TYPE="e2-micro"
       MACHINE_NAME=${PREFIX}-${RAND_ZONE}-${i}
 
-      # create a compute instance in a random zone and launch startup script
-      echo "Creating and provisioning ${MACHINE_IMAGE} with themelio-core..."
-      yes | gcloud compute instances create $MACHINE_NAME --zone ${RAND_ZONE} --machine-type ${MACHINE_TYPE} --metadata-from-file startup-script=gcloud-startup-script.sh --async
+      # Four tasks are run in sequence (the whole job is async):
+      # 1. create a compute instance in a random zone with launch startup script
+      # 2. Upload cross-compiled binary and runner script
+      # 3. Clean stop instance
+      # 4. Clean start instance
+      (yes | gcloud compute instances create test --zone ${RAND_ZONE} --machine-type ${MACHINE_TYPE} --metadata-from-file startup-script=gcloud-startup-script.sh) \
+      && (sleep 30s && gcloud compute scp ../target/x86_64-unknown-linux-musl/release/themelio-core themelio-runner.sh test:/usr/local/bin --zone ${RAND_ZONE}) \
+      && (gcloud compute instances stop ${MACHINE_TYPE} --zone ${RAND_ZONE}) \
+      && (gcloud compute instances start ${MACHINE_TYPE} --zone ${RAND_ZONE})
+
     done
 
   else
