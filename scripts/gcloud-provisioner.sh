@@ -1,32 +1,47 @@
 #!/bin/bash
 
-# 1. install google cloud CLI,
-# 2. gcloud init
-# 3. create a service account key and activate it
+# Run this script to provision N compute instances
+# ./gcloud-provision create 10
+# ./gcloud-provisioner delete
+#
+# Before running this script:
+# 1. Install google cloud CLI,
+# 2. > gcloud init
+# 3. Create a service account key and activate it
 #    - gcloud auth activate-service-account --key-file key.json
-# run this script to provision N compute instances
 
-# create mode
-# for i in $@
-for i in {1..10}
-do
+PREFIX="themelio"
+ARGS=("$@")
+MODE=${ARGS[0]}
+if [[ "$MODE" == "create" ]]
+then
+  NUM=${ARGS[1]}
+  if [[ "$NUM" =~ ^-?[0-9]*[.,]?[0-9]*[eE]?-?[0-9]+$ ]]
+  then
+    # Get an array of all the zones (skip first row which contains header info)
+    ZONES=(`gcloud compute zones list | awk 'FNR > 1 { print $1 }'`)
 
-# select randomly from region
-# gcloud compute regions list or use gcloud compute zones list (latter is better)
+    for i in $(seq "$NUM")
+    do
+      RAND_ZONE_INDEX=$[$RANDOM % ${#ZONES[@]}]
+      RAND_ZONE=${ZONES[$RAND_ZONE_INDEX]}
+      MACHINE_TYPE="e2-micro"
+      MACHINE_NAME=${PREFIX}-${RAND_ZONE}-${i}
 
-  instance_name = ""
-  zone = ""
-  region = ""
-  machine_type = "e2-micro"
-  image = "debian-10-buster-v20210122"
+      echo "Creating ${MACHINE_IMAGE}..."
+      yes | gcloud compute instances create $MACHINE_NAME --zone ${RAND_ZONE} --machine-type ${MACHINE_TYPE} --metadata-from-file startup-script=gcloud-startup-script.sh --async
+    done
 
-  gcloud compute instances create <params>
-
-done
-
-# delete mode
-#list all instances that begin with prefix
-#get their names
-#delete them all
-#e.g. (note you need to determine zone for name)
-yes | gcloud compute instances delete themelio-instance-1 --zone us-central1-a
+  else
+    echo Must input the number of nodes to create
+  fi
+elif [[ "$MODE" == "delete" ]]
+then
+  echo "delete"
+  # gcloud compute instances list
+  # MACHINE_NAME=
+  # ZONE=
+  yes | gcloud compute instances delete themelio-europe-west6-a-1 --zone=europe-west6-a
+else
+  echo "invalid option"
+fi
