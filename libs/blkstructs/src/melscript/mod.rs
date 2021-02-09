@@ -630,7 +630,9 @@ impl Value {
         match j_value {
             serde_json::Value::Null => None,
             serde_json::Value::String(_) => None,
-            serde_json::Value::Number(num) => Some(Self::Int(num.as_u64()?.into())),
+            serde_json::Value::Number(num) => {
+                Some(Self::Int(num.to_string().parse::<u128>().ok()?.into()))
+            }
             serde_json::Value::Bool(v) => {
                 Some(Self::Int(if v { 1u64.into() } else { 0u64.into() }))
             }

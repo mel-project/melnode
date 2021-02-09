@@ -1,5 +1,5 @@
 pub use crate::stake::*;
-use crate::{constants::*, CoinDataHeight, TxKind};
+use crate::{constants::*, preseal_melmint, CoinDataHeight, TxKind};
 use crate::{smtmapping::*, CoinData};
 use crate::{transaction as txn, CoinID};
 use applytx::StateHandle;
@@ -15,8 +15,11 @@ use std::{collections::HashMap, fmt::Debug};
 use thiserror::Error;
 use tmelcrypt::{Ed25519PK, HashVal};
 use txn::Transaction;
+
+use self::melswap::PoolMapping;
 mod applytx;
 pub(crate) mod melmint;
+mod melswap;
 
 // TODO: Move these structs into state package
 // ie: split this into modules such as
@@ -75,9 +78,7 @@ pub struct State {
     pub tips: u128,
 
     pub dosc_speed: u128,
-    pub auction_bids: SmtMapping<HashVal, txn::Transaction>,
-    pub sym_price: u128,
-    pub mel_price: u128,
+    pub pools: PoolMapping,
 
     pub stakes: SmtMapping<HashVal, StakeDoc>,
 }
@@ -102,9 +103,7 @@ impl State {
         out.extend_from_slice(&self.tips.to_be_bytes());
 
         out.extend_from_slice(&self.dosc_speed.to_be_bytes());
-        out.extend_from_slice(&self.auction_bids.root_hash());
-        out.extend_from_slice(&self.sym_price.to_be_bytes());
-        out.extend_from_slice(&self.mel_price.to_be_bytes());
+        out.extend_from_slice(&self.pools.root_hash());
 
         out.extend_from_slice(&self.stakes.root_hash());
         out
@@ -127,9 +126,7 @@ impl State {
         let tips = readu128!();
 
         let dosc_multiplier = readu128!();
-        let auction_bids = readtree!();
-        let sym_price = readu128!();
-        let mel_price = readu128!();
+        let pools = readtree!();
 
         let stakes = readtree!();
         State {
@@ -143,9 +140,7 @@ impl State {
             tips,
 
             dosc_speed: dosc_multiplier,
-            auction_bids,
-            sym_price,
-            mel_price,
+            pools,
 
             stakes,
         }
@@ -210,6 +205,8 @@ impl State {
 
     /// Finalizes a state into a block. This consumes the state.
     pub fn seal(mut self, action: Option<ProposerAction>) -> SealedState {
+        // first apply melmint
+        self = preseal_melmint(self);
         // apply the proposer action
         if let Some(action) = action {
             // first let's move the fee multiplier
@@ -259,9 +256,7 @@ impl State {
             fee_multiplier: 1000,
             dosc_speed: 1,
             tips: 0,
-            auction_bids: SmtMapping::new(empty_tree.clone()),
-            sym_price: MICRO_CONVERTER,
-            mel_price: MICRO_CONVERTER,
+            pools: SmtMapping::new(empty_tree.clone()),
             stakes: SmtMapping::new(empty_tree),
         }
     }
@@ -327,9 +322,7 @@ impl SealedState {
             fee_pool: inner.fee_pool,
             fee_multiplier: inner.fee_multiplier,
             dosc_speed: inner.dosc_speed,
-            auction_bids_hash: inner.auction_bids.root_hash(),
-            sym_price: inner.sym_price,
-            mel_price: inner.mel_price,
+            pools_hash: inner.pools.root_hash(),
             stake_doc_hash: inner.stakes.root_hash(),
         }
     }
@@ -353,10 +346,6 @@ impl SealedState {
         new.height += 1;
         new.stakes.remove_stale(new.height / STAKE_EPOCH);
         new.transactions.clear();
-        // synthesize auction fill as needed
-        if new.height % AUCTION_INTERVAL == 0 && !new.auction_bids.is_empty() {
-            melmint::synthesize_afill(&mut new)
-        }
         // melmint variables
         new.dosc_speed = self
             .0
@@ -450,9 +439,7 @@ pub struct Header {
     pub fee_pool: u128,
     pub fee_multiplier: u128,
     pub dosc_speed: u128,
-    pub auction_bids_hash: HashVal,
-    pub sym_price: u128,
-    pub mel_price: u128,
+    pub pools_hash: HashVal,
     pub stake_doc_hash: HashVal,
 }
 

@@ -5,8 +5,8 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use tmelcrypt::HashVal;
 
 use crate::{
-    CoinData, CoinDataHeight, CoinID, StakeDoc, State, StateError, Transaction, TxKind,
-    COVHASH_ABID, COVHASH_DESTROY, DENOM_DOSC, DENOM_TMEL, DENOM_TSYM, STAKE_EPOCH,
+    CoinDataHeight, CoinID, StakeDoc, State, StateError, Transaction, TxKind, COVHASH_DESTROY,
+    DENOM_DOSC, DENOM_TMEL, STAKE_EPOCH,
 };
 
 use super::melmint;
@@ -21,8 +21,6 @@ pub(crate) struct StateHandle<'a> {
 
     fee_pool_cache: u128,
     tips_cache: u128,
-
-    auction_bids_cache: DashMap<HashVal, Option<Transaction>>,
 
     stakes_cache: DashMap<HashVal, StakeDoc>,
 }
@@ -40,8 +38,6 @@ impl<'a> StateHandle<'a> {
 
             fee_pool_cache,
             tips_cache,
-
-            auction_bids_cache: DashMap::new(),
 
             stakes_cache: DashMap::new(),
         }
@@ -87,14 +83,6 @@ impl<'a> StateHandle<'a> {
         // commit fees
         self.state.fee_pool = self.fee_pool_cache;
         self.state.tips = self.tips_cache;
-        // commit abids
-        for (k, v) in self.auction_bids_cache {
-            if let Some(v) = v {
-                self.state.auction_bids.insert(k, v);
-            } else {
-                self.state.auction_bids.delete(&k);
-            }
-        }
         // commit stakes
         for (k, v) in self.stakes_cache {
             self.state.stakes.insert(k, v);
@@ -107,11 +95,7 @@ impl<'a> StateHandle<'a> {
         let mut in_coins: im::HashMap<Vec<u8>, u128> = im::HashMap::new();
         // iterate through the inputs
         for coin_id in tx.inputs.iter() {
-            if self.get_stake(coin_id.txhash).is_some()
-                || (self.get_abid(coin_id.txhash).is_some()
-                    && tx.kind != TxKind::AuctionBuyout
-                    && tx.kind != TxKind::AuctionFill)
-            {
+            if self.get_stake(coin_id.txhash).is_some() {
                 return Err(StateError::CoinLocked);
             }
             let coin_data = self.get_coin(*coin_id);
@@ -127,16 +111,9 @@ impl<'a> StateHandle<'a> {
                     let script = scripts
                         .get(&coin_data.coin_data.covhash)
                         .ok_or(StateError::NonexistentScript(coin_data.coin_data.covhash))?;
-                    // we skip checking the script if it's ABID and the tx type is buyout or fill
-                    if !(coin_data.coin_data.covhash == *COVHASH_ABID
-                        && (tx.kind == TxKind::AuctionBuyout || tx.kind == TxKind::AuctionFill))
-                        && !script.check(tx)
-                    {
+                    if !script.check(tx) {
                         return Err(StateError::ViolatesScript(coin_data.coin_data.covhash));
                     }
-                    // we need expression to be false
-                    // expression has two parts 1 & 2 seperated by an &&
-                    //
                     self.del_coin(*coin_id);
                     in_coins.insert(
                         coin_data.coin_data.denom.clone(),
@@ -197,12 +174,6 @@ impl<'a> StateHandle<'a> {
     fn apply_tx_special(&self, tx: &Transaction) -> Result<(), StateError> {
         match tx.kind {
             TxKind::DoscMint => self.apply_tx_special_doscmint(tx),
-            TxKind::AuctionBid => self.apply_tx_special_auctionbid(tx),
-            TxKind::AuctionBuyout => self.apply_tx_special_auction_buyout(tx),
-            TxKind::AuctionFill => {
-                // intentionally ignore here. the auction-fill effects are done elsewhere.
-                Ok(())
-            }
             TxKind::Stake => self.apply_tx_special_stake(tx),
             _ => panic!("tried to apply special effects of a non-special transaction"),
         }
@@ -242,53 +213,6 @@ impl<'a> StateHandle<'a> {
         }
         Ok(())
     }
-
-    fn apply_tx_special_auctionbid(&self, tx: &Transaction) -> Result<(), StateError> {
-        // must be in first half of auction
-        if self.state.height % 20 >= 10 {
-            return Err(StateError::BidWrongTime);
-        }
-        // data must be a 32-byte conshash
-        if tx.data.len() != 32 {
-            return Err(StateError::MalformedTx);
-        }
-        // first output stores the price bid for the syms
-        let first_output = tx.outputs.get(0).ok_or(StateError::MalformedTx)?;
-        if first_output.denom != DENOM_DOSC {
-            return Err(StateError::MalformedTx);
-        }
-        // first output must have a special script
-        if first_output.covhash != *COVHASH_ABID {
-            return Err(StateError::MalformedTx);
-        }
-        // save transaction to auction list
-        self.set_abid(tx.clone());
-        Ok(())
-    }
-
-    fn apply_tx_special_auction_buyout(&self, tx: &Transaction) -> Result<(), StateError> {
-        let abid_txx: Vec<Transaction> = tx
-            .inputs
-            .iter()
-            .filter_map(|cid| self.get_abid(cid.txhash))
-            .collect();
-        if abid_txx.len() != 1 {
-            return Err(StateError::MalformedTx);
-        }
-        let abid_txx = &abid_txx[0];
-        // validate that the first output fills the order
-        let first_output: &CoinData = tx.outputs.get(0).ok_or(StateError::MalformedTx)?;
-        if first_output.denom != DENOM_TSYM
-            || first_output.value < abid_txx.outputs[0].value
-            || first_output.covhash.0.to_vec() != abid_txx.data
-        {
-            return Err(StateError::MalformedTx);
-        }
-        // remove the order from the order book
-        self.del_abid(abid_txx.hash_nosigs());
-        Ok(())
-    }
-
     fn apply_tx_special_stake(&self, tx: &Transaction) -> Result<(), StateError> {
         // first we check that the data is correct
         let stake_doc: StakeDoc =
@@ -325,28 +249,12 @@ impl<'a> StateHandle<'a> {
         self.coin_cache.insert(coin_id, None);
     }
 
-    fn get_abid(&self, txhash: HashVal) -> Option<Transaction> {
-        self.auction_bids_cache
-            .entry(txhash)
-            .or_insert_with(|| self.state.auction_bids.get(&txhash).0)
-            .value()
-            .clone()
-    }
-
-    fn set_abid(&self, tx: Transaction) {
-        self.auction_bids_cache.insert(tx.hash_nosigs(), Some(tx));
-    }
-
-    fn del_abid(&self, txhash: HashVal) {
-        self.auction_bids_cache.insert(txhash, None);
-    }
-
     fn get_stake(&self, txhash: HashVal) -> Option<StakeDoc> {
         if let Some(cached_sd) = self.stakes_cache.get(&txhash).as_deref() {
-            return Some(cached_sd).cloned()
+            return Some(cached_sd).cloned();
         }
         if let Some(sd) = self.state.stakes.get(&txhash).0 {
-            return self.stakes_cache.insert(txhash, sd)
+            return self.stakes_cache.insert(txhash, sd);
         }
         None
     }
@@ -358,12 +266,12 @@ impl<'a> StateHandle<'a> {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use rstest::*;
-    use crate::testing::fixtures::*;
-    use crate::testing::factory::*;
-    use crate::{State, TxKind, CoinID, CoinData};
-    use crate::state::applytx::StateHandle;
     use crate::melscript::Script;
+    use crate::state::applytx::StateHandle;
+    use crate::testing::factory::*;
+    use crate::testing::fixtures::*;
+    use crate::{CoinData, CoinID, State, TxKind};
+    use rstest::*;
     use tmelcrypt::{Ed25519PK, Ed25519SK};
 
     #[rstest]
@@ -373,7 +281,7 @@ pub(crate) mod tests {
         genesis_mel_coin_data: CoinData,
         genesis_cov_script_keypair: (Ed25519PK, Ed25519SK),
         genesis_cov_script: Script,
-        keypair: (Ed25519PK, Ed25519SK)
+        keypair: (Ed25519PK, Ed25519SK),
     ) {
         // Init state and state handle
         let mut state = genesis_state.clone();
@@ -388,7 +296,7 @@ pub(crate) mod tests {
             genesis_mel_coin_id,
             genesis_cov_script,
             genesis_mel_coin_data.value,
-            fee
+            fee,
         );
 
         // Apply tx inputs and verify no error

@@ -1,9 +1,12 @@
-use crate::testing::utils::*;
-use crate::{melscript, CoinData, CoinID, Transaction, DENOM_TMEL, MICRO_CONVERTER, State, MAX_COINVAL, StakeDoc, CoinDataHeight};
-use rstest::*;
-use tmelcrypt::{Ed25519PK, Ed25519SK};
 use crate::melscript::Script;
+use crate::testing::utils::*;
+use crate::{
+    melscript, CoinData, CoinDataHeight, CoinID, StakeDoc, State, Transaction, DENOM_TMEL,
+    MAX_COINVAL, MICRO_CONVERTER,
+};
+use rstest::*;
 use std::collections::HashMap;
+use tmelcrypt::{Ed25519PK, Ed25519SK};
 
 const GENESIS_MEL_SUPPLY: u128 = 1000;
 const GENESIS_NUM_STAKERS: u64 = 10;
@@ -75,13 +78,15 @@ pub fn genesis_mel_coin_data_height(genesis_mel_coin_data: CoinData) -> CoinData
 pub fn genesis_state(
     genesis_mel_coin_id: CoinID,
     genesis_mel_coin_data_height: CoinDataHeight,
-    genesis_stakeholders: HashMap<(Ed25519PK, Ed25519SK), u128>
+    genesis_stakeholders: HashMap<(Ed25519PK, Ed25519SK), u128>,
 ) -> State {
     // Init empty state with db reference
     let mut state = State::new_empty((*DB).clone());
 
     // insert initial mel coin supply
-    state.coins.insert(genesis_mel_coin_id,genesis_mel_coin_data_height);
+    state
+        .coins
+        .insert(genesis_mel_coin_id, genesis_mel_coin_data_height);
 
     // Insert stake holders
     for (i, (&keypair, &syms_staked)) in genesis_stakeholders.iter().enumerate() {
@@ -118,7 +123,7 @@ pub fn valid_txx(keypair: (Ed25519PK, Ed25519SK)) -> Vec<Transaction> {
         },
         sk,
         &scr,
-        1577000
+        1577000,
     );
     txx
 }
