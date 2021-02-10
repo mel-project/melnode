@@ -10,6 +10,7 @@ use crate::{
 };
 use crate::melscript::Script;
 use crate::testing::utils::*;
+use crate::testing::factory::{CoinDataFactory, CoinDataHeightFactory};
 
 const GENESIS_MEL_SUPPLY: u128 = 1000;
 const GENESIS_NUM_STAKERS: u64 = 10;
@@ -53,11 +54,12 @@ pub fn genesis_stakeholders() -> HashMap<(Ed25519PK, Ed25519SK), u128> {
 pub fn genesis_mel_coin_data(genesis_cov_script: Script) -> CoinData {
     let genesis_micro_mel_supply = MICRO_CONVERTER * GENESIS_MEL_SUPPLY;
     assert!(genesis_micro_mel_supply <= MAX_COINVAL);
-    CoinData {
-        covhash: genesis_cov_script.hash(),
-        value: genesis_micro_mel_supply,
-        denom: DENOM_TMEL.to_vec(),
-    }
+
+    let coin_data_factory = CoinDataFactory::new();
+    coin_data_factory.build(|coin_data| {
+        coin_data.covhash = genesis_cov_script.hash();
+        coin_data.value = genesis_micro_mel_supply;
+    })
 }
 
 #[fixture]
@@ -70,10 +72,12 @@ pub fn genesis_mel_coin_id() -> CoinID {
 
 #[fixture]
 pub fn genesis_mel_coin_data_height(genesis_mel_coin_data: CoinData) -> CoinDataHeight {
-    CoinDataHeight {
-        coin_data: genesis_mel_coin_data,
-        height: 0,
-    }
+    let coin_data_height_factory = CoinDataHeightFactory::new();
+
+    coin_data_height_factory.build(|coin_data_height| {
+        coin_data_height.coin_data = genesis_mel_coin_data.clone();
+        coin_data_height.height = 0;
+    })
 }
 
 /// Create a genesis state from mel coin and stakeholders
@@ -130,3 +134,82 @@ pub fn valid_txx(keypair: (Ed25519PK, Ed25519SK)) -> Vec<Transaction> {
     );
     txx
 }
+
+//
+// pub fn make_tx() {
+//     let coin_id_factory = CoinIDFactory::new();
+//
+//     coin_id_factory.bu
+// }
+//
+// pub fn tx_factory(
+//     kind: TxKind,
+//     sender_keypair: (Ed25519PK, Ed25519SK),
+//     dest_pk: Ed25519PK,
+//     coin_id: CoinID,
+//     script: Script,
+//     value: u128,
+//     fee: u128
+// ) -> Transaction {
+//     let tx = Transaction {
+//         kind,
+//         inputs: vec![coin_id],
+//         outputs: vec![CoinData {
+//             covhash: Script::std_ed25519_pk(dest_pk).hash(),
+//             value: value - fee,
+//             denom: DENOM_TMEL.to_owned(),
+//         }],
+//         fee,
+//         scripts: vec![script],
+//         data: vec![],
+//         sigs: vec![]
+//     };
+//
+//     // Sign transaction and return tx
+//     tx.sign_ed25519(sender_keypair.1)
+// }
+//
+// pub fn txx_factory(
+//     rng: &mut impl rand::Rng,
+//     start_coin: CoinID,
+//     start_coindata: CoinData,
+//     signer: tmelcrypt::Ed25519SK,
+//     cons: &melscript::Script,
+//     fee: u128,
+//     tx_count: u32
+// ) -> Vec<Transaction> {
+//     let mut pqueue: BinaryHeap<(u64, CoinID, CoinData)> = BinaryHeap::new();
+//     pqueue.push((rng.gen(), start_coin, start_coindata));
+//     let mut toret = Vec::new();
+//     for _ in 0..tx_count {
+//         // pop one item from pqueue
+//         let (_, to_spend, to_spend_data) = pqueue.pop().unwrap();
+//         assert_eq!(to_spend_data.covhash, cons.hash());
+//         // let mut new_tx = tx_factory(
+//         //
+//         // )
+//         let mut new_tx = Transaction {
+//             kind: TxKind::Normal,
+//             inputs: vec![to_spend],
+//             outputs: vec![CoinData {
+//                 covhash: cons.hash(),
+//                 value: to_spend_data.value - fee,
+//                 denom: DENOM_TMEL.to_owned(),
+//             }],
+//             fee,
+//             scripts: vec![cons.clone()],
+//             data: vec![],
+//             sigs: vec![],
+//         };
+//         new_tx = new_tx.sign_ed25519(signer);
+//         for (i, out) in new_tx.outputs.iter().enumerate() {
+//             let cin = CoinID {
+//                 txhash: new_tx.hash_nosigs(),
+//                 index: i as u8,
+//             };
+//             pqueue.push((rng.gen(), cin, out.clone()));
+//         }
+//         toret.push(new_tx);
+//     }
+//     toret
+// }
