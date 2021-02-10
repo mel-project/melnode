@@ -2,7 +2,7 @@ use std::collections::{HashMap, BinaryHeap};
 
 use tmelcrypt::{Ed25519PK, Ed25519SK};
 
-use crate::{Block, StakeDoc, CoinData, CoinDataHeight, CoinID, DENOM_TMEL, GenesisConfig, Header, melscript, SealedState, State, Transaction, TxKind};
+use crate::{Block, StakeDoc, CoinData, ProposerAction, CoinDataHeight, CoinID, DENOM_TMEL, GenesisConfig, Header, melscript, Transaction, TxKind};
 
 // Beaver only supports serializable structs.
 // For structs which don't have serialization support
@@ -61,14 +61,27 @@ beaver::define! {
     }
 }
 
+beaver::define! {
+    pub ProposerActionFactory (ProposerAction) {
+        fee_multiplier_delta -> |n| n as i8,
+        reward_dest -> |_| tmelcrypt::HashVal::random(),
+    }
+}
 
-// pub struct ProposerAction {
-//     /// Change in fee. This is scaled to the proper size.
-//     pub fee_multiplier_delta: i8,
-//     /// Where to sweep fees.
-//     pub reward_dest: HashVal,
-// }
-
+beaver::define! {
+    pub HeaderFactory (Header) {
+        previous -> |_| tmelcrypt::HashVal::random(),
+        height -> |n| n as u64,
+        history_hash -> |_| tmelcrypt::HashVal::random(),
+        coins_hash -> |_| tmelcrypt::HashVal::random(),
+        transactions_hash -> |_| tmelcrypt::HashVal::random(),
+        fee_pool -> |n| n as u128,
+        fee_multiplier -> |n| n as u128,
+        dosc_speed ->  |n| n as u128,
+        pools_hash -> |_| tmelcrypt::HashVal::random(),
+        stake_doc_hash -> |_| tmelcrypt::HashVal::random(),
+    }
+}
 // #[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
 // /// A block header.
 // pub struct Header {
