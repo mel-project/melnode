@@ -1,9 +1,17 @@
 use num::{integer::Roots, rational::Ratio, traits::Pow, BigInt, BigRational};
 use std::convert::TryInto;
 
-use crate::{CoinData, CoinDataHeight, State, Transaction, TxKind, DENOM_TMEL, MAX_COINVAL};
+use crate::{
+    CoinData, CoinDataHeight, State, Transaction, TxKind, DENOM_DOSC, DENOM_TMEL, DENOM_TSYM,
+    MAX_COINVAL,
+};
 
 use super::melswap::PoolState;
+
+/// DOSC inflation ratio.
+pub fn dosc_inflator(height: u64) -> BigRational {
+    BigRational::from((BigInt::from(10000005), BigInt::from(10000000))).pow(height)
+}
 
 /// DOSC inflation calculator.
 pub fn dosc_inflate_r2n(height: u64, real: u128) -> u128 {
@@ -28,10 +36,10 @@ pub fn calculate_reward(my_speed: u128, dosc_speed: u128, difficulty: u32) -> u1
 
 /// Presealing function that is called before a state is sealed to apply melmint actions.
 pub fn preseal_melmint(state: State) -> State {
-    let post_swap = process_swaps(state);
-    let post_deposits = process_deposits(post_swap);
-
-    process_withdrawals(post_deposits)
+    let state = process_swaps(state);
+    let state = process_deposits(state);
+    let state = process_withdrawals(state);
+    process_pegging(state)
 }
 
 /// Process swaps.
@@ -240,6 +248,58 @@ fn process_withdrawals(mut state: State) -> State {
             );
         }
     }
+    state
+}
+
+/// Process pegging.
+fn process_pegging(mut state: State) -> State {
+    if state.pools.get(&DENOM_TSYM.to_vec()).0.is_none()
+        || state.pools.get(&DENOM_DOSC.to_vec()).0.is_none()
+    {
+        return state;
+    }
+    // first calculate the implied sym/nomDOSC exchange rate
+    let x_s = state
+        .pools
+        .get(&DENOM_TSYM.to_vec())
+        .0
+        .unwrap()
+        .implied_price()
+        .recip();
+    let x_d = state
+        .pools
+        .get(&DENOM_DOSC.to_vec())
+        .0
+        .unwrap()
+        .implied_price()
+        .recip();
+    let r_sd = x_s / x_d;
+    // we nudge the sym/mel exchange rate towards k*r_sd.
+    let desired_r_sm = dosc_inflator(state.height) * r_sd;
+    let mut sm_pool = state.pools.get(&DENOM_TSYM.to_vec()).0.unwrap();
+    let stretched_sym = BigRational::from_float(0.9999).unwrap()
+        * BigRational::from(BigInt::from(sm_pool.tokens))
+        + BigRational::from_float(0.0001).unwrap()
+            * BigRational::from(BigInt::from(sm_pool.mels))
+            * desired_r_sm;
+    let stretch_factor = stretched_sym.clone() / BigRational::from(BigInt::from(sm_pool.tokens));
+    let new_sym_sqr: BigRational = stretched_sym.pow(2) / stretch_factor.clone();
+    sm_pool.tokens = new_sym_sqr
+        .floor()
+        .numer()
+        .sqrt()
+        .try_into()
+        .unwrap_or(u128::MAX);
+    let new_mel_sqr: BigRational =
+        BigRational::from(BigInt::from(sm_pool.mels)).pow(2) * stretch_factor;
+    sm_pool.mels = new_mel_sqr
+        .floor()
+        .numer()
+        .sqrt()
+        .try_into()
+        .unwrap_or(u128::MAX);
+    state.pools.insert(DENOM_TSYM.to_vec(), sm_pool);
+    // return the state now
     state
 }
 
