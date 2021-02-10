@@ -123,14 +123,24 @@ pub fn simple_tx_after_genesis(
     genesis_cov_script: melscript::Script,
     genesis_mel_coin_data: CoinData
 ) -> ((Ed25519PK, Ed25519SK), Transaction) {
-    /// Generate coin data with value - fee to receiver
-    let value = 30_000_000;
+    /// Assuming some fee for tx
     let fee = 3_000_000;
+
+    /// Generate coin data with value - fee to receiver
+    let value_to_receiver = 30_000_000;
     let dest_pk = keypair.0;
     let coin_data_factory = CoinDataFactory::new();
-    let coin_data = coin_data_factory.build(|coin_data| {
+    let coin_data_receiver = coin_data_factory.build(|coin_data| {
         coin_data.value = value - fee;
         coin_data.covhash = melscript::Script::std_ed25519_pk(dest_pk).hash();
+    });
+
+    /// Generate change transaction back to sender
+    let change = genesis_mel_coin_data.value - value_to_receiver - fee ;
+    let sender_pk = genesis_cov_script_keypair.0;
+    let coin_data_change = coin_data_factory.build(|coin_data| {
+        coin_data.value = change;
+        coin_data.covhash = melscript::Script::std_ed25519_pk(sender_pk).hash();
     });
 
     /// Add coin data to new tx from genesis UTXO
@@ -139,7 +149,7 @@ pub fn simple_tx_after_genesis(
         tx.fee = 3000000;
         tx.scripts = vec![genesis_cov_script.clone()];
         tx.inputs = vec![genesis_mel_coin_id.clone()];
-        tx.outputs = vec![coin_data.clone()];
+        tx.outputs = vec![coin_data_receiver.clone(), coin_data_change.clone()];
     });
 
     /// Sign tx from sender sk
