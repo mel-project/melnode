@@ -12,7 +12,7 @@ use crate::melscript::Script;
 use crate::testing::factory::{CoinDataFactory, CoinDataHeightFactory, GenesisConfigFactory, CoinIDFactory, TransactionFactory};
 use crate::testing::utils::*;
 
-const GENESIS_MEL_SUPPLY: u128 = 1000000;
+const GENESIS_MEL_SUPPLY: u128 = 21_000_000;
 const GENESIS_NUM_STAKERS: u64 = 10;
 const GENESIS_EPOCH_START: u64 = 0;
 const GENESIS_EPOCH_POST_END: u64 = 1000;
