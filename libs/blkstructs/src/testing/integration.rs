@@ -1,7 +1,7 @@
 use rand::prelude::SliceRandom;
 
-use crate::{CoinData, CoinDataHeight, CoinID, DENOM_TMEL, melscript, MICRO_CONVERTER, SmtMapping, State, Block};
-use crate::testing::fixtures::{genesis_state, genesis_mel_coin_id};
+use crate::{Block, CoinData, CoinDataHeight, CoinID, DENOM_TMEL, melscript, MICRO_CONVERTER, SmtMapping, State};
+use crate::testing::fixtures::{genesis_mel_coin_id, genesis_state};
 use crate::testing::utils::random_valid_txx;
 
 // #[rstest]

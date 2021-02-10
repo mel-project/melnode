@@ -9,8 +9,8 @@ use crate::{
     State, Transaction,
 };
 use crate::melscript::Script;
-use crate::testing::utils::*;
 use crate::testing::factory::{CoinDataFactory, CoinDataHeightFactory};
+use crate::testing::utils::*;
 
 const GENESIS_MEL_SUPPLY: u128 = 1000;
 const GENESIS_NUM_STAKERS: u64 = 10;
