@@ -1,8 +1,25 @@
-use crate::testing::utils::random_valid_txx;
-use crate::{
-    melscript, CoinData, CoinID, SmtMapping, State, DENOM_TMEL, MICRO_CONVERTER,
-};
 use rand::prelude::SliceRandom;
+
+use crate::{CoinData, CoinDataHeight, CoinID, DENOM_TMEL, melscript, MICRO_CONVERTER, SmtMapping, State, Block};
+use crate::testing::fixtures::{genesis_state, genesis_mel_coin_id};
+use crate::testing::utils::random_valid_txx;
+
+// #[rstest]
+fn test_state_apply_block_with_deposits_and_swap(genesis_state: State, genesis_mel_coin_id: CoinID) {
+    // let sealed_state = genesis_state.seal(None);
+    // let transactions = transactions_factory(genesis_mel_coin_id);
+    // let block = block_factory(sealed_state.header(), transactions);
+    //
+    // // insert deposit txs
+    //
+    // // Apply block
+    // let sealed_state = sealed_state.apply_block(&block);
+    //
+    // let mut second_state = sealed_state.unwrap().next_state().
+    // // test sealing
+    // let mut second_state = .seal(None).next_state();
+
+}
 
 #[test]
 fn state_simple_order_independence() {
@@ -79,4 +96,8 @@ fn smt_mapping() {
         assert_eq!(Some(i), mapbak.get(&i).0);
     }
     // assert_eq!(&map.mapping.root_hash(), [0; 32]);
+}
+
+fn test_deposit_tx() {
+
 }

@@ -39,3 +39,5 @@ num="0.3"
 [dev-dependencies]
 rstest = "0.6.4"
 lazy_static = "1"
+beaver = "0.1.0"
+chrono = { version = "0.4", features = ["serde"] }

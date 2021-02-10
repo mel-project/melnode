@@ -1,12 +1,15 @@
+use std::collections::HashMap;
+
+use rstest::*;
+
+use tmelcrypt::{Ed25519PK, Ed25519SK};
+
+use crate::{
+    CoinData, CoinDataHeight, CoinID, DENOM_TMEL, MAX_COINVAL, melscript, MICRO_CONVERTER, StakeDoc,
+    State, Transaction,
+};
 use crate::melscript::Script;
 use crate::testing::utils::*;
-use crate::{
-    melscript, CoinData, CoinDataHeight, CoinID, StakeDoc, State, Transaction, DENOM_TMEL,
-    MAX_COINVAL, MICRO_CONVERTER,
-};
-use rstest::*;
-use std::collections::HashMap;
-use tmelcrypt::{Ed25519PK, Ed25519SK};
 
 const GENESIS_MEL_SUPPLY: u128 = 1000;
 const GENESIS_NUM_STAKERS: u64 = 10;
