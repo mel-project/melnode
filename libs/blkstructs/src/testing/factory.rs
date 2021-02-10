@@ -4,6 +4,8 @@ use tmelcrypt::{Ed25519PK, Ed25519SK};
 
 use crate::{Block, StakeDoc, CoinData, ProposerAction, CoinDataHeight, CoinID, DENOM_TMEL, GenesisConfig, Header, melscript, Transaction, TxKind};
 
+use im::HashSet;
+
 // Beaver only supports serializable structs.
 // For structs which don't have serialization support
 // build the structure manually or
@@ -82,31 +84,11 @@ beaver::define! {
         stake_doc_hash -> |_| tmelcrypt::HashVal::random(),
     }
 }
-// #[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
-// /// A block header.
-// pub struct Header {
-//     pub previous: HashVal,
-//     pub height: u64,
-//     pub history_hash: HashVal,
-//     pub coins_hash: HashVal,
-//     pub transactions_hash: HashVal,
-//     pub fee_pool: u128,
-//     pub fee_multiplier: u128,
-//     pub dosc_speed: u128,
-//     pub pools_hash: HashVal,
-//     pub stake_doc_hash: HashVal,
-// }
 
-// pub struct Block {
-//     pub header: Header,
-//     pub transactions: im::HashSet<Transaction>,
-//     pub proposer_action: Option<ProposerAction>,
-// }
-//
-// /// An abbreviated block
-// #[derive(Serialize, Deserialize, Clone, Debug)]
-// pub struct AbbrBlock {
-//     pub header: Header,
-//     pub txhashes: im::HashSet<HashVal>,
-//     pub proposer_action: Option<ProposerAction>,
-// }
+beaver::define! {
+    pub BlockFactory (Block) {
+        header -> |n| HeaderFactory::build(n),
+        transactions -> |n| TransactionFactory::build_list(3, n).iter().cloned().collect(),
+        proposer_action -> |_| None,
+    }
+}
