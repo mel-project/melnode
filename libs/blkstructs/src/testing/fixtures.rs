@@ -137,14 +137,14 @@ pub fn simple_tx_after_genesis(
     let tx_factory = TransactionFactory::new();
     let mut tx = tx_factory.build(|tx| {
         tx.fee = 3000000;
-        tx.scripts = vec![genesis_cov_script];
-        tx.inputs = vec![genesis_mel_coin_id];
+        tx.scripts = vec![genesis_cov_script.clone()];
+        tx.inputs = vec![genesis_mel_coin_id.clone()];
         tx.outputs = vec![coin_data.clone()];
     });
 
     /// Sign tx from sender sk
     let sender_sk = genesis_cov_script_keypair.1;
-    tx.sign_ed25519(sender_sk);
+    let tx = tx.sign_ed25519(sender_sk);
 
     /// return the receiver keypair and tx
     (keypair, tx)

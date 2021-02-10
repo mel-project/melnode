@@ -276,6 +276,7 @@ pub(crate) mod tests {
 
     #[rstest]
     fn test_apply_tx_inputs_single_valid_tx(
+        genesis_state: State,
         simple_tx_after_genesis: ((Ed25519PK, Ed25519SK), Transaction)
     ) {
         let (_keypair, tx) = simple_tx_after_genesis;
