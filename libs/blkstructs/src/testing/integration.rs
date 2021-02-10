@@ -1,10 +1,11 @@
 use rand::prelude::SliceRandom;
 
+use rstest::*;
 use crate::{Block, CoinData, CoinDataHeight, CoinID, DENOM_TMEL, melscript, MICRO_CONVERTER, SmtMapping, State};
 use crate::testing::fixtures::{genesis_mel_coin_id, genesis_state};
 use crate::testing::utils::random_valid_txx;
 
-#[test]
+#[rstest]
 fn test_state_apply_block_with_deposits_and_swap(genesis_state: State, genesis_mel_coin_id: CoinID) {
     // let sealed_state = genesis_state.seal(None);
     // let transactions = transactions_factory(genesis_mel_coin_id);
