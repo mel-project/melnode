@@ -131,7 +131,7 @@ pub fn simple_tx_after_genesis(
     let dest_pk = keypair.0;
     let coin_data_factory = CoinDataFactory::new();
     let coin_data_receiver = coin_data_factory.build(|coin_data| {
-        coin_data.value = value - fee;
+        coin_data.value = value_to_receiver - fee;
         coin_data.covhash = melscript::Script::std_ed25519_pk(dest_pk).hash();
     });
 
