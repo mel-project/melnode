@@ -9,7 +9,7 @@ use crate::{
     State, Transaction, GenesisConfig
 };
 use crate::melscript::Script;
-use crate::testing::factory::{CoinDataFactory, CoinDataHeightFactory, GenesisConfigFactory, CoinIDFactory};
+use crate::testing::factory::{CoinDataFactory, CoinDataHeightFactory, GenesisConfigFactory, CoinIDFactory, TransactionFactory};
 use crate::testing::utils::*;
 
 const GENESIS_MEL_SUPPLY: u128 = 1000000;
@@ -112,6 +112,42 @@ pub fn genesis_state(
     }
 
     state
+}
+
+/// First simple tx after genesis to some receiver
+#[fixture]
+pub fn simple_tx_after_genesis(
+    keypair: (Ed25519PK, Ed25519SK),
+    genesis_cov_script_keypair: (Ed25519PK, Ed25519SK),
+    genesis_mel_coin_id: CoinID,
+    genesis_cov_script: melscript::Script,
+    genesis_mel_coin_data: CoinData
+) -> ((Ed25519PK, Ed25519SK), Transaction) {
+    /// Generate coin data with value - fee to receiver
+    let value = 30_000_000;
+    let fee = 3_000_000;
+    let dest_pk = keypair.0;
+    let coin_data_factory = CoinDataFactory::new();
+    let coin_data = coin_data_factory.build(|coin_data| {
+        coin_data.value = value - fee;
+        coin_data.covhash = melscript::Script::std_ed25519_pk(dest_pk).hash();
+    });
+
+    /// Add coin data to new tx from genesis UTXO
+    let tx_factory = TransactionFactory::new();
+    let mut tx = tx_factory.build(|tx| {
+        tx.fee = 3000000;
+        tx.scripts = vec![genesis_cov_script];
+        tx.inputs = vec![genesis_mel_coin_id];
+        tx.outputs = vec![coin_data.clone()];
+    });
+
+    /// Sign tx from sender sk
+    let sender_sk = genesis_cov_script_keypair.1;
+    tx.sign_ed25519(sender_sk);
+
+    /// return the receiver keypair and tx
+    (keypair, tx)
 }
 
 /// Return a bundle of transactions for a specific keypair
