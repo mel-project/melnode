@@ -6,17 +6,18 @@ use tmelcrypt::{Ed25519PK, Ed25519SK};
 
 use crate::{
     CoinData, CoinDataHeight, CoinID, DENOM_TMEL, MAX_COINVAL, melscript, MICRO_CONVERTER, StakeDoc,
-    State, Transaction,
+    State, Transaction, GenesisConfig
 };
 use crate::melscript::Script;
-use crate::testing::factory::{CoinDataFactory, CoinDataHeightFactory};
+use crate::testing::factory::{CoinDataFactory, CoinDataHeightFactory, GenesisConfigFactory, CoinIDFactory};
 use crate::testing::utils::*;
 
-const GENESIS_MEL_SUPPLY: u128 = 1000;
+const GENESIS_MEL_SUPPLY: u128 = 1000000;
 const GENESIS_NUM_STAKERS: u64 = 10;
 const GENESIS_EPOCH_START: u64 = 0;
 const GENESIS_EPOCH_POST_END: u64 = 1000;
 const GENESIS_STAKER_WEIGHT: u128 = 100;
+const GENESIS_INIT_FEE_POOL: u128 = 1000;
 
 lazy_static! {
     pub static ref DB: autosmt::DBManager = autosmt::DBManager::load(autosmt::MemDB::default());
@@ -64,10 +65,12 @@ pub fn genesis_mel_coin_data(genesis_cov_script: Script) -> CoinData {
 
 #[fixture]
 pub fn genesis_mel_coin_id() -> CoinID {
-    CoinID {
-        txhash: tmelcrypt::HashVal([0; 32]),
-        index: 0,
-    }
+    let factory = CoinIDFactory::new();
+
+    factory.build(|coin_id| {
+        coin_id.txhash = tmelcrypt::HashVal([0; 32]);
+        coin_id.index = 0;
+    })
 }
 
 #[fixture]
