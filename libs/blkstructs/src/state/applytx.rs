@@ -175,7 +175,7 @@ impl<'a> StateHandle<'a> {
         match tx.kind {
             TxKind::DoscMint => self.apply_tx_special_doscmint(tx),
             TxKind::Stake => self.apply_tx_special_stake(tx),
-            _ => panic!("tried to apply special effects of a non-special transaction"),
+            _ => Ok(()),
         }
     }
 

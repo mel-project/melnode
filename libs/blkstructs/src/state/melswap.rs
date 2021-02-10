@@ -1,4 +1,4 @@
-use crate::{SmtMapping, MAX_COINVAL};
+use crate::{SmtMapping, MICRO_CONVERTER};
 use num::{rational::Ratio, BigInt, BigRational, BigUint};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
@@ -12,12 +12,6 @@ pub struct PoolState {
     pub tokens: u128,
     price_accum: u128,
     liqs: u128,
-}
-
-/// Swapping direction
-pub enum SwapDirection {
-    Mel2Tok,
-    Tok2Mel,
 }
 
 impl PoolState {
@@ -57,6 +51,9 @@ impl PoolState {
         // do the withdrawal
         self.mels -= mel_to_withdraw;
         self.tokens -= tok_to_withdraw;
+
+        self.price_accum += (self.mels).saturating_mul(MICRO_CONVERTER) / (self.tokens);
+
         (mel_to_withdraw, tok_to_withdraw)
     }
 
@@ -127,7 +124,7 @@ impl PoolState {
     }
     /// Returns the liquidity constant of the system.
     #[must_use]
-    fn liq_constant(&self) -> u128 {
+    pub fn liq_constant(&self) -> u128 {
         self.mels.saturating_mul(self.tokens)
     }
 }

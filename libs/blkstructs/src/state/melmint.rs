@@ -3,7 +3,7 @@ use std::convert::TryInto;
 
 use crate::{
     CoinData, CoinDataHeight, State, Transaction, TxKind, DENOM_DOSC, DENOM_TMEL, DENOM_TSYM,
-    MAX_COINVAL,
+    MAX_COINVAL, MICRO_CONVERTER,
 };
 
 use super::melswap::PoolState;
@@ -36,10 +36,24 @@ pub fn calculate_reward(my_speed: u128, dosc_speed: u128, difficulty: u32) -> u1
 
 /// Presealing function that is called before a state is sealed to apply melmint actions.
 pub fn preseal_melmint(state: State) -> State {
+    let state = create_builtins(state);
     let state = process_swaps(state);
     let state = process_deposits(state);
     let state = process_withdrawals(state);
     process_pegging(state)
+}
+
+/// Creates the built-in pools if they don't exist. The built-in pools start out with nonzero liq, so that they can never be completely depleted. This ensures that built-in pools will always exist in the state.
+fn create_builtins(mut state: State) -> State {
+    let mut def = PoolState::new_empty();
+    let _ = def.deposit(MICRO_CONVERTER * 1000, MICRO_CONVERTER * 1000);
+    if state.pools.get(&DENOM_TSYM.to_vec()).0.is_none() {
+        state.pools.insert(DENOM_TSYM.to_vec(), def)
+    }
+    if state.pools.get(&DENOM_DOSC.to_vec()).0.is_none() {
+        state.pools.insert(DENOM_DOSC.to_vec(), def)
+    }
+    state
 }
 
 /// Process swaps.
@@ -253,11 +267,6 @@ fn process_withdrawals(mut state: State) -> State {
 
 /// Process pegging.
 fn process_pegging(mut state: State) -> State {
-    if state.pools.get(&DENOM_TSYM.to_vec()).0.is_none()
-        || state.pools.get(&DENOM_DOSC.to_vec()).0.is_none()
-    {
-        return state;
-    }
     // first calculate the implied sym/nomDOSC exchange rate
     let x_s = state
         .pools
@@ -319,7 +328,7 @@ mod tests {
     use crate::{
         melscript,
         testing::fixtures::{genesis_mel_coin_id, genesis_state},
-        CoinID, DENOM_DOSC, DENOM_NEWCOIN,
+        CoinID, DENOM_NEWCOIN,
     };
 
     use super::*;
@@ -365,5 +374,31 @@ mod tests {
         }
         .sign_ed25519(my_sk);
         second_state.apply_tx(&newcoin_tx).unwrap();
+        let deposit_tx = Transaction {
+            kind: TxKind::LiqDeposit,
+            inputs: vec![newcoin_tx.get_coinid(0), newcoin_tx.get_coinid(1)],
+            outputs: vec![
+                CoinData {
+                    covhash: my_covhash,
+                    value: (1 << 64) - 4000000,
+                    denom: DENOM_TMEL.into(),
+                },
+                CoinData {
+                    covhash: my_covhash,
+                    value: 1 << 64,
+                    denom: DENOM_NEWCOIN.into(),
+                },
+            ],
+            fee: 2000000,
+            scripts: vec![melscript::Script::std_ed25519_pk(my_pk)],
+            data: vec![],
+            sigs: vec![],
+        }
+        .sign_ed25519(my_sk);
+        second_state.apply_tx(&deposit_tx).unwrap();
+        let second_sealed = second_state.seal(None);
+        for pool in second_sealed.inner_ref().pools.val_iter() {
+            dbg!(pool);
+        }
     }
 }
