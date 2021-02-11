@@ -8,8 +8,8 @@ pub type PoolMapping = SmtMapping<Vec<u8>, PoolState>;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct PoolState {
-    mels: u128,
-    tokens: u128,
+    pub mels: u128,
+    pub tokens: u128,
     price_accum: u128,
     liqs: u128,
 }
@@ -120,6 +120,11 @@ impl PoolState {
         }
     }
 
+    /// Returns the implied price as a fraction.
+    #[must_use]
+    pub fn implied_price(&self) -> BigRational {
+        Ratio::new(BigInt::from(self.mels), BigInt::from(self.tokens))
+    }
     /// Returns the liquidity constant of the system.
     #[must_use]
     fn liq_constant(&self) -> u128 {

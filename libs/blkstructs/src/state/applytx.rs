@@ -128,7 +128,7 @@ impl<'a> StateHandle<'a> {
         if tx.kind != TxKind::Faucet {
             for (currency, value) in out_coins.iter() {
                 // we skip the created doscs for a DoscMint transaction
-                if tx.kind == TxKind::DoscMint && currency == &DENOM_DOSC {
+                if tx.kind == TxKind::DoscMint && currency == DENOM_DOSC {
                     continue;
                 }
                 if !currency.is_empty() && *value != *in_coins.get(currency).unwrap_or(&u128::MAX) {
