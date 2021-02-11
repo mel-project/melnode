@@ -1,4 +1,4 @@
-use crate::{constants::*, melscript};
+use crate::{constants::*, melvm};
 use arbitrary::Arbitrary;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
@@ -23,7 +23,7 @@ use std::collections::HashMap;
 pub enum TxKind {
     Normal = 0x00,
     Stake = 0x10,
-    
+
     DoscMint = 0x50,
     Swap = 0x51,
     LiqDeposit = 0x52,
@@ -39,7 +39,7 @@ pub struct Transaction {
     pub inputs: Vec<CoinID>,
     pub outputs: Vec<CoinData>,
     pub fee: u128,
-    pub scripts: Vec<melscript::Script>,
+    pub scripts: Vec<melvm::Covenant>,
     pub data: Vec<u8>,
     pub sigs: Vec<Vec<u8>>,
 }
@@ -96,7 +96,7 @@ impl Transaction {
         toret
     }
     /// scripts_as_map returns a HashMap mapping the hash of each script in the transaction to the script itself.
-    pub fn script_as_map(&self) -> HashMap<tmelcrypt::HashVal, melscript::Script> {
+    pub fn script_as_map(&self) -> HashMap<tmelcrypt::HashVal, melvm::Covenant> {
         let mut toret = HashMap::new();
         for s in self.scripts.iter() {
             toret.insert(s.hash(), s.clone());
@@ -174,7 +174,7 @@ pub struct CoinDataHeight {
 #[cfg(test)]
 pub(crate) mod tests {
     use crate::testing::fixtures::valid_txx;
-    use crate::{CoinData, Transaction, MAX_COINVAL, melscript};
+    use crate::{melscript, CoinData, Transaction, MAX_COINVAL};
     use rstest::*;
 
     #[rstest]
@@ -297,7 +297,7 @@ pub(crate) mod tests {
         }
 
         // verify it has N + M signatures
-        assert_eq!(mult_signature_tx.sigs.len(), n+m);
+        assert_eq!(mult_signature_tx.sigs.len(), n + m);
     }
 
     #[rstest]
@@ -342,13 +342,13 @@ pub(crate) mod tests {
             CoinData {
                 covhash: scr.hash(),
                 value: val1,
-                denom: vec![]
+                denom: vec![],
             },
             CoinData {
                 covhash: scr.hash(),
                 value: val2,
-                denom: vec![]
-            }
+                denom: vec![],
+            },
         ];
 
         // Check total is valid
@@ -393,5 +393,4 @@ pub(crate) mod tests {
 
         // verify result is max u64 size
     }
-
 }

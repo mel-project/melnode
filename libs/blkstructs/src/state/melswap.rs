@@ -52,7 +52,10 @@ impl PoolState {
         self.mels -= mel_to_withdraw;
         self.tokens -= tok_to_withdraw;
 
-        self.price_accum += (self.mels).saturating_mul(MICRO_CONVERTER) / (self.tokens);
+        self.price_accum = self
+            .price_accum
+            .overflowing_add((self.mels).saturating_mul(MICRO_CONVERTER) / (self.tokens))
+            .0;
 
         (mel_to_withdraw, tok_to_withdraw)
     }
@@ -137,7 +140,7 @@ mod tests {
     fn general() {
         let mut pool = PoolState::new_empty();
         let _ = pool.deposit(1000, 1000);
-        for i in 1..200 {
+        for _ in 1..200 {
             let _ = pool.swap_many(10, 10);
             dbg!(pool);
             dbg!(pool.liq_constant());

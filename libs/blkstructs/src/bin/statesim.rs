@@ -1,7 +1,7 @@
 use std::collections::BinaryHeap;
 
 use blkstructs::{
-    melscript, CoinData, CoinID, State, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
+    melvm, CoinData, CoinID, State, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
 };
 use once_cell::sync::Lazy;
 use tmelcrypt::{Ed25519PK, Ed25519SK};
@@ -11,7 +11,7 @@ fn random_valid_txx(
     start_coin: CoinID,
     start_coindata: CoinData,
     signer: tmelcrypt::Ed25519SK,
-    cons: &melscript::Script,
+    cons: &melvm::Covenant,
 ) -> Vec<Transaction> {
     let mut pqueue: BinaryHeap<(u64, CoinID, CoinData)> = BinaryHeap::new();
     pqueue.push((rng.gen(), start_coin, start_coindata));
@@ -54,10 +54,10 @@ fn main() {
     let mut genesis = State::test_genesis(
         db.clone(),
         MICRO_CONVERTER * 1000,
-        melscript::Script::std_ed25519_pk(KEYPAIR.0).hash(),
+        melvm::Covenant::std_ed25519_pk(KEYPAIR.0).hash(),
         &[],
     );
-    let cov = melscript::Script::std_ed25519_pk(KEYPAIR.0);
+    let cov = melvm::Covenant::std_ed25519_pk(KEYPAIR.0);
     let kmel_cd = CoinData {
         covhash: cov.hash(),
         value: MICRO_CONVERTER * 1000,

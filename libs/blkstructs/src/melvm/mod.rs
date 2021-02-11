@@ -8,9 +8,9 @@ use std::convert::TryInto;
 mod lexer;
 
 #[derive(Clone, Eq, PartialEq, Debug, Arbitrary, Serialize, Deserialize, Hash)]
-pub struct Script(pub Vec<u8>);
+pub struct Covenant(pub Vec<u8>);
 
-impl Script {
+impl Covenant {
     pub fn check(&self, tx: &Transaction) -> bool {
         self.check_opt(tx).is_some()
     }
@@ -41,7 +41,7 @@ impl Script {
     }
 
     pub fn std_ed25519_pk(pk: tmelcrypt::Ed25519PK) -> Self {
-        Script::from_ops(&[
+        Covenant::from_ops(&[
             OpCode::PUSHI(0.into()),
             OpCode::PUSHI(6.into()),
             OpCode::LOADIMM(0),
@@ -58,13 +58,13 @@ impl Script {
         let mut output: Vec<u8> = Vec::new();
         // go through output
         for op in ops {
-            Script::assemble_one(op, &mut output)?
+            Covenant::assemble_one(op, &mut output)?
         }
-        Some(Script(output))
+        Some(Covenant(output))
     }
 
     pub fn always_true() -> Self {
-        Script::from_ops(&[OpCode::PUSHI(1.into())]).unwrap()
+        Covenant::from_ops(&[OpCode::PUSHI(1.into())]).unwrap()
     }
 
     fn disassemble_one(
@@ -120,7 +120,7 @@ impl Script {
                 let count = u16arg(bcode)?;
                 let mut rec_output = Vec::new();
                 for _ in 0..count {
-                    Script::disassemble_one(bcode, &mut rec_output, rec_depth + 1)?;
+                    Covenant::disassemble_one(bcode, &mut rec_output, rec_depth + 1)?;
                 }
                 output.push(OpCode::LOOP(iterations, rec_output));
             }
@@ -151,7 +151,7 @@ impl Script {
         reversed.reverse();
         let mut output = Vec::new();
         while !reversed.is_empty() {
-            Script::disassemble_one(&mut reversed, &mut output, 0)?
+            Covenant::disassemble_one(&mut reversed, &mut output, 0)?
         }
         Some(output)
     }
@@ -222,7 +222,7 @@ impl Script {
                 let op_cnt: u16 = ops.len().try_into().ok()?;
                 output.extend_from_slice(&op_cnt.to_be_bytes());
                 for op in ops {
-                    Script::assemble_one(op, output)?
+                    Covenant::assemble_one(op, output)?
                 }
             }
             // type conversions
@@ -670,10 +670,10 @@ mod tests {
     use quickcheck;
     use quickcheck_macros::*;
     fn dontcrash(data: &[u8]) {
-        let script = Script(data.to_vec());
+        let script = Covenant(data.to_vec());
         if let Some(ops) = script.to_ops() {
             println!("{:?}", ops);
-            let redone = Script::from_ops(&ops).unwrap();
+            let redone = Covenant::from_ops(&ops).unwrap();
             assert_eq!(redone, script);
         }
     }
@@ -696,7 +696,7 @@ mod tests {
     fn check_sig() {
         let (pk, sk) = tmelcrypt::ed25519_keygen();
         // (SIGEOK (LOAD 1) (PUSH pk) (VREF (VREF (LOAD 0) 6) 0))
-        let check_sig_script = Script::from_ops(&[OpCode::LOOP(
+        let check_sig_script = Covenant::from_ops(&[OpCode::LOOP(
             5,
             vec![
                 OpCode::PUSHI(0.into()),
@@ -717,14 +717,14 @@ mod tests {
 
     #[quickcheck]
     fn loop_once_is_identity(bitcode: Vec<u8>) -> bool {
-        let ops = Script(bitcode.clone()).to_ops();
+        let ops = Covenant(bitcode.clone()).to_ops();
         let tx = Transaction::empty_test();
         match ops {
             None => true,
             Some(ops) => {
                 let loop_ops = vec![OpCode::LOOP(1, ops.clone())];
-                let loop_script = Script::from_ops(&loop_ops).unwrap();
-                let orig_script = Script::from_ops(&ops).unwrap();
+                let loop_script = Covenant::from_ops(&loop_ops).unwrap();
+                let orig_script = Covenant::from_ops(&ops).unwrap();
                 loop_script.check(&tx) == orig_script.check(&tx)
             }
         }
@@ -732,12 +732,12 @@ mod tests {
 
     #[quickcheck]
     fn deterministic_execution(bitcode: Vec<u8>) -> bool {
-        let ops = Script(bitcode.clone()).to_ops();
+        let ops = Covenant(bitcode.clone()).to_ops();
         let tx = Transaction::empty_test();
         match ops {
             None => true,
             Some(ops) => {
-                let orig_script = Script::from_ops(&ops).unwrap();
+                let orig_script = Covenant::from_ops(&ops).unwrap();
                 let first = orig_script.check(&tx);
                 let second = orig_script.check(&tx);
                 first == second

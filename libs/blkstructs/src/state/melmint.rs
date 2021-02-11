@@ -386,7 +386,7 @@ mod tests {
                 CoinData {
                     covhash: my_covhash,
                     value: 1 << 64,
-                    denom: DENOM_NEWCOIN.into(),
+                    denom: newcoin_tx.hash_nosigs().to_vec(),
                 },
             ],
             fee: 2000000,

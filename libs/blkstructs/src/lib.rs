@@ -8,7 +8,7 @@
 //! - `StakeDoc`, which every `State` includes, encapsulates the Symphonia epoch-based stake information.
 //! - `SmtMapping` represents a type-safe SMT-backed mapping that is extensively used within the crate.
 mod constants;
-pub mod melscript;
+pub mod melvm;
 mod stake;
 mod state;
 pub use state::melmint::*;
