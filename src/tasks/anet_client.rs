@@ -1,6 +1,6 @@
 use std::{convert::TryInto, net::SocketAddr, env};
 
-use blkstructs::{melscript, CoinID};
+use blkstructs::{melvm, CoinID};
 use colored::Colorize;
 use std::io::prelude::*;
 use structopt::StructOpt;
@@ -71,8 +71,7 @@ async fn try_run_prompt(
             if let Some(wallet) = available_wallets.get(&wallet_name) {
                 let wallet_secret = hex::decode(wallet_secret)?;
                 let wallet_secret = tmelcrypt::Ed25519SK(wallet_secret.as_slice().try_into()?);
-                if melscript::Script::std_ed25519_pk(wallet_secret.to_public()) != wallet.my_script
-                {
+                if melvm::Covenant::std_ed25519_pk(wallet_secret.to_public()) != wallet.my_script {
                     return Err(anyhow::anyhow!(
                         "unlocking failed, make sure you have the right secret!"
                     ));

@@ -1,6 +1,6 @@
 use std::time::SystemTime;
 
-use blkstructs::{melscript, AbbrBlock, ProposerAction, Transaction};
+use blkstructs::{melvm, AbbrBlock, ProposerAction, Transaction};
 use neosymph::{msg::ProposalMsg, MockNet, Streamlet, StreamletCfg, StreamletEvt, TxLookup};
 use once_cell::sync::Lazy;
 use smol::prelude::*;
@@ -49,7 +49,7 @@ async fn run_instance(net: MockNet, idx: usize) {
 
                     let action = Some(ProposerAction {
                         fee_multiplier_delta: 0,
-                        reward_dest: melscript::Script::std_ed25519_pk(TEST_SKK[idx].to_public())
+                        reward_dest: melvm::Covenant::std_ed25519_pk(TEST_SKK[idx].to_public())
                             .hash(),
                     });
 
@@ -88,7 +88,7 @@ fn gen_cfg(net: MockNet, idx: usize) -> StreamletCfg<MockNet, TrivialLookup> {
     let genesis_state = blkstructs::State::test_genesis(
         autosmt::DBManager::load(autosmt::MemDB::default()),
         10000,
-        melscript::Script::always_true().hash(),
+        melvm::Covenant::always_true().hash(),
         TEST_SKK
             .iter()
             .map(|v| v.to_public())
@@ -111,7 +111,7 @@ fn gen_cfg(net: MockNet, idx: usize) -> StreamletCfg<MockNet, TrivialLookup> {
 struct TrivialLookup {}
 
 impl TxLookup for TrivialLookup {
-    fn lookup(&self, hash: HashVal) -> Option<Transaction> {
+    fn lookup(&self, _hash: HashVal) -> Option<Transaction> {
         unimplemented!()
     }
 }

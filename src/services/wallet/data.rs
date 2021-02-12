@@ -1,4 +1,4 @@
-use blkstructs::{melscript, CoinData, CoinDataHeight, CoinID, Transaction, TxKind};
+use blkstructs::{melvm, CoinData, CoinDataHeight, CoinID, Transaction, TxKind};
 use serde::{Deserialize, Serialize};
 use std::collections;
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
@@ -9,12 +9,12 @@ pub struct WalletData {
     unspent_coins: im::HashMap<CoinID, CoinDataHeight>,
     spent_coins: im::HashMap<CoinID, CoinDataHeight>,
     tx_in_progress: im::HashMap<HashVal, Transaction>,
-    pub my_script: melscript::Script,
+    pub my_script: melvm::Covenant,
 }
 
 impl WalletData {
     /// Create a new data.
-    pub fn new(my_script: melscript::Script) -> Self {
+    pub fn new(my_script: melvm::Covenant) -> Self {
         WalletData {
             unspent_coins: im::HashMap::new(),
             spent_coins: im::HashMap::new(),
@@ -36,7 +36,7 @@ impl WalletData {
     /// Generates wallet data from script based on keypair
     pub fn generate() -> (Ed25519SK, Ed25519PK, Self) {
         let (pk, sk) = tmelcrypt::ed25519_keygen();
-        let script = melscript::Script::std_ed25519_pk(pk);
+        let script = melvm::Covenant::std_ed25519_pk(pk);
         (sk, pk, WalletData::new(script))
     }
 

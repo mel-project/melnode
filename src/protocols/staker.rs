@@ -1,6 +1,6 @@
 use crate::services::storage::SharedStorage;
 
-use blkstructs::{melscript, AbbrBlock, ConsensusProof, ProposerAction, Transaction};
+use blkstructs::{melvm, AbbrBlock, ConsensusProof, ProposerAction, Transaction};
 use neosymph::{msg::ProposalMsg, StreamletCfg, StreamletEvt, SymphGossip};
 use smol::prelude::*;
 use std::{net::SocketAddr, time::Duration};
@@ -58,7 +58,7 @@ async fn staker_loop(gossiper: SymphGossip, storage: SharedStorage, my_sk: Ed255
     let mut streamlet = neosymph::Streamlet::new(config);
     let events = streamlet.subscribe();
 
-    let my_script = melscript::Script::std_ed25519_pk(my_sk.to_public());
+    let my_script = melvm::Covenant::std_ed25519_pk(my_sk.to_public());
     let action = Some(ProposerAction {
         fee_multiplier_delta: 0,
         reward_dest: my_script.hash(),
