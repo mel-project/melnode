@@ -116,7 +116,7 @@ pub fn genesis_state(
 
 /// First simple tx after genesis to some receiver
 #[fixture]
-pub fn simple_tx_after_genesis(
+pub fn tx_from_seed_coin(
     keypair: (Ed25519PK, Ed25519SK),
     genesis_cov_script_keypair: (Ed25519PK, Ed25519SK),
     genesis_mel_coin_id: CoinID,

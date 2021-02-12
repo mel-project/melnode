@@ -1,28 +1,35 @@
 use rand::prelude::SliceRandom;
 
 use rstest::*;
-use crate::{Block, CoinData, CoinDataHeight, CoinID, DENOM_TMEL, melscript, MICRO_CONVERTER, SmtMapping, State};
-use crate::testing::fixtures::{genesis_mel_coin_id, genesis_state, genesis_mel_coin_data};
+use crate::{Block, CoinData, CoinDataHeight, CoinID, DENOM_TMEL, melscript, MICRO_CONVERTER, SmtMapping, State, Transaction, TxKind};
+use crate::testing::fixtures::{genesis_state, tx_from_seed_coin};
+use crate::testing::factory::*;
 use crate::testing::utils::random_valid_txx;
+use tmelcrypt::{Ed25519PK, Ed25519SK};
 
 #[rstest]
-fn test_state_apply_block_with_deposits_and_swap(
+fn test_state_apply_single_deposit_valid_liquidity(
     genesis_state: State,
-    genesis_mel_coin_id: CoinID,
-    genesis_mel_coin_data: CoinData
+    simple_tx_after_genesis: ((Ed25519PK, Ed25519SK), Transaction)
 ) {
     let sealed_state = genesis_state.seal(None);
-    // let transactions = transactions_factory(genesis_mel_coin_id);
-    // let block = block_factory(sealed_state.header(), transactions);
-    //
-    // // insert deposit txs
-    //
-    // // Apply block
-    // let sealed_state = sealed_state.apply_block(&block);
-    //
-    // let mut second_state = sealed_state.unwrap().next_state().
-    // // test sealing
-    // let mut second_state = .seal(None).next_state();
+    let (keypair, tx) = simple_tx_after_genesis;
+
+    let factory = TransactionFactory::new();
+
+    let deposit_tx = factory.build(|tx| {
+        tx.kind = TxKind::LiqDeposit;
+    });
+
+    let signed_deposit_tx = deposit_tx.sign_ed25519(keypair.1);
+
+    let mut next_state = sealed_state.next_state();
+
+    // check total liquidity / sum of all deposits is correct
+
+    assert!(next_state.apply_tx(&signed_deposit_tx).is_ok());
+
+    let mut next_sealed_state = next_state.seal(None);
 
 }
 
