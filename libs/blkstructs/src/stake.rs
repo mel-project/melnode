@@ -58,7 +58,7 @@ impl SmtMapping<tmelcrypt::HashVal, StakeDoc> {
 mod tests {
     use super::*;
     use crate::State;
-    use crate::{melscript, CoinData, CoinDataHeight, CoinID, DENOM_TMEL};
+    use crate::{CoinData, CoinDataHeight, CoinID, DENOM_TMEL};
     use rstest::rstest;
     use std::collections::HashMap;
     use tmelcrypt::Ed25519SK;
@@ -71,7 +71,7 @@ mod tests {
 
         // Insert a mel coin into state so we can transact
         let start_micromels = 10000;
-        let start_conshash = melscript::Script::always_true().hash();
+        let start_conshash = melvm::Covenant::always_true().hash();
         state.coins.insert(
             CoinID {
                 txhash: tmelcrypt::HashVal([0; 32]),

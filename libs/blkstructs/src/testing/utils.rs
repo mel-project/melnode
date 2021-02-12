@@ -7,7 +7,7 @@ pub fn random_valid_txx(
     start_coin: CoinID,
     start_coindata: CoinData,
     signer: tmelcrypt::Ed25519SK,
-    cons: &melscript::Script,
+    cons: &melvm::Covenant,
     fee: u128
 ) -> Vec<Transaction> {
     random_valid_txx_count(rng, start_coin, start_coindata, signer, cons, fee, 100)
@@ -18,7 +18,7 @@ pub fn random_valid_txx_count(
     start_coin: CoinID,
     start_coindata: CoinData,
     signer: tmelcrypt::Ed25519SK,
-    cons: &melscript::Script,
+    cons: &melvm::Covenant,
     fee: u128,
     tx_count: u32
 ) -> Vec<Transaction> {

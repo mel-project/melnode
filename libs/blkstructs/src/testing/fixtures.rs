@@ -8,7 +8,7 @@ use crate::{
     CoinData, CoinDataHeight, CoinID, DENOM_TMEL, MAX_COINVAL, melscript, MICRO_CONVERTER, StakeDoc,
     State, Transaction, GenesisConfig
 };
-use crate::melscript::Script;
+use crate::melvm::Covenant;
 use crate::testing::factory::{CoinDataFactory, CoinDataHeightFactory, GenesisConfigFactory, CoinIDFactory, TransactionFactory};
 use crate::testing::utils::*;
 
@@ -42,8 +42,8 @@ pub fn genesis_cov_script_keypair() -> (Ed25519PK, Ed25519SK) {
 }
 
 #[fixture]
-pub fn genesis_cov_script(genesis_cov_script_keypair: (Ed25519PK, Ed25519SK)) -> Script {
-    melscript::Script::std_ed25519_pk(genesis_cov_script_keypair.0).clone()
+pub fn genesis_cov_script(genesis_cov_script_keypair: (Ed25519PK, Ed25519SK)) -> Covenant {
+    melvm::Covenant::std_ed25519_pk(genesis_cov_script_keypair.0).clone()
 }
 
 #[fixture]
@@ -52,7 +52,7 @@ pub fn genesis_stakeholders() -> HashMap<(Ed25519PK, Ed25519SK), u128> {
 }
 
 #[fixture]
-pub fn genesis_mel_coin_data(genesis_cov_script: Script) -> CoinData {
+pub fn genesis_mel_coin_data(genesis_cov_script: Covenant) -> CoinData {
     let genesis_micro_mel_supply = MICRO_CONVERTER * GENESIS_MEL_SUPPLY;
     assert!(genesis_micro_mel_supply <= MAX_COINVAL);
 
@@ -120,7 +120,7 @@ pub fn tx_from_seed_coin(
     keypair: (Ed25519PK, Ed25519SK),
     genesis_cov_script_keypair: (Ed25519PK, Ed25519SK),
     genesis_mel_coin_id: CoinID,
-    genesis_cov_script: melscript::Script,
+    genesis_cov_script: melvm::Covenant,
     genesis_mel_coin_data: CoinData
 ) -> ((Ed25519PK, Ed25519SK), Transaction) {
     /// Assuming some fee for tx
@@ -132,7 +132,7 @@ pub fn tx_from_seed_coin(
     let coin_data_factory = CoinDataFactory::new();
     let coin_data_receiver = coin_data_factory.build(|coin_data| {
         coin_data.value = value_to_receiver - fee;
-        coin_data.covhash = melscript::Script::std_ed25519_pk(dest_pk).hash();
+        coin_data.covhash = melvm::Covenant::std_ed25519_pk(dest_pk).hash();
     });
 
     /// Generate change transaction back to sender
@@ -140,7 +140,7 @@ pub fn tx_from_seed_coin(
     let sender_pk = genesis_cov_script_keypair.0;
     let coin_data_change = coin_data_factory.build(|coin_data| {
         coin_data.value = change;
-        coin_data.covhash = melscript::Script::std_ed25519_pk(sender_pk).hash();
+        coin_data.covhash = melvm::Covenant::std_ed25519_pk(sender_pk).hash();
     });
 
     /// Add coin data to new tx from genesis UTXO
@@ -164,7 +164,7 @@ pub fn tx_from_seed_coin(
 #[fixture]
 pub fn valid_txx(keypair: (Ed25519PK, Ed25519SK)) -> Vec<Transaction> {
     let (pk, sk) = keypair;
-    let scr = melscript::Script::std_ed25519_pk(pk);
+    let scr = melvm::Covenant::std_ed25519_pk(pk);
     let mut trng = rand::thread_rng();
     let txx = random_valid_txx(
         &mut trng,

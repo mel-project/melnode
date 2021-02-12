@@ -91,12 +91,12 @@ impl AbbreviatedBlock {
 //             index: 0,
 //         },
 //         blkstructs::CoinData {
-//             conshash: blkstructs::melscript::Script::always_true().hash(),
+//             conshash: blkstructs::melvm::Covenant::always_true().hash(),
 //             value: blkstructs::MICRO_CONVERTER * 1000,
 //             cointype: blkstructs::COINTYPE_TMEL.to_owned(),
 //         },
 //         sk,
-//         &blkstructs::melscript::Script::always_true(),
+//         &blkstructs::melvm::Covenant::always_true(),
 //     );
 //     log::info!("starting spamming with {} txx", txx.len());
 //     //let txx = &txx[1..];

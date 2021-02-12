@@ -3,7 +3,7 @@
 // fn batch_insertion(b: &mut Bencher) {
 //     let _ = env_logger::try_init();
 //     let (pk, sk) = tmelcrypt::ed25519_keygen();
-//     let scr = melscript::Script::std_ed25519_pk(pk);
+//     let scr = melvm::Covenant::std_ed25519_pk(pk);
 //     let mut trng = rand::thread_rng();
 //     let txx = random_valid_txx(
 //         &mut trng,
@@ -29,7 +29,7 @@
 // #[bench]
 // fn single_insertion(b: &mut Bencher) {
 //     let (pk, sk) = tmelcrypt::ed25519_keygen();
-//     let scr = melscript::Script::std_ed25519_pk(pk);
+//     let scr = melvm::Covenant::std_ed25519_pk(pk);
 //     let mut trng = rand::thread_rng();
 //     let txx = random_valid_txx(
 //         &mut trng,

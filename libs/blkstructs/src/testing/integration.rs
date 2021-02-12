@@ -37,7 +37,7 @@ fn test_state_apply_single_deposit_valid_liquidity(
 fn state_simple_order_independence() {
     let db = autosmt::DBManager::load(autosmt::MemDB::default());
     let (pk, sk) = tmelcrypt::ed25519_keygen();
-    let scr = melscript::Script::std_ed25519_pk(pk);
+    let scr = melvm::Covenant::std_ed25519_pk(pk);
     let mut genesis = State::test_genesis(db, MICRO_CONVERTER * 1000, scr.hash(), &[]);
     genesis.fee_multiplier = 0;
     let first_block = genesis.seal(None);

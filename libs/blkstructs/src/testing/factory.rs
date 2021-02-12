@@ -39,7 +39,7 @@ beaver::define! {
         inputs -> |n| CoinIDFactory::build_list(3, n),
         outputs -> |n| CoinDataFactory::build_list(3, n),
         fee -> |n| n as u128,
-        scripts -> |_| vec![melscript::Script::always_true()],
+        scripts -> |_| vec![melvm::Covenant::always_true()],
         data -> |_| vec![],
         sigs -> |_| vec![],
     }

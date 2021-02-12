@@ -266,7 +266,7 @@ impl<'a> StateHandle<'a> {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::melscript::Script;
+    use crate::melvm::Covenant;
     use crate::state::applytx::StateHandle;
     use crate::testing::factory::*;
     use crate::testing::fixtures::*;
