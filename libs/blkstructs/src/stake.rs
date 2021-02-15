@@ -62,6 +62,7 @@ mod tests {
     use rstest::rstest;
     use std::collections::HashMap;
     use tmelcrypt::Ed25519SK;
+    use crate::melvm;
 
     /// Create a state using a mapping from sk to syms staked for an epoch
     fn create_state(stakers: &HashMap<Ed25519SK, u128>, epoch_start: u64) -> State {

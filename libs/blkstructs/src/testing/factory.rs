@@ -9,7 +9,8 @@ use im::HashSet;
 
 use tmelcrypt::{Ed25519PK, Ed25519SK};
 
-use crate::{Block, CoinData, CoinDataHeight, CoinID, DENOM_TMEL, GenesisConfig, Header, melscript, ProposerAction, StakeDoc, Transaction, TxKind};
+use crate::{Block, CoinData, CoinDataHeight, CoinID, DENOM_TMEL, GenesisConfig, Header, melvm, ProposerAction, StakeDoc, Transaction, TxKind};
+
 
 beaver::define! {
     pub CoinIDFactory (CoinID) {

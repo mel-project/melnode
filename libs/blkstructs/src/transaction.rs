@@ -174,7 +174,7 @@ pub struct CoinDataHeight {
 #[cfg(test)]
 pub(crate) mod tests {
     use crate::testing::fixtures::valid_txx;
-    use crate::{melscript, CoinData, Transaction, MAX_COINVAL};
+    use crate::{melvm, CoinData, Transaction, MAX_COINVAL};
     use rstest::*;
 
     #[rstest]

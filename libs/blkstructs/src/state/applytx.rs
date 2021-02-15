@@ -132,6 +132,10 @@ impl<'a> StateHandle<'a> {
                     continue;
                 }
                 if !currency.is_empty() && *value != *in_coins.get(currency).unwrap_or(&u128::MAX) {
+                    for (key, value) in in_coins.clone().iter() {
+                        println!("{:?} {:?}", key.clone(), value.clone());
+                    }
+                    println!("{:?} {:?}", *value, *in_coins.get(currency).unwrap_or(&u128::MAX));
                     return Err(StateError::UnbalancedInOut);
                 }
             }
@@ -266,7 +270,6 @@ impl<'a> StateHandle<'a> {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::melvm::Covenant;
     use crate::state::applytx::StateHandle;
     use crate::testing::factory::*;
     use crate::testing::fixtures::*;
@@ -277,9 +280,9 @@ pub(crate) mod tests {
     #[rstest]
     fn test_apply_tx_inputs_single_valid_tx(
         genesis_state: State,
-        simple_tx_after_genesis: ((Ed25519PK, Ed25519SK), Transaction)
+        tx_from_seed_coin: ((Ed25519PK, Ed25519SK), Transaction)
     ) {
-        let (_keypair, tx) = simple_tx_after_genesis;
+        let (_keypair, tx) = tx_from_seed_coin;
 
         // Init state and state handle
         let mut state = genesis_state.clone();

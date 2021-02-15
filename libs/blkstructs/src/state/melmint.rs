@@ -10,12 +10,12 @@ use super::melswap::PoolState;
 
 /// DOSC inflation ratio.
 pub fn dosc_inflator(height: u64) -> BigRational {
-    BigRational::from((BigInt::from(10000005), BigInt::from(10000000))).pow(height)
+    BigRational::from((BigInt::from(10000005), BigInt::from(10000000))).pow(height as i32)
 }
 
 /// DOSC inflation calculator.
 pub fn dosc_inflate_r2n(height: u64, real: u128) -> u128 {
-    let ratio = BigRational::from((BigInt::from(10000005), BigInt::from(10000000))).pow(height);
+    let ratio = BigRational::from((BigInt::from(10000005), BigInt::from(10000000))).pow(height as i32);
     let result = ratio * BigRational::from(BigInt::from(real));
     result
         .floor()
@@ -326,7 +326,7 @@ fn multiply_frac(x: u128, frac: Ratio<u128>) -> u128 {
 #[cfg(test)]
 mod tests {
     use crate::{
-        melscript,
+        melvm,
         testing::fixtures::{genesis_mel_coin_id, genesis_state},
         CoinID, DENOM_NEWCOIN,
     };
@@ -380,7 +380,7 @@ mod tests {
             outputs: vec![
                 CoinData {
                     covhash: my_covhash,
-                    value: (1 << 64) - 4000000,
+                    value: (1 << 64) - 2000000,
                     denom: DENOM_TMEL.into(),
                 },
                 CoinData {

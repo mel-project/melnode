@@ -1,16 +1,18 @@
 use std::collections::BinaryHeap;
 
-use crate::{CoinData, CoinID, DENOM_TMEL, melscript, Transaction, TxKind};
+use crate::{CoinData, CoinID, DENOM_TMEL, melvm, Transaction, TxKind, DENOM_NEWCOIN};
+use crate::testing::factory::{TransactionFactory, CoinDataFactory};
+use tmelcrypt::{Ed25519PK, Ed25519SK};
 
 pub fn random_valid_txx(
     rng: &mut impl rand::Rng,
     start_coin: CoinID,
     start_coindata: CoinData,
     signer: tmelcrypt::Ed25519SK,
-    cons: &melvm::Covenant,
+    covenant: &melvm::Covenant,
     fee: u128
 ) -> Vec<Transaction> {
-    random_valid_txx_count(rng, start_coin, start_coindata, signer, cons, fee, 100)
+    random_valid_txx_count(rng, start_coin, start_coindata, signer, covenant, fee, 100)
 }
 
 pub fn random_valid_txx_count(
@@ -18,7 +20,7 @@ pub fn random_valid_txx_count(
     start_coin: CoinID,
     start_coindata: CoinData,
     signer: tmelcrypt::Ed25519SK,
-    cons: &melvm::Covenant,
+    covenant: &melvm::Covenant,
     fee: u128,
     tx_count: u32
 ) -> Vec<Transaction> {
@@ -28,17 +30,17 @@ pub fn random_valid_txx_count(
     for _ in 0..tx_count {
         // pop one item from pqueue
         let (_, to_spend, to_spend_data) = pqueue.pop().unwrap();
-        assert_eq!(to_spend_data.covhash, cons.hash());
+        assert_eq!(to_spend_data.covhash, covenant.hash());
         let mut new_tx = Transaction {
             kind: TxKind::Normal,
             inputs: vec![to_spend],
             outputs: vec![CoinData {
-                covhash: cons.hash(),
+                covhash: covenant.hash(),
                 value: to_spend_data.value - fee,
                 denom: DENOM_TMEL.to_owned(),
             }],
             fee,
-            scripts: vec![cons.clone()],
+            scripts: vec![covenant.clone()],
             data: vec![],
             sigs: vec![],
         };
@@ -53,4 +55,42 @@ pub fn random_valid_txx_count(
         toret.push(new_tx);
     }
     toret
+}
+
+pub fn fee_estimate() -> u128 {
+    /// Assuming some fee for tx (use higher multiplier to ensure its enough)
+    let fee_multiplier = 10000;
+    let fee = TransactionFactory::new().build(|_| {}).weight(0).saturating_mul(fee_multiplier);
+    fee
+}
+
+/// Create a token create transaction from a coin id and the keypair of the cretor
+pub fn tx_create_token(signed_keypair: (Ed25519PK, Ed25519SK), coin_id: &CoinID) -> Transaction {
+    // Create tx inputs
+    let tx_inputs = vec![coin_id];
+
+    // Create tx outputs
+    let tx_fee = fee_estimate();
+    let tx_max_token_supply = 1 << 64;
+    let tx_coin_params: Vec<(u128, &[u8])> = vec![(unspent_mel_value - tx_fee, DENOM_TMEL), (tx_max_token_supply, DENOM_NEWCOIN)];
+    let tx_outputs = tx_coin_params
+        .iter()
+        .map(|(val, &denom)| CoinDataFactory::new().build(|cd| {
+            cd.value = *val;
+            cd.denom = denom.into();
+        }))
+        .collect::<Vec<_>>();
+
+    // Create tx covenant hashees
+    let tx_scripts = vec![melvm::Covenant::std_ed25519_pk(signed_keypair.0)];
+
+    // Create and return transaction
+    let new_coin_tx = TransactionFactory::new().build(|tx| {
+        inputs = tx_inputs;
+        outputs = tx_outputs;
+        scripts = tx_scripts;
+        fee = tx_fee;
+    });
+
+    new_coin_tx.sign_ed25519(signed_keypair.1)
 }

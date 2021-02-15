@@ -5,7 +5,7 @@ use rstest::*;
 use tmelcrypt::{Ed25519PK, Ed25519SK};
 
 use crate::{
-    CoinData, CoinDataHeight, CoinID, DENOM_TMEL, MAX_COINVAL, melscript, MICRO_CONVERTER, StakeDoc,
+    CoinData, CoinDataHeight, CoinID, DENOM_TMEL, MAX_COINVAL, melvm, MICRO_CONVERTER, StakeDoc,
     State, Transaction, GenesisConfig
 };
 use crate::melvm::Covenant;
@@ -21,7 +21,7 @@ const GENESIS_INIT_FEE_POOL: u128 = 1000;
 
 lazy_static! {
     pub static ref DB: autosmt::DBManager = autosmt::DBManager::load(autosmt::MemDB::default());
-    pub static ref GENESIS_COV_SCRIPT_KEYPAIR: (Ed25519PK, Ed25519SK) = tmelcrypt::ed25519_keygen();
+    pub static ref GENESIS_COVENANT_KEYPAIR: (Ed25519PK, Ed25519SK) = tmelcrypt::ed25519_keygen();
     pub static ref GENESIS_STAKEHOLDERS: HashMap<(Ed25519PK, Ed25519SK), u128> = {
         let mut stakeholders = HashMap::new();
         for _ in 0..GENESIS_NUM_STAKERS {
@@ -37,13 +37,13 @@ pub fn keypair() -> (Ed25519PK, Ed25519SK) {
 }
 
 #[fixture]
-pub fn genesis_cov_script_keypair() -> (Ed25519PK, Ed25519SK) {
-    (*GENESIS_COV_SCRIPT_KEYPAIR).clone()
+pub fn genesis_covenant_keypair() -> (Ed25519PK, Ed25519SK) {
+    (*GENESIS_COVENANT_KEYPAIR).clone()
 }
 
 #[fixture]
-pub fn genesis_cov_script(genesis_cov_script_keypair: (Ed25519PK, Ed25519SK)) -> Covenant {
-    melvm::Covenant::std_ed25519_pk(genesis_cov_script_keypair.0).clone()
+pub fn genesis_covenant(genesis_covenant_keypair: (Ed25519PK, Ed25519SK)) -> Covenant {
+    melvm::Covenant::std_ed25519_pk(genesis_covenant_keypair.0).clone()
 }
 
 #[fixture]
@@ -52,13 +52,13 @@ pub fn genesis_stakeholders() -> HashMap<(Ed25519PK, Ed25519SK), u128> {
 }
 
 #[fixture]
-pub fn genesis_mel_coin_data(genesis_cov_script: Covenant) -> CoinData {
+pub fn genesis_mel_coin_data(genesis_covenant: Covenant) -> CoinData {
     let genesis_micro_mel_supply = MICRO_CONVERTER * GENESIS_MEL_SUPPLY;
     assert!(genesis_micro_mel_supply <= MAX_COINVAL);
 
     let coin_data_factory = CoinDataFactory::new();
     coin_data_factory.build(|coin_data| {
-        coin_data.covhash = genesis_cov_script.hash();
+        coin_data.covhash = genesis_covenant.hash();
         coin_data.value = genesis_micro_mel_supply;
     })
 }
@@ -116,28 +116,26 @@ pub fn genesis_state(
 
 /// First simple tx after genesis to some receiver
 #[fixture]
-pub fn tx_from_seed_coin(
+pub fn tx_send_mel_from_seed_coin(
     keypair: (Ed25519PK, Ed25519SK),
-    genesis_cov_script_keypair: (Ed25519PK, Ed25519SK),
+    genesis_covenant_keypair: (Ed25519PK, Ed25519SK),
     genesis_mel_coin_id: CoinID,
-    genesis_cov_script: melvm::Covenant,
+    genesis_covenant: melvm::Covenant,
     genesis_mel_coin_data: CoinData
 ) -> ((Ed25519PK, Ed25519SK), Transaction) {
-    /// Assuming some fee for tx
-    let fee = 3_000_000;
-
-    /// Generate coin data with value - fee to receiver
-    let value_to_receiver = 30_000_000;
+    /// Generate coin data with value to send to receiver
+    let fee = fee_estimate();
+    let value_to_receiver = 30_000;
     let dest_pk = keypair.0;
     let coin_data_factory = CoinDataFactory::new();
     let coin_data_receiver = coin_data_factory.build(|coin_data| {
-        coin_data.value = value_to_receiver - fee;
+        coin_data.value = value_to_receiver;
         coin_data.covhash = melvm::Covenant::std_ed25519_pk(dest_pk).hash();
     });
 
     /// Generate change transaction back to sender
     let change = genesis_mel_coin_data.value - value_to_receiver - fee ;
-    let sender_pk = genesis_cov_script_keypair.0;
+    let sender_pk = genesis_covenant_keypair.0;
     let coin_data_change = coin_data_factory.build(|coin_data| {
         coin_data.value = change;
         coin_data.covhash = melvm::Covenant::std_ed25519_pk(sender_pk).hash();
@@ -146,14 +144,14 @@ pub fn tx_from_seed_coin(
     /// Add coin data to new tx from genesis UTXO
     let tx_factory = TransactionFactory::new();
     let mut tx = tx_factory.build(|tx| {
-        tx.fee = 3000000;
-        tx.scripts = vec![genesis_cov_script.clone()];
+        tx.fee = fee;
+        tx.scripts = vec![genesis_covenant.clone()];
         tx.inputs = vec![genesis_mel_coin_id.clone()];
         tx.outputs = vec![coin_data_receiver.clone(), coin_data_change.clone()];
     });
 
     /// Sign tx from sender sk
-    let sender_sk = genesis_cov_script_keypair.1;
+    let sender_sk = genesis_covenant_keypair.1;
     let tx = tx.sign_ed25519(sender_sk);
 
     /// return the receiver keypair and tx
