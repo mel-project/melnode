@@ -6,7 +6,7 @@ use tmelcrypt::HashVal;
 
 use crate::{
     CoinDataHeight, CoinID, StakeDoc, State, StateError, Transaction, TxKind, COVHASH_DESTROY,
-    DENOM_DOSC, DENOM_TMEL, STAKE_EPOCH,
+    DENOM_DOSC, DENOM_NEWCOIN, DENOM_TMEL, DENOM_TSYM, STAKE_EPOCH,
 };
 
 use super::melmint;
@@ -132,10 +132,6 @@ impl<'a> StateHandle<'a> {
                     continue;
                 }
                 if !currency.is_empty() && *value != *in_coins.get(currency).unwrap_or(&u128::MAX) {
-                    for (key, value) in in_coins.clone().iter() {
-                        println!("{:?} {:?}", key.clone(), value.clone());
-                    }
-                    println!("{:?} {:?}", *value, *in_coins.get(currency).unwrap_or(&u128::MAX));
                     return Err(StateError::UnbalancedInOut);
                 }
             }
@@ -158,6 +154,10 @@ impl<'a> StateHandle<'a> {
     fn apply_tx_outputs(&self, tx: &Transaction) -> Result<(), StateError> {
         let height = self.state.height;
         for (index, coin_data) in tx.outputs.iter().enumerate() {
+            let mut coin_data = coin_data.clone();
+            if coin_data.denom == DENOM_NEWCOIN {
+                coin_data.denom = tx.hash_nosigs().to_vec();
+            }
             // if covenant hash is zero, this destroys the coins permanently
             if coin_data.covhash != COVHASH_DESTROY {
                 self.set_coin(
@@ -165,10 +165,7 @@ impl<'a> StateHandle<'a> {
                         txhash: tx.hash_nosigs(),
                         index: index.try_into().unwrap(),
                     },
-                    CoinDataHeight {
-                        coin_data: coin_data.clone(),
-                        height,
-                    },
+                    CoinDataHeight { coin_data, height },
                 );
             }
         }
@@ -224,7 +221,7 @@ impl<'a> StateHandle<'a> {
         let curr_epoch = self.state.height / STAKE_EPOCH;
         // then we check that the first coin is valid
         let first_coin = tx.outputs.get(0).ok_or(StateError::MalformedTx)?;
-        if first_coin.denom != DENOM_TMEL.to_vec() {
+        if first_coin.denom != DENOM_TSYM.to_vec() {
             return Err(StateError::MalformedTx);
         }
         // then we check consistency
@@ -270,23 +267,38 @@ impl<'a> StateHandle<'a> {
 
 #[cfg(test)]
 pub(crate) mod tests {
+    use crate::melvm::Covenant;
     use crate::state::applytx::StateHandle;
     use crate::testing::factory::*;
     use crate::testing::fixtures::*;
-    use crate::{CoinData, CoinID, State, TxKind, Transaction};
+    use crate::{CoinData, CoinID, State, TxKind};
     use rstest::*;
     use tmelcrypt::{Ed25519PK, Ed25519SK};
 
     #[rstest]
     fn test_apply_tx_inputs_single_valid_tx(
         genesis_state: State,
-        tx_from_seed_coin: ((Ed25519PK, Ed25519SK), Transaction)
+        genesis_mel_coin_id: CoinID,
+        genesis_mel_coin_data: CoinData,
+        genesis_cov_script_keypair: (Ed25519PK, Ed25519SK),
+        genesis_cov_script: Covenant,
+        keypair: (Ed25519PK, Ed25519SK),
     ) {
-        let (_keypair, tx) = tx_from_seed_coin;
-
         // Init state and state handle
         let mut state = genesis_state.clone();
         let state_handle = StateHandle::new(&mut state);
+
+        // Create a valid signed transaction from first coin
+        let fee = 3000000;
+        let tx = tx_factory(
+            TxKind::Normal,
+            genesis_cov_script_keypair,
+            keypair.0,
+            genesis_mel_coin_id,
+            genesis_cov_script,
+            genesis_mel_coin_data.value,
+            fee,
+        );
 
         // Apply tx inputs and verify no error
         let res = state_handle.apply_tx_inputs(&tx);

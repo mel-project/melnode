@@ -58,11 +58,10 @@ impl SmtMapping<tmelcrypt::HashVal, StakeDoc> {
 mod tests {
     use super::*;
     use crate::State;
-    use crate::{CoinData, CoinDataHeight, CoinID, DENOM_TMEL};
+    use crate::{melvm, CoinData, CoinDataHeight, CoinID, DENOM_TMEL};
     use rstest::rstest;
     use std::collections::HashMap;
     use tmelcrypt::Ed25519SK;
-    use crate::melvm;
 
     /// Create a state using a mapping from sk to syms staked for an epoch
     fn create_state(stakers: &HashMap<Ed25519SK, u128>, epoch_start: u64) -> State {
@@ -222,7 +221,10 @@ mod tests {
         let staked_syms: Vec<u128> = vec![0 as u128; 100];
 
         // Generate state for stakers
-        let stakers = staked_syms.into_iter().map(|e| (tmelcrypt::ed25519_keygen().1, e)).collect();
+        let stakers = staked_syms
+            .into_iter()
+            .map(|e| (tmelcrypt::ed25519_keygen().1, e))
+            .collect();
         let mut state = create_state(&stakers, 0);
 
         // All stakes should be stale past this epoch
@@ -238,7 +240,10 @@ mod tests {
         let staked_syms: Vec<u128> = vec![0 as u128; 100];
 
         // Generate state for stakers
-        let stakers = staked_syms.into_iter().map(|e| (tmelcrypt::ed25519_keygen().1, e)).collect();
+        let stakers = staked_syms
+            .into_iter()
+            .map(|e| (tmelcrypt::ed25519_keygen().1, e))
+            .collect();
         let mut state = create_state(&stakers, 0);
 
         // No stakes should be stale past this epoch

@@ -1,6 +1,6 @@
 use crate::smt::dbnode::*;
 use crate::smt::*;
-use genawaiter::rc::Gen;
+use genawaiter::sync::Gen;
 use parking_lot::RwLock;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;

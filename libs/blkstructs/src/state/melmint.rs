@@ -283,30 +283,38 @@ fn process_pegging(mut state: State) -> State {
         .implied_price()
         .recip();
     let r_sd = x_s / x_d;
-    // we nudge the sym/mel exchange rate towards k*r_sd.
-    let desired_r_sm = dosc_inflator(state.height) * r_sd;
+
+    // get the right pool
     let mut sm_pool = state.pools.get(&DENOM_TSYM.to_vec()).0.unwrap();
-    let stretched_sym = BigRational::from_float(0.9999).unwrap()
-        * BigRational::from(BigInt::from(sm_pool.tokens))
-        + BigRational::from_float(0.0001).unwrap()
-            * BigRational::from(BigInt::from(sm_pool.mels))
-            * desired_r_sm;
-    let stretch_factor = stretched_sym.clone() / BigRational::from(BigInt::from(sm_pool.tokens));
-    let new_sym_sqr: BigRational = stretched_sym.pow(2) / stretch_factor.clone();
-    sm_pool.tokens = new_sym_sqr
+    let konstant = BigInt::from(sm_pool.mels) * BigInt::from(sm_pool.tokens);
+    // desired mel and sym
+    let desired_r_sm = dosc_inflator(state.height) * r_sd;
+    let desired_mel_sqr = BigRational::from(konstant.clone()) / desired_r_sm.clone();
+    let desired_mel: u128 = desired_mel_sqr
         .floor()
         .numer()
         .sqrt()
         .try_into()
         .unwrap_or(u128::MAX);
-    let new_mel_sqr: BigRational =
-        BigRational::from(BigInt::from(sm_pool.mels)).pow(2) * stretch_factor;
-    sm_pool.mels = new_mel_sqr
+    let desired_sym_sqr = BigRational::from(konstant) * desired_r_sm;
+    let desired_sym: u128 = desired_sym_sqr
         .floor()
         .numer()
         .sqrt()
         .try_into()
         .unwrap_or(u128::MAX);
+    // we nudge towards the desired level entirely through "normal" operations
+    if desired_mel > sm_pool.mels {
+        let delta = (desired_mel - sm_pool.mels) / 1000;
+        // we increase mel liquidity by delta, throwing away the syms generated.
+        // this nudges the exchange rate while minimizing long-term inflation
+        let _ = sm_pool.swap_many(delta, 0);
+    }
+    if desired_sym > sm_pool.tokens {
+        let delta = (desired_sym - sm_pool.tokens) / 1000;
+        let _ = sm_pool.swap_many(0, delta);
+    }
+    dbg!(&sm_pool);
     state.pools.insert(DENOM_TSYM.to_vec(), sm_pool);
     // return the state now
     state

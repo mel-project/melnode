@@ -290,16 +290,19 @@ impl SealedState {
     pub fn inner_ref(&self) -> &State {
         &self.0
     }
+
     /// Returns whether or not it's empty.
     pub fn is_empty(&self) -> bool {
         self.1.is_none() && self.inner_ref().transactions.root_hash() == Default::default()
     }
-    /// Partial encoding.
+
+    /// Returns the **partial** encoding, which must be combined with a SMT database to reconstruct the actual state.
     pub fn partial_encoding(&self) -> Vec<u8> {
         let tmp = (self.0.partial_encoding(), &self.1);
         stdcode::serialize(&tmp).unwrap()
     }
-    /// Partial encoding.
+
+    /// Decodes from the partial encoding.
     pub fn from_partial_encoding_infallible(bts: &[u8], db: &autosmt::DBManager) -> Self {
         let tmp: (Vec<u8>, Option<ProposerAction>) = stdcode::deserialize(&bts).unwrap();
         SealedState(
@@ -307,6 +310,7 @@ impl SealedState {
             tmp.1,
         )
     }
+
     /// Returns the block header represented by the finalized state.
     pub fn header(&self) -> Header {
         let inner = &self.0;
