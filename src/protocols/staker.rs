@@ -22,7 +22,7 @@ impl StakerProtocol {
     ) -> anyhow::Result<Self> {
         let gossiper = SymphGossip::new(addr, bootstrap)?;
         let _network_task =
-            smolscale::spawn(async move { staker_loop(gossiper, storage, my_sk).await });
+            smolscale::spawn(async move { staker_loop(gossiper, storage, my_sk, 0).await });
         Ok(Self { _network_task })
     }
 }
@@ -37,7 +37,7 @@ impl neosymph::TxLookup for WrappedSharedStorage {
 
 #[allow(clippy::clippy::or_fun_call)]
 #[instrument(skip(gossiper, storage, my_sk))]
-async fn staker_loop(gossiper: SymphGossip, storage: SharedStorage, my_sk: Ed25519SK) {
+async fn staker_loop(gossiper: SymphGossip, storage: SharedStorage, my_sk: Ed25519SK, epoch: u64) {
     let genesis = storage
         .read()
         .last_block()
@@ -50,7 +50,7 @@ async fn staker_loop(gossiper: SymphGossip, storage: SharedStorage, my_sk: Ed255
         lookup: WrappedSharedStorage(storage.clone()),
         genesis,
         stakes,
-        epoch: 0,
+        epoch,
         start_time: std::time::UNIX_EPOCH + Duration::from_secs(1609480800),
         my_sk,
         get_proposer: Box::new(move |_height| first_stake.pubkey),
@@ -71,6 +71,7 @@ async fn staker_loop(gossiper: SymphGossip, storage: SharedStorage, my_sk: Ed255
                 match evt {
                     StreamletEvt::SolicitProp(last_state, height, prop_send) => {
                         let provis_state = storage.read().provis_state.clone();
+                        let out_of_bounds = height / blkstructs::STAKE_EPOCH != epoch;
                         if let Some(provis_state) = &provis_state {
                             if height == provis_state.height
                                 && Some(last_state.header().hash())

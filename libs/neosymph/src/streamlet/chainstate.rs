@@ -81,6 +81,11 @@ impl ChainState {
         Ok(())
     }
 
+    /// The last block of the epoch
+    fn last_block_in_epoch(&self) -> u64 {
+        (self.epoch + 1) * blkstructs::STAKE_EPOCH - 1
+    }
+
     /// Process a proposal.
     pub fn process_proposal(&mut self, prop: msg::ActualProposal) -> anyhow::Result<()> {
         let mut this = self.clone();
@@ -103,6 +108,11 @@ impl ChainState {
             });
         }
         // process the actual block
+        if prop.height() > self.last_block_in_epoch()
+            && (!prop.block.transactions.is_empty() || prop.block.proposer_action.is_some())
+        {
+            anyhow::bail!("proposal is out of epoch bounds yet it isn't totally empty")
+        }
         let state = prop_ancestor.apply_block(&prop.block)?;
         this.insert_block(CsBlock {
             state,

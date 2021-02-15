@@ -6,7 +6,7 @@ use tmelcrypt::HashVal;
 
 use crate::{
     CoinDataHeight, CoinID, StakeDoc, State, StateError, Transaction, TxKind, COVHASH_DESTROY,
-    DENOM_DOSC, DENOM_TMEL, STAKE_EPOCH,
+    DENOM_DOSC, DENOM_NEWCOIN, DENOM_TMEL, DENOM_TSYM, STAKE_EPOCH,
 };
 
 use super::melmint;
@@ -154,6 +154,10 @@ impl<'a> StateHandle<'a> {
     fn apply_tx_outputs(&self, tx: &Transaction) -> Result<(), StateError> {
         let height = self.state.height;
         for (index, coin_data) in tx.outputs.iter().enumerate() {
+            let mut coin_data = coin_data.clone();
+            if coin_data.denom == DENOM_NEWCOIN {
+                coin_data.denom = tx.hash_nosigs().to_vec();
+            }
             // if covenant hash is zero, this destroys the coins permanently
             if coin_data.covhash != COVHASH_DESTROY {
                 self.set_coin(
@@ -161,10 +165,7 @@ impl<'a> StateHandle<'a> {
                         txhash: tx.hash_nosigs(),
                         index: index.try_into().unwrap(),
                     },
-                    CoinDataHeight {
-                        coin_data: coin_data.clone(),
-                        height,
-                    },
+                    CoinDataHeight { coin_data, height },
                 );
             }
         }
@@ -220,7 +221,7 @@ impl<'a> StateHandle<'a> {
         let curr_epoch = self.state.height / STAKE_EPOCH;
         // then we check that the first coin is valid
         let first_coin = tx.outputs.get(0).ok_or(StateError::MalformedTx)?;
-        if first_coin.denom != DENOM_TMEL.to_vec() {
+        if first_coin.denom != DENOM_TSYM.to_vec() {
             return Err(StateError::MalformedTx);
         }
         // then we check consistency
@@ -266,7 +267,7 @@ impl<'a> StateHandle<'a> {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::melscript::Script;
+    use crate::melvm::Covenant;
     use crate::state::applytx::StateHandle;
     use crate::testing::factory::*;
     use crate::testing::fixtures::*;
@@ -280,7 +281,7 @@ pub(crate) mod tests {
         genesis_mel_coin_id: CoinID,
         genesis_mel_coin_data: CoinData,
         genesis_cov_script_keypair: (Ed25519PK, Ed25519SK),
-        genesis_cov_script: Script,
+        genesis_cov_script: Covenant,
         keypair: (Ed25519PK, Ed25519SK),
     ) {
         // Init state and state handle

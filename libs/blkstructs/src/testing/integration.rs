@@ -1,14 +1,12 @@
 use crate::testing::utils::random_valid_txx;
-use crate::{
-    melscript, CoinData, CoinID, SmtMapping, State, DENOM_TMEL, MICRO_CONVERTER,
-};
+use crate::{melvm, CoinData, CoinID, SmtMapping, State, DENOM_TMEL, MICRO_CONVERTER};
 use rand::prelude::SliceRandom;
 
 #[test]
 fn state_simple_order_independence() {
     let db = autosmt::DBManager::load(autosmt::MemDB::default());
     let (pk, sk) = tmelcrypt::ed25519_keygen();
-    let scr = melscript::Script::std_ed25519_pk(pk);
+    let scr = melvm::Covenant::std_ed25519_pk(pk);
     let mut genesis = State::test_genesis(db, MICRO_CONVERTER * 1000, scr.hash(), &[]);
     genesis.fee_multiplier = 0;
     let first_block = genesis.seal(None);
@@ -26,7 +24,7 @@ fn state_simple_order_independence() {
         },
         sk,
         &scr,
-        1577000
+        1577000,
     );
     println!("transactions generated");
     let seq_copy = {

@@ -1,8 +1,8 @@
-use crate::melscript::Script;
+use crate::melvm::Covenant;
 use crate::testing::utils::*;
 use crate::{
-    melscript, CoinData, CoinDataHeight, CoinID, StakeDoc, State, Transaction, DENOM_TMEL,
-    MAX_COINVAL, MICRO_CONVERTER,
+    melvm, CoinData, CoinDataHeight, CoinID, StakeDoc, State, Transaction, DENOM_TMEL, MAX_COINVAL,
+    MICRO_CONVERTER,
 };
 use rstest::*;
 use std::collections::HashMap;
@@ -37,8 +37,8 @@ pub fn genesis_cov_script_keypair() -> (Ed25519PK, Ed25519SK) {
 }
 
 #[fixture]
-pub fn genesis_cov_script(genesis_cov_script_keypair: (Ed25519PK, Ed25519SK)) -> Script {
-    melscript::Script::std_ed25519_pk(genesis_cov_script_keypair.0).clone()
+pub fn genesis_cov_script(genesis_cov_script_keypair: (Ed25519PK, Ed25519SK)) -> Covenant {
+    melvm::Covenant::std_ed25519_pk(genesis_cov_script_keypair.0).clone()
 }
 
 #[fixture]
@@ -47,7 +47,7 @@ pub fn genesis_stakeholders() -> HashMap<(Ed25519PK, Ed25519SK), u128> {
 }
 
 #[fixture]
-pub fn genesis_mel_coin_data(genesis_cov_script: Script) -> CoinData {
+pub fn genesis_mel_coin_data(genesis_cov_script: Covenant) -> CoinData {
     let genesis_micro_mel_supply = MICRO_CONVERTER * GENESIS_MEL_SUPPLY;
     assert!(genesis_micro_mel_supply <= MAX_COINVAL);
     CoinData {
@@ -108,7 +108,7 @@ pub fn genesis_state(
 #[fixture]
 pub fn valid_txx(keypair: (Ed25519PK, Ed25519SK)) -> Vec<Transaction> {
     let (pk, sk) = keypair;
-    let scr = melscript::Script::std_ed25519_pk(pk);
+    let scr = melvm::Covenant::std_ed25519_pk(pk);
     let mut trng = rand::thread_rng();
     let txx = random_valid_txx(
         &mut trng,

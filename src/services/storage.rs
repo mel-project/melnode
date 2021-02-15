@@ -266,7 +266,7 @@ fn new_genesis(dbm: autosmt::DBManager) -> blkstructs::State {
         dbm,
         1000 * blkstructs::MICRO_CONVERTER,
         blkstructs::melvm::Covenant::always_true().hash(),
-        (0..2)
+        (0..1)
             .map(|i| insecure_testnet_keygen(i).0)
             .collect::<Vec<_>>()
             .as_slice(),

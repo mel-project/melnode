@@ -174,7 +174,7 @@ pub struct CoinDataHeight {
 #[cfg(test)]
 pub(crate) mod tests {
     use crate::testing::fixtures::valid_txx;
-    use crate::{melscript, CoinData, Transaction, MAX_COINVAL};
+    use crate::{melvm, CoinData, Transaction, MAX_COINVAL};
     use rstest::*;
 
     #[rstest]
@@ -333,7 +333,7 @@ pub(crate) mod tests {
         // create transaction
         let mut valid_tx = valid_txx.iter().next().unwrap().clone();
         let (pk, _sk) = tmelcrypt::ed25519_keygen();
-        let scr = melscript::Script::std_ed25519_pk(pk);
+        let scr = melvm::Covenant::std_ed25519_pk(pk);
 
         // insert coins
         let val1 = 100;
@@ -364,7 +364,7 @@ pub(crate) mod tests {
         // create transaction
         let valid_tx = valid_txx.iter().next().unwrap().clone();
         let (pk, _sk) = tmelcrypt::ed25519_keygen();
-        let _scr = melscript::Script::std_ed25519_pk(pk);
+        let _scr = melvm::Covenant::std_ed25519_pk(pk);
 
         // add scripts
 

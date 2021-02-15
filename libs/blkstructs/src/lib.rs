@@ -19,6 +19,8 @@ pub use smtmapping::*;
 pub use state::*;
 pub use transaction::*;
 
+mod fastsync;
+
 #[cfg(test)]
 #[macro_use]
 extern crate lazy_static;

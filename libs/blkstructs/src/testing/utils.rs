@@ -1,4 +1,4 @@
-use crate::{melscript, CoinData, CoinID, Transaction, TxKind, DENOM_TMEL};
+use crate::{melvm, CoinData, CoinID, Transaction, TxKind, DENOM_TMEL};
 use std::collections::BinaryHeap;
 
 pub fn random_valid_txx(
@@ -6,8 +6,8 @@ pub fn random_valid_txx(
     start_coin: CoinID,
     start_coindata: CoinData,
     signer: tmelcrypt::Ed25519SK,
-    cons: &melscript::Script,
-    fee: u128
+    cons: &melvm::Covenant,
+    fee: u128,
 ) -> Vec<Transaction> {
     let mut pqueue: BinaryHeap<(u64, CoinID, CoinData)> = BinaryHeap::new();
     pqueue.push((rng.gen(), start_coin, start_coindata));
