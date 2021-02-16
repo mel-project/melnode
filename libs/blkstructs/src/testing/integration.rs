@@ -2,48 +2,64 @@
 
 use rstest::*;
 use crate::{Block, CoinData, CoinDataHeight, CoinID, DENOM_TMEL, melvm, MICRO_CONVERTER, SmtMapping, State, Transaction, TxKind, DENOM_NEWCOIN};
-use crate::testing::fixtures::{genesis_state, tx_send_mel_from_seed_coin};
+use crate::testing::fixtures::{genesis_state, tx_send_mel_from_seed_coin, SEND_MEL_AMOUNT};
 use crate::testing::factory::*;
 use crate::testing::utils::{random_valid_txx, fee_estimate, tx_create_token};
 use tmelcrypt::{Ed25519PK, Ed25519SK};
+use std::hash::Hash;
 
-
+#[rstest]
 fn test_melswap_v2_simple(
     genesis_state: State,
     tx_send_mel_from_seed_coin: ((Ed25519PK, Ed25519SK), Transaction)
 ) {
-    // Initialize genesis
+    // Seal genesis state
     let sealed_state = genesis_state.seal(None);
 
-    // create tx that funds liquidity provider account with mel
-    let (liquidity_keypair, tx_liquidity_mel) = tx_send_mel_from_seed_coin;
+    // Create a signed tx that funds liquidity provider account with mel
+    let (keypair_liq_provider, tx_fund_liq_provider) = tx_send_mel_from_seed_coin;
 
-    // create tx s.t. liquidity provider creates a new token
-    let mel_amount = 1_000_000;
-    let coin_id = tx_liquidity_mel.inputs.first().unwrap();
+    // verify liquidity provider receiver coin with expected value and correct index
+    // TODO: maybe this verification should be a helper function to extract the coin id index...
+    let covenant_hash_fund_liq_provider = melvm::Covenant::std_ed25519_pk(keypair_liq_provider.0).hash();
+    let outputs: Vec<(usize, &CoinData)> = tx_fund_liq_provider.outputs.iter().filter(|&cd| cd.clone().covhash == covenant_hash_fund_liq_provider).enumerate().map(|e| e).collect();
+    let idx = outputs.first().unwrap().clone().0;
+    assert_eq!(idx, 0);
+    let coin_data = outputs.first().unwrap().clone().1.clone();
+    assert_eq!(coin_data.value, SEND_MEL_AMOUNT);
 
-    let tx_liquidity_token = tx_create_token(liquidity_keypair, coin_id, mel_amount);
-
-    // Get next state, add txx and seal
-    let mut first_block = sealed_state.next_state();
-    let txx = vec![tx_liquidity_mel, tx_liquidity_token];
-    assert!(first_block.apply_tx_batch(txx.as_slice()).is_ok());
-    let sealed_state = first_block.seal(None);
-
-    // deposit mel/token keypair into pool
-    // Create liquidity deposit tx from coin data
-    let fee = fee_estimate();
-    let factory = TransactionFactory::new();
-    let deposit_tx = factory.build(|dep_tx| {
-        dep_tx.kind = TxKind::LiqDeposit;
-        dep_tx.fee = fee;
-        dep_tx.inputs = vec![];
+    // liquidity provider creates a new token in a tx from a coin id and a fixed token supply
+    let coin_id = CoinIDFactory::new().build(|cid| {
+        cid.index = idx as u8;
+        cid.txhash = tx_fund_liq_provider.hash_nosigs(); // TODO: do we use no sigs or sigs?
     });
+    let token_supply = 1_000_000;
+    let tx_liq_prov_create_token = tx_create_token(&liquidity_keypair, &coin_id, token_supply);
 
-    // add tx to block and seal first block to add liquidity
-    let mut second_block = sealed_state.next_state();
-    assert!(second_block.apply_tx(&deposit_tx).is_ok());
-    let sealed_state = second_block.seal(None);
+    // We use a 2:1 mel to token ratio to keep it simple for now (check liq prov has enough mel)
+    let liq_prov_mel_deposit_amount = 2_000_000;
+    assert!( coin_data.value > liq_prov_mel_deposit_amount);
+
+    // // Get next state, add txx and seal
+    // let mut first_block = sealed_state.next_state();
+    // let txx = vec![tx_liquidity_mel, tx_liquidity_token];
+    // assert!(first_block.apply_tx_batch(txx.as_slice()).is_ok());
+    // let sealed_state = first_block.seal(None);
+    //
+    // // deposit mel/token keypair into pool
+    // // Create liquidity deposit tx from coin data
+    // let fee = fee_estimate();
+    // let factory = TransactionFactory::new();
+    // let deposit_tx = factory.build(|dep_tx| {
+    //     dep_tx.kind = TxKind::LiqDeposit;
+    //     dep_tx.fee = fee;
+    //     dep_tx.inputs = vec![];
+    // });
+    //
+    // // add tx to block and seal first block to add liquidity
+    // let mut second_block = sealed_state.next_state();
+    // assert!(second_block.apply_tx(&deposit_tx).is_ok());
+    // let sealed_state = second_block.seal(None);
     //
     // // fund mel buyer account
     // let (liquidity_keypair, tx_liquidity_mel) = tx_send_mel_from(tx_liquidity_token.inputs.first());

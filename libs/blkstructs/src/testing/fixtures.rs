@@ -17,6 +17,7 @@ const GENESIS_NUM_STAKERS: u64 = 10;
 const GENESIS_EPOCH_START: u64 = 0;
 const GENESIS_EPOCH_POST_END: u64 = 1000;
 const GENESIS_STAKER_WEIGHT: u128 = 100;
+pub const SEND_MEL_AMOUNT: u128 = 30_000_000_000;
 
 lazy_static! {
     pub static ref DB: autosmt::DBManager = autosmt::DBManager::load(autosmt::MemDB::default());
@@ -64,12 +65,7 @@ pub fn genesis_mel_coin_data(genesis_covenant: Covenant) -> CoinData {
 
 #[fixture]
 pub fn genesis_mel_coin_id() -> CoinID {
-    let factory = CoinIDFactory::new();
-
-    factory.build(|coin_id| {
-        coin_id.txhash = tmelcrypt::HashVal([0; 32]);
-        coin_id.index = 0;
-    })
+    CoinID::zero_zero()
 }
 
 #[fixture]
@@ -124,16 +120,16 @@ pub fn tx_send_mel_from_seed_coin(
 ) -> ((Ed25519PK, Ed25519SK), Transaction) {
     /// Generate coin data with value to send to receiver
     let fee = fee_estimate();
-    let value_to_receiver = 30_000;
+    let mel_value_to_receiver = SEND_MEL_AMOUNT;
     let dest_pk = keypair.0;
     let coin_data_factory = CoinDataFactory::new();
     let coin_data_receiver = coin_data_factory.build(|coin_data| {
-        coin_data.value = value_to_receiver;
+        coin_data.value = mel_value_to_receiver;
         coin_data.covhash = melvm::Covenant::std_ed25519_pk(dest_pk).hash();
     });
 
     /// Generate change transaction back to sender
-    let change = genesis_mel_coin_data.value - value_to_receiver - fee ;
+    let change = genesis_mel_coin_data.value - mel_value_to_receiver - fee ;
     let sender_pk = genesis_covenant_keypair.0;
     let coin_data_change = coin_data_factory.build(|coin_data| {
         coin_data.value = change;

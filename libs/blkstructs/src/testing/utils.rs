@@ -65,8 +65,7 @@ pub fn fee_estimate() -> u128 {
 }
 
 /// Create a token create transaction from a coin id and the keypair of the cretor
-pub fn tx_create_token(signed_keypair: (Ed25519PK, Ed25519SK), coin_id: &CoinID, unspent_mel_value: u128) -> Transaction {
-
+pub fn tx_create_token(signed_keypair: &(Ed25519PK, Ed25519SK), coin_id: &CoinID, unspent_mel_value: u128) -> Transaction {
     let new_coin_tx = TransactionFactory::new().build(|tx| {
         // Create tx outputs
         let tx_fee = fee_estimate();
