@@ -21,6 +21,8 @@ fn test_melswap_v2_simple(
 
     // verify liquidity provider receiver coin with expected value and correct index
     // TODO: maybe this verification should be a helper function to extract the coin id index...
+    // It will likely be used in other tests to simplify. Move it to utils...
+    // Ie. Given pk & outputs of a tx, return a HashMap or the like of idx -> CoinData
     let covenant_hash_fund_liq_provider = melvm::Covenant::std_ed25519_pk(keypair_liq_provider.0).hash();
     let outputs: Vec<(usize, &CoinData)> = tx_fund_liq_provider.outputs.iter().filter(|&cd| cd.clone().covhash == covenant_hash_fund_liq_provider).enumerate().map(|e| e).collect();
     let idx = outputs.first().unwrap().clone().0;
@@ -34,18 +36,51 @@ fn test_melswap_v2_simple(
         cid.txhash = tx_fund_liq_provider.hash_nosigs(); // TODO: do we use no sigs or sigs?
     });
     let token_supply = 1_000_000;
-    let tx_liq_prov_create_token = tx_create_token(&liquidity_keypair, &coin_id, token_supply);
-
-    // We use a 2:1 mel to token ratio to keep it simple for now (check liq prov has enough mel)
-    let liq_prov_mel_deposit_amount = 2_000_000;
-    assert!( coin_data.value > liq_prov_mel_deposit_amount);
-
-    // // Get next state, add txx and seal
-    // let mut first_block = sealed_state.next_state();
-    // let txx = vec![tx_liquidity_mel, tx_liquidity_token];
-    // assert!(first_block.apply_tx_batch(txx.as_slice()).is_ok());
-    // let sealed_state = first_block.seal(None);
+    // let tx_liq_prov_create_token = tx_create_token(&liquidity_keypair, &coin_id, token_supply);
     //
+    // let mut initial_deposit_state = sealed_state.next_state();
+    // initial_deposit_state.apply_tx(&tx_fund_liq_provider);
+    //
+    // // Liquidity provider deposits mel/token pair
+    // // We use a 2:1 mel to token ratio on first deposit
+    // let liq_prov_mel_deposit_amount = 2_000_000;
+    // assert!( coin_data.value > liq_prov_mel_deposit_amount);
+    //
+    // let tx_liq_prov_deposit = tx_deposit(&liquidity_keypair, token_cov_hash, token_supply, mel_supply);
+    // initial_deposit_state.apply_tx(tx_liq_prov_deposit);
+    //
+    // // Seal the state for first deposit start swapping for a set number of blocks
+    // let sealed_state = initial_deposit_state.seal(None);
+
+    // Create buyer and seller keypairs and fund them with mel and token
+    // let (keypair_liq_provider, tx_fund_liq_provider) = tx_send_mel_from(keypair_liq_provider, mel_amount, token_amount);
+    // let (keypair_liq_provider, tx_fund_liq_provider) = tx_send_mel_from(keypair_liq_provider, mel_amount, token_amount);
+    //
+    let num_swapping_blocks = 100;
+
+    for _ in 0..num_swapping_blocks {
+        // let swapping_state = sealed_state.next_state();
+
+        // Create a mel buy swap tx with random amounts
+
+        // create a mel sull swap tx with random amounts
+
+        // apply tx
+
+        // seal block
+
+        // check liq_constant is expected
+    }
+
+    // deposit more mel/tokens
+
+    // swap for another M states
+
+    // withdraw mel/tokens
+
+    // swap for another O states which chekcing liq constant and price are correct
+
+
     // // deposit mel/token keypair into pool
     // // Create liquidity deposit tx from coin data
     // let fee = fee_estimate();
@@ -56,31 +91,6 @@ fn test_melswap_v2_simple(
     //     dep_tx.inputs = vec![];
     // });
     //
-    // // add tx to block and seal first block to add liquidity
-    // let mut second_block = sealed_state.next_state();
-    // assert!(second_block.apply_tx(&deposit_tx).is_ok());
-    // let sealed_state = second_block.seal(None);
-    //
-    // // fund mel buyer account
-    // let (liquidity_keypair, tx_liquidity_mel) = tx_send_mel_from(tx_liquidity_token.inputs.first());
-    //
-    // // fund mel seller account
-    // let (liquidity_keypair, tx_liquidity_mel) = tx_send_mel_from(tx_liquidity_token.inputs.first());
-
-    // random swaps and check invariants
-    // for (..) {
-    //     // check liq_constant
-    // }
-
-    // withdraw mel/token pair from pool
-
-    // random swaps and check invariants
-
-    // deposit mel/token pair to pool
-
-    // random swaps and check invariants
-
-    // ...
 }
 
 #[rstest]
