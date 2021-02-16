@@ -143,7 +143,7 @@ pub fn tx_send_mel_from_seed_coin(
 
     /// Add coin data to new tx from genesis UTXO
     let tx_factory = TransactionFactory::new();
-    let mut tx = tx_factory.build(|tx| {
+    let tx = tx_factory.build(|tx| {
         tx.fee = fee;
         tx.scripts = vec![genesis_covenant.clone()];
         tx.inputs = vec![genesis_mel_coin_id.clone()];

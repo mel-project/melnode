@@ -1,13 +1,8 @@
-// Beaver only supports serializable structs.
+// Beaver factories only support serializable structs.
 // For structs which don't have serialization support
-// build the structure manually or
-// use a custom function with sub-factories where appropriate
+// build the structure manually or use a custom function with sub-factories where appropriate.
 
-use std::collections::{BinaryHeap, HashMap};
-
-use im::HashSet;
-
-use tmelcrypt::{Ed25519PK, Ed25519SK};
+use std::collections::HashMap;
 
 use crate::{Block, CoinData, CoinDataHeight, CoinID, DENOM_TMEL, GenesisConfig, Header, melvm, ProposerAction, StakeDoc, Transaction, TxKind};
 

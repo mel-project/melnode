@@ -20,8 +20,10 @@ fn test_melswap_v2_simple(
     let (liquidity_keypair, tx_liquidity_mel) = tx_send_mel_from_seed_coin;
 
     // create tx s.t. liquidity provider creates a new token
+    let mel_amount = 1_000_000;
     let coin_id = tx_liquidity_mel.inputs.first().unwrap();
-    let tx_liquidity_token = tx_create_token(liquidity_keypair, coin_id);
+
+    let tx_liquidity_token = tx_create_token(liquidity_keypair, coin_id, mel_amount);
 
     // Get next state, add txx and seal
     let mut first_block = sealed_state.next_state();
@@ -43,17 +45,17 @@ fn test_melswap_v2_simple(
     let mut second_block = sealed_state.next_state();
     assert!(second_block.apply_tx(&deposit_tx).is_ok());
     let sealed_state = second_block.seal(None);
-
-    // fund mel buyer account
-    let (liquidity_keypair, tx_liquidity_mel) = tx_send_mel_from(tx_liquidity_token.inputs.first());
-
-    // fund mel seller account
-    let (liquidity_keypair, tx_liquidity_mel) = tx_send_mel_from(tx_liquidity_token.inputs.first());
+    //
+    // // fund mel buyer account
+    // let (liquidity_keypair, tx_liquidity_mel) = tx_send_mel_from(tx_liquidity_token.inputs.first());
+    //
+    // // fund mel seller account
+    // let (liquidity_keypair, tx_liquidity_mel) = tx_send_mel_from(tx_liquidity_token.inputs.first());
 
     // random swaps and check invariants
-    for (..) {
-        // check liq_constant
-    }
+    // for (..) {
+    //     // check liq_constant
+    // }
 
     // withdraw mel/token pair from pool
 

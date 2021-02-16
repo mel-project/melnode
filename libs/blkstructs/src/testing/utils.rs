@@ -65,31 +65,28 @@ pub fn fee_estimate() -> u128 {
 }
 
 /// Create a token create transaction from a coin id and the keypair of the cretor
-pub fn tx_create_token(signed_keypair: (Ed25519PK, Ed25519SK), coin_id: &CoinID) -> Transaction {
-    // Create tx inputs
-    let tx_inputs = vec![coin_id];
+pub fn tx_create_token(signed_keypair: (Ed25519PK, Ed25519SK), coin_id: &CoinID, unspent_mel_value: u128) -> Transaction {
 
-    // Create tx outputs
-    let tx_fee = fee_estimate();
-    let tx_max_token_supply = 1 << 64;
-    let tx_coin_params: Vec<(u128, &[u8])> = vec![(unspent_mel_value - tx_fee, DENOM_TMEL), (tx_max_token_supply, DENOM_NEWCOIN)];
-    let tx_outputs = tx_coin_params
-        .iter()
-        .map(|(val, &denom)| CoinDataFactory::new().build(|cd| {
-            cd.value = *val;
-            cd.denom = denom.into();
-        }))
-        .collect::<Vec<_>>();
-
-    // Create tx covenant hashees
-    let tx_scripts = vec![melvm::Covenant::std_ed25519_pk(signed_keypair.0)];
-
-    // Create and return transaction
     let new_coin_tx = TransactionFactory::new().build(|tx| {
-        inputs = tx_inputs;
-        outputs = tx_outputs;
-        scripts = tx_scripts;
-        fee = tx_fee;
+        // Create tx outputs
+        let tx_fee = fee_estimate();
+        let tx_max_token_supply = 1 << 64;
+        let tx_coin_params: Vec<(u128, Vec<u8>)> = vec![(unspent_mel_value - tx_fee, DENOM_TMEL.to_vec()), (tx_max_token_supply, DENOM_NEWCOIN.to_vec())];
+        let tx_outputs = tx_coin_params
+            .iter()
+            .map(|(val, denom)| CoinDataFactory::new().build(|cd| {
+                cd.value = *val;
+                cd.denom = denom.clone();
+            }))
+            .collect::<Vec<_>>();
+
+        // Create tx covenant hashees
+        let tx_scripts = vec![melvm::Covenant::std_ed25519_pk(signed_keypair.0)].to_vec();
+
+        tx.inputs = vec![coin_id.clone()].to_vec();
+        tx.outputs = tx_outputs;
+        tx.scripts = tx_scripts;
+        tx.fee = tx_fee;
     });
 
     new_coin_tx.sign_ed25519(signed_keypair.1)
