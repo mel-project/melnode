@@ -29,7 +29,7 @@ pub async fn run_anet_minter(cfg: AnetMinterConfig) {
 
     let mut netclient = NetClient::new(cfg.bootstrap);
 
-    let mut coin_tip = init_state.coin_id();
+    let coin_tip = init_state.coin_id();
     loop {
         let (latest_header, _) = netclient.last_header().await.unwrap();
         let coin = netclient
