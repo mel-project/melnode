@@ -1,12 +1,11 @@
-use rand::prelude::SliceRandom;
+// use rand::prelude::SliceRandom;
 
 use rstest::*;
 use crate::{Block, CoinData, CoinDataHeight, CoinID, DENOM_TMEL, melvm, MICRO_CONVERTER, SmtMapping, State, Transaction, TxKind, DENOM_NEWCOIN};
 use crate::testing::fixtures::{genesis_state, tx_send_mel_from_seed_coin};
 use crate::testing::factory::*;
 use crate::testing::utils::{random_valid_txx, fee_estimate, tx_create_token};
-use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
-use crate::melvm::Covenant;
+use tmelcrypt::{Ed25519PK, Ed25519SK};
 
 
 fn test_melswap_v2_simple(

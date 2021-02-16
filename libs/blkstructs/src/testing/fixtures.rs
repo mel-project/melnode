@@ -17,7 +17,6 @@ const GENESIS_NUM_STAKERS: u64 = 10;
 const GENESIS_EPOCH_START: u64 = 0;
 const GENESIS_EPOCH_POST_END: u64 = 1000;
 const GENESIS_STAKER_WEIGHT: u128 = 100;
-const GENESIS_INIT_FEE_POOL: u128 = 1000;
 
 lazy_static! {
     pub static ref DB: autosmt::DBManager = autosmt::DBManager::load(autosmt::MemDB::default());
