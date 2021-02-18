@@ -89,10 +89,10 @@ fn test_melswap_v2_simple(
             dbg!(pool);
         }
 
-        // // check liq_constant is expected
-        // let pool_state = swapping_state.pools.get(key).0.unwrap();
-        // let actual_liq_constant = pool_state.liq_constant();
-        // assert_eq!(expected_liq_constant, actual_liq_constant);
+        // // check liq_constant is expected (key is token denom)
+        let pool_state = swapping_state.pools.get(key).0.unwrap();
+        let actual_liq_constant = pool_state.liq_constant();
+        assert_eq!(expected_liq_constant, actual_liq_constant);
     }
 
     // // TODO: finish the rest of this (add more deposit) flow in next PR...
