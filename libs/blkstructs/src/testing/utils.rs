@@ -136,8 +136,7 @@ pub fn tx_deposit(
             },
         ];
     });
-    tx.sign_ed25519(keypair.1);
-    tx
+    tx.sign_ed25519(keypair.1)
 }
 
 // Filter tx outputs by PK

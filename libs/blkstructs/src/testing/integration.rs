@@ -41,7 +41,7 @@ fn test_melswap_v2_simple(
 
     // Liquidity provider deposits mel/token pair
     // We use a 2:1 mel to token ratio on first deposit
-    let mel_dep_amount = 2_000_000;
+    let mel_dep_amount = 2_000_000_000;
 
     // Check we are depositing l.t.e. to the amount of mel that liq provider has
     assert!( mel_amount >= mel_dep_amount);
@@ -49,12 +49,12 @@ fn test_melswap_v2_simple(
     let tx_liq_prov_deposit = tx_deposit(&keypair_liq_provider, tx_liq_prov_create_token, token_amount, mel_dep_amount);
     first_deposit_state.apply_tx(&tx_liq_prov_deposit);
 
-    // Seal the state for first deposit start swapping for a set number of blocks
-    let sealed_state = initial_deposit_state.seal(None);
-    //
-    // // Create buyer and seller keypairs and fund them with mels and tokens
-    // let keypair_mel_buyer = tmelcrypt::ed25519_keygen();
-    // let keypair_mel_seller = tmelcrypt::ed25519_keygen();
+    // Seal the state for first deposit to start swapping for a set number of blocks
+    let sealed_state = first_deposit_state.seal(None);
+
+    // Create buyer and seller keypairs and fund them with mels and tokens
+    let keypair_mel_buyer = tmelcrypt::ed25519_keygen();
+    let keypair_mel_seller = tmelcrypt::ed25519_keygen();
     //
     // let (keypair_buyer, tx_fund_buyer) = tx_send_mels_to(keypair_liq_provider, keypair_mel_buyer, mel_amount);
     // let (keypair_buyer, tx_fund_buyer) = tx_send_mels_to(keypair_liq_provider, keypair_mel_buyer, mel_amount);
@@ -78,25 +78,15 @@ fn test_melswap_v2_simple(
     //
     //     // check liq_constant is expected
     // }
-
-    // deposit more mel/tokens
-
-    // swap for another M states
-
-    // withdraw mel/tokens
-
-    // swap for another O states which chekcing liq constant and price are correct
-
-    // // deposit mel/token keypair into pool
-    // // Create liquidity deposit tx from coin data
-    // let fee = fee_estimate();
-    // let factory = TransactionFactory::new();
-    // let deposit_tx = factory.build(|dep_tx| {
-    //     dep_tx.kind = TxKind::LiqDeposit;
-    //     dep_tx.fee = fee;
-    //     dep_tx.inputs = vec![];
-    // });
     //
+    // // TODO: finish the rest of this (add more deposit) flow later...
+    // // deposit more mel/tokens
+    //
+    // // swap for another M states
+    //
+    // // withdraw mel/tokens
+    //
+    // // swap for another O states which chekcing liq constant and price are correct
 }
 
 #[rstest]
