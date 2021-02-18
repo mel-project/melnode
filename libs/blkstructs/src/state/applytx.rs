@@ -6,7 +6,7 @@ use tmelcrypt::HashVal;
 
 use crate::{
     CoinDataHeight, CoinID, StakeDoc, State, StateError, Transaction, TxKind, COVHASH_DESTROY,
-    DENOM_DOSC, DENOM_NEWCOIN, DENOM_TMEL, DENOM_TSYM, STAKE_EPOCH,
+    DENOM_DOSC, DENOM_NEWCOIN, DENOM_TSYM, STAKE_EPOCH,
 };
 
 use super::melmint;

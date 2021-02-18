@@ -1,5 +1,6 @@
 use std::marker::PhantomData;
 
+use async_net::TcpStream;
 use serde::{de::DeserializeOwned, Serialize};
 use smol::channel::Sender;
 use smol::prelude::*;
@@ -57,7 +58,7 @@ pub(crate) fn responder_to_closure<
     state: crate::NetState,
     mut responder: impl Responder<Req, Resp> + 'static + Send,
 ) -> BoxedResponder {
-    let clos = move |bts: &[u8]| {
+    let clos = move |bts: &[u8], conn: TcpStream| {
         let decoded: Result<Req, _> = stdcode::deserialize(&bts);
         match decoded {
             Ok(decoded) => {
@@ -66,6 +67,7 @@ pub(crate) fn responder_to_closure<
                     state: state.clone(),
                     body: decoded,
                     respond,
+                    hijackable: conn,
                 };
                 responder.respond(request);
                 let response_fut = async move {
@@ -88,7 +90,7 @@ pub(crate) fn responder_to_closure<
 
 #[allow(clippy::type_complexity)]
 pub(crate) struct BoxedResponder(
-    pub Box<dyn FnMut(&[u8]) -> smol::future::Boxed<crate::Result<Vec<u8>>> + Send>,
+    pub Box<dyn FnMut(&[u8], TcpStream) -> smol::future::Boxed<crate::Result<Vec<u8>>> + Send>,
 );
 
 /// A `Request<Req, Resp>` carries a stdcode-compatible request of type `Req and can be responded to with responses of type Resp.
@@ -96,19 +98,25 @@ pub struct Request<Req: DeserializeOwned, Resp: Serialize> {
     pub body: Req,
     pub state: crate::NetState,
     respond: Sender<crate::Result<Resp>>,
+    hijackable: TcpStream,
 }
 
-impl<Req: DeserializeOwned, Resp: Serialize> Drop for Request<Req, Resp> {
-    fn drop(&mut self) {
-        let _ = self
-            .respond
-            .try_send(Err(crate::MelnetError::InternalServerError));
-    }
-}
+// impl<Req: DeserializeOwned, Resp: Serialize> Drop for Request<Req, Resp> {
+//     fn drop(&mut self) {
+//         let _ = self
+//             .respond
+//             .try_send(Err(crate::MelnetError::InternalServerError));
+//     }
+// }
 
 impl<Req: DeserializeOwned, Resp: Serialize> Request<Req, Resp> {
     /// Respond to a Request
     pub fn respond(self, resp: crate::Result<Resp>) {
         let _ = self.respond.try_send(resp);
+    }
+
+    /// Hijacks a Request. This returns the underlying TCP connection.
+    pub fn hijack(self) -> TcpStream {
+        self.hijackable
     }
 }

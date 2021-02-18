@@ -148,7 +148,7 @@ impl NetState {
             let mut verbs = self.verbs.lock();
             let responder = verbs.get_mut(&cmd.verb);
             if let Some(responder) = responder {
-                Some((responder.0)(&cmd.payload))
+                Some((responder.0)(&cmd.payload, conn.clone()))
             } else {
                 None
             }
