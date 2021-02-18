@@ -4,73 +4,80 @@ use rstest::*;
 use crate::{Block, CoinData, CoinDataHeight, CoinID, DENOM_TMEL, melvm, MICRO_CONVERTER, SmtMapping, State, Transaction, TxKind, DENOM_NEWCOIN};
 use crate::testing::fixtures::{genesis_state, tx_send_mel_from_seed_coin, SEND_MEL_AMOUNT};
 use crate::testing::factory::*;
-use crate::testing::utils::{random_valid_txx, fee_estimate, tx_create_token};
+use crate::testing::utils::{random_valid_txx, fee_estimate, tx_create_token, filter_tx_outputs_by_pk, tx_deposit};
 use tmelcrypt::{Ed25519PK, Ed25519SK};
 use std::hash::Hash;
 
+// Add fuzz params ranges for rstest (range of num swaps, diff liquidity, etc...)
 #[rstest]
 fn test_melswap_v2_simple(
     genesis_state: State,
     tx_send_mel_from_seed_coin: ((Ed25519PK, Ed25519SK), Transaction)
 ) {
     // Seal genesis state
-    let sealed_state = genesis_state.seal(None);
+    let sealed_genesis_state = genesis_state.seal(None);
 
-    // Create a signed tx that funds liquidity provider account with mel
+    // Fund liq provider with mel
     let (keypair_liq_provider, tx_fund_liq_provider) = tx_send_mel_from_seed_coin;
 
-    // verify liquidity provider receiver coin with expected value and correct index
-    // TODO: maybe this verification should be a helper function to extract the coin id index...
-    // It will likely be used in other tests to simplify. Move it to utils...
-    // Ie. Given pk & outputs of a tx, return a HashMap or the like of idx -> CoinData
-    let covenant_hash_fund_liq_provider = melvm::Covenant::std_ed25519_pk(keypair_liq_provider.0).hash();
-    let outputs: Vec<(usize, &CoinData)> = tx_fund_liq_provider.outputs.iter().filter(|&cd| cd.clone().covhash == covenant_hash_fund_liq_provider).enumerate().map(|e| e).collect();
+    // Get coin data for liq prov
+    let outputs = filter_tx_outputs_by_pk(&keypair_liq_provider.0, &tx_fund_liq_provider.outputs);
     let idx = outputs.first().unwrap().clone().0;
+
+    // Verify correct amount was issued
     assert_eq!(idx, 0);
     let coin_data = outputs.first().unwrap().clone().1.clone();
     assert_eq!(coin_data.value, SEND_MEL_AMOUNT);
+    let mel_amount = coin_data.value;
 
-    // liquidity provider creates a new token in a tx from a coin id and a fixed token supply
-    let coin_id = CoinIDFactory::new().build(|cid| {
-        cid.index = idx as u8;
-        cid.txhash = tx_fund_liq_provider.hash_nosigs(); // TODO: do we use no sigs or sigs?
-    });
-    let token_supply = 1_000_000;
-    // let tx_liq_prov_create_token = tx_create_token(&liquidity_keypair, &coin_id, token_supply);
-    //
-    // let mut initial_deposit_state = sealed_state.next_state();
-    // initial_deposit_state.apply_tx(&tx_fund_liq_provider);
-    //
-    // // Liquidity provider deposits mel/token pair
-    // // We use a 2:1 mel to token ratio on first deposit
-    // let liq_prov_mel_deposit_amount = 2_000_000;
-    // assert!( coin_data.value > liq_prov_mel_deposit_amount);
-    //
-    // let tx_liq_prov_deposit = tx_deposit(&liquidity_keypair, token_cov_hash, token_supply, mel_supply);
-    // initial_deposit_state.apply_tx(tx_liq_prov_deposit);
-    //
-    // // Seal the state for first deposit start swapping for a set number of blocks
-    // let sealed_state = initial_deposit_state.seal(None);
+    // liquidity provider creates a tx for a new token
+    let token_amount = 1_000_000_000;
+    let coin_id = tx_fund_liq_provider.get_coinid(idx);
+    let tx_liq_prov_create_token = tx_create_token(&keypair_liq_provider, &coin_id, coin_data.value, token_amount);
 
-    // Create buyer and seller keypairs and fund them with mel and token
+    // We add that create token tx to the state
+    let mut first_deposit_state = sealed_genesis_state.next_state();
+    first_deposit_state.apply_tx(&tx_liq_prov_create_token);
+
+    // Liquidity provider deposits mel/token pair
+    // We use a 2:1 mel to token ratio on first deposit
+    let mel_dep_amount = 2_000_000;
+
+    // Check we are depositing l.t.e. to the amount of mel that liq provider has
+    assert!( mel_amount >= mel_dep_amount);
+
+    let tx_liq_prov_deposit = tx_deposit(&keypair_liq_provider, tx_liq_prov_create_token, token_amount, mel_dep_amount);
+    first_deposit_state.apply_tx(&tx_liq_prov_deposit);
+
+    // Seal the state for first deposit start swapping for a set number of blocks
+    let sealed_state = initial_deposit_state.seal(None);
+    //
+    // // Create buyer and seller keypairs and fund them with mels and tokens
+    // let keypair_mel_buyer = tmelcrypt::ed25519_keygen();
+    // let keypair_mel_seller = tmelcrypt::ed25519_keygen();
+    //
+    // let (keypair_buyer, tx_fund_buyer) = tx_send_mels_to(keypair_liq_provider, keypair_mel_buyer, mel_amount);
+    // let (keypair_buyer, tx_fund_buyer) = tx_send_mels_to(keypair_liq_provider, keypair_mel_buyer, mel_amount);
+    //
+    // let (keypair_liq_provider, tx_fund_liq_provider) = tx_send_tokens_from(keypair_liq_provider, token_amount);
+    //
     // let (keypair_liq_provider, tx_fund_liq_provider) = tx_send_mel_from(keypair_liq_provider, mel_amount, token_amount);
-    // let (keypair_liq_provider, tx_fund_liq_provider) = tx_send_mel_from(keypair_liq_provider, mel_amount, token_amount);
+    // //
+    // let num_swapping_blocks = 100;
     //
-    let num_swapping_blocks = 100;
-
-    for _ in 0..num_swapping_blocks {
-        // let swapping_state = sealed_state.next_state();
-
-        // Create a mel buy swap tx with random amounts
-
-        // create a mel sull swap tx with random amounts
-
-        // apply tx
-
-        // seal block
-
-        // check liq_constant is expected
-    }
+    // for _ in 0..num_swapping_blocks {
+    //     // let swapping_state = sealed_state.next_state();
+    //
+    //     // Create a mel buy swap tx with random amounts
+    //
+    //     // create a mel sull swap tx with random amounts
+    //
+    //     // apply tx
+    //
+    //     // seal block
+    //
+    //     // check liq_constant is expected
+    // }
 
     // deposit more mel/tokens
 
@@ -79,7 +86,6 @@ fn test_melswap_v2_simple(
     // withdraw mel/tokens
 
     // swap for another O states which chekcing liq constant and price are correct
-
 
     // // deposit mel/token keypair into pool
     // // Create liquidity deposit tx from coin data
