@@ -1,8 +1,9 @@
 use std::collections::BinaryHeap;
 
 use crate::{CoinData, CoinID, DENOM_TMEL, melvm, Transaction, TxKind, DENOM_NEWCOIN};
-use crate::testing::factory::{TransactionFactory, CoinDataFactory};
+use crate::testing::factory::{TransactionFactory, CoinDataFactory, CoinIDFactory};
 use tmelcrypt::{Ed25519PK, Ed25519SK};
+use crate::testing::fixtures::SEND_MEL_AMOUNT;
 
 pub fn random_valid_txx(
     rng: &mut impl rand::Rng,
@@ -140,10 +141,48 @@ pub fn tx_deposit(
 }
 
 // Filter tx outputs by PK
-// TODO: convert this to hash map
+// TODO: convert this to hash map?
 pub fn filter_tx_outputs_by_pk(pk: &Ed25519PK, outputs: &Vec<CoinData>) -> Vec<(u8, CoinData)> {
     let cov_hash = melvm::Covenant::std_ed25519_pk(pk.clone()).hash();
     let outputs: Vec<(u8, CoinData)> = outputs
         .iter().filter(|&cd| cd.clone().covhash == cov_hash).enumerate().map(|e| (e.0 as u8, e.1.clone())).collect();
     outputs
 }
+
+pub fn tx_send_mels_to(keypair_sender: &(Ed25519PK, Ed25519SK), coin_id_sender: CoinID, receiver_pk: Ed25519PK, total_mel_balance: u128, mel_send_amount: u128) -> Transaction {
+    let fee = fee_estimate();
+
+    let cd_factory = CoinDataFactory::new();
+    let cd1 = cd_factory.build(|cd| {
+        let pk = keypair_sender.clone().0;
+        let covhash = melvm::Covenant::std_ed25519_pk(pk).hash();
+        cd.covhash = covhash;
+        cd.value = total_mel_balance - fee;
+        cd.denom = DENOM_TMEL.into();
+    });
+    let cd2 = cd_factory.build(|cd| {
+        let pk = keypair_sender.clone().0;
+        let covhash = melvm::Covenant::std_ed25519_pk(pk).hash();
+        cd.covhash = covhash;
+        cd.value = mel_send_amount;
+        cd.denom = DENOM_TMEL.into();
+    });
+
+    let tx = TransactionFactory::new().build(|tx| {
+        tx.inputs = vec![coin_id_sender];
+        tx.outputs = vec![cd1, cd2];
+        tx.fee = fee;
+    });
+
+    tx.sign_ed25519(keypair_sender.1)
+}
+
+pub fn create_mel_buy_tx(pk: &Ed)
+
+pub fn send_mels_to(
+    signer: &(Ed25519PK, Ed25519SK),
+    &(Ed25519PK, Ed25519SK: );
+
+signer_keypair,
+
+tx_send_mels_to(keypair_liq_provider, keypair_mel_buyer, mel_amount);
