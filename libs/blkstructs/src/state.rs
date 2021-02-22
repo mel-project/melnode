@@ -65,7 +65,6 @@ pub struct GenesisConfig {
 }
 
 /// World state of the Themelio blockchain
-#[non_exhaustive]
 #[derive(Clone, Debug)]
 pub struct State {
     pub height: u64,
