@@ -69,15 +69,21 @@ fn test_melswap_v2_simple(
 
     // Go to next state
     let mut swapping_state = sealed_state.next_state();
+    swapping_state.apply_tx(tx_fund_buyer);
+    swapping_state.apply_tx(tx_fund_seller);
+
+    let sealed_state = swapping_state.seal(None);
+    let mut swapping_state = sealed_state.next_state();
 
     // let expected_liq_constant = mel_dep_amount.mul(token_amount);
 
     for _ in 0..num_swapping_blocks {
         // Do random buy and sell swaps
-        let mel_buy_tx = create_mel_buy_tx();
+        let amt = 10;
+        let mel_buy_tx = create_mel_buy_tx(keypair_buyer, amt);
         swapping_state.apply_tx(&mel_buy_tx);
 
-        let mel_sell_tx = create_mel_sell_tx();
+        let mel_sell_tx = create_mel_sell_tx(keypair_seller, amt);
         swapping_state.apply_tx(&mel_sell_tx);
 
         // seal block
@@ -89,21 +95,21 @@ fn test_melswap_v2_simple(
             dbg!(pool);
         }
 
-        // // check liq_constant is expected (key is token denom)
+        // check liq_constant is expected (key is token denom)
         let pool_state = swapping_state.pools.get(key).0.unwrap();
         let actual_liq_constant = pool_state.liq_constant();
+        let expected_liq_constant = 1000000;
         assert_eq!(expected_liq_constant, actual_liq_constant);
     }
 
-    // // TODO: finish the rest of this (add more deposit) flow in next PR...
-    // // The goal is to  enrich the flow into real use cases
-    // // deposit more mel/tokens
+    // The goal is to  enrich the flow into real use cases
+    // deposit more mel/tokens
     //
-    // // swap for another M states
+    // swap for another M states
     //
-    // // withdraw mel/tokens
+    // withdraw some of the liquidity from mel/tokens pair
     //
-    // // swap for another O states which chekcing liq constant and price are correct
+    // swap for another O states which chekcing liq constant and price are correct
 }
 
 #[test]

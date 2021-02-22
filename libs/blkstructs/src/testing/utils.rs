@@ -2,7 +2,7 @@ use std::collections::BinaryHeap;
 
 use crate::{CoinData, CoinID, DENOM_TMEL, melvm, Transaction, TxKind, DENOM_NEWCOIN};
 use crate::testing::factory::{TransactionFactory, CoinDataFactory, CoinIDFactory};
-use tmelcrypt::{Ed25519PK, Ed25519SK};
+use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 use crate::testing::fixtures::SEND_MEL_AMOUNT;
 
 pub fn random_valid_txx(
@@ -136,6 +136,7 @@ pub fn tx_deposit(
                 denom: token_create_tx.hash_nosigs().to_vec(),
             },
         ];
+        tx.fee = fee;
     });
     tx.sign_ed25519(keypair.1)
 }
@@ -154,15 +155,13 @@ pub fn tx_send_mels_to(keypair_sender: &(Ed25519PK, Ed25519SK), coin_id_sender: 
 
     let cd_factory = CoinDataFactory::new();
     let cd1 = cd_factory.build(|cd| {
-        let pk = keypair_sender.clone().0;
-        let covhash = melvm::Covenant::std_ed25519_pk(pk).hash();
+        let covhash = melvm::Covenant::std_ed25519_pk(receiver_pk).hash();
         cd.covhash = covhash;
         cd.value = total_mel_balance - fee;
         cd.denom = DENOM_TMEL.into();
     });
     let cd2 = cd_factory.build(|cd| {
-        let pk = keypair_sender.clone().0;
-        let covhash = melvm::Covenant::std_ed25519_pk(pk).hash();
+        let covhash = melvm::Covenant::std_ed25519_pk(receiver_pk).hash();
         cd.covhash = covhash;
         cd.value = mel_send_amount;
         cd.denom = DENOM_TMEL.into();
@@ -177,12 +176,61 @@ pub fn tx_send_mels_to(keypair_sender: &(Ed25519PK, Ed25519SK), coin_id_sender: 
     tx.sign_ed25519(keypair_sender.1)
 }
 
-pub fn create_mel_buy_tx(pk: &Ed)
+pub fn create_mel_buy_tx(keypair_sender: &(Ed25519PK, Ed25519SK), coin_id_sender: CoinID, token_create_tx_hash: HashVal, mel_buy_amount: u128, token_sell_amount: u128) -> Transaction {
+    let fee = fee_estimate();
 
-pub fn send_mels_to(
-    signer: &(Ed25519PK, Ed25519SK),
-    &(Ed25519PK, Ed25519SK: );
+    let cd_factory = CoinDataFactory::new();
+    let receiver_pk = keypair_sender.0;
+    let cd1 = cd_factory.build(|cd| {
+        let covhash = melvm::Covenant::std_ed25519_pk(receiver_pk).hash();
+        cd.covhash = covhash;
+        cd.value = token_sell_amount;
+        cd.denom = token_create_tx_hash.to_vec();
+    });
+    let cd2 = cd_factory.build(|cd| {
+        let pk = keypair_sender.clone().0;
+        let covhash = melvm::Covenant::std_ed25519_pk(receiver_pk).hash();
+        cd.covhash = covhash;
+        cd.value = mel_buy_amount;
+        cd.denom = DENOM_TMEL.into();
+    });
 
-signer_keypair,
+    let tx = TransactionFactory::new().build(|tx| {
+        tx.kind = TxKind::Swap;
+        tx.inputs = vec![coin_id_sender];
+        tx.outputs = vec![cd1, cd2];
+        tx.fee = fee;
+    });
 
-tx_send_mels_to(keypair_liq_provider, keypair_mel_buyer, mel_amount);
+    tx.sign_ed25519(keypair_sender.1)
+}
+
+pub fn create_mel_sell_tx(keypair_sender: &(Ed25519PK, Ed25519SK), coin_id_sender: CoinID, token_create_tx_hash: HashVal, mel_sell_amount: u128, token_buy_amount: u128) -> Transaction {
+    let fee = fee_estimate();
+
+    let cd_factory = CoinDataFactory::new();
+    let receiver_pk = keypair_sender.0;
+    let cd1 = cd_factory.build(|cd| {
+        let pk = keypair_sender.clone().0;
+        let covhash = melvm::Covenant::std_ed25519_pk(receiver_pk).hash();
+        cd.covhash = covhash;
+        cd.value = mel_sell_amount;
+        cd.denom = DENOM_TMEL.into();
+    });
+
+    let cd2 = cd_factory.build(|cd| {
+        let covhash = melvm::Covenant::std_ed25519_pk(receiver_pk).hash();
+        cd.covhash = covhash;
+        cd.value = token_buy_amount;
+        cd.denom = token_create_tx_hash.to_vec();
+    });
+
+    let tx = TransactionFactory::new().build(|tx| {
+        tx.kind = TxKind::Swap;
+        tx.inputs = vec![coin_id_sender];
+        tx.outputs = vec![cd1, cd2];
+        tx.fee = fee;
+    });
+
+    tx.sign_ed25519(keypair_sender.1)
+}
