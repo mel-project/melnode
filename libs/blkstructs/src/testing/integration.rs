@@ -4,7 +4,7 @@ use rstest::*;
 use crate::{Block, CoinData, CoinDataHeight, CoinID, DENOM_TMEL, melvm, MICRO_CONVERTER, SmtMapping, State, Transaction, TxKind, DENOM_NEWCOIN};
 use crate::testing::fixtures::{genesis_state, tx_send_mel_from_seed_coin, SEND_MEL_AMOUNT};
 use crate::testing::factory::*;
-use crate::testing::utils::{random_valid_txx, fee_estimate, tx_create_token, filter_tx_outputs_by_pk, tx_deposit, tx_send_mels_to};
+use crate::testing::utils::{random_valid_txx, fee_estimate, tx_create_token, filter_tx_outputs_by_pk, tx_deposit, tx_send_mels_to, create_mel_buy_tx, create_mel_sell_tx};
 use tmelcrypt::{Ed25519PK, Ed25519SK};
 use std::hash::Hash;
 use std::mem::swap;
@@ -59,18 +59,18 @@ fn test_melswap_v2_simple(
     let keypair_mel_buyer = tmelcrypt::ed25519_keygen();
     let keypair_mel_seller = tmelcrypt::ed25519_keygen();
 
-    let (keypair_buyer, tx_fund_buyer) = tx_send_mels_to(&keypair_liq_provider, cid, keypair_mel_buyer.0, mel_amount, SEND_MEL_AMOUNT);
+    let tx_fund_buyer = tx_send_mels_to(&keypair_liq_provider, cid, keypair_mel_buyer.0, mel_amount, SEND_MEL_AMOUNT);
 
     // get cid from prior tx
 
-    let (keypair_seller, tx_fund_seller) = tx_send_mels_to(&keypair_liq_provider, cid, keypair_mel_buyer.0, mel_amount, SEND_MEL_AMOUNT);
+    let tx_fund_seller = tx_send_mels_to(&keypair_liq_provider, cid, keypair_mel_buyer.0, mel_amount, SEND_MEL_AMOUNT);
 
-    let num_swapping_blocks = 100;
+    let num_swapping_blocks = 1;
 
     // Go to next state
     let mut swapping_state = sealed_state.next_state();
-    swapping_state.apply_tx(tx_fund_buyer);
-    swapping_state.apply_tx(tx_fund_seller);
+    swapping_state.apply_tx(&tx_fund_buyer);
+    swapping_state.apply_tx(&tx_fund_seller);
 
     let sealed_state = swapping_state.seal(None);
     let mut swapping_state = sealed_state.next_state();
@@ -79,12 +79,14 @@ fn test_melswap_v2_simple(
 
     for _ in 0..num_swapping_blocks {
         // Do random buy and sell swaps
-        let amt = 10;
-        let mel_buy_tx = create_mel_buy_tx(keypair_buyer, amt);
+        let buy_amt = 10;
+        let sell_amt = 20;
+        let coin_id = tx_fund_buyer.get_coinid(0);
+        let mel_buy_tx = create_mel_buy_tx(keypair_buyer, coin_id, tx_liq_prov_create_token.hash_nosigs(), buy_amt, sell_amt);
         swapping_state.apply_tx(&mel_buy_tx);
 
-        let mel_sell_tx = create_mel_sell_tx(keypair_seller, amt);
-        swapping_state.apply_tx(&mel_sell_tx);
+        // let mel_sell_tx = create_mel_sell_tx(keypair_seller, amt);
+        // swapping_state.apply_tx(&mel_sell_tx);
 
         // seal block
         let sealed_state = swapping_state.seal(None);
