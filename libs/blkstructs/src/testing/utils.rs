@@ -117,6 +117,7 @@ pub fn tx_deposit(
     token_amount: u128,
     mel_amount: u128,
 ) -> Transaction {
+    let fee = fee_estimate();
     let factory = TransactionFactory::new();
     let (pk, _sk) = keypair;
     let cov_hash = melvm::Covenant::std_ed25519_pk(pk.clone()).hash();
@@ -169,7 +170,7 @@ pub fn tx_send_mels_to(keypair_sender: &(Ed25519PK, Ed25519SK), coin_id_sender: 
 
     let tx = TransactionFactory::new().build(|tx| {
         tx.inputs = vec![coin_id_sender];
-        tx.outputs = vec![cd1, cd2];
+        tx.outputs = vec![cd1.clone(), cd2.clone()];
         tx.fee = fee;
     });
 
@@ -198,7 +199,7 @@ pub fn create_mel_buy_tx(keypair_sender: &(Ed25519PK, Ed25519SK), coin_id_sender
     let tx = TransactionFactory::new().build(|tx| {
         tx.kind = TxKind::Swap;
         tx.inputs = vec![coin_id_sender];
-        tx.outputs = vec![cd1, cd2];
+        tx.outputs = vec![cd1.clone(), cd2.clone()];
         tx.fee = fee;
     });
 
@@ -228,7 +229,7 @@ pub fn create_mel_sell_tx(keypair_sender: &(Ed25519PK, Ed25519SK), coin_id_sende
     let tx = TransactionFactory::new().build(|tx| {
         tx.kind = TxKind::Swap;
         tx.inputs = vec![coin_id_sender];
-        tx.outputs = vec![cd1, cd2];
+        tx.outputs = vec![cd1.clone(), cd2.clone()];
         tx.fee = fee;
     });
 
