@@ -57,7 +57,7 @@ fn test_melswap_v2_simple(
     // Create buyer and seller keypairs and fund them with mels (to pay fees)
     // The buyer should buy buying mels and the seller should be selling mels only tokens
     let keypair_mel_buyer = tmelcrypt::ed25519_keygen();
-    let keypair_mel_seller = tmelcrypt::ed25519_keygen();
+    let _keypair_mel_seller = tmelcrypt::ed25519_keygen();
 
     let coin_id = tx_liq_prov_create_token.get_coinid(1);
     let tx_fund_buyer = tx_send_mels_to(&keypair_liq_provider, coin_id, keypair_mel_buyer.0, mel_amount, SEND_MEL_AMOUNT);
@@ -69,16 +69,18 @@ fn test_melswap_v2_simple(
     let num_swapping_blocks = 1;
 
     // Go to next state
-    let mut swapping_state = sealed_state.next_state();
-    swapping_state.apply_tx(&tx_fund_buyer);
-    swapping_state.apply_tx(&tx_fund_seller);
+    let mut pre_swap_state = sealed_state.next_state();
+    pre_swap_state.apply_tx(&tx_fund_buyer);
+    pre_swap_state.apply_tx(&tx_fund_seller);
 
-    let sealed_state = swapping_state.seal(None);
+    let sealed_state = pre_swap_state.seal(None);
+
     let mut swapping_state = sealed_state.next_state();
 
     // let expected_liq_constant = mel_dep_amount.mul(token_amount);
 
     for _ in 0..num_swapping_blocks {
+
         // Do random buy and sell swaps
         let buy_amt = 10;
         let sell_amt = 20;
@@ -91,20 +93,25 @@ fn test_melswap_v2_simple(
 
         // seal block
         let sealed_state = swapping_state.seal(None);
+
         swapping_state = sealed_state.next_state();
 
         // Manually examine pool contents
         for pool in sealed_state.inner_ref().pools.val_iter() {
             dbg!(pool);
         }
-
-        println!("hi");
-        // check liq_constant is expected (key is token denom)
-        // let pool_state = swapping_state.pools.get(key).0.unwrap();
         // let actual_liq_constant = pool_state.liq_constant();
         // let expected_liq_constant = 1000000;
         // assert_eq!(expected_liq_constant, actual_liq_constant);
     }
+
+    println!("hi");
+    // check liq_constant is expected (key is token denom)
+    let key = tx_liq_prov_create_token.hash_nosigs().to_vec();
+    let key2 = DENOM_NEWCOIN.to_vec();
+    let (pool_state, _proof) = swapping_state.pools.get(&key);
+    let (pool_state_2, _proof_2) = swapping_state.pools.get(&key2);
+    println!("HI");
 
     // The goal is to  enrich the flow into real use cases
     // deposit more mel/tokens
