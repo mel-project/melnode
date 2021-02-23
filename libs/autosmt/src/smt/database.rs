@@ -217,6 +217,7 @@ impl Tree {
     }
 
     /// Sets a binding, obtaining a new tree.
+    #[must_use]
     pub fn set(&self, key: tmelcrypt::HashVal, val: &[u8]) -> Tree {
         let _guard = self.dbm.gc_lock.read();
         let dbn = self

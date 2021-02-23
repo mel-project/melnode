@@ -120,13 +120,32 @@ impl FullProof {
         val: &[u8],
     ) -> Option<bool> {
         assert_eq!(self.0.len(), 256);
-        if self.verify_pure(root, key, val) {
-            Some(true)
-        } else if self.verify_pure(root, key, &[]) {
+        if self.verify_pure(root, key, &[]) {
             Some(false)
+        } else if self.verify_pure(root, key, val) {
+            Some(true)
         } else {
             None
         }
+    }
+
+    /// Convenience function that returns whether or not the merkle branch is a correct proof of in/exclusion for a particular key-value binding.
+    pub fn verify_unhashed(
+        &self,
+        root: tmelcrypt::HashVal,
+        key: &impl Serialize,
+        val: Option<&impl Serialize>,
+    ) -> bool {
+        let key = tmelcrypt::hash_single(&stdcode::serialize(&key).unwrap());
+        if let Some(val) = val {
+            let val = stdcode::serialize(val).unwrap();
+            if let Some(true) = self.verify(root, key, &val) {
+                return true;
+            }
+        } else if let Some(false) = self.verify(root, key, b"") {
+            return true;
+        }
+        false
     }
 
     fn verify_pure(&self, root: tmelcrypt::HashVal, key: tmelcrypt::HashVal, val: &[u8]) -> bool {

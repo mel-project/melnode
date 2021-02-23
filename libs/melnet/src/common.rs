@@ -16,7 +16,7 @@ pub enum MelnetError {
     #[error("network error: `{0}`")]
     Network(std::io::Error),
 }
-
+    
 pub const PROTO_VER: u8 = 1;
 pub const MAX_MSG_SIZE: u32 = 10 * 1024 * 1024;
 

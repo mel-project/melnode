@@ -62,7 +62,6 @@ impl NetClient {
         Ok(hdr)
     }
 
-    // translate the master client to current system (be in protocols folder)
     /// Get and verify a specific coin.
     pub async fn get_coin(
         &self,
@@ -109,11 +108,6 @@ impl NetClient {
             .1
             .decompress()
             .ok_or_else(|| anyhow::anyhow!("invalid compressed proof"))?;
-        // proof.verify(
-        //     _header.coins_hash,
-        //     tmelcrypt::hash_single(&bincode::serialize(value)),
-        //     val,
-        // )
         // log::warn!("not verifying merkle tree branch");
         Ok((res.0, proof))
     }

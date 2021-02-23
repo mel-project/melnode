@@ -1,6 +1,7 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use blkstructs::{CoinDataHeight, CoinID, ConsensusProof, Header, Transaction};
+use fastsync::send_fastsync;
 use melnet::MelnetError;
 use smol::channel::{Receiver, Sender};
 use tmelcrypt::HashVal;
@@ -8,6 +9,8 @@ use tmelcrypt::HashVal;
 use crate::services::storage::SharedStorage;
 
 use super::blksync::{self, AbbreviatedBlock};
+
+mod fastsync;
 
 /// This encapsulates the node peer-to-peer for both auditors and stakers..
 pub struct NodeProtocol {
@@ -88,6 +91,11 @@ impl NodeProtocol {
                 let resp = rr.resp_get_txx(req.body.clone());
                 req.respond(resp)
             }),
+        );
+        let rr = responder.clone();
+        network.register_verb(
+            "stream_fastsync",
+            melnet::anon_responder(move |req: melnet::Request<u64, _>| rr.stream_fastsync(req)),
         );
         let net2 = network.clone();
         let _network_task = smolscale::spawn(async move {
@@ -259,6 +267,18 @@ impl AuditorResponder {
             transactions.push(tx);
         }
         Ok(transactions)
+    }
+
+    /// fastsync stream
+    fn stream_fastsync(&self, req: melnet::Request<u64, ()>) {
+        let state = self.storage.read().get_history(req.body).cloned();
+        if let Some(state) = state {
+            let state = state.inner().clone();
+            let conn = req.hijack();
+            smolscale::spawn(send_fastsync(state, conn)).detach();
+        } else {
+            req.respond(Err(MelnetError::Custom("no such block height".into())))
+        }
     }
 }
 

@@ -15,6 +15,7 @@ pub use state::melmint::*;
 mod transaction;
 pub use constants::*;
 mod smtmapping;
+pub use fastsync::*;
 pub use smtmapping::*;
 pub use state::*;
 pub use transaction::*;

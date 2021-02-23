@@ -284,6 +284,11 @@ pub fn reward_coin_pseudoid(height: u64) -> CoinID {
 pub struct SealedState(Arc<State>, Option<ProposerAction>);
 
 impl SealedState {
+    /// Forcibly creates a SealedState.
+    pub(crate) fn force_new(state: State) -> Self {
+        Self(Arc::new(state), None)
+    }
+
     /// Returns a reference to the State finalized within.
     pub fn inner_ref(&self) -> &State {
         &self.0

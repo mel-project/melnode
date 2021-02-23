@@ -34,38 +34,48 @@ impl FastSyncDecoder {
     }
 
     /// Decodes one chunk. Returns Ok(Some(State)) when the decoding process is done, Ok(None) when it is not, and Err(_) when decoding failed.
-    pub fn process_chunk(&mut self, chunk: Chunk) -> anyhow::Result<Option<State>> {
+    pub fn process_chunk(&mut self, chunk: Chunk) -> anyhow::Result<Option<SealedState>> {
         if self.partial_history.root_hash() != self.header.history_hash {
+            eprintln!("process history");
             process_tree_chunk(self.header.history_hash, &mut self.partial_history, chunk)?;
         } else if self.partial_coins.root_hash() != self.header.coins_hash {
+            eprintln!("process coins");
             process_tree_chunk(self.header.coins_hash, &mut self.partial_coins, chunk)?;
         } else if self.partial_transactions.root_hash() != self.header.transactions_hash {
+            eprintln!("process transactions");
             process_tree_chunk(
                 self.header.transactions_hash,
                 &mut self.partial_transactions,
                 chunk,
             )?;
         } else if self.partial_pools.root_hash() != self.header.pools_hash {
+            eprintln!("process pools");
             process_tree_chunk(self.header.pools_hash, &mut self.partial_pools, chunk)?;
-        } else {
-            if self.partial_stakes.root_hash() != self.header.stake_doc_hash {
-                process_tree_chunk(self.header.stake_doc_hash, &mut self.partial_stakes, chunk)?;
-            }
-            if self.partial_stakes.root_hash() == self.header.stake_doc_hash {
-                return Ok(Some(State {
-                    height: self.header.height,
-                    history: SmtMapping::new(self.partial_history.clone()),
-                    coins: SmtMapping::new(self.partial_coins.clone()),
-                    transactions: SmtMapping::new(self.partial_transactions.clone()),
-                    fee_pool: self.header.fee_pool,
-                    fee_multiplier: self.header.fee_multiplier,
-                    tips: 0,
-                    dosc_speed: self.header.dosc_speed,
-                    pools: SmtMapping::new(self.partial_pools.clone()),
-                    stakes: SmtMapping::new(self.partial_stakes.clone()),
-                }));
-            }
+        } else if self.partial_stakes.root_hash() != self.header.stake_doc_hash {
+            eprintln!("process stakes");
+            process_tree_chunk(self.header.stake_doc_hash, &mut self.partial_stakes, chunk)?;
         }
+
+        if (self.partial_history.root_hash()) == (self.header.history_hash)
+            && (self.partial_coins.root_hash()) == (self.header.coins_hash)
+            && (self.partial_transactions.root_hash()) == (self.header.transactions_hash)
+            && (self.partial_pools.root_hash()) == (self.header.pools_hash)
+            && (self.partial_stakes.root_hash()) == (self.header.stake_doc_hash)
+        {
+            return Ok(Some(SealedState::force_new(State {
+                height: self.header.height,
+                history: SmtMapping::new(self.partial_history.clone()),
+                coins: SmtMapping::new(self.partial_coins.clone()),
+                transactions: SmtMapping::new(self.partial_transactions.clone()),
+                fee_pool: self.header.fee_pool,
+                fee_multiplier: self.header.fee_multiplier,
+                tips: 0,
+                dosc_speed: self.header.dosc_speed,
+                pools: SmtMapping::new(self.partial_pools.clone()),
+                stakes: SmtMapping::new(self.partial_stakes.clone()),
+            })));
+        }
+
         Ok(None)
     }
 }
@@ -86,7 +96,7 @@ fn process_tree_chunk(
     if !is_inclusion {
         anyhow::bail!("not a proof of inclusion");
     }
-    tree.set(chunk.key_hash, &chunk.data);
+    *tree = tree.set(chunk.key_hash, &chunk.data);
     Ok(())
 }
 
@@ -157,4 +167,26 @@ pub struct Chunk {
     key_hash: HashVal,
     data: Vec<u8>,
     proof: CompressedProof,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::State;
+    use autosmt::DBManager;
+
+    #[test]
+    fn empty_state() {
+        let dbm = DBManager::load(autosmt::MemDB::default());
+        let state = State::new_empty(dbm.clone()).seal(None);
+        let mut decoder = FastSyncDecoder::new(state.header(), dbm);
+        let encoder = FastSyncEncoder::new(state.clone());
+        for chunk in encoder {
+            if let Some(res) = decoder.process_chunk(chunk).unwrap() {
+                assert_eq!(res.header(), state.header());
+                return;
+            }
+        }
+        panic!("did not recover a state from the fastsync")
+    }
 }
