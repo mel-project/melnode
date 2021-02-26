@@ -381,7 +381,9 @@ impl Executor {
                 let idx = idx.as_u16()? as usize;
                 match vec {
                     Value::Bytes(bts) => Some(Value::Int(U256::from(*bts.get(idx)?))),
-                    Value::Vector(elems) => Some(elems.get(idx)?.clone()),
+                    Value::Vector(elems) => {
+                        Some(elems.get(idx).unwrap().clone().as_ref().clone()) // Previously: Some(elems.get(idx)?.clone()),
+                    },
                     _ => None,
                 }
             })?,
@@ -414,7 +416,7 @@ impl Executor {
             OpCode::BEMPTY => self.stack.push(Value::Bytes(im::Vector::new())),
             OpCode::VPUSH => self.do_binop(|vec, val| match vec {
                 Value::Vector(mut vec) => {
-                    vec.push_back(val);
+                    vec.push_back(Box::new(val));
                     Some(Value::Vector(vec))
                 }
                 Value::Bytes(mut vec) => {
@@ -580,7 +582,7 @@ impl OpCode {
 pub enum Value {
     Int(U256),
     Bytes(im::Vector<u8>),
-    Vector(im::Vector<Value>),
+    Vector(im::Vector<Box<Value>>),
 }
 
 impl Value {
@@ -650,7 +652,8 @@ impl Value {
                 } else {
                     let vec: Option<im::Vector<Self>> =
                         vec.into_iter().map(Self::from_serde_json).collect();
-                    Some(Self::Vector(vec?))
+                    Some(Self::Vector(vec.unwrap().iter().map(|e| Box::new(e.clone())).collect()))
+                    // Some(Self::Vector(vec.unwrap().clone()))
                 }
             }
             serde_json::Value::Object(obj) => {
@@ -658,7 +661,7 @@ impl Value {
                 for (_, v) in obj {
                     vec.push_back(Self::from_serde_json(v)?)
                 }
-                Some(Self::Vector(vec))
+                Some(Self::Vector(vec.iter().map(|e| Box::new(e.clone())).collect()))
             }
         }
     }

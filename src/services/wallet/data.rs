@@ -13,11 +13,6 @@ pub struct WalletData {
 }
 
 impl WalletData {
-    /// Coins
-    pub fn unspent_coins(&self) -> im::HashMap<CoinID, CoinDataHeight> {
-        self.unspent_coins.clone()
-    }
-
     /// Create a new data.
     pub fn new(my_script: melvm::Covenant) -> Self {
         WalletData {
@@ -26,6 +21,16 @@ impl WalletData {
             tx_in_progress: im::HashMap::new(),
             my_script,
         }
+    }
+
+    /// Unspent Coins
+    pub fn unspent_coins(&self) -> im::HashMap<CoinID, CoinDataHeight> {
+        self.unspent_coins.clone()
+    }
+
+    /// Spent Coins
+    pub fn spent_coins(&self) -> im::HashMap<CoinID, CoinDataHeight> {
+        self.spent_coins.clone()
     }
 
     /// Generates wallet data from script based on keypair
@@ -45,7 +50,7 @@ impl WalletData {
     }
 
     /// Creates an **unsigned** transaction out of the coins in the data. Does not spend it yet.
-    pub fn pre_spend(&self, outputs: Vec<CoinData>) -> anyhow::Result<Transaction> {
+    pub fn pre_spend(&self, outputs: Vec<CoinData>, fee_multiplier: u128) -> anyhow::Result<Transaction> {
         // find coins that might match
         let mut txn = Transaction {
             kind: TxKind::Normal,
@@ -56,6 +61,8 @@ impl WalletData {
             data: vec![],
             sigs: vec![],
         };
+        txn.fee = fee_multiplier.saturating_mul(txn.weight(1000));
+
         let output_sum = txn.total_outputs();
         let mut input_sum: collections::HashMap<Vec<u8>, u128> = collections::HashMap::new();
         for (coin, data) in self.unspent_coins.iter() {

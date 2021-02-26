@@ -22,7 +22,7 @@ impl AvailableWallets {
         let existing_wallet = wallet::read_by_name(&self.conn, &wallet_name);
         if existing_wallet.is_ok() {
             return true;
-        };
+        }
 
         // Serialize wallet into encoded data and store it into db
         let encoded_data = stdcode::serialize(&wallet_data).unwrap();

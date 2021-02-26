@@ -1,7 +1,7 @@
 use std::{convert::TryInto, net::SocketAddr, time::Instant};
 
 use crate::protocols::NetClient;
-use blkstructs::{CoinData, CoinDataHeight, CoinID, Header, Transaction};
+use blkstructs::{CoinID, Header, Transaction};
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
 use tmelcrypt::HashVal;
@@ -29,7 +29,7 @@ pub async fn run_anet_minter(cfg: AnetMinterConfig) {
 
     let mut netclient = NetClient::new(cfg.bootstrap);
 
-    let mut coin_tip = init_state.coin_id();
+    let coin_tip = init_state.coin_id();
     loop {
         let (latest_header, _) = netclient.last_header().await.unwrap();
         let coin = netclient
