@@ -4,13 +4,15 @@ use rstest::*;
 
 use tmelcrypt::{Ed25519PK, Ed25519SK};
 
-use crate::{
-    CoinData, CoinDataHeight, CoinID, DENOM_TMEL, MAX_COINVAL, melvm, MICRO_CONVERTER, StakeDoc,
-    State, Transaction, GenesisConfig
-};
 use crate::melvm::Covenant;
-use crate::testing::factory::{CoinDataFactory, CoinDataHeightFactory, GenesisConfigFactory, CoinIDFactory, TransactionFactory};
+use crate::testing::factory::{
+    CoinDataFactory, CoinDataHeightFactory, CoinIDFactory, GenesisConfigFactory, TransactionFactory,
+};
 use crate::testing::utils::*;
+use crate::{
+    melvm, CoinData, CoinDataHeight, CoinID, GenesisConfig, StakeDoc, State, Transaction,
+    DENOM_TMEL, MAX_COINVAL, MICRO_CONVERTER,
+};
 
 const GENESIS_MEL_SUPPLY: u128 = 21_000_000;
 const GENESIS_NUM_STAKERS: u64 = 10;
@@ -116,9 +118,9 @@ pub fn tx_send_mel_from_seed_coin(
     genesis_covenant_keypair: (Ed25519PK, Ed25519SK),
     genesis_mel_coin_id: CoinID,
     genesis_covenant: melvm::Covenant,
-    genesis_mel_coin_data: CoinData
+    genesis_mel_coin_data: CoinData,
 ) -> ((Ed25519PK, Ed25519SK), Transaction) {
-    /// Generate coin data with value to send to receiver
+    // Generate coin data with value to send to receiver
     let fee = fee_estimate();
     let mel_value_to_receiver = SEND_MEL_AMOUNT;
     let dest_pk = keypair.0;
@@ -128,15 +130,15 @@ pub fn tx_send_mel_from_seed_coin(
         coin_data.covhash = melvm::Covenant::std_ed25519_pk(dest_pk).hash();
     });
 
-    /// Generate change transaction back to sender
-    let change = genesis_mel_coin_data.value - mel_value_to_receiver - fee ;
+    // Generate change transaction back to sender
+    let change = genesis_mel_coin_data.value - mel_value_to_receiver - fee;
     let sender_pk = genesis_covenant_keypair.0;
     let coin_data_change = coin_data_factory.build(|coin_data| {
         coin_data.value = change;
         coin_data.covhash = melvm::Covenant::std_ed25519_pk(sender_pk).hash();
     });
 
-    /// Add coin data to new tx from genesis UTXO
+    // Add coin data to new tx from genesis UTXO
     let tx_factory = TransactionFactory::new();
     let tx = tx_factory.build(|tx| {
         tx.fee = fee;
@@ -145,11 +147,11 @@ pub fn tx_send_mel_from_seed_coin(
         tx.outputs = vec![coin_data_receiver.clone(), coin_data_change.clone()];
     });
 
-    /// Sign tx from sender sk
+    // Sign tx from sender sk
     let sender_sk = genesis_covenant_keypair.1;
     let tx = tx.sign_ed25519(sender_sk);
 
-    /// return the receiver keypair and tx
+    // return the receiver keypair and tx
     (keypair, tx)
 }
 

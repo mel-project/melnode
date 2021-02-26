@@ -52,7 +52,7 @@ fn main() {
     env_logger::init();
     let db = autosmt::DBManager::load(autosmt::MemDB::default());
     let mut genesis = State::test_genesis(
-        db.clone(),
+        db,
         MICRO_CONVERTER * 1000,
         melvm::Covenant::std_ed25519_pk(KEYPAIR.0).hash(),
         &[],

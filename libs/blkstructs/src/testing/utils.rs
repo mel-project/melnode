@@ -1,9 +1,9 @@
 use std::collections::BinaryHeap;
 
-use crate::{CoinData, CoinID, DENOM_TMEL, melvm, Transaction, TxKind, DENOM_NEWCOIN};
-use crate::testing::factory::{TransactionFactory, CoinDataFactory, CoinIDFactory};
-use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
+use crate::testing::factory::{CoinDataFactory, CoinIDFactory, TransactionFactory};
 use crate::testing::fixtures::SEND_MEL_AMOUNT;
+use crate::{melvm, CoinData, CoinID, Transaction, TxKind, DENOM_NEWCOIN, DENOM_TMEL};
+use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
 pub fn random_valid_txx(
     rng: &mut impl rand::Rng,
@@ -11,7 +11,7 @@ pub fn random_valid_txx(
     start_coindata: CoinData,
     signer: tmelcrypt::Ed25519SK,
     covenant: &melvm::Covenant,
-    fee: u128
+    fee: u128,
 ) -> Vec<Transaction> {
     random_valid_txx_count(rng, start_coin, start_coindata, signer, covenant, fee, 100)
 }
@@ -23,7 +23,7 @@ pub fn random_valid_txx_count(
     signer: tmelcrypt::Ed25519SK,
     covenant: &melvm::Covenant,
     fee: u128,
-    tx_count: u32
+    tx_count: u32,
 ) -> Vec<Transaction> {
     let mut pqueue: BinaryHeap<(u64, CoinID, CoinData)> = BinaryHeap::new();
     pqueue.push((rng.gen(), start_coin, start_coindata));
@@ -61,7 +61,10 @@ pub fn random_valid_txx_count(
 pub fn fee_estimate() -> u128 {
     /// Assuming some fee for tx (use higher multiplier to ensure its enough)
     let fee_multiplier = 10000;
-    let fee = TransactionFactory::new().build(|_| {}).weight(0).saturating_mul(fee_multiplier);
+    let fee = TransactionFactory::new()
+        .build(|_| {})
+        .weight(0)
+        .saturating_mul(fee_multiplier);
     fee
 }
 
@@ -70,7 +73,7 @@ pub fn tx_create_token(
     signer_keypair: &(Ed25519PK, Ed25519SK),
     coin_id: &CoinID,
     mel_balance: u128,
-    token_supply: u128
+    token_supply: u128,
 ) -> Transaction {
     let new_coin_tx = TransactionFactory::new().build(|tx| {
         // Create tx outputs
@@ -78,14 +81,17 @@ pub fn tx_create_token(
         // Used to create the value and denom field of outputs
         let tx_coin_params: Vec<(u128, Vec<u8>)> = vec![
             (mel_balance - tx_fee, DENOM_TMEL.to_vec()),
-            (token_supply, DENOM_NEWCOIN.to_vec())
+            (token_supply, DENOM_NEWCOIN.to_vec()),
         ];
         let tx_outputs = tx_coin_params
             .iter()
-            .map(|(val, denom)| CoinDataFactory::new().build(|cd| {
-                cd.value = *val;
-                cd.denom = denom.clone();
-            }))
+            .map(|(val, denom)| {
+                CoinDataFactory::new().build(|cd| {
+                    cd.value = *val;
+                    cd.denom = denom.clone();
+                    cd.covhash = melvm::Covenant::std_ed25519_pk(signer_keypair.0).hash();
+                })
+            })
             .collect::<Vec<_>>();
 
         // Create tx covenant hashees
@@ -137,6 +143,7 @@ pub fn tx_deposit(
                 denom: token_create_tx.hash_nosigs().to_vec(),
             },
         ];
+        tx.scripts = vec![melvm::Covenant::std_ed25519_pk(pk.clone())];
         tx.fee = fee;
     });
     tx.sign_ed25519(keypair.1)
@@ -147,11 +154,21 @@ pub fn tx_deposit(
 pub fn filter_tx_outputs_by_pk(pk: &Ed25519PK, outputs: &Vec<CoinData>) -> Vec<(u8, CoinData)> {
     let cov_hash = melvm::Covenant::std_ed25519_pk(pk.clone()).hash();
     let outputs: Vec<(u8, CoinData)> = outputs
-        .iter().filter(|&cd| cd.clone().covhash == cov_hash).enumerate().map(|e| (e.0 as u8, e.1.clone())).collect();
+        .iter()
+        .filter(|&cd| cd.clone().covhash == cov_hash)
+        .enumerate()
+        .map(|e| (e.0 as u8, e.1.clone()))
+        .collect();
     outputs
 }
 
-pub fn tx_send_mels_to(keypair_sender: &(Ed25519PK, Ed25519SK), coin_id_sender: CoinID, receiver_pk: Ed25519PK, total_mel_balance: u128, mel_send_amount: u128) -> Transaction {
+pub fn tx_send_mels_to(
+    keypair_sender: &(Ed25519PK, Ed25519SK),
+    coin_id_sender: CoinID,
+    receiver_pk: Ed25519PK,
+    total_mel_balance: u128,
+    mel_send_amount: u128,
+) -> Transaction {
     let fee = fee_estimate();
 
     let cd_factory = CoinDataFactory::new();
@@ -177,7 +194,13 @@ pub fn tx_send_mels_to(keypair_sender: &(Ed25519PK, Ed25519SK), coin_id_sender: 
     tx.sign_ed25519(keypair_sender.1)
 }
 
-pub fn create_mel_buy_tx(keypair_sender: &(Ed25519PK, Ed25519SK), coin_id_sender: CoinID, token_create_tx_hash: HashVal, mel_buy_amount: u128, token_sell_amount: u128) -> Transaction {
+pub fn create_mel_buy_tx(
+    keypair_sender: &(Ed25519PK, Ed25519SK),
+    coin_id_sender: CoinID,
+    token_create_tx_hash: HashVal,
+    mel_buy_amount: u128,
+    token_sell_amount: u128,
+) -> Transaction {
     let fee = fee_estimate();
 
     let cd_factory = CoinDataFactory::new();
@@ -206,7 +229,13 @@ pub fn create_mel_buy_tx(keypair_sender: &(Ed25519PK, Ed25519SK), coin_id_sender
     tx.sign_ed25519(keypair_sender.1)
 }
 
-pub fn create_mel_sell_tx(keypair_sender: &(Ed25519PK, Ed25519SK), coin_id_sender: CoinID, token_create_tx_hash: HashVal, mel_sell_amount: u128, token_buy_amount: u128) -> Transaction {
+pub fn create_mel_sell_tx(
+    keypair_sender: &(Ed25519PK, Ed25519SK),
+    coin_id_sender: CoinID,
+    token_create_tx_hash: HashVal,
+    mel_sell_amount: u128,
+    token_buy_amount: u128,
+) -> Transaction {
     let fee = fee_estimate();
 
     let cd_factory = CoinDataFactory::new();
