@@ -103,7 +103,7 @@ impl DBNode {
                     level: path.len(),
                     data: data.to_vec(),
                 });
-                db.write_cached(d.hash(), d.clone());
+                db.write(d.hash(), d.clone());
                 d
             }
         }
@@ -221,7 +221,7 @@ impl InternalNode {
         let mut newself = self.clone();
         newself.gggc_hashes[idx] = newgggc.hash();
         newself.fix_hashes(idx);
-        db.write_cached(newself.my_hash, Internal(newself.clone()));
+        db.write(newself.my_hash, Internal(newself.clone()));
         Internal(newself)
     }
 
@@ -307,7 +307,7 @@ impl DataNode {
             // }
             let mut newself = self.clone();
             newself.data = data.to_vec();
-            db.write_cached(newself.calc_hash(), Data(newself.clone()));
+            db.write(newself.calc_hash(), Data(newself.clone()));
             return Data(newself);
         }
         // general case: we move ourselves down 4 levels, set that as a grandchild of a new internal node, and insert the key into that internal node
@@ -320,12 +320,12 @@ impl DataNode {
         // );
         newself.level -= 4;
         let newhash = newself.calc_hash();
-        db.write_cached(newhash, Data(newself));
+        db.write(newhash, Data(newself));
         let mut newint = InternalNode::default();
         let old_key_idx = path_to_idx(&merk::key_to_path(self.key)[(256 - self.level as usize)..]);
         newint.gggc_hashes[old_key_idx] = newhash;
         newint.fix_hashes(old_key_idx);
-        db.write_cached(newint.my_hash, Internal(newint.clone()));
+        db.write(newint.my_hash, Internal(newint.clone()));
         Internal(newint).set_by_path(path, key, data, db)
     }
 

@@ -81,7 +81,7 @@ fn main() {
         eprintln!("FINALIZING AND CONTINUING!");
         genesis = genesis.seal(None).next_state();
 
-        db.sync()
+        // db.sync()
     }
     eprintln!(
         "partial encoding length: {}",
@@ -91,5 +91,5 @@ fn main() {
     for coin in genesis.coins.val_iter() {
         eprintln!("{:#?}", coin);
     }
-    eprintln!("{}", db.debug_graphviz())
+    // eprintln!("{}", db.debug_graphviz())
 }
