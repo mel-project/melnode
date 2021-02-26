@@ -33,6 +33,7 @@ impl SymphGossip {
             melnet::anon_responder(
                 move |req: melnet::Request<SignedMessage, Option<ConfirmResp>>| {
                     let _ = send_incoming.try_send(req.body.clone());
+                    eprintln!("RESPOND");
                     req.respond(Ok(None))
                 },
             ),

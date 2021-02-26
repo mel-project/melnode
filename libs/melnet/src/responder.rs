@@ -74,7 +74,7 @@ pub(crate) fn responder_to_closure<
                     recv_respond
                         .recv()
                         .await
-                        .unwrap()
+                        .unwrap_or(Err(MelnetError::InternalServerError))
                         .map(|v| stdcode::serialize(&v).unwrap())
                 };
                 response_fut.boxed()

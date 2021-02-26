@@ -10,12 +10,13 @@ use super::melswap::PoolState;
 
 /// DOSC inflation ratio.
 pub fn dosc_inflator(height: u64) -> BigRational {
-    BigRational::from((BigInt::from(10000005), BigInt::from(10000000))).pow(height)
+    BigRational::from((BigInt::from(10000005), BigInt::from(10000000))).pow(height as i32)
 }
 
 /// DOSC inflation calculator.
 pub fn dosc_inflate_r2n(height: u64, real: u128) -> u128 {
-    let ratio = BigRational::from((BigInt::from(10000005), BigInt::from(10000000))).pow(height);
+    let ratio =
+        BigRational::from((BigInt::from(10000005), BigInt::from(10000000))).pow(height as i32);
     let result = ratio * BigRational::from(BigInt::from(real));
     result
         .floor()
@@ -141,12 +142,13 @@ fn process_deposits(mut state: State) -> State {
         .val_iter()
         .filter(|tx| {
             tx.kind == TxKind::LiqDeposit
-                && tx.outputs.len() > 2
+                && tx.outputs.len() >= 2
                 && state.coins.get(&tx.get_coinid(0)).0.is_some()
                 && state.coins.get(&tx.get_coinid(1)).0.is_some()
                 && (tx.outputs[0].denom == DENOM_TMEL && tx.outputs[1].denom == tx.data)
         })
         .collect::<Vec<_>>();
+    eprintln!("{} deposit reqs", deposit_reqs.len());
     // find the pools mentioned
     let pools = deposit_reqs
         .iter()
@@ -388,7 +390,7 @@ mod tests {
             outputs: vec![
                 CoinData {
                     covhash: my_covhash,
-                    value: (1 << 64) - 4000000,
+                    value: (1 << 64) - 2000000 - 2000000,
                     denom: DENOM_TMEL.into(),
                 },
                 CoinData {
@@ -399,7 +401,7 @@ mod tests {
             ],
             fee: 2000000,
             scripts: vec![melvm::Covenant::std_ed25519_pk(my_pk)],
-            data: vec![],
+            data: newcoin_tx.hash_nosigs().to_vec(), // this is important, since it "points" to the pool
             sigs: vec![],
         }
         .sign_ed25519(my_sk);

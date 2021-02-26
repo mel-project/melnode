@@ -127,7 +127,7 @@ impl Storage {
     #[instrument(skip(self))]
     pub fn sync(&mut self) {
         use lmdb::Transaction;
-        self.tree_db.sync();
+        // self.tree_db.sync();
         log::debug!("saving global state");
         let mut txn = self.lmdb_env.begin_rw_txn().unwrap();
         txn.put(
