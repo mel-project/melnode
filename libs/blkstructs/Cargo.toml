@@ -11,7 +11,7 @@ tmelcrypt={path="../tmelcrypt"}
 melpow={path="../melpow"}
 autosmt={path="../autosmt"}
 stdcode={path="../stdcode"}
-
+cached="0.23"
 num_enum = "0.5.0"
 hex="0.4.2"
 thiserror="1"

@@ -1,22 +1,35 @@
 use num::{integer::Roots, rational::Ratio, traits::Pow, BigInt, BigRational};
 use std::convert::TryInto;
 
+use super::melswap::PoolState;
 use crate::{
     CoinData, CoinDataHeight, State, Transaction, TxKind, DENOM_DOSC, DENOM_TMEL, DENOM_TSYM,
     MAX_COINVAL, MICRO_CONVERTER,
 };
+use cached::proc_macro::cached;
 
-use super::melswap::PoolState;
+/// Internal DOSC inflator. Returns how many µNomDOSC is 1 DOSC.
+#[cached]
+fn micronomdosc_per_dosc(height: u64) -> u128 {
+    if height == 0 {
+        MICRO_CONVERTER
+    } else {
+        let last = micronomdosc_per_dosc(height - 1);
+        (last + 1).max(last + last / 2_000_000)
+    }
+}
 
 /// DOSC inflation ratio.
 pub fn dosc_inflator(height: u64) -> BigRational {
-    BigRational::from((BigInt::from(10000005), BigInt::from(10000000))).pow(height as i32)
+    BigRational::from((
+        BigInt::from(micronomdosc_per_dosc(height)),
+        BigInt::from(MICRO_CONVERTER),
+    ))
 }
 
 /// DOSC inflation calculator.
 pub fn dosc_inflate_r2n(height: u64, real: u128) -> u128 {
-    let ratio =
-        BigRational::from((BigInt::from(10000005), BigInt::from(10000000))).pow(height as i32);
+    let ratio = dosc_inflator(height);
     let result = ratio * BigRational::from(BigInt::from(real));
     result
         .floor()
@@ -316,7 +329,6 @@ fn process_pegging(mut state: State) -> State {
         let delta = (desired_sym - sm_pool.tokens) / 1000;
         let _ = sm_pool.swap_many(0, delta);
     }
-    dbg!(&sm_pool);
     state.pools.insert(DENOM_TSYM.to_vec(), sm_pool);
     // return the state now
     state
@@ -344,6 +356,7 @@ mod tests {
     use super::*;
 
     #[test]
+    // test a simple deposit flow
     fn simple_deposit() {
         let (my_pk, my_sk) = tmelcrypt::ed25519_keygen();
         let my_covhash = melvm::Covenant::std_ed25519_pk(my_pk).hash();
