@@ -51,7 +51,7 @@ async fn staker_loop(gossiper: SymphGossip, storage: SharedStorage, my_sk: Ed255
         genesis,
         stakes,
         epoch,
-        start_time: std::time::UNIX_EPOCH + Duration::from_secs(1609480800),
+        start_time: std::time::UNIX_EPOCH + Duration::from_secs(1614578400),
         my_sk,
         get_proposer: Box::new(move |_height| first_stake.pubkey),
     };
@@ -59,10 +59,6 @@ async fn staker_loop(gossiper: SymphGossip, storage: SharedStorage, my_sk: Ed255
     let events = streamlet.subscribe();
 
     let my_script = melvm::Covenant::std_ed25519_pk(my_sk.to_public());
-    let action = Some(ProposerAction {
-        fee_multiplier_delta: 0,
-        reward_dest: my_script.hash(),
-    });
     streamlet
         .run()
         .race(async {
@@ -72,6 +68,17 @@ async fn staker_loop(gossiper: SymphGossip, storage: SharedStorage, my_sk: Ed255
                     StreamletEvt::SolicitProp(last_state, height, prop_send) => {
                         let provis_state = storage.read().provis_state.clone();
                         let out_of_bounds = height / blkstructs::STAKE_EPOCH != epoch;
+
+                        let action = if !out_of_bounds {
+                            log::info!("bad/missing provisional state. proposing a quasiempty block for height {} because our provis height is {:?}.", height, provis_state.as_ref().map(|s| s.height));
+                            Some(ProposerAction {
+                            fee_multiplier_delta: 0,
+                            reward_dest: my_script.hash(),
+                        })} else {
+                            log::warn!("proposing a truly empty block due to out-of-bounds");
+                            None
+                        };
+
                         if let Some(provis_state) = &provis_state {
                             if height == provis_state.height
                                 && Some(last_state.header().hash())
@@ -84,11 +91,11 @@ async fn staker_loop(gossiper: SymphGossip, storage: SharedStorage, my_sk: Ed255
                                 continue
                             }
                         }
-                        log::info!("bad/missing provisional state. proposing a quasiempty block for height {} because our provis height is {:?}.", height, provis_state.map(|s| s.height));
                         let mut basis = last_state.clone();
                         let mut last_nonempty = None;
                         while basis.header().height + 1 < height {
                             log::debug!("filling in empty block for {}", basis.header().height);
+                            smol::future::yield_now().await;
                             basis = basis.next_state().seal(None);
                             last_nonempty = Some((last_state.header().height, last_state.header().hash()));
                         }
@@ -123,3 +130,4 @@ async fn staker_loop(gossiper: SymphGossip, storage: SharedStorage, my_sk: Ed255
         })
         .await;
 }
+ 

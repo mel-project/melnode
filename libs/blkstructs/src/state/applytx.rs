@@ -52,9 +52,7 @@ impl<'a> StateHandle<'a> {
             self.apply_tx_fees(tx)?;
         }
         // apply outputs in parallel
-        txx.par_iter()
-            .map(|tx| self.apply_tx_outputs(tx))
-            .collect::<Result<_, _>>()?;
+        txx.par_iter().for_each(|tx| self.apply_tx_outputs(tx));
         // apply inputs in parallel
         txx.par_iter()
             .map(|tx| self.apply_tx_inputs(tx))
@@ -151,7 +149,7 @@ impl<'a> StateHandle<'a> {
         Ok(())
     }
 
-    fn apply_tx_outputs(&self, tx: &Transaction) -> Result<(), StateError> {
+    fn apply_tx_outputs(&self, tx: &Transaction) {
         let height = self.state.height;
         for (index, coin_data) in tx.outputs.iter().enumerate() {
             let mut coin_data = coin_data.clone();
@@ -169,7 +167,6 @@ impl<'a> StateHandle<'a> {
                 );
             }
         }
-        Ok(())
     }
 
     fn apply_tx_special(&self, tx: &Transaction) -> Result<(), StateError> {

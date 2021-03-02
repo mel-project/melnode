@@ -1,4 +1,4 @@
-use num::{integer::Roots, rational::Ratio, traits::Pow, BigInt, BigRational};
+use num::{integer::Roots, rational::Ratio, BigInt, BigRational};
 use std::convert::TryInto;
 
 use super::melswap::PoolState;
@@ -161,7 +161,7 @@ fn process_deposits(mut state: State) -> State {
                 && (tx.outputs[0].denom == DENOM_TMEL && tx.outputs[1].denom == tx.data)
         })
         .collect::<Vec<_>>();
-    eprintln!("{} deposit reqs", deposit_reqs.len());
+    // eprintln!("{} deposit reqs", deposit_reqs.len());
     // find the pools mentioned
     let pools = deposit_reqs
         .iter()

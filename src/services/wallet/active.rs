@@ -1,5 +1,6 @@
 use crate::services::WalletData;
 use crate::{dal::wallet, protocols::NetClient};
+use anyhow::Context;
 use blkstructs::{
     CoinData, CoinDataHeight, CoinID, Header, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
 };
@@ -80,7 +81,8 @@ impl ActiveWallet {
         eprintln!(">> Syncing state...");
         let header = self.client.last_header().await?.0;
         eprintln!(">> Retrieving coin at height {}", header.height);
-        let coin_id: CoinID = stdcode::deserialize(&hex::decode(coin_id)?)?;
+        let coin_id: CoinID = stdcode::deserialize(&hex::decode(coin_id)?)
+            .context("cannot deserialize hex coinid")?;
         let (coin_data_height, full_proof) = self.client.get_coin(header, coin_id).await?;
         Ok((coin_data_height, coin_id, full_proof))
     }
@@ -90,8 +92,7 @@ impl ActiveWallet {
         coin_id: &CoinID,
         coin_data_height: &CoinDataHeight,
     ) -> anyhow::Result<()> {
-        self.wallet
-            .insert_coin(*coin_id, coin_data_height.clone());
+        self.wallet.insert_coin(*coin_id, coin_data_height.clone());
         Ok(())
     }
 
@@ -114,15 +115,15 @@ impl ActiveWallet {
         let (header, _instant) = self.client.last_header().await?;
         let fee_multiplier = header.fee_multiplier;
 
-        let tx = self.wallet.pre_spend(outputs, fee_multiplier)?.sign_ed25519(self.sk);
+        let tx = self
+            .wallet
+            .pre_spend(outputs, fee_multiplier)?
+            .sign_ed25519(self.sk);
 
         Ok(tx)
     }
 
-    pub async fn send_tx(
-        &mut self,
-        to_send: Transaction
-    ) -> anyhow::Result<Transaction> {
+    pub async fn send_tx(&mut self, to_send: Transaction) -> anyhow::Result<Transaction> {
         eprintln!(">> Syncing state...");
         self.client.broadcast_tx(to_send.clone()).await?;
         eprintln!(">> Transaction {:?} broadcast!", to_send.hash_nosigs());
