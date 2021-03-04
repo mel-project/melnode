@@ -63,6 +63,7 @@ impl FastSyncDecoder {
             && (self.partial_stakes.root_hash()) == (self.header.stake_doc_hash)
         {
             return Ok(Some(SealedState::force_new(State {
+                network: self.header.network,
                 height: self.header.height,
                 history: SmtMapping::new(self.partial_history.clone()),
                 coins: SmtMapping::new(self.partial_coins.clone()),
@@ -178,7 +179,7 @@ mod tests {
     #[test]
     fn empty_state() {
         let dbm = DBManager::load(autosmt::MemDB::default());
-        let state = State::new_empty(dbm.clone()).seal(None);
+        let state = State::new_empty_testnet(dbm.clone()).seal(None);
         let mut decoder = FastSyncDecoder::new(state.header(), dbm);
         let encoder = FastSyncEncoder::new(state.clone());
         for chunk in encoder {

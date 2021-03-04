@@ -67,7 +67,7 @@ mod tests {
     fn create_state(stakers: &HashMap<Ed25519SK, u128>, epoch_start: u64) -> State {
         // Create emtpy state
         let db = autosmt::DBManager::load(autosmt::MemDB::default());
-        let mut state = State::new_empty(db);
+        let mut state = State::new_empty_testnet(db);
 
         // Insert a mel coin into state so we can transact
         let start_micromels = 10000;

@@ -88,7 +88,7 @@ pub fn genesis_state(
     genesis_stakeholders: HashMap<(Ed25519PK, Ed25519SK), u128>,
 ) -> State {
     // Init empty state with db reference
-    let mut state = State::new_empty((*DB).clone());
+    let mut state = State::new_empty_testnet((*DB).clone());
 
     // insert initial mel coin supply
     state
