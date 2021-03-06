@@ -141,6 +141,7 @@ impl State {
     /// Generates an encoding of the state that, in conjunction with a SMT database, can recover the entire state.
     pub fn partial_encoding(&self) -> Vec<u8> {
         let mut out = Vec::new();
+        out.extend_from_slice(&[self.network.into()]);
         out.extend_from_slice(&self.height.to_be_bytes());
         out.extend_from_slice(&self.history.root_hash());
         out.extend_from_slice(&self.coins.root_hash());

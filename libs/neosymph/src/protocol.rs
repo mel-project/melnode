@@ -5,7 +5,7 @@ use crate::{
     Network,
 };
 use async_trait::async_trait;
-use smol::channel::Receiver;
+use smol::channel::{Receiver, Sender};
 use tmelcrypt::Ed25519PK;
 
 const NETNAME: &str = "testnet-staker";
@@ -14,6 +14,7 @@ const NETNAME: &str = "testnet-staker";
 #[derive(Clone)]
 pub struct SymphGossip {
     network: melnet::NetState,
+    stuff_incoming: Sender<SignedMessage>,
     incoming: Receiver<SignedMessage>,
     // a mapping of seqnos to senders
     sender_to_seq: HashMap<Ed25519PK, u64>,
@@ -28,6 +29,7 @@ impl SymphGossip {
         }
         network.add_route(addr);
         let (send_incoming, incoming) = smol::channel::unbounded();
+        let stuff_incoming = send_incoming.clone();
         network.register_verb(
             "gossip",
             melnet::anon_responder(
@@ -44,6 +46,7 @@ impl SymphGossip {
         });
         Ok(Self {
             network,
+            stuff_incoming,
             incoming,
             sender_to_seq: HashMap::new(),
             _task: Arc::new(_task),
@@ -54,6 +57,7 @@ impl SymphGossip {
 #[async_trait]
 impl Network for SymphGossip {
     async fn broadcast(&self, msg: SignedMessage) {
+        let _ = self.stuff_incoming.try_send(msg.clone());
         let neighs = self.network.routes();
         let bcast_tasks: Vec<_> = neighs
             .into_iter()

@@ -7,6 +7,8 @@ use std::sync::Arc;
 use tmelcrypt::HashVal;
 use tracing::instrument;
 
+use crate::storage::SledTreeDB;
+
 use super::insecure_testnet_keygen;
 
 /// Locked storage.
@@ -23,8 +25,7 @@ pub struct Storage {
 
     recent_tx: LruCache<HashVal, Transaction>,
 
-    lmdb_env: Arc<lmdb::Environment>,
-    lmdb_db: lmdb::Database,
+    database: sled::Db,
 }
 
 const GLOBAL_STATE_KEY: &[u8] = b"global_state";
@@ -39,43 +40,38 @@ impl Storage {
     /// Creates a new Storage for testing, with a genesis state that puts 1000 mel at the zero-zero coin, unlockable by the always_true script.
     #[instrument]
     pub fn open_testnet(path: &str) -> anyhow::Result<Self> {
-        use lmdb::Transaction;
-        let (lme, lmd) = open_lmdb(path)?;
-        // load the db manager
+        let database = open_database(path)?;
 
-        let dbm = autosmt::DBManager::load(autosmt::ondisk::LMDB::new(lme.clone(), None).unwrap());
+        let dbm = autosmt::DBManager::load(SledTreeDB::new(database.open_tree("trees")?));
 
         // recover the state
         let state = {
-            let txn = lme.begin_ro_txn()?;
-            match txn.get(lmd, &GLOBAL_STATE_KEY) {
-                Ok(res) => {
-                    log::debug!("loaded saved_global_state from LMDB");
+            match database.get(GLOBAL_STATE_KEY)? {
+                Some(res) => {
+                    log::debug!("loaded saved_global_state from sled");
                     let res = res.to_vec();
-                    drop(txn);
                     blkstructs::State::from_partial_encoding_infallible(&res, &dbm)
                 }
-                Err(_) => {
-                    drop(txn);
+                None => {
                     log::info!("creating a testnet genesis state from scratch");
                     new_genesis(dbm.clone())
                 }
             }
         };
         let history = {
-            let txn = lme.begin_ro_txn()?;
             let mut toret = HashMap::new();
             let mut last_state: Option<SealedState>;
             for height in (0..state.height).rev() {
                 let key = format!("history_{}", height);
-                if let Ok(res) = txn.get(lmd, &key.as_bytes()) {
+                if let Some(res) = database.get(&key.as_bytes())? {
                     log::debug!("loading history at height {}...", height);
                     let state =
                         blkstructs::SealedState::from_partial_encoding_infallible(&res, &dbm);
                     last_state = Some(state.clone());
                     let proof_key = format!("proof_{}", height);
-                    let proof = stdcode::deserialize(&txn.get(lmd, &proof_key.as_bytes()).unwrap())
-                        .unwrap();
+                    let proof =
+                        stdcode::deserialize(&database.get(&proof_key.as_bytes())?.unwrap())
+                            .unwrap();
                     let lala = last_state.map(|fs| fs.inner_ref().clone());
                     toret.insert(height, state.confirm(proof, lala.as_ref()).unwrap());
                 } else {
@@ -93,8 +89,7 @@ impl Storage {
 
             recent_tx: LruCache::new(100000),
 
-            lmdb_env: lme,
-            lmdb_db: lmd,
+            database,
         })
     }
 
@@ -126,36 +121,24 @@ impl Storage {
     /// Syncs to disk.
     #[instrument(skip(self))]
     pub fn sync(&mut self) {
-        use lmdb::Transaction;
         // self.tree_db.sync();
         log::debug!("saving global state");
-        let mut txn = self.lmdb_env.begin_rw_txn().unwrap();
-        txn.put(
-            self.lmdb_db,
-            &GLOBAL_STATE_KEY,
-            &self.postconfirm_state.partial_encoding(),
-            lmdb::WriteFlags::empty(),
-        )
-        .unwrap();
+        let mut batch = sled::Batch::default();
+        batch.insert(GLOBAL_STATE_KEY, self.postconfirm_state.partial_encoding());
         for (k, v) in self.history.iter() {
+            log::debug!("saved {}", k);
             let key = format!("history_{}", k);
-            txn.put(
-                self.lmdb_db,
-                &key,
-                &v.inner().partial_encoding(),
-                lmdb::WriteFlags::empty(),
-            )
-            .unwrap();
+            batch.insert(key.as_bytes(), v.inner().partial_encoding());
             let proof_key = format!("proof_{}", k);
-            txn.put(
-                self.lmdb_db,
-                &proof_key,
-                &stdcode::serialize(v.cproof()).unwrap(),
-                lmdb::WriteFlags::empty(),
-            )
-            .unwrap();
+            batch.insert(
+                proof_key.as_bytes(),
+                stdcode::serialize(v.cproof()).unwrap(),
+            );
         }
-        txn.commit().unwrap();
+        self.database
+            .apply_batch(batch)
+            .expect("sled couldn't save global state");
+        log::debug!("saving global state done");
     }
 
     /// Gets a tx by the txhash.
@@ -251,13 +234,12 @@ impl Storage {
 }
 
 #[instrument]
-fn open_lmdb(path: &str) -> anyhow::Result<(Arc<lmdb::Environment>, lmdb::Database)> {
-    let lmdb_env = lmdb::Environment::new()
-        .set_max_dbs(1)
-        .set_map_size(1 << 40)
-        .open(Path::new(path))?;
-    let db = lmdb_env.open_db(None)?;
-    Ok((Arc::new(lmdb_env), db))
+fn open_database(path: &str) -> anyhow::Result<sled::Db> {
+    Ok(sled::Config::default()
+        .path(Path::new(path))
+        .mode(sled::Mode::LowSpace)
+        .print_profile_on_drop(true)
+        .open()?)
 }
 
 #[instrument(skip(dbm))]

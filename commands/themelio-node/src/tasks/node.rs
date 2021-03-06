@@ -61,7 +61,7 @@ pub async fn run_node(opt: NodeConfig) {
 
     // Storage syncer
     loop {
-        Timer::after(Duration::from_secs(10)).await;
+        Timer::after(Duration::from_secs(1)).await;
         storage.write().sync();
     }
 }

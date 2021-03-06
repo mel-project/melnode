@@ -1,4 +1,3 @@
-pub mod ondisk;
 pub mod smt;
 
 pub use smt::*;
