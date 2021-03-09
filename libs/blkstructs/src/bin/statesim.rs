@@ -50,7 +50,7 @@ static KEYPAIR: Lazy<(Ed25519PK, Ed25519SK)> = Lazy::new(tmelcrypt::ed25519_keyg
 
 fn main() {
     env_logger::init();
-    let db = autosmt::DBManager::load(autosmt::MemDB::default());
+    let db = autosmt::Forest::load(autosmt::MemDB::default());
     let mut genesis = State::test_genesis(
         db,
         MICRO_CONVERTER * 1000,

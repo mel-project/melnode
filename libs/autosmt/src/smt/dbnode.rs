@@ -75,7 +75,7 @@ impl DBNode {
         &self,
         path: &[bool],
         key: tmelcrypt::HashVal,
-        db: &DBManager,
+        db: &Forest,
     ) -> (Vec<u8>, Vec<tmelcrypt::HashVal>) {
         match self {
             Internal(int) => int.get_by_path_rev(path, key, db),
@@ -92,7 +92,7 @@ impl DBNode {
         path: &[bool],
         key: tmelcrypt::HashVal,
         data: &[u8],
-        db: &DBManager,
+        db: &Forest,
     ) -> Self {
         match self {
             Internal(int) => int.set_by_path(path, key, data, db),
@@ -198,7 +198,7 @@ impl InternalNode {
         &self,
         path: &[bool],
         key: tmelcrypt::HashVal,
-        db: &DBManager,
+        db: &Forest,
     ) -> (Vec<u8>, Vec<tmelcrypt::HashVal>) {
         let (nextbind, mut nextvec) =
             self.get_gggc(path_to_idx(path), db)
@@ -212,7 +212,7 @@ impl InternalNode {
         path: &[bool],
         key: tmelcrypt::HashVal,
         data: &[u8],
-        db: &DBManager,
+        db: &Forest,
     ) -> DBNode {
         let idx = path_to_idx(path);
         let newgggc = self
@@ -236,7 +236,7 @@ impl InternalNode {
         vec
     }
 
-    fn get_gggc(&self, idx: usize, db: &DBManager) -> DBNode {
+    fn get_gggc(&self, idx: usize, db: &Forest) -> DBNode {
         db.read(self.gggc_hashes[idx])
     }
 }
@@ -278,7 +278,7 @@ impl DataNode {
         &self,
         _: &[bool],
         key: tmelcrypt::HashVal,
-        _: &DBManager,
+        _: &Forest,
     ) -> (Vec<u8>, Vec<tmelcrypt::HashVal>) {
         (
             if self.key == key {
@@ -295,7 +295,7 @@ impl DataNode {
         path: &[bool],
         key: tmelcrypt::HashVal,
         data: &[u8],
-        db: &DBManager,
+        db: &Forest,
     ) -> DBNode {
         if self.key == key {
             // eprintln!(

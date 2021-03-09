@@ -114,7 +114,7 @@ fn read_bts(r: &mut impl Read, n: usize) -> Option<Vec<u8>> {
 
 impl State {
     /// Creates a new State from a config
-    pub fn genesis(db: autosmt::DBManager, cfg: GenesisConfig) -> Self {
+    pub fn genesis(db: &autosmt::Forest, cfg: GenesisConfig) -> Self {
         let empty_tree = db.get_tree(HashVal::default());
         Self {
             network: cfg.network,
@@ -159,7 +159,7 @@ impl State {
     }
 
     /// Restores a state from its partial encoding in conjunction with a database. **Does not validate data and will panic; do not use on untrusted data**
-    pub fn from_partial_encoding_infallible(mut encoding: &[u8], db: &autosmt::DBManager) -> Self {
+    pub fn from_partial_encoding_infallible(mut encoding: &[u8], db: &autosmt::Forest) -> Self {
         defmac!(readu8 => u8::from_be_bytes(read_bts(&mut encoding, 1).unwrap().as_slice().try_into().unwrap()));
         defmac!(readu64 => u64::from_be_bytes(read_bts(&mut encoding, 8).unwrap().as_slice().try_into().unwrap()));
         defmac!(readu128 => u128::from_be_bytes(read_bts(&mut encoding, 16).unwrap().as_slice().try_into().unwrap()));
@@ -200,7 +200,7 @@ impl State {
 
     /// Generates a test genesis state, with a given starting coin.
     pub fn test_genesis(
-        db: autosmt::DBManager,
+        db: autosmt::Forest,
         start_micro_mels: u128,
         start_cov_hash: tmelcrypt::HashVal,
         start_stakeholders: &[tmelcrypt::Ed25519PK],
@@ -297,7 +297,7 @@ impl State {
 
     // ----------- helpers start here ------------
 
-    pub(crate) fn new_empty_testnet(db: autosmt::DBManager) -> Self {
+    pub(crate) fn new_empty_testnet(db: autosmt::Forest) -> Self {
         let empty_tree = db.get_tree(tmelcrypt::HashVal::default());
         State {
             network: NetID::Testnet,
@@ -361,7 +361,7 @@ impl SealedState {
     }
 
     /// Decodes from the partial encoding.
-    pub fn from_partial_encoding_infallible(bts: &[u8], db: &autosmt::DBManager) -> Self {
+    pub fn from_partial_encoding_infallible(bts: &[u8], db: &autosmt::Forest) -> Self {
         let tmp: (Vec<u8>, Option<ProposerAction>) = stdcode::deserialize(&bts).unwrap();
         SealedState(
             Arc::new(State::from_partial_encoding_infallible(&tmp.0, db)),

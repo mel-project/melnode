@@ -6,8 +6,6 @@ mod services;
 mod tasks;
 use tasks::NodeConfig;
 
-mod storage;
-
 use tracing::instrument;
 
 #[instrument]

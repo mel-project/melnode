@@ -2482,6 +2482,7 @@ dependencies = [
  "autosmt",
  "blkstructs",
  "colored",
+ "dashmap",
  "hex",
  "im",
  "log",

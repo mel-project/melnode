@@ -3,6 +3,7 @@ use std::{net::SocketAddr, sync::Arc, time::Duration};
 use blkstructs::{CoinDataHeight, CoinID, ConsensusProof, Header, Transaction};
 use fastsync::send_fastsync;
 use melnet::MelnetError;
+use neosymph::TxLookup;
 use smol::channel::{Receiver, Sender};
 use tmelcrypt::HashVal;
 
@@ -119,38 +120,29 @@ impl NodeProtocol {
 
 #[tracing::instrument(skip(network, state))]
 async fn blksync_loop(network: melnet::NetState, state: SharedStorage) {
-    let tag = || {
-        format!(
-            "blksync@{:?}",
-            state
-                .read()
-                .last_block()
-                .map(|b| b.inner().inner_ref().height)
-        )
-    };
+    let tag = || format!("blksync@{:?}", state.read().highest_state());
     loop {
         let random_peer = network.routes().first().cloned();
         if let Some(peer) = random_peer {
             log::trace!("{}: picked random peer {} for blksync", tag(), peer);
-            let last_state = state.read().last_block();
+            let last_state = state.read().highest_state();
             let res = blksync::sync_state(
                 peer,
                 NODE_NETNAME,
-                last_state.as_ref().map(|v| v.inner().inner_ref()),
-                |tx| state.read().get_tx(tx),
+                last_state.inner_ref().height + 1,
+                |tx| state.read().mempool().lookup(tx),
             )
             .await;
             match res {
                 Err(e) => {
                     log::trace!("{}: failed to blksync with {}: {:?}", tag(), peer, e);
                 }
-                Ok(None) => {
-                    log::trace!("{}: {} didn't have the next block", tag(), peer);
-                }
-                Ok(Some((blk, cproof))) => {
-                    let res = state.write().apply_confirmed_block(blk, cproof);
-                    if let Err(e) = res {
-                        log::trace!("{}: failed to apply block: {:?}", tag(), e);
+                Ok(blocks) => {
+                    for (blk, cproof) in blocks {
+                        let res = state.write().apply_block(blk, cproof);
+                        if let Err(e) = res {
+                            log::warn!("{}: failed to apply block from other node: {:?}", tag(), e);
+                        }
                     }
                 }
             }
@@ -179,7 +171,8 @@ impl AuditorResponder {
     fn resp_send_tx(&self, tx: Transaction) -> melnet::Result<()> {
         self.storage
             .write()
-            .insert_tx(tx.clone())
+            .mempool_mut()
+            .apply_transaction(&tx)
             .map_err(|e| MelnetError::Custom(e.to_string()))?;
         log::debug!(
             "txhash {:?} successfully inserted, gonna propagate now",
@@ -194,25 +187,23 @@ impl AuditorResponder {
     fn resp_get_state(&self, height: u64) -> melnet::Result<(AbbreviatedBlock, ConsensusProof)> {
         let storage = self.storage.read();
         let last_block = storage
-            .get_history(height)
+            .get_state(height)
+            .ok_or_else(|| MelnetError::Custom(format!("block {} not confirmed yet", height)))?;
+        let last_proof = storage
+            .get_consensus(height)
             .ok_or_else(|| MelnetError::Custom(format!("block {} not confirmed yet", height)))?;
         // create mapping
-        Ok((
-            AbbreviatedBlock::from_state(last_block.inner()),
-            last_block.cproof().clone(),
-        ))
+        Ok((AbbreviatedBlock::from_state(&last_block), last_proof))
     }
 
     fn resp_get_last_state(&self) -> melnet::Result<(AbbreviatedBlock, ConsensusProof)> {
         let storage = self.storage.read();
-        let last_block = storage
-            .last_block()
-            .ok_or_else(|| MelnetError::Custom("no last block".into()))?;
+        let last_block = storage.highest_state();
+        let last_proof = storage
+            .get_consensus(last_block.inner_ref().height)
+            .unwrap();
         // create mapping
-        Ok((
-            AbbreviatedBlock::from_state(last_block.inner()),
-            last_block.cproof().clone(),
-        ))
+        Ok((AbbreviatedBlock::from_state(&last_block), last_proof))
     }
 
     fn resp_get_coin_at(
@@ -222,9 +213,9 @@ impl AuditorResponder {
     ) -> melnet::Result<(Option<CoinDataHeight>, autosmt::CompressedProof)> {
         let storage = self.storage.read();
         let old_state = storage
-            .get_history(height)
+            .get_state(height)
             .ok_or_else(|| MelnetError::Custom("no such block in history".into()))?;
-        let (res, proof) = old_state.inner().inner_ref().coins.get(&coin_id);
+        let (res, proof) = old_state.inner_ref().coins.get(&coin_id);
         Ok((res, proof.compress()))
     }
 
@@ -235,9 +226,9 @@ impl AuditorResponder {
     ) -> melnet::Result<(Header, autosmt::CompressedProof)> {
         let storage = self.storage.read();
         let old_state = storage
-            .get_history(height)
+            .get_state(height)
             .ok_or_else(|| MelnetError::Custom("no such block in history".into()))?;
-        let (res, proof) = old_state.inner().inner_ref().history.get(&history_height);
+        let (res, proof) = old_state.inner_ref().history.get(&history_height);
         Ok((
             res.ok_or_else(|| MelnetError::Custom("height is in the future".into()))?,
             proof.compress(),
@@ -251,9 +242,9 @@ impl AuditorResponder {
     ) -> melnet::Result<(Option<Transaction>, autosmt::CompressedProof)> {
         let storage = self.storage.read();
         let old_state = storage
-            .get_history(height)
+            .get_state(height)
             .ok_or_else(|| MelnetError::Custom("no such block in history".into()))?;
-        let (res, proof) = old_state.inner().inner_ref().transactions.get(&txhash);
+        let (res, proof) = old_state.inner_ref().transactions.get(&txhash);
         Ok((res, proof.compress()))
     }
 
@@ -262,7 +253,8 @@ impl AuditorResponder {
         let mut transactions = Vec::new();
         for hash in txx {
             let tx = storage
-                .get_tx(hash)
+                .mempool()
+                .lookup(hash)
                 .ok_or_else(|| MelnetError::Custom("no transaction with this id found".into()))?;
             transactions.push(tx);
         }
@@ -271,9 +263,9 @@ impl AuditorResponder {
 
     /// fastsync stream
     fn stream_fastsync(&self, req: melnet::Request<u64, ()>) {
-        let state = self.storage.read().get_history(req.body).cloned();
+        let state = self.storage.read().get_state(req.body);
         if let Some(state) = state {
-            let state = state.inner().clone();
+            let state = state.clone();
             let conn = req.hijack();
             smolscale::spawn(send_fastsync(state, conn)).detach();
         } else {

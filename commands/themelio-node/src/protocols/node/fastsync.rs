@@ -1,5 +1,5 @@
 use async_compression::futures::{bufread::GzipDecoder, write::GzipEncoder};
-use autosmt::DBManager;
+use autosmt::Forest;
 use blkstructs::{FastSyncDecoder, FastSyncEncoder, Header, SealedState};
 use smol::prelude::*;
 use smol::{io::BufReader, net::TcpStream};
@@ -20,7 +20,7 @@ pub async fn send_fastsync(state: SealedState, conn: TcpStream) -> anyhow::Resul
 
 /// Receives a fastsync stream.
 pub async fn recv_fastsync(
-    dbm: DBManager,
+    dbm: Forest,
     header: Header,
     conn: TcpStream,
 ) -> anyhow::Result<SealedState> {

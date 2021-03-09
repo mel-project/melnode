@@ -22,7 +22,7 @@ const GENESIS_STAKER_WEIGHT: u128 = 100;
 pub const SEND_MEL_AMOUNT: u128 = 30_000_000_000;
 
 lazy_static! {
-    pub static ref DB: autosmt::DBManager = autosmt::DBManager::load(autosmt::MemDB::default());
+    pub static ref DB: autosmt::Forest = autosmt::Forest::load(autosmt::MemDB::default());
     pub static ref GENESIS_COVENANT_KEYPAIR: (Ed25519PK, Ed25519SK) = tmelcrypt::ed25519_keygen();
     pub static ref GENESIS_STAKEHOLDERS: HashMap<(Ed25519PK, Ed25519SK), u128> = {
         let mut stakeholders = HashMap::new();

@@ -86,7 +86,7 @@ async fn run_instance(net: MockNet, idx: usize) {
 
 fn gen_cfg(net: MockNet, idx: usize) -> StreamletCfg<MockNet, TrivialLookup> {
     let genesis_state = blkstructs::State::test_genesis(
-        autosmt::DBManager::load(autosmt::MemDB::default()),
+        autosmt::Forest::load(autosmt::MemDB::default()),
         10000,
         melvm::Covenant::always_true().hash(),
         TEST_SKK

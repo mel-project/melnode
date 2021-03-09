@@ -28,6 +28,8 @@ neosymph={path="../../libs/neosymph"}
 im="15"
 parking_lot="0.11"
 
+dashmap="4"
+
 smolscale="0.1"
 colored = "2.0.0"
 tabwriter = "1.2.1"

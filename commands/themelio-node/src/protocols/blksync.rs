@@ -8,36 +8,52 @@ use tmelcrypt::HashVal;
 /// This cancellable async function synchronizes the block state with some other node. If the other node has the *next* block, it is returned; otherwise None is returned.
 ///
 /// Right now we don't have a decent fastsync protocol yet, but that's fine for the testnet.
-#[tracing::instrument(skip(get_cached_tx, my_last_state))]
+#[tracing::instrument(skip(get_cached_tx))]
 pub async fn sync_state(
     remote: SocketAddr,
     netname: &str,
-    my_last_state: Option<&State>,
-    mut get_cached_tx: impl FnMut(HashVal) -> Option<Transaction>,
-) -> anyhow::Result<Option<(Block, ConsensusProof)>> {
-    let log_tag = format!("sync_state({}, {})", remote, netname);
-    // start with get_state
-    let next_height = my_last_state.map(|v| v.height + 1).unwrap_or(0);
-    log::trace!("next_height = {}", next_height);
+    starting_height: u64,
+    get_cached_tx: impl Fn(HashVal) -> Option<Transaction> + Send + Sync,
+) -> anyhow::Result<Vec<(Block, ConsensusProof)>> {
+    const BLKSIZE: u64 = 128;
+    let exec = smol::Executor::new();
+    let tasks = {
+        let mut toret = Vec::new();
+        for height in starting_height..starting_height + BLKSIZE {
+            let task = exec.spawn(get_one_block(remote, netname, height, &get_cached_tx));
+            toret.push(task);
+        }
+        toret
+    };
+    exec.run(async move {
+        let mut toret = Vec::new();
+        for (i, task) in tasks.into_iter().enumerate() {
+            if i == 0 {
+                toret.push(task.await?)
+            } else if let Ok(res) = task.await {
+                toret.push(res);
+            } else {
+                break;
+            }
+        }
+        Ok(toret)
+    })
+    .await
+}
+
+/// Obtains *one* block
+async fn get_one_block(
+    remote: SocketAddr,
+    netname: &str,
+    height: u64,
+    get_cached_tx: &(impl Sync + Fn(HashVal) -> Option<Transaction>),
+) -> anyhow::Result<(Block, ConsensusProof)> {
     let remote_state: (AbbreviatedBlock, ConsensusProof) = melnet::g_client()
-        .request(remote, netname, "get_state", next_height)
+        .request(remote, netname, "get_state", height)
         .await?;
-    log::trace!(
-        "{}: remote_state with height={}, count={}",
-        log_tag,
-        remote_state.0.header.height,
-        remote_state.0.txhashes.len()
-    );
     // now let's check the state
-    if remote_state.0.header.height != next_height {
+    if remote_state.0.header.height != height {
         anyhow::bail!("server responded with the wrong height");
-    }
-    if !remote_state
-        .0
-        .header
-        .validate_cproof(&remote_state.1, my_last_state)
-    {
-        anyhow::bail!("header didn't pass validation")
     }
     // now we get all relevant transactions.
     let mut all_txx = Vec::new();
@@ -59,7 +75,7 @@ pub async fn sync_state(
         transactions: all_txx.into(),
         proposer_action: None,
     };
-    Ok(Some((new_block, remote_state.1)))
+    Ok((new_block, remote_state.1))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
