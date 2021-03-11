@@ -24,6 +24,7 @@ tmelcrypt={path="../../libs/tmelcrypt"}
 melnet={path="../../libs/melnet"} 
 autosmt={path="../../libs/autosmt"}
 stdcode={path="../../libs/stdcode"}
+nodeprot={path="../../libs/nodeprot"}
 neosymph={path="../../libs/neosymph"}
 im="15"
 parking_lot="0.11"

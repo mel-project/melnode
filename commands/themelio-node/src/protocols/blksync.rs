@@ -1,17 +1,14 @@
 use std::net::SocketAddr;
 
-use blkstructs::{Block, ConsensusProof, Header, State, Transaction};
-use serde::{Deserialize, Serialize};
+use blkstructs::{Block, ConsensusProof, NetID, Transaction};
+use nodeprot::{AbbreviatedBlock, NodeClient};
 
 use tmelcrypt::HashVal;
 
-/// This cancellable async function synchronizes the block state with some other node. If the other node has the *next* block, it is returned; otherwise None is returned.
-///
-/// Right now we don't have a decent fastsync protocol yet, but that's fine for the testnet.
+/// This cancellable async function synchronizes the block state with some other node. If the other node has the next few blocks, those are returned.
 #[tracing::instrument(skip(get_cached_tx))]
 pub async fn sync_state(
     remote: SocketAddr,
-    netname: &str,
     starting_height: u64,
     get_cached_tx: impl Fn(HashVal) -> Option<Transaction> + Send + Sync,
 ) -> anyhow::Result<Vec<(Block, ConsensusProof)>> {
@@ -20,7 +17,7 @@ pub async fn sync_state(
     let tasks = {
         let mut toret = Vec::new();
         for height in starting_height..starting_height + BLKSIZE {
-            let task = exec.spawn(get_one_block(remote, netname, height, &get_cached_tx));
+            let task = exec.spawn(get_one_block(remote, height, &get_cached_tx));
             toret.push(task);
         }
         toret
@@ -44,13 +41,11 @@ pub async fn sync_state(
 /// Obtains *one* block
 async fn get_one_block(
     remote: SocketAddr,
-    netname: &str,
     height: u64,
     get_cached_tx: &(impl Sync + Fn(HashVal) -> Option<Transaction>),
 ) -> anyhow::Result<(Block, ConsensusProof)> {
-    let remote_state: (AbbreviatedBlock, ConsensusProof) = melnet::g_client()
-        .request(remote, netname, "get_state", height)
-        .await?;
+    let client = NodeClient::new(NetID::Testnet, remote);
+    let remote_state: (AbbreviatedBlock, ConsensusProof) = client.get_abbr_block(height).await?;
     // now let's check the state
     if remote_state.0.header.height != height {
         anyhow::bail!("server responded with the wrong height");
@@ -65,10 +60,17 @@ async fn get_one_block(
             unknown_txhashes.push(txh);
         }
     }
-    let txx: Vec<Transaction> = melnet::g_client()
-        .request(remote, netname, "get_txx", unknown_txhashes)
-        .await?;
-    all_txx.extend(txx);
+    for txh in unknown_txhashes {
+        let (tx_content, proof) = client
+            .get_smt_branch(
+                height,
+                nodeprot::Substate::Transactions,
+                tmelcrypt::hash_single(&stdcode::serialize(&txh).unwrap()),
+            )
+            .await?;
+        // TODO check?
+        all_txx.push(stdcode::deserialize(&tx_content)?);
+    }
     // now we should be able to construct the state
     let new_block = Block {
         header: remote_state.0.header,
@@ -76,25 +78,6 @@ async fn get_one_block(
         proposer_action: None,
     };
     Ok((new_block, remote_state.1))
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct AbbreviatedBlock {
-    pub header: Header,
-    pub txhashes: Vec<HashVal>,
-}
-
-impl AbbreviatedBlock {
-    pub fn from_state(state: &blkstructs::SealedState) -> Self {
-        let header = state.header();
-        let txhashes: Vec<HashVal> = state
-            .inner_ref()
-            .transactions
-            .val_iter()
-            .map(|v| v.hash_nosigs())
-            .collect();
-        Self { header, txhashes }
-    }
 }
 
 // TODO: where does this test go?

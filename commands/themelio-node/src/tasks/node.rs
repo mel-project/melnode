@@ -64,7 +64,7 @@ pub async fn run_node(opt: NodeConfig) {
         },
     )
     .share();
-    let _node_prot = NodeProtocol::new(opt.listen, opt.bootstrap.clone(), storage.clone()).unwrap();
+    let _node_prot = NodeProtocol::new(opt.listen, opt.bootstrap.clone(), storage.clone());
     let _staker_prot = if let Some(v) = opt.test_stakeholder {
         let my_sk = insecure_testnet_keygen(v).1;
         Some(

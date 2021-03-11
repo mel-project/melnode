@@ -1475,6 +1475,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "nodeprot"
+version = "0.1.0"
+dependencies = [
+ "autosmt",
+ "blkstructs",
+ "melnet",
+ "serde",
+ "stdcode",
+ "tmelcrypt",
+]
+
+[[package]]
 name = "num"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2489,6 +2501,7 @@ dependencies = [
  "lru",
  "melnet",
  "neosymph",
+ "nodeprot",
  "parking_lot 0.11.1",
  "rusqlite",
  "rustyline",
