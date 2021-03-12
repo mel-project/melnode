@@ -1,8 +1,13 @@
+use crate::SETTINGS;
+use std::borrow::Borrow;
+use std::ops::Deref;
+use std::convert::TryInto;
+
 pub fn get_data_block_hash_val(bytes: &[u8]) -> tmelcrypt::HashVal {
     if bytes.is_empty() {
         tmelcrypt::HashVal::default()
     } else {
-        tmelcrypt::hash_keyed(b"smt_datablock", bytes)
+        tmelcrypt::hash_keyed(&SETTINGS.smt.data_block_hash_key, bytes)
     }
 }
 
@@ -13,7 +18,7 @@ pub fn get_node_hash_val(left: tmelcrypt::HashVal, right: tmelcrypt::HashVal) ->
     let mut v: Vec<u8> = Vec::with_capacity(64);
     v.extend_from_slice(&left.0);
     v.extend_from_slice(&right.0);
-    tmelcrypt::hash_keyed(b"smt_node", &v)
+    tmelcrypt::hash_keyed(&SETTINGS.smt.node_hash_val, &v)
 }
 
 

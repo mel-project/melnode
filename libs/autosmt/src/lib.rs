@@ -6,6 +6,7 @@ pub mod smt;
 mod settings;
 
 pub use smt::*;
+use settings::*;
 
 #[cfg(test)]
 mod tests {

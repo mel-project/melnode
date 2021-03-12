@@ -3,16 +3,16 @@ use config::{ConfigError, Config, File, Environment};
 
 #[serde_as]
 #[derive(Debug, Deserialize)]
-struct Smt {
+pub(crate) struct Smt {
     #[serde_as(as = "BytesOrString")]
-    data_block_hash_key: Vec<u8>,
+    pub data_block_hash_key: Vec<u8>,
     #[serde_as(as = "BytesOrString")]
-    node_hash_val: Vec<u8>,
+    pub node_hash_val: Vec<u8>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Settings {
-    smt: Smt,
+pub(crate) struct Settings {
+    pub smt: Smt,
 }
 
 impl Settings {
