@@ -1,8 +1,9 @@
-use std::env;
-use config::{ConfigError, Config, File, Environment};
+use config::ConfigError;
+use serde::{Serialize, Deserialize};
+use serde_with::{serde_as, BytesOrString};
 
 #[serde_as]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct Smt {
     #[serde_as(as = "BytesOrString")]
     pub data_block_hash_key: Vec<u8>,
@@ -10,20 +11,19 @@ pub(crate) struct Smt {
     pub node_hash_val: Vec<u8>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct Settings {
     pub smt: Smt,
 }
 
 impl Settings {
     pub fn new() -> Result<Self, ConfigError> {
-        let settings_file = config::File::with_name("Settings");
         let mut settings = config::Config::default();
-        settings.merge(&settings_file).unwrap();
+        settings.merge(config::File::with_name("Settings")).unwrap();
         settings.try_into()
     }
 }
 
 lazy_static! {
-    pub static ref SETTINGS: Settings = Settings::new();
+    pub(crate) static ref SETTINGS: Settings = Settings::new().unwrap();
 }

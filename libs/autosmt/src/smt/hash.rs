@@ -1,7 +1,4 @@
 use crate::SETTINGS;
-use std::borrow::Borrow;
-use std::ops::Deref;
-use std::convert::TryInto;
 
 pub fn get_data_block_hash_val(bytes: &[u8]) -> tmelcrypt::HashVal {
     if bytes.is_empty() {
