@@ -1,0 +1,3 @@
+[smt]
+data_block_hash_key = "smt_datablock"
+node_hash_val = "smt_node"

@@ -30,15 +30,15 @@ static DATA_HASH_CACHE: Lazy<RwLock<HashMap<HVV, Vec<tmelcrypt::HashVal>>>> =
 pub fn data_hashes(key: tmelcrypt::HashVal, data: &[u8]) -> Vec<tmelcrypt::HashVal> {
     let compute = || {
         let path = merk::key_to_path(key);
-        let mut ptr = hash::datablock(data);
+        let mut ptr = hash::get_data_block_hash_val(data);
         let mut hashes = Vec::new();
         hashes.push(ptr);
         for data_on_right in path.iter().rev() {
             if *data_on_right {
                 // add the opposite hash
-                ptr = hash::node(tmelcrypt::HashVal::default(), ptr);
+                ptr = hash::get_node_hash_val(tmelcrypt::HashVal::default(), ptr);
             } else {
-                ptr = hash::node(ptr, tmelcrypt::HashVal::default());
+                ptr = hash::get_node_hash_val(ptr, tmelcrypt::HashVal::default());
             }
             hashes.push(ptr)
         }
@@ -150,12 +150,12 @@ impl FullProof {
 
     fn verify_pure(&self, root: tmelcrypt::HashVal, key: tmelcrypt::HashVal, val: &[u8]) -> bool {
         let path = key_to_path(key);
-        let mut my_root = hash::datablock(val);
+        let mut my_root = hash::get_data_block_hash_val(val);
         for (&level, &direction) in self.0.iter().zip(path.iter()).rev() {
             if direction {
-                my_root = hash::node(level, my_root)
+                my_root = hash::get_node_hash_val(level, my_root)
             } else {
-                my_root = hash::node(my_root, level)
+                my_root = hash::get_node_hash_val(my_root, level)
             }
         }
         root == my_root

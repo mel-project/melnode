@@ -172,26 +172,26 @@ impl InternalNode {
     fn cache_hashes(&mut self) {
         assert_eq!(self.my_hash, tmelcrypt::HashVal::default());
         for i in 0..8 {
-            self.ggc_hashes[i] = hash::node(self.gggc_hashes[i * 2], self.gggc_hashes[i * 2 + 1])
+            self.ggc_hashes[i] = hash::get_node_hash_val(self.gggc_hashes[i * 2], self.gggc_hashes[i * 2 + 1])
         }
         for i in 0..4 {
-            self.gc_hashes[i] = hash::node(self.ggc_hashes[i * 2], self.ggc_hashes[i * 2 + 1])
+            self.gc_hashes[i] = hash::get_node_hash_val(self.ggc_hashes[i * 2], self.ggc_hashes[i * 2 + 1])
         }
         for i in 0..2 {
-            self.ch_hashes[i] = hash::node(self.gc_hashes[i * 2], self.gc_hashes[i * 2 + 1])
+            self.ch_hashes[i] = hash::get_node_hash_val(self.gc_hashes[i * 2], self.gc_hashes[i * 2 + 1])
         }
-        self.my_hash = hash::node(self.ch_hashes[0], self.ch_hashes[1])
+        self.my_hash = hash::get_node_hash_val(self.ch_hashes[0], self.ch_hashes[1])
     }
 
     fn fix_hashes(&mut self, idx: usize) {
         let ggci = idx / 2;
         self.ggc_hashes[ggci] =
-            hash::node(self.gggc_hashes[ggci * 2], self.gggc_hashes[ggci * 2 + 1]);
+            hash::get_node_hash_val(self.gggc_hashes[ggci * 2], self.gggc_hashes[ggci * 2 + 1]);
         let gci = ggci / 2;
-        self.gc_hashes[gci] = hash::node(self.ggc_hashes[gci * 2], self.ggc_hashes[gci * 2 + 1]);
+        self.gc_hashes[gci] = hash::get_node_hash_val(self.ggc_hashes[gci * 2], self.ggc_hashes[gci * 2 + 1]);
         let ci = gci / 2;
-        self.ch_hashes[ci] = hash::node(self.gc_hashes[ci * 2], self.gc_hashes[ci * 2 + 1]);
-        self.my_hash = hash::node(self.ch_hashes[0], self.ch_hashes[1]);
+        self.ch_hashes[ci] = hash::get_node_hash_val(self.gc_hashes[ci * 2], self.gc_hashes[ci * 2 + 1]);
+        self.my_hash = hash::get_node_hash_val(self.ch_hashes[0], self.ch_hashes[1]);
     }
 
     fn get_by_path_rev(

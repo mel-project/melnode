@@ -1,5 +1,9 @@
+#[macro_use]
+extern crate lazy_static;
+
 pub mod ondisk;
 pub mod smt;
+mod settings;
 
 pub use smt::*;
 
