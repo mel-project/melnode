@@ -18,18 +18,18 @@ pub fn get_node_hash_val(left: tmelcrypt::HashVal, right: tmelcrypt::HashVal) ->
     tmelcrypt::hash_keyed(&SETTINGS.smt.node_hash_val, &v)
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_datablock_empty() {
-
+        // call with empty slice and check for expected default
     }
 
     #[test]
     fn test_datablock_not_empty() {
-
+        // call with multiple non-empty slices and check for expected value
+        // ensure no duplicates / unique
     }
 }

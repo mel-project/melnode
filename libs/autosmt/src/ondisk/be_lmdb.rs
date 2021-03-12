@@ -168,3 +168,20 @@ fn gc_roots_helper(txn: &impl lmdb::Transaction, db: lmdb::Database) -> Vec<tmel
     }
     toret
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_something() {
+        // tests around this module shoudl be centered around mocking sled impl
+        // and having it returns various values to see if flow / wrapper here is correct
+
+        // Another goal would be to look for conditions where we hit a violation of sled's guarantees
+        // from their API simulating unavailability or corruption to ensure we panic or fail accordingly
+
+        // Check with eric if we even need to test this module since we aren't using LMDB anymore...
+        // See if its safe to delete (ie check if & where its used0
+    }
+}
