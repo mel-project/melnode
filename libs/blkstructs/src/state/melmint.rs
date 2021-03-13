@@ -7,6 +7,7 @@ use crate::{
     MAX_COINVAL, MICRO_CONVERTER,
 };
 use cached::proc_macro::cached;
+use futures_lite::prelude::*;
 
 /// Internal DOSC inflator. Returns how many µNomDOSC is 1 DOSC.
 #[cached]
@@ -14,7 +15,12 @@ fn micronomdosc_per_dosc(height: u64) -> u128 {
     if height == 0 {
         MICRO_CONVERTER
     } else {
-        let last = micronomdosc_per_dosc(height - 1);
+        // HACK: "segmented stacks"
+        let last = if height % 1000 == 0 {
+            futures_lite::future::block_on(async { micronomdosc_per_dosc(height - 1) }.boxed())
+        } else {
+            micronomdosc_per_dosc(height - 1)
+        };
         (last + 1).max(last + last / 2_000_000)
     }
 }
