@@ -72,7 +72,7 @@ async fn blksync_loop(network: melnet::NetState, state: SharedStorage) {
                         let res = state.write().apply_block(blk.clone(), cproof);
                         if let Err(e) = res {
                             log::warn!("{:#?}", blk);
-                            panic!("{}: failed to apply block from other node: {:?}", tag(), e);
+                            log::warn!("{}: failed to apply block from other node: {:?}", tag(), e);
                         }
                     }
                 }
