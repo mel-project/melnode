@@ -174,16 +174,17 @@ async fn singlehost_monitor(
                 let inserted_deadline = Instant::now() + Duration::from_secs(1);
                 heap.push((inserted_deadline, ByAddress(Box::new(insertion))));
             }
-            Evt::Request(send_response) => send_response
-                .send(match heap.pop_max() {
-                    Some(max) => {
-                        let ByAddress(bx) = max.1;
-                        Some(*bx)
-                    }
-                    None => None,
-                })
-                .await
-                .unwrap(),
+            Evt::Request(send_response) => {
+                let _ = send_response
+                    .send(match heap.pop_max() {
+                        Some(max) => {
+                            let ByAddress(bx) = max.1;
+                            Some(*bx)
+                        }
+                        None => None,
+                    })
+                    .await;
+            }
             Evt::Timeout => {
                 heap.pop_min();
             }

@@ -20,7 +20,7 @@ use txn::Transaction;
 use self::melswap::PoolMapping;
 mod applytx;
 pub(crate) mod melmint;
-mod melswap;
+pub(crate) mod melswap;
 
 // TODO: Move these structs into state package
 // ie: split this into modules such as

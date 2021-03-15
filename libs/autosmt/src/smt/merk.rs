@@ -87,21 +87,10 @@ impl FullProof {
         CompressedProof(bitmap_slice)
     }
 
-    /// Verifies that this merkle branch is a valid proof of inclusion or non-inclusion. `Some(true)` means that it's a proof of inclusion, `Some(false)` means that it's a proof of exclusion, and `None` means it's not a valid proof.
-    pub fn verify(
-        &self,
-        root: tmelcrypt::HashVal,
-        key: tmelcrypt::HashVal,
-        val: &[u8],
-    ) -> Option<bool> {
+    /// Verifies that this merkle branch is a valid proof of inclusion or non-inclusion. To check proofs of non-inclusion, set val to the empty vector.
+    pub fn verify(&self, root: tmelcrypt::HashVal, key: tmelcrypt::HashVal, val: &[u8]) -> bool {
         assert_eq!(self.0.len(), 256);
-        if self.verify_pure(root, key, &[]) {
-            Some(false)
-        } else if self.verify_pure(root, key, val) {
-            Some(true)
-        } else {
-            None
-        }
+        self.verify_pure(root, key, val)
     }
 
     /// Convenience function that returns whether or not the merkle branch is a correct proof of in/exclusion for a particular key-value binding.
@@ -114,10 +103,10 @@ impl FullProof {
         let key = tmelcrypt::hash_single(&stdcode::serialize(&key).unwrap());
         if let Some(val) = val {
             let val = stdcode::serialize(val).unwrap();
-            if let Some(true) = self.verify(root, key, &val) {
+            if self.verify(root, key, &val) {
                 return true;
             }
-        } else if let Some(false) = self.verify(root, key, b"") {
+        } else if self.verify(root, key, b"") {
             return true;
         }
         false

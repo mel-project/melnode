@@ -1,5 +1,7 @@
+use std::collections::BTreeMap;
+
 use autosmt::CompressedProof;
-use blkstructs::{ConsensusProof, Transaction};
+use blkstructs::{ConsensusProof, StakeDoc, Transaction};
 use melnet::Request;
 use tmelcrypt::HashVal;
 
@@ -23,6 +25,9 @@ pub trait NodeServer {
         elem: Substate,
         key: HashVal,
     ) -> melnet::Result<(Vec<u8>, CompressedProof)>;
+
+    /// Gets stakers
+    fn get_stakers_raw(&self, height: u64) -> melnet::Result<BTreeMap<HashVal, Vec<u8>>>;
 }
 
 /// This is a melnet responder that wraps a NodeServer.
@@ -55,6 +60,11 @@ impl<S: NodeServer> melnet::Responder<NodeRequest, Vec<u8>> for NodeResponder<S>
             NodeRequest::GetSmtBranch(height, elem, key) => req.respond(
                 self.server
                     .get_smt_branch(height, elem, key)
+                    .map(|v| stdcode::serialize(&v).unwrap()),
+            ),
+            NodeRequest::GetStakersRaw(height) => req.respond(
+                self.server
+                    .get_stakers_raw(height)
                     .map(|v| stdcode::serialize(&v).unwrap()),
             ),
         }

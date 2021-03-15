@@ -91,11 +91,9 @@ fn process_tree_chunk(
         .proof
         .decompress()
         .ok_or_else(|| anyhow::anyhow!("could not decompress proof"))?;
-    let is_inclusion = proof
-        .verify(valid_root, chunk.key_hash, &chunk.data)
-        .ok_or_else(|| anyhow::anyhow!("invalid proof"))?;
-    if !is_inclusion {
-        anyhow::bail!("not a proof of inclusion");
+    let is_valid = proof.verify(valid_root, chunk.key_hash, &chunk.data);
+    if !is_valid {
+        anyhow::bail!("not a good proof");
     }
     *tree = tree.set(chunk.key_hash, &chunk.data);
     Ok(())

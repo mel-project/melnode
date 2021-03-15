@@ -116,7 +116,8 @@ async fn staker_loop(gossiper: SymphGossip, storage: SharedStorage, my_sk: Ed255
                         for state in states {
                             let block = state.to_block();
                             if let Err(err) = storage.apply_block(block, ConsensusProof::new()) {
-                                log::warn!("can't apply finalized block: {:?}", err)
+                                log::warn!("can't apply finalized block {}", state.inner_ref().height);
+                                // break
                             }
                         }
                     }

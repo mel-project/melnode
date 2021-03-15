@@ -1,13 +1,13 @@
-use std::{net::SocketAddr, time::Duration};
+use std::{collections::BTreeMap, net::SocketAddr, sync::Arc, time::Duration};
 
 use autosmt::CompressedProof;
-use blkstructs::{ConsensusProof, NetID, Transaction};
-// use fastsync::send_fastsync;
+use blkstructs::{CoinDataHeight, CoinID, ConsensusProof, Header, NetID, StakeDoc, Transaction};
+use fastsync::send_fastsync;
 use melnet::MelnetError;
 use neosymph::TxLookup;
 use nodeprot::{AbbreviatedBlock, NodeClient, NodeResponder, NodeServer, StateSummary, Substate};
 use smol::{
-    channel::Receiver,
+    channel::{Receiver, Sender},
     net::TcpListener,
 };
 use tmelcrypt::HashVal;
@@ -53,7 +53,7 @@ impl NodeProtocol {
 
 #[tracing::instrument(skip(network, state))]
 async fn blksync_loop(network: melnet::NetState, state: SharedStorage) {
-    let tag = || format!("blksync@{:?}", state.read().highest_state());
+    let tag = || format!("blksync@{:?}", state.read().highest_state().header().height);
     loop {
         let random_peer = network.routes().first().cloned();
         if let Some(peer) = random_peer {
@@ -70,9 +70,13 @@ async fn blksync_loop(network: melnet::NetState, state: SharedStorage) {
                 Ok(blocks) => {
                     for (blk, cproof) in blocks {
                         let res = state.write().apply_block(blk.clone(), cproof);
-                        if let Err(e) = res {
-                            log::warn!("{:#?}", blk);
-                            log::warn!("{}: failed to apply block from other node: {:?}", tag(), e);
+                        if res.is_err() {
+                            log::warn!(
+                                "{}: failed to apply block {} from other node",
+                                tag(),
+                                blk.header.height
+                            );
+                            break;
                         }
                     }
                 }
@@ -121,9 +125,16 @@ impl NodeServer for AuditorResponder {
     }
 
     fn get_summary(&self) -> melnet::Result<StateSummary> {
+        let storage = self.storage.read();
+        let highest = storage.highest_state();
+        let proof = storage
+            .get_consensus(highest.header().height)
+            .expect("highest state did not have a consensus proof");
         Ok(StateSummary {
             netid: NetID::Testnet,
-            last_height: self.storage.read().highest_height(),
+            height: self.storage.read().highest_height(),
+            header: highest.header(),
+            proof,
         })
     }
 
@@ -146,6 +157,18 @@ impl NodeServer for AuditorResponder {
         };
         let (v, proof) = tree.get(key);
         Ok((v, proof.compress()))
+    }
+
+    fn get_stakers_raw(&self, height: u64) -> melnet::Result<BTreeMap<HashVal, Vec<u8>>> {
+        let state =
+            self.storage.read().get_state(height).ok_or_else(|| {
+                MelnetError::Custom(format!("block {} not confirmed yet", height))
+            })?;
+        let mut accum = BTreeMap::new();
+        for (k, v) in state.inner_ref().stakes.mapping.iter() {
+            accum.insert(k, v);
+        }
+        Ok(accum)
     }
 }
 

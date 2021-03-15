@@ -17,6 +17,7 @@ pub use constants::*;
 mod smtmapping;
 pub use fastsync::*;
 pub use smtmapping::*;
+pub use state::melswap::PoolState;
 pub use state::*;
 pub use transaction::*;
 
