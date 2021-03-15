@@ -1,7 +1,7 @@
 use std::collections::BinaryHeap;
 
-use crate::testing::factory::{CoinDataFactory, CoinIDFactory, TransactionFactory};
-use crate::testing::fixtures::SEND_MEL_AMOUNT;
+use crate::testing::factory::{CoinDataFactory, TransactionFactory};
+// use crate::testing::fixtures::SEND_MEL_AMOUNT;
 use crate::{melvm, CoinData, CoinID, Transaction, TxKind, DENOM_NEWCOIN, DENOM_TMEL};
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
@@ -59,7 +59,7 @@ pub fn random_valid_txx_count(
 }
 
 pub fn fee_estimate() -> u128 {
-    /// Assuming some fee for tx (use higher multiplier to ensure its enough)
+    // Assuming some fee for tx (use higher multiplier to ensure its enough)
     let fee_multiplier = 10000;
     let fee = TransactionFactory::new()
         .build(|_| {})

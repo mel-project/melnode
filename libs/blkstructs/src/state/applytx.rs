@@ -266,9 +266,9 @@ impl<'a> StateHandle<'a> {
 pub(crate) mod tests {
     use crate::melvm::Covenant;
     use crate::state::applytx::StateHandle;
-    use crate::testing::factory::*;
+    // use crate::testing::factory::*;
     use crate::testing::fixtures::*;
-    use crate::{CoinData, CoinID, State, TxKind};
+    use crate::{CoinData, CoinID, State};
     use rstest::*;
     use tmelcrypt::{Ed25519PK, Ed25519SK};
 

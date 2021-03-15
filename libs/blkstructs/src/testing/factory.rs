@@ -2,9 +2,8 @@
 // For structs which don't have serialization support
 // build the structure manually or use a custom function with sub-factories where appropriate.
 
-use std::collections::HashMap;
-
-use crate::{Block, CoinData, CoinDataHeight, CoinID, DENOM_TMEL, GenesisConfig, Header, melvm, ProposerAction, StakeDoc, Transaction, TxKind};
+use crate::{Block, CoinData, CoinID, DENOM_TMEL, CoinDataHeight, ProposerAction, StakeDoc, Transaction, TxKind};
+use crate::melvm;
 
 
 beaver::define! {
@@ -50,14 +49,14 @@ beaver::define! {
     }
 }
 
-beaver::define! {
-    pub GenesisConfigFactory (GenesisConfig) {
-        init_micromels -> |n| n as u128,
-        init_covhash -> |_| tmelcrypt::HashVal::random(),
-        stakes -> |_| HashMap::new(),
-        init_fee_pool -> |n| n as u128,
-    }
-}
+// beaver::define! {
+//     pub GenesisConfigFactory (GenesisConfig) {
+//         init_micromels -> |n| n as u128,
+//         init_covhash -> |_| tmelcrypt::HashVal::random(),
+//         stakes -> |_| HashMap::new(),
+//         init_fee_pool -> |n| n as u128,
+//     }
+// }
 
 beaver::define! {
     pub ProposerActionFactory (ProposerAction) {
@@ -66,25 +65,25 @@ beaver::define! {
     }
 }
 
-beaver::define! {
-    pub HeaderFactory (Header) {
-        previous -> |_| tmelcrypt::HashVal::random(),
-        height -> |n| n as u64,
-        history_hash -> |_| tmelcrypt::HashVal::random(),
-        coins_hash -> |_| tmelcrypt::HashVal::random(),
-        transactions_hash -> |_| tmelcrypt::HashVal::random(),
-        fee_pool -> |n| n as u128,
-        fee_multiplier -> |n| n as u128,
-        dosc_speed ->  |n| n as u128,
-        pools_hash -> |_| tmelcrypt::HashVal::random(),
-        stake_doc_hash -> |_| tmelcrypt::HashVal::random(),
-    }
-}
+// beaver::define! {
+//     pub HeaderFactory (Header) {
+//         previous -> |_| tmelcrypt::HashVal::random(),
+//         height -> |n| n as u64,
+//         history_hash -> |_| tmelcrypt::HashVal::random(),
+//         coins_hash -> |_| tmelcrypt::HashVal::random(),
+//         transactions_hash -> |_| tmelcrypt::HashVal::random(),
+//         fee_pool -> |n| n as u128,
+//         fee_multiplier -> |n| n as u128,
+//         dosc_speed ->  |n| n as u128,
+//         pools_hash -> |_| tmelcrypt::HashVal::random(),
+//         stake_doc_hash -> |_| tmelcrypt::HashVal::random(),
+//     }
+// }
 
-beaver::define! {
-    pub BlockFactory (Block) {
-        header -> |n| HeaderFactory::build(n),
-        transactions -> |n| TransactionFactory::build_list(3, n).iter().cloned().collect(),
-        proposer_action -> |_| None,
-    }
-}
+// beaver::define! {
+//     pub BlockFactory (Block) {
+//         header -> |n| HeaderFactory::build(n),
+//         transactions -> |n| TransactionFactory::build_list(3, n).iter().cloned().collect(),
+//         proposer_action -> |_| None,
+//     }
+// }

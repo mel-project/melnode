@@ -1,13 +1,13 @@
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use std::{net::SocketAddr, time::Duration};
 
 use autosmt::CompressedProof;
-use blkstructs::{CoinDataHeight, CoinID, ConsensusProof, Header, NetID, Transaction};
-use fastsync::send_fastsync;
+use blkstructs::{ConsensusProof, NetID, Transaction};
+// use fastsync::send_fastsync;
 use melnet::MelnetError;
 use neosymph::TxLookup;
 use nodeprot::{AbbreviatedBlock, NodeClient, NodeResponder, NodeServer, StateSummary, Substate};
 use smol::{
-    channel::{Receiver, Sender},
+    channel::Receiver,
     net::TcpListener,
 };
 use tmelcrypt::HashVal;
