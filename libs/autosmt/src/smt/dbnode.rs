@@ -333,3 +333,13 @@ impl DataNode {
         vec![tmelcrypt::HashVal::default(); self.level as usize]
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_something() {
+    }
+}
+

@@ -20,6 +20,7 @@ pub fn key_to_path(key: tmelcrypt::HashVal) -> [bool; 256] {
 
 type HVV = (tmelcrypt::HashVal, Vec<u8>);
 
+// TODO: Safe to delete?
 // thread_local! {
 //     static DATA_HASH_CACHE: RefCell<HashMap<HVV, Vec<tmelcrypt::HashVal>>> = RefCell::new(HashMap::new());
 // }
@@ -187,5 +188,103 @@ impl CompressedProof {
             }
         }
         Some(FullProof(out))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_key_to_path() {
+        // TODO:
+    }
+
+    #[test]
+    fn test_decompress_none_when_length_is_zero() {
+        // create empty vector
+
+        // run decompress
+
+        // expect none
+
+        // Note that a length of zero requires its own check anc impl should probably be modified
+        // ie instead of checking for l.t. expected size, jsut check length is non-zero and a multiple of
+        // expected size
+    }
+
+    #[test]
+    fn test_decompress_proof_none_when_length_not_multiple_of_expected_byte_size() {
+        // create vectors full of random data ranging from
+        // 1 to some upper bound greater than N * expected byte_size
+
+        // iterate through each and if we have length % expected size == 0 continue
+        // for all other values ensure we get None
+
+    }
+
+    #[test]
+    fn test_decompress_proof_exists_when_length_is_multiple_of_expected_byte_size() {
+        // create vectors full of random data ranging from
+        // expected_byte_size * 1 to expected_byte_size*N
+
+        // iterate through each and only ensure a proof exists
+    }
+
+    #[test]
+    fn test_decompress_proof_is_valid() {
+        // create vectors full of random data ranging from
+        // expected_byte_size * 1 to expected_byte_size*N
+
+        // iterate through each and only ensure a proof is valid and unique
+
+        // Note: its hard to understand how this is decompression...
+        // need better doc str on method...
+    }
+
+    #[test]
+    fn test_all_header_bits_set() {
+        // ...
+    }
+
+    #[test]
+    fn test_decompress_proof_panic_on_buffer_read_fail() {
+        // b.read_exact(&mut buf).ok()?;
+        // in case there is an external failure while processing the buffer
+        // (perhaps mock this somehow?) the method will panic / abort
+    }
+
+
+    #[test]
+    fn test_compress_decompress_expected() {
+        // create a compressed proof, from decompressing some arbitrary data...
+        // ensure it matches the data the proof was generated from
+        // keep doing that sequentially and ensure it matches
+        // do that for various inputs and sizes (fuzz)
+    }
+
+    #[test]
+    fn test_data_hashes() {
+        // Unorganized notes to break into test cases
+        // This may need higher-level fuzzing with the goal being with large enough values
+        // we hit both data on rihgt and not conditional branches multiple times
+        // Given random input they should be near 50/50 for high iterations
+        //
+        // TODO: consider moving compute out into a seperate function for test out notes outlined above
+        // TODO: we need memoization / caching tests on this method to ensure we reset cache when we go over limit
+        // This behavior seems somewhat strange.. shouldn't it be popping otu and removing oldest elements or
+        // least important from cache instead of reseting teh entire thing?
+
+        // Maybe its because teh cache code is commented out
+    }
+
+    #[test]
+    fn test_verify_pure() {
+        // TODO:
+    }
+
+    #[test]
+    fn test_verify_unhashed() {
+        // Is there a plan to use this in the future? It doesn't seem to be used anywhere in our code base
     }
 }
