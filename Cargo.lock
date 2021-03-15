@@ -345,7 +345,6 @@ dependencies = [
  "dashmap",
  "defmac",
  "env_logger 0.7.1",
- "futures-lite",
  "genawaiter",
  "hex",
  "im",

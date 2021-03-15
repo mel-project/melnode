@@ -389,6 +389,12 @@ impl SealedState {
             stake_doc_hash: inner.stakes.root_hash(),
         }
     }
+
+    /// Returns the proposer action.
+    pub fn proposer_action(&self) -> Option<&ProposerAction> {
+        self.1.as_ref()
+    }
+
     /// Returns the final state represented as a "block" (header + transactions).
     pub fn to_block(&self) -> Block {
         let mut txx = im::HashSet::new();

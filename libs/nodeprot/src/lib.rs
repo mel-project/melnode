@@ -4,13 +4,14 @@ mod server;
 pub use client::*;
 pub use server::*;
 
-use blkstructs::{Header, NetID, Transaction};
+use blkstructs::{Header, NetID, ProposerAction, Transaction};
 use serde::{Deserialize, Serialize};
 use tmelcrypt::HashVal;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AbbreviatedBlock {
     pub header: Header,
+    pub proposer_action: Option<ProposerAction>,
     pub txhashes: Vec<HashVal>,
 }
 
@@ -23,7 +24,11 @@ impl AbbreviatedBlock {
             .val_iter()
             .map(|v| v.hash_nosigs())
             .collect();
-        Self { header, txhashes }
+        Self {
+            header,
+            txhashes,
+            proposer_action: state.proposer_action().cloned(),
+        }
     }
 }
 

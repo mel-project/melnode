@@ -75,7 +75,7 @@ async fn get_one_block(
     let new_block = Block {
         header: remote_state.0.header,
         transactions: all_txx.into(),
-        proposer_action: None,
+        proposer_action: remote_state.0.proposer_action,
     };
     Ok((new_block, remote_state.1))
 }
