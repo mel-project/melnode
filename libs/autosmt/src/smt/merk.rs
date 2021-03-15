@@ -6,6 +6,12 @@ use serde::{Deserialize, Serialize};
 use std::io::Read;
 use std::{collections::HashMap, fmt::Debug};
 
+pub(crate) const MSB_SET: u8 = 0b1000_0000;
+
+// TODO: consider using https://github.com/bitvecto-rs/bitvec
+// TODO: would machine endianess effect this? ie if node runs on a diff. machine arch
+// woudln't we get diff hashval to path conversion? might make things like persistent storage difficult
+// Ie: perhaps we can use https://docs.rs/byteordered/0.1.0/byteordered/enum.Endianness.html if that is the case?
 pub fn key_to_path(key: tmelcrypt::HashVal) -> [bool; 256] {
     let mut toret = [false; 256];
     // enumerate each byte
@@ -19,11 +25,6 @@ pub fn key_to_path(key: tmelcrypt::HashVal) -> [bool; 256] {
 }
 
 type HVV = (tmelcrypt::HashVal, Vec<u8>);
-
-// TODO: Safe to delete?
-// thread_local! {
-//     static DATA_HASH_CACHE: RefCell<HashMap<HVV, Vec<tmelcrypt::HashVal>>> = RefCell::new(HashMap::new());
-// }
 
 static DATA_HASH_CACHE: Lazy<RwLock<HashMap<HVV, Vec<tmelcrypt::HashVal>>>> =
     Lazy::new(|| RwLock::new(HashMap::new()));
@@ -46,6 +47,7 @@ pub fn data_hashes(key: tmelcrypt::HashVal, data: &[u8]) -> Vec<tmelcrypt::HashV
         hashes.reverse();
         hashes
     };
+    // Should we completely drop this caching mechanism?
     let value = DATA_HASH_CACHE.read().get(&(key, data.into())).cloned();
     if let Some(val) = value {
         val
@@ -58,34 +60,6 @@ pub fn data_hashes(key: tmelcrypt::HashVal, data: &[u8]) -> Vec<tmelcrypt::HashV
         }
         res
     }
-
-    // DATA_HASH_CACHE.with(|cache| {
-    //     let mut cache = cache.borrow_mut();
-    //     log::warn!("cache has {} entries", cache.len());
-    //     if cache.len() > 1000 {
-    //         *cache = HashMap::new();
-    //     }
-    //     cache
-    //         .entry((key, data.to_vec()))
-    //         .or_insert_with(|| {
-    //             let path = merk::key_to_path(key);
-    //             let mut ptr = hash::datablock(data);
-    //             let mut hashes = Vec::new();
-    //             hashes.push(ptr);
-    //             for data_on_right in path.iter().rev() {
-    //                 if *data_on_right {
-    //                     // add the opposite hash
-    //                     ptr = hash::node(tmelcrypt::HashVal::default(), ptr);
-    //                 } else {
-    //                     ptr = hash::node(ptr, tmelcrypt::HashVal::default());
-    //                 }
-    //                 hashes.push(ptr)
-    //             }
-    //             hashes.reverse();
-    //             hashes
-    //         })
-    //         .clone()
-    // })
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
@@ -194,10 +168,53 @@ impl CompressedProof {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::convert::TryFrom;
+    use tmelcrypt::HashVal;
+    use std::ops::Index;
+    use bitvec::indices::BitIdx;
 
     #[test]
-    fn test_key_to_path() {
-        // TODO:
+    fn test_key_to_path_first() {
+        let first =tmelcrypt::HashVal::default();
+        let actual_first_path = key_to_path(first).to_vec();
+        let expected_first_path = vec![false; 256];
+        assert_eq!(actual_first_path, expected_first_path);
+    }
+
+    #[test]
+    fn test_key_to_path_last() {
+        let mut last = tmelcrypt::HashVal::default();
+        last.0 = <[u8; 32]>::try_from(vec![u8::max_value(); 32]).unwrap();
+        let actual_last_path = key_to_path(last).to_vec();
+        let expected_last_path = vec![true; 256];
+        assert_eq!(actual_last_path, expected_last_path);
+    }
+
+    // TODO: determine if we need endian support and
+    // either impl below tests or ensure happy path
+    // handle system endianess checks in some way
+    // #[test]
+    // fn test_key_to_path_first_byte_little_endian() {
+    //     // TODO
+    // }
+    //
+    // #[test]
+    // fn test_key_to_path_first_byte_big_endian() {
+    //     // TODO
+    // }
+
+    fn test_key_to_path_happy_path() {
+        let hv = HashVal::random();
+        let actual_path = key_to_path(hv.clone());
+        let mut expected_path = Vec::new();
+        for &byt in hv.0.iter() {
+            for j in 0..8 {
+                expected_path.push(MSB_SET & byt >> j != 0);
+            }
+        }
+
+        let actual_path = key_to_path(hv);
+        assert_eq!(expected_path, actual_path.to_vec());
     }
 
     #[test]
@@ -220,7 +237,6 @@ mod tests {
 
         // iterate through each and if we have length % expected size == 0 continue
         // for all other values ensure we get None
-
     }
 
     #[test]
