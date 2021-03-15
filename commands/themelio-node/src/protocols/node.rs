@@ -53,7 +53,7 @@ impl NodeProtocol {
 
 #[tracing::instrument(skip(network, state))]
 async fn blksync_loop(network: melnet::NetState, state: SharedStorage) {
-    let tag = || format!("blksync@{:?}", state.read().highest_state());
+    let tag = || format!("blksync@{:?}", state.read().highest_state().header().height);
     loop {
         let random_peer = network.routes().first().cloned();
         if let Some(peer) = random_peer {
@@ -70,9 +70,13 @@ async fn blksync_loop(network: melnet::NetState, state: SharedStorage) {
                 Ok(blocks) => {
                     for (blk, cproof) in blocks {
                         let res = state.write().apply_block(blk.clone(), cproof);
-                        if let Err(e) = res {
-                            log::warn!("{:#?}", blk);
-                            log::warn!("{}: failed to apply block from other node: {:?}", tag(), e);
+                        if res.is_err() {
+                            log::warn!(
+                                "{}: failed to apply block {} from other node",
+                                tag(),
+                                blk.header.height
+                            );
+                            break;
                         }
                     }
                 }
