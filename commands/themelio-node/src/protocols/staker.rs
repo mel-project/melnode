@@ -31,18 +31,14 @@ struct WrappedSharedStorage(SharedStorage);
 
 impl neosymph::TxLookup for WrappedSharedStorage {
     fn lookup(&self, hash: HashVal) -> Option<Transaction> {
-        self.0.read().lookup(hash)
+        self.0.read().mempool().lookup(hash)
     }
 }
 
 #[allow(clippy::clippy::or_fun_call)]
 #[instrument(skip(gossiper, storage, my_sk))]
 async fn staker_loop(gossiper: SymphGossip, storage: SharedStorage, my_sk: Ed25519SK, epoch: u64) {
-    let genesis = storage
-        .read()
-        .last_block()
-        .map(|v| v.inner().clone())
-        .unwrap_or(storage.read().genesis());
+    let genesis = storage.read().highest_state();
     let stakes = genesis.inner_ref().stakes.clone();
     let first_stake = genesis.inner_ref().stakes.val_iter().next().unwrap();
     let config = StreamletCfg {
@@ -66,11 +62,11 @@ async fn staker_loop(gossiper: SymphGossip, storage: SharedStorage, my_sk: Ed255
                 let (evt, _) = events.recv().await.unwrap();
                 match evt {
                     StreamletEvt::SolicitProp(last_state, height, prop_send) => {
-                        let provis_state = storage.read().provis_state.clone();
+                        let provis_state = storage.read().mempool().to_state();
                         let out_of_bounds = height / blkstructs::STAKE_EPOCH != epoch;
 
                         let action = if !out_of_bounds {
-                            log::info!("bad/missing provisional state. proposing a quasiempty block for height {} because our provis height is {:?}.", height, provis_state.as_ref().map(|s| s.height));
+                            log::info!("bad/missing provisional state. proposing a quasiempty block for height {} because our provis height is {:?}.", height, provis_state.height);
                             Some(ProposerAction {
                             fee_multiplier_delta: 0,
                             reward_dest: my_script.hash(),
@@ -79,7 +75,6 @@ async fn staker_loop(gossiper: SymphGossip, storage: SharedStorage, my_sk: Ed255
                             None
                         };
 
-                        if let Some(provis_state) = &provis_state {
                             if height == provis_state.height
                                 && Some(last_state.header().hash())
                                     == provis_state.history.get(&(height - 1)).0.map(|v| v.hash())
@@ -90,7 +85,7 @@ async fn staker_loop(gossiper: SymphGossip, storage: SharedStorage, my_sk: Ed255
                                 prop_send.send(prop_msg).unwrap();
                                 continue
                             }
-                        }
+                        
                         let mut basis = last_state.clone();
                         let mut last_nonempty = None;
                         while basis.header().height + 1 < height {
@@ -113,14 +108,14 @@ async fn staker_loop(gossiper: SymphGossip, storage: SharedStorage, my_sk: Ed255
                     StreamletEvt::LastNotarizedTip(state) => {
                         // we set the mempool state to the LNT's successor
                         log::info!("setting mempool LNT to height={}, hash={:?}", state.header().height, state.header().hash());
-                        storage.write().provis_state = Some(state.next_state());
+                        storage.write().mempool_mut().rebase(state.next_state());
                     }
                     StreamletEvt::Finalize(states) => {
                         log::info!("gonna finalize {} states", states.len());
                         let mut storage =  storage.write();
                         for state in states {
                             let block = state.to_block();
-                            if let Err(err) = storage.apply_confirmed_block(block, ConsensusProof::new()) {
+                            if let Err(err) = storage.apply_block(block, ConsensusProof::new()) {
                                 log::warn!("can't apply finalized block: {:?}", err)
                             }
                         }
@@ -130,4 +125,3 @@ async fn staker_loop(gossiper: SymphGossip, storage: SharedStorage, my_sk: Ed255
         })
         .await;
 }
- 

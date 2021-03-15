@@ -3,6 +3,6 @@ pub use common::*;
 
 pub(crate) mod storage;
 pub use storage::*;
-mod wallet;
+// mod wallet;
 
-pub use wallet::*;
+// pub use wallet::*;

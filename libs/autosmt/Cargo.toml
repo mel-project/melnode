@@ -12,14 +12,11 @@ hex="0.4.2"
 blake3="0.3.3"
 bitvec="0.17.4"
 rand="0.7"
-lmdb="0.8.0"
-snap = "1"
 parking_lot="0.11"
 tmelcrypt={path="../tmelcrypt"}
 stdcode={path="../stdcode"}
 log="0.4"
 enum_dispatch="0.3"
-syn = { version = "= 1.0.57", features = ["full", "extra-traits"] }
 env_logger = "0.7"
 bloomfilter="1"
 genawaiter={version="0.99", default-features=false}

@@ -14,7 +14,14 @@ fn micronomdosc_per_dosc(height: u64) -> u128 {
     if height == 0 {
         MICRO_CONVERTER
     } else {
-        let last = micronomdosc_per_dosc(height - 1);
+        // HACK: "segmented stacks"
+        let last = if height % 1000 == 0 {
+            std::thread::spawn(move || micronomdosc_per_dosc(height - 1))
+                .join()
+                .unwrap()
+        } else {
+            micronomdosc_per_dosc(height - 1)
+        };
         (last + 1).max(last + last / 2_000_000)
     }
 }

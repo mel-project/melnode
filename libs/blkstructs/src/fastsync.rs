@@ -17,7 +17,7 @@ pub struct FastSyncDecoder {
 
 impl FastSyncDecoder {
     /// Creates a new decoder that validates chunks based on the given header.
-    pub fn new(header: Header, dbm: autosmt::DBManager) -> Self {
+    pub fn new(header: Header, dbm: autosmt::Forest) -> Self {
         let partial_history = dbm.get_tree(Default::default());
         let partial_coins = dbm.get_tree(Default::default());
         let partial_transactions = dbm.get_tree(Default::default());
@@ -63,6 +63,7 @@ impl FastSyncDecoder {
             && (self.partial_stakes.root_hash()) == (self.header.stake_doc_hash)
         {
             return Ok(Some(SealedState::force_new(State {
+                network: self.header.network,
                 height: self.header.height,
                 history: SmtMapping::new(self.partial_history.clone()),
                 coins: SmtMapping::new(self.partial_coins.clone()),
@@ -173,12 +174,12 @@ pub struct Chunk {
 mod tests {
     use super::*;
     use crate::State;
-    use autosmt::DBManager;
+    use autosmt::Forest;
 
     #[test]
     fn empty_state() {
-        let dbm = DBManager::load(autosmt::MemDB::default());
-        let state = State::new_empty(dbm.clone()).seal(None);
+        let dbm = Forest::load(autosmt::MemDB::default());
+        let state = State::new_empty_testnet(dbm.clone()).seal(None);
         let mut decoder = FastSyncDecoder::new(state.header(), dbm);
         let encoder = FastSyncEncoder::new(state.clone());
         for chunk in encoder {

@@ -7,14 +7,14 @@ use std::sync::Arc;
 
 /// Wraps around a raw key-value store and produces trees. The main interface to the library.
 #[derive(Clone)]
-pub struct DBManager {
+pub struct Forest {
     raw: Arc<RwLock<dyn RawDB>>, // dynamic dispatch for ergonomics
 }
 
-impl DBManager {
+impl Forest {
     /// Loads a DBManager from a RawDB
     pub fn load(raw: impl RawDB + 'static) -> Self {
-        DBManager {
+        Forest {
             raw: Arc::new(RwLock::new(raw)),
         }
     }
@@ -23,7 +23,6 @@ impl DBManager {
         Tree {
             dbm: self.clone(),
             hash: root_hash,
-            hack_ctr: Arc::new(()),
         }
     }
 
@@ -42,35 +41,6 @@ impl DBManager {
     pub(crate) fn write(&self, hash: tmelcrypt::HashVal, value: DBNode) {
         self.raw.write().set_batch(vec![(hash, value)])
     }
-
-    // /// Helper function to "garbage collect" the cache.
-    // fn local_gc(&self) {
-    //     let mut cache = self.cache.write();
-    //     let trees = self.trees.write();
-    //     let mut stack: Vec<_> = trees
-    //         .iter()
-    //         .filter_map(|(h, v)| {
-    //             if Arc::strong_count(&v.hack_ctr) > 1 {
-    //                 Some(*h)
-    //             } else {
-    //                 None
-    //             }
-    //         })
-    //         .collect();
-    //     // rewrite the cache
-    //     let mut newcache: HashMap<tmelcrypt::HashVal, DBNode> = HashMap::new();
-    //     while !stack.is_empty() {
-    //         let top = stack.pop().unwrap();
-    //         if top == tmelcrypt::HashVal::default() {
-    //             continue;
-    //         }
-    //         if let Some(topval) = cache.get(&top) {
-    //             newcache.insert(top, topval.clone());
-    //             stack.extend_from_slice(&topval.out_ptrs());
-    //         }
-    //     }
-    //     *cache = newcache;
-    // }
 
     // /// Draws a debug GraphViz representation of the tree.
     // pub fn debug_graphviz(&self) -> String {
@@ -144,9 +114,8 @@ impl DBManager {
 
 #[derive(Clone)]
 pub struct Tree {
-    dbm: DBManager,
+    dbm: Forest,
     hash: tmelcrypt::HashVal,
-    hack_ctr: Arc<()>,
 }
 
 impl Tree {

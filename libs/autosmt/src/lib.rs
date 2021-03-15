@@ -1,4 +1,3 @@
-pub mod ondisk;
 pub mod smt;
 
 pub use smt::*;
@@ -9,14 +8,14 @@ mod tests {
     #[test]
     fn empty_tree() {
         let db = MemDB::default();
-        let db = DBManager::load(db);
+        let db = Forest::load(db);
         let tree = db.get_tree(tmelcrypt::HashVal::default());
         assert_eq!(tree.root_hash(), tmelcrypt::HashVal::default());
     }
 
     #[test]
     fn simple_tree() {
-        let db = DBManager::load(MemDB::default());
+        let db = Forest::load(MemDB::default());
         {
             let mut tree = db.get_tree(tmelcrypt::HashVal::default());
             for i in 0..10 {
@@ -36,7 +35,7 @@ mod tests {
 
     #[test]
     fn iterator() {
-        let db = DBManager::load(MemDB::default());
+        let db = Forest::load(MemDB::default());
         let mut tree = db.get_tree(tmelcrypt::HashVal::default());
         let mut mapping = std::collections::HashMap::new();
         for i in 0..10 {

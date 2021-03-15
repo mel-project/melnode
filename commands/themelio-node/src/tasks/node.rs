@@ -1,12 +1,12 @@
-use crate::config::VERSION;
+use std::collections::HashMap;
+
 use crate::protocols::{NodeProtocol, StakerProtocol};
-use crate::services::{insecure_testnet_keygen, SharedStorage, Storage};
-use parking_lot::lock_api::RwLock;
+use crate::services::insecure_testnet_keygen;
+use crate::{config::VERSION, services::NodeStorage};
+use blkstructs::{melvm, GenesisConfig, StakeDoc};
 use smol::net::SocketAddr;
-use smol::Timer;
-use std::sync::Arc;
-use std::time::Duration;
 use structopt::StructOpt;
+use tmelcrypt::HashVal;
 use tracing::instrument;
 #[derive(Debug, StructOpt)]
 pub struct NodeConfig {
@@ -41,9 +41,30 @@ pub async fn run_node(opt: NodeConfig) {
     let _ = std::fs::create_dir_all(&opt.database);
     log::info!("themelio-core v{} initializing...", VERSION);
     log::info!("bootstrapping with {:?}", opt.bootstrap);
-    let storage: SharedStorage =
-        Arc::new(RwLock::new(Storage::open_testnet(&opt.database).unwrap()));
-    let _node_prot = NodeProtocol::new(opt.listen, opt.bootstrap.clone(), storage.clone()).unwrap();
+    let storage = NodeStorage::new(
+        sled::open(&opt.database).unwrap(),
+        GenesisConfig {
+            network: blkstructs::NetID::Testnet,
+            init_micromels: 1 << 100,
+            init_covhash: melvm::Covenant::always_true().hash(),
+            stakes: {
+                let mut toret = HashMap::new();
+                toret.insert(
+                    HashVal::default(),
+                    StakeDoc {
+                        pubkey: insecure_testnet_keygen(0).0,
+                        e_start: 0,
+                        e_post_end: 1 << 32,
+                        syms_staked: 1 << 100,
+                    },
+                );
+                toret
+            },
+            init_fee_pool: 1 << 100,
+        },
+    )
+    .share();
+    let _node_prot = NodeProtocol::new(opt.listen, opt.bootstrap.clone(), storage.clone());
     let _staker_prot = if let Some(v) = opt.test_stakeholder {
         let my_sk = insecure_testnet_keygen(v).1;
         Some(
@@ -59,9 +80,5 @@ pub async fn run_node(opt: NodeConfig) {
         None
     };
 
-    // Storage syncer
-    loop {
-        Timer::after(Duration::from_secs(10)).await;
-        storage.write().sync();
-    }
+    smol::future::pending::<()>().await;
 }

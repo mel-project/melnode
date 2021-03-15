@@ -4,8 +4,9 @@ use crate::{smtmapping::*, CoinData};
 use crate::{transaction as txn, CoinID};
 use applytx::StateHandle;
 use bytes::Bytes;
-
 use defmac::defmac;
+use num_enum::{IntoPrimitive, TryFromPrimitive};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use serde::{Deserialize, Serialize};
 use std::io::Read;
@@ -54,6 +55,8 @@ pub enum StateError {
 /// Configuration of a genesis state. Serializable via serde.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GenesisConfig {
+    /// What kind of network?
+    pub network: NetID,
     /// Initial supply of free mels. This will be put at the zero-zero coin ID.
     pub init_micromels: u128,
     /// The covenant hash of the owner of the initial free mels.
@@ -64,9 +67,30 @@ pub struct GenesisConfig {
     pub init_fee_pool: u128,
 }
 
+/// Identifies a network.
+#[derive(
+    Clone,
+    Copy,
+    IntoPrimitive,
+    TryFromPrimitive,
+    Eq,
+    PartialEq,
+    Debug,
+    Serialize_repr,
+    Deserialize_repr,
+    Hash,
+)]
+#[repr(u8)]
+pub enum NetID {
+    Testnet = 0x01,
+    Mainnet = 0xff,
+}
+
 /// World state of the Themelio blockchain
 #[derive(Clone, Debug)]
 pub struct State {
+    pub network: NetID,
+
     pub height: u64,
     pub history: SmtMapping<u64, Header>,
     pub coins: SmtMapping<txn::CoinID, txn::CoinDataHeight>,
@@ -89,9 +113,35 @@ fn read_bts(r: &mut impl Read, n: usize) -> Option<Vec<u8>> {
 }
 
 impl State {
+    /// Creates a new State from a config
+    pub fn genesis(db: &autosmt::Forest, cfg: GenesisConfig) -> Self {
+        let empty_tree = db.get_tree(HashVal::default());
+        Self {
+            network: cfg.network,
+            height: 0,
+            history: SmtMapping::new(empty_tree.clone()),
+            coins: SmtMapping::new(empty_tree.clone()),
+            transactions: SmtMapping::new(empty_tree.clone()),
+            fee_pool: cfg.init_fee_pool,
+            fee_multiplier: MICRO_CONVERTER,
+            tips: 0,
+
+            dosc_speed: MICRO_CONVERTER,
+            pools: SmtMapping::new(empty_tree.clone()),
+            stakes: {
+                let mut stakes = SmtMapping::new(empty_tree);
+                for (k, v) in cfg.stakes.iter() {
+                    stakes.insert(*k, *v);
+                }
+                stakes
+            },
+        }
+    }
+
     /// Generates an encoding of the state that, in conjunction with a SMT database, can recover the entire state.
     pub fn partial_encoding(&self) -> Vec<u8> {
         let mut out = Vec::new();
+        out.extend_from_slice(&[self.network.into()]);
         out.extend_from_slice(&self.height.to_be_bytes());
         out.extend_from_slice(&self.history.root_hash());
         out.extend_from_slice(&self.coins.root_hash());
@@ -109,12 +159,14 @@ impl State {
     }
 
     /// Restores a state from its partial encoding in conjunction with a database. **Does not validate data and will panic; do not use on untrusted data**
-    pub fn from_partial_encoding_infallible(mut encoding: &[u8], db: &autosmt::DBManager) -> Self {
+    pub fn from_partial_encoding_infallible(mut encoding: &[u8], db: &autosmt::Forest) -> Self {
+        defmac!(readu8 => u8::from_be_bytes(read_bts(&mut encoding, 1).unwrap().as_slice().try_into().unwrap()));
         defmac!(readu64 => u64::from_be_bytes(read_bts(&mut encoding, 8).unwrap().as_slice().try_into().unwrap()));
         defmac!(readu128 => u128::from_be_bytes(read_bts(&mut encoding, 16).unwrap().as_slice().try_into().unwrap()));
         defmac!(readtree => SmtMapping::new(db.get_tree(tmelcrypt::HashVal(
             read_bts(&mut encoding, 32).unwrap().as_slice().try_into().unwrap(),
         ))));
+        let network: NetID = readu8!().try_into().unwrap();
         let height = readu64!();
         let history = readtree!();
         let coins = readtree!();
@@ -129,6 +181,7 @@ impl State {
 
         let stakes = readtree!();
         State {
+            network,
             height,
             history,
             coins,
@@ -147,13 +200,13 @@ impl State {
 
     /// Generates a test genesis state, with a given starting coin.
     pub fn test_genesis(
-        db: autosmt::DBManager,
+        db: autosmt::Forest,
         start_micro_mels: u128,
         start_cov_hash: tmelcrypt::HashVal,
         start_stakeholders: &[tmelcrypt::Ed25519PK],
     ) -> Self {
         assert!(start_micro_mels <= MAX_COINVAL);
-        let mut empty = Self::new_empty(db);
+        let mut empty = Self::new_empty_testnet(db);
         // insert coin out of nowhere
         let init_coin = txn::CoinData {
             covhash: start_cov_hash,
@@ -244,9 +297,10 @@ impl State {
 
     // ----------- helpers start here ------------
 
-    pub(crate) fn new_empty(db: autosmt::DBManager) -> Self {
+    pub(crate) fn new_empty_testnet(db: autosmt::Forest) -> Self {
         let empty_tree = db.get_tree(tmelcrypt::HashVal::default());
         State {
+            network: NetID::Testnet,
             height: 0,
             history: SmtMapping::new(empty_tree.clone()),
             coins: SmtMapping::new(empty_tree.clone()),
@@ -307,7 +361,7 @@ impl SealedState {
     }
 
     /// Decodes from the partial encoding.
-    pub fn from_partial_encoding_infallible(bts: &[u8], db: &autosmt::DBManager) -> Self {
+    pub fn from_partial_encoding_infallible(bts: &[u8], db: &autosmt::Forest) -> Self {
         let tmp: (Vec<u8>, Option<ProposerAction>) = stdcode::deserialize(&bts).unwrap();
         SealedState(
             Arc::new(State::from_partial_encoding_infallible(&tmp.0, db)),
@@ -320,6 +374,7 @@ impl SealedState {
         let inner = &self.0;
         // panic!()
         Header {
+            network: NetID::Testnet,
             previous: (inner.height.checked_sub(1))
                 .map(|height| inner.history.get(&height).0.unwrap().hash())
                 .unwrap_or_default(),
@@ -334,6 +389,12 @@ impl SealedState {
             stake_doc_hash: inner.stakes.root_hash(),
         }
     }
+
+    /// Returns the proposer action.
+    pub fn proposer_action(&self) -> Option<&ProposerAction> {
+        self.1.as_ref()
+    }
+
     /// Returns the final state represented as a "block" (header + transactions).
     pub fn to_block(&self) -> Block {
         let mut txx = im::HashSet::new();
@@ -439,6 +500,7 @@ impl ConfirmedState {
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
 /// A block header.
 pub struct Header {
+    pub network: NetID,
     pub previous: HashVal,
     pub height: u64,
     pub history_hash: HashVal,
