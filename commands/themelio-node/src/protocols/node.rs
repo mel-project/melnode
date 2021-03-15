@@ -1,7 +1,7 @@
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use std::{collections::BTreeMap, net::SocketAddr, sync::Arc, time::Duration};
 
 use autosmt::CompressedProof;
-use blkstructs::{CoinDataHeight, CoinID, ConsensusProof, Header, NetID, Transaction};
+use blkstructs::{CoinDataHeight, CoinID, ConsensusProof, Header, NetID, StakeDoc, Transaction};
 use fastsync::send_fastsync;
 use melnet::MelnetError;
 use neosymph::TxLookup;
@@ -125,9 +125,16 @@ impl NodeServer for AuditorResponder {
     }
 
     fn get_summary(&self) -> melnet::Result<StateSummary> {
+        let storage = self.storage.read();
+        let highest = storage.highest_state();
+        let proof = storage
+            .get_consensus(highest.header().height)
+            .expect("highest state did not have a consensus proof");
         Ok(StateSummary {
             netid: NetID::Testnet,
-            last_height: self.storage.read().highest_height(),
+            height: self.storage.read().highest_height(),
+            header: highest.header(),
+            proof,
         })
     }
 
@@ -150,6 +157,18 @@ impl NodeServer for AuditorResponder {
         };
         let (v, proof) = tree.get(key);
         Ok((v, proof.compress()))
+    }
+
+    fn get_stakers_raw(&self, height: u64) -> melnet::Result<BTreeMap<HashVal, Vec<u8>>> {
+        let state =
+            self.storage.read().get_state(height).ok_or_else(|| {
+                MelnetError::Custom(format!("block {} not confirmed yet", height))
+            })?;
+        let mut accum = BTreeMap::new();
+        for (k, v) in state.inner_ref().stakes.mapping.iter() {
+            accum.insert(k, v);
+        }
+        Ok(accum)
     }
 }
 

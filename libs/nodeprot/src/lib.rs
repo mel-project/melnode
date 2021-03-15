@@ -4,7 +4,7 @@ mod server;
 pub use client::*;
 pub use server::*;
 
-use blkstructs::{Header, NetID, ProposerAction, Transaction};
+use blkstructs::{ConsensusProof, Header, NetID, ProposerAction, Transaction};
 use serde::{Deserialize, Serialize};
 use tmelcrypt::HashVal;
 
@@ -35,7 +35,9 @@ impl AbbreviatedBlock {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StateSummary {
     pub netid: NetID,
-    pub last_height: u64,
+    pub height: u64,
+    pub header: Header,
+    pub proof: ConsensusProof,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,6 +55,7 @@ pub enum NodeRequest {
     GetAbbrBlock(u64),
     GetSummary,
     GetSmtBranch(u64, Substate, HashVal),
+    GetStakersRaw(u64),
 }
 
 #[cfg(test)]
