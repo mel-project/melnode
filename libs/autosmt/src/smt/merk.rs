@@ -18,7 +18,7 @@ pub fn key_to_path(key: tmelcrypt::HashVal) -> [bool; 256] {
     for (i, k_i) in key.0.iter().enumerate() {
         // walk through the bits
         for j in 0..8 {
-            toret[i * 8 + j] = k_i & (0b1000_0000 >> j) != 0;
+            toret[i * 8 + j] = k_i & (MSB_SET >> j) != 0;
         }
     }
     toret

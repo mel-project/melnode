@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use autosmt::CompressedProof;
-use blkstructs::{ConsensusProof, StakeDoc, Transaction};
+use blkstructs::{ConsensusProof, Transaction};
 use melnet::Request;
 use tmelcrypt::HashVal;
 
