@@ -94,7 +94,7 @@ fn test_melswap_v2_simple(
         SEND_MEL_AMOUNT,
     );
 
-    let num_swapping_blocks = 1;
+    let _num_swapping_blocks = 1;
 
     // // Go to next state
     // let mut pre_swap_state = sealed_state.next_state();
@@ -165,7 +165,7 @@ fn state_simple_order_independence() {
     genesis.fee_multiplier = 0;
     let first_block = genesis.seal(None);
     let mut trng = rand::thread_rng();
-    let mut txx = random_valid_txx(
+    let txx = random_valid_txx(
         &mut trng,
         CoinID {
             txhash: tmelcrypt::HashVal([0; 32]),
@@ -181,7 +181,7 @@ fn state_simple_order_independence() {
         1577000,
     );
     println!("transactions generated");
-    let seq_copy = {
+    let _seq_copy = {
         let mut state = first_block.next_state();
         for tx in txx.iter() {
             state.apply_tx(tx).expect("failed application");
