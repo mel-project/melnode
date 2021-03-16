@@ -22,7 +22,7 @@ pub use smol::{Task, Timer};
 // }
 
 /// Creates a new melnet state with a default route.
-pub async fn new_melnet(listener: &TcpListener, name: &str) -> Result<melnet::NetState> {
+pub async fn new_melnet(_listener: &TcpListener, name: &str) -> Result<melnet::NetState> {
     // let my_ip = guess_my_ip().await?;
     // let my_ip_port = format!("{}:{}", my_ip, listener.local_addr()?.port());
     let net = melnet::NetState::new_with_name(name);
