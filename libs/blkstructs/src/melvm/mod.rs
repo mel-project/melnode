@@ -483,7 +483,7 @@ impl Executor {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum OpCode {
     // arithmetic
     ADD,
