@@ -11,7 +11,6 @@ use crate::{
     DENOM_TMEL, MICRO_CONVERTER,
 };
 use rstest::*;
-use std::hash::Hash;
 use tmelcrypt::{Ed25519PK, Ed25519SK};
 
 // Add fuzz params ranges for rstest (range of num swaps, diff liquidity, etc...)

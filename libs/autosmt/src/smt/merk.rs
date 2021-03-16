@@ -159,8 +159,6 @@ mod tests {
     use super::*;
     use std::convert::TryFrom;
     use tmelcrypt::HashVal;
-    use std::ops::Index;
-    use bitvec::indices::BitIdx;
 
     #[test]
     fn test_key_to_path_first() {

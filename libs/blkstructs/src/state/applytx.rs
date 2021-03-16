@@ -286,7 +286,7 @@ pub(crate) mod tests {
         let state_handle = StateHandle::new(&mut state);
 
         // Create a valid signed transaction from first coin
-        let fee = 3000000;
+        // let fee = 3000000;
         // let tx = tx_factory(
         //     TxKind::Normal,
         //     genesis_covenant_keypair,

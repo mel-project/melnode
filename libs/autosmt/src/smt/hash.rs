@@ -21,7 +21,7 @@ pub fn node(left: tmelcrypt::HashVal, right: tmelcrypt::HashVal) -> tmelcrypt::H
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*;
 
     #[test]
     fn test_datablock_empty() {

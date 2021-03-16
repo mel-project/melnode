@@ -2,7 +2,7 @@
 // For structs which don't have serialization support
 // build the structure manually or use a custom function with sub-factories where appropriate.
 
-use crate::{Block, CoinData, CoinID, DENOM_TMEL, CoinDataHeight, ProposerAction, StakeDoc, Transaction, TxKind};
+use crate::{CoinData, CoinID, DENOM_TMEL, CoinDataHeight, ProposerAction, StakeDoc, Transaction, TxKind};
 use crate::melvm;
 
 
