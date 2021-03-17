@@ -133,7 +133,7 @@ impl ValClientSnapshot {
         let old_elem: Header = stdcode::deserialize(&val)
             .map_err(|_| MelnetError::Custom("could not deserialize old header".into()))?;
         // this can never possibly be bad unless everything is horribly untrustworthy
-        assert!(old_elem.height == old_height);
+        assert_eq!(old_elem.height, old_height);
         Ok(Self {
             height: old_height,
             header: old_elem,

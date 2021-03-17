@@ -16,7 +16,7 @@ async fn handle_open_wallet_prompt() -> anyhow::Result<()> {
 
     match opt {}
 
-    //flow pseudo-code
+    //flow pseudo-code - note should use ValClientSnapshot
     //     - swap
     //     - input pool, buy/sell, token name, denom, amount
     //     - create tx
