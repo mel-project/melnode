@@ -1,54 +1,97 @@
 use structopt::StructOpt;
+use std::path::PathBuf;
 
 #[derive(Debug, StructOpt)]
+#[structopt(name = "Themelio Client CLI")]
+/// A command line application to interact with Themelio
+///
+/// This binary supports all features for a Themelio client.
+/// End users can create, delete, import, and export wallets.
+/// Interacting with the blockchain is done by opening a specific wallet
+/// and creating and sending various supported transactions.
 pub struct ClientOpts {
-    // /// Listen address
-    // #[structopt(long)]
-    // listen: SocketAddr,
-    //
-    // /// Bootstrap addresses // env file?
-    // #[structopt(long)]
-    // bootstrap: Vec<SocketAddr>,
-    //
-    // /// Test spam
-    // #[structopt(long)]
-    // test_spam: bool,
-    //
-    // /// Database path
-    // #[structopt(long, default_value = "/tmp/testnet")]
-    // database: String,
-    //
-    // /// Testnet type
-    // #[structopt(long)]
-    // test_stakeholder: Option<usize>,
-    //
-    // /// Listen address for the staker network.
-    // #[structopt(long)]
-    // listen_staker: Option<SocketAddr>,
-}
+    /// IP Address with port used to establish a connection to host
+    #[structopt(long)]
+    host: smol::net::SocketAddr,
 
-#[derive(Debug, StructOpt)]
-pub struct ClientStorage {
-
+    // File path to database for client wallet storage
+    #[structopt(long, short, parse(from_os_str), default_value="/tmp/testnet")]
+    database: PathBuf,
 }
 
 fn main() {
-    let opts = ClientOpts::from_args();
-    let storage = ClientState::load();
-    smolscale::block_on(run_client(opts))
+    let opts: ClientOpts = ClientOpts::from_args();
+    smolscale::block_on(run_client(opts.host, opts.database))
 }
 
-async fn run_client(opts, storage) {
+enum WalletPromptOpt {
+    CreateWallet(String),
+    ImportWallet(PathBuf),
+    ExportWallet(PathBuf),
+    ShowWallets,
+    OpenWallet(Wallet),
+}
 
+struct Wallet {}
 
-    // try to connect to nodes, if it fails, sleep, try again
-    //
-    // - import / create
-    //     - export
-    //     - list
-    //     - create
-    //     - generate 24 key pneumonic BIP39 or 34?
-    //     - open
+pub struct WalletStorage {
+    wallets: SledMap<String, WalletData>
+}
+
+impl WalletStorage {
+    /// Opens a WalletStorage, given a sled database.
+    pub fn new(db: sled::Db) -> Self {
+        let wallets = SledMap::new(db.open_tree("wallet").unwrap());
+        Self {
+            wallets
+        }
+    }
+}
+
+enum OpenWalletPromptOpt {
+
+}
+
+async fn run_client(host: smol::net::SocketAddr, database: PathBuf) {
+    let prompt = WalletPrompt::new();
+    let db: sled::Db = sled::Db::new(database);
+    let mut storage = WalletStorage::new(db);
+
+    loop {
+        let prompt_result = handle_wallet_prompt(&prompt, &storage).await?;
+        // handle res err handling if any here
+    }
+}
+
+async fn handle_wallet_prompt(prompt: &WalletPrompt, storage: &WalletStorage) -> anyhow::Result<()> {
+    let opt: WalletPromptOpt = prompt::handle_input();
+    match opt {
+        WalletPromptOpt::CreateWallet(name) => {
+            let wallet: Wallet = Wallet::new(&name);
+            prompt.show_wallet(&wallet);
+            storage.save(&name, &wallet)?
+        }
+        WalletPromptOpt::ShowWallets => {
+            let wallets: Vec<Wallet> = storage.load_all()?;
+            prompt.show_wallets(&wallets);
+        }
+        WalletPromptOpt::OpenWallet(wallet) => {
+            let prompt_result = handle_open_wallet_prompt(&prompt, &storage).await?;
+            // handle res err if any
+        }
+        // WalletPromptOpt::ImportWallet(_import_path) => {}
+        // WalletPromptOpt::ExportWallet(_export_path) => {}
+        _ => {}
+    }
+}
+
+async fn handle_open_wallet_prompt() -> anyhow::Result<()> {
+    let prompt = OpenWalletPrompt::new();
+    let opt: OpenWalletPromptOpt = prompt::handle_input();
+
+    match opt {}
+
+    //flow pseudo-code
     //     - swap
     //     - input pool, buy/sell, token name, denom, amount
     //     - create tx
@@ -89,17 +132,7 @@ async fn run_client(opts, storage) {
     //     - coins
     //     - load storage
     //     - print storage coins
-
+// }
 }
 
-// fn main() {
-//     // LogTracer::init().unwrap();
-//     let log_conf = std::env::var("RUST_LOG").unwrap_or_else(|_| "themelio_node=debug,warn".into());
-//     std::env::set_var("RUST_LOG", log_conf);
-//     tracing_subscriber::fmt::init();
-//     // env_logger::Builder::from_env("THEMELIO_LOG")
-//     //     .parse_filters("themelio_core")
-//     //     .init();
-//     let opts = NodeConfig::from_args();
-//     smolscale::block_on(tasks::run_node(opts))
-// }
+
