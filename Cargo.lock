@@ -2483,6 +2483,10 @@ dependencies = [
 [[package]]
 name = "themelio-client"
 version = "0.1.0"
+dependencies = [
+ "smol",
+ "smol-timeout",
+]
 
 [[package]]
 name = "themelio-node"
