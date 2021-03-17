@@ -1,3 +1,6 @@
+mod prompt;
+mod storage;
+
 use structopt::StructOpt;
 use std::path::PathBuf;
 
@@ -22,6 +25,17 @@ pub struct ClientOpts {
 fn main() {
     let opts: ClientOpts = ClientOpts::from_args();
     smolscale::block_on(run_client(opts.host, opts.database))
+}
+
+async fn run_client(host: smol::net::SocketAddr, database: PathBuf) {
+    let prompt = WalletPrompt::new();
+    let db: sled::Db = sled::Db::new(database);
+    let mut storage = WalletStorage::new(db);
+
+    loop {
+        let prompt_result = handle_wallet_prompt(&prompt, &storage).await?;
+        // handle res err handling if any here
+    }
 }
 
 enum WalletPromptOpt {
@@ -52,17 +66,6 @@ enum OpenWalletPromptOpt {
 
 }
 
-async fn run_client(host: smol::net::SocketAddr, database: PathBuf) {
-    let prompt = WalletPrompt::new();
-    let db: sled::Db = sled::Db::new(database);
-    let mut storage = WalletStorage::new(db);
-
-    loop {
-        let prompt_result = handle_wallet_prompt(&prompt, &storage).await?;
-        // handle res err handling if any here
-    }
-}
-
 async fn handle_wallet_prompt(prompt: &WalletPrompt, storage: &WalletStorage) -> anyhow::Result<()> {
     let opt: WalletPromptOpt = prompt::handle_input();
     match opt {
@@ -83,6 +86,17 @@ async fn handle_wallet_prompt(prompt: &WalletPrompt, storage: &WalletStorage) ->
         // WalletPromptOpt::ExportWallet(_export_path) => {}
         _ => {}
     }
+}
+
+enum OpenWalletPromptOpt {
+    Faucet(FaucetArgs),
+    Deposit(DepositArgs),
+    Withdraw(WithdrawArgs),
+    Swap(SwagArgs),
+    Send(SendArgs),
+    Receive(ReceiveArgs),
+    Coins(CoinArgs),
+    Balance(BalanceArgs),
 }
 
 async fn handle_open_wallet_prompt() -> anyhow::Result<()> {
