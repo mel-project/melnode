@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use crate::wallet::storage::WalletStorage;
 
 enum WalletPromptOpt {
     CreateWallet(String),
@@ -8,7 +9,7 @@ enum WalletPromptOpt {
     OpenWallet(WalletData),
 }
 
-async fn handle_wallet_prompt(prompt: &WalletPrompt, storage: &WalletStorage) -> anyhow::Result<()> {
+pub async fn handle_prompt(prompt: &WalletPrompt, storage: &WalletStorage) -> anyhow::Result<()> {
     let opt: WalletPromptOpt = prompt::handle_input();
     match opt {
         WalletPromptOpt::CreateWallet(name) => {
@@ -18,7 +19,7 @@ async fn handle_wallet_prompt(prompt: &WalletPrompt, storage: &WalletStorage) ->
         }
         WalletPromptOpt::ShowWallets => {
             let wallets: Vec<Wallet> = storage.load_all()?;
-            prompt.show_wallets(&wallets);
+            prompt.show_wallets(&wallets)
         }
         WalletPromptOpt::OpenWallet(wallet) => {
             let prompt_result = handle_open_wallet_prompt(&prompt, &storage).await?;

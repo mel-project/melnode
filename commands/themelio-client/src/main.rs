@@ -1,9 +1,10 @@
-mod prompt;
-mod storage;
 mod wallet;
 
 use structopt::StructOpt;
 use std::path::PathBuf;
+
+use wallet::handler::handle_prompt;
+use crate::wallet::storage::WalletStorage;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "Themelio Client CLI")]
@@ -34,7 +35,7 @@ async fn run_client(host: smol::net::SocketAddr, database: PathBuf) {
     let mut storage = WalletStorage::new(db);
 
     loop {
-        let prompt_result = handle_wallet_prompt(&prompt, &storage).await?;
+        let prompt_result = handle_prompt(&prompt, &storage).await?;
         // handle res err handling if any here
     }
 }
