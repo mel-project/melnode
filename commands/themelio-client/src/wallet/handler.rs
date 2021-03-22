@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use crate::wallet::storage::WalletStorage;
 use nodeprot::ValClient;
 
-pub enum WalletPromptOpt {
+pub enum WalletCommand {
     CreateWallet(String),
     ImportWallet(PathBuf),
     ExportWallet(PathBuf),
@@ -28,27 +28,28 @@ impl PromptHandler {
         }
     }
 
-    pub(crate) async fn handle(&self) -> anyhow::Result<WalletPromptOpt> {
+    pub(crate) async fn handle(&self) -> anyhow::Result<WalletCommand> {
         let input = PromptHandler::read_line(self.prompt.to_string()).await.unwrap();
 
+        // Try to parse user input to select command
         let res = self.try_parse(&input).await;
         if res.is_err() {
             Err("Could not parse command or command inputs")
         }
 
-        // match operation
-        let opt = res.unwrap();
-        match &opt {
-            WalletPromptOpt::CreateWallet(name) => {
+        // Process command
+        let cmd = res.unwrap();
+        match &cmd {
+            WalletCommand::CreateWallet(name) => {
                 let wallet: Wallet = Wallet::new(&name);
                 prompt.show_wallet(&wallet);
                 storage.save(&name, &wallet)?
             }
-            WalletPromptOpt::ShowWallets => {
+            WalletCommand::ShowWallets => {
                 let wallets: Vec<Wallet> = storage.load_all()?;
                 prompt.show_wallets(&wallets)
             }
-            WalletPromptOpt::OpenWallet(wallet) => {
+            WalletCommand::OpenWallet(wallet) => {
                 let prompt_result = handle_open_wallet_prompt(&prompt, &storage).await?;
                 // handle res err if any
             }
@@ -56,18 +57,19 @@ impl PromptHandler {
             // WalletPromptOpt::ExportWallet(_export_path) => {}
             _ => {}
         };
-        Ok(opt)
+
+        // Return which command was processed successfully
+        Ok(cmd)
     }
 
     async fn read_line(prompt: String) -> anyhow::Result<String> {
         smol::unblock(move || {
             let mut rl = rustyline::Editor::<()>::new();
             Ok(rl.readline(&prompt)?)
-        })
-            .await
+        }).await
     }
 
-    async fn try_parse(&self, input: &String) -> anyhow::Result<WalletPromptOpt> {
+    async fn try_parse(&self, input: &String) -> anyhow::Result<WalletCommand> {
         let x = input.split(' ').collect::<Vec<_>>().as_slice();
     }
 }

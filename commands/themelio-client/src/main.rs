@@ -2,7 +2,7 @@ mod wallet;
 
 use structopt::StructOpt;
 use crate::wallet::storage::WalletStorage;
-use crate::wallet::handler::{PromptHandler, WalletPromptOpt};
+use crate::wallet::handler::{PromptHandler, WalletCommand};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "Themelio Client CLI")]
@@ -37,10 +37,10 @@ async fn run_client(opts: ClientOpts) -> anyhow::Result<()> {
     let storage = WalletStorage::new(sled::open(&opts.database).unwrap());
     let prompt = PromptHandler::new(client, storage, env!("CARGO_PKG_VERSION"));
 
-    // Handle prompt input and output until user exits
+    // Handle prompt input and output until user selects exit command
     loop {
         let res = prompt.handle().await;
-        if res.is_ok() && res.unwrap() == WalletPromptOpt::Exit {
+        if res.is_ok() && res.unwrap() == WalletCommand::Exit {
             Ok(())
         }
     }
