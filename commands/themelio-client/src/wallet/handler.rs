@@ -1,10 +1,14 @@
 use std::path::PathBuf;
+use std::str::FromStr;
+use strum_macros::EnumString;
 
 use nodeprot::ValClient;
+use crate::wallet::storage::ClientStorage;
+use crate::wallet::handler::Command::CreateWallet;
 
-use crate::wallet::storage::WalletStorage;
-
-pub enum WalletCommand {
+#[derive(Debug, PartialEq, EnumString)]
+#[strum(serialize_all = "snake_case")]
+pub enum Command {
     CreateWallet(String),
     ImportWallet(PathBuf),
     ExportWallet(PathBuf),
@@ -15,14 +19,14 @@ pub enum WalletCommand {
 
 pub struct PromptHandler {
     client: ValClient,
-    storage: WalletStorage,
+    storage: ClientStorage,
     prompt: String
 }
 
 impl PromptHandler {
-    pub(crate) fn new(client: ValClient, storage: WalletStorage, version: &str) -> Self {
+    pub(crate) fn new(client: ValClient, storage: ClientStorage, version: &str) -> Self {
         let prompt_stack: Vec<String> = vec![format!("v{}", version).green().to_string()];
-        let prompt = format!("[anet client {}]% ", prompt_stack.join(" "));
+        let prompt = format!("[client {}]% ", prompt_stack.join(" "));
         Self {
             client,
             storage,
@@ -30,9 +34,9 @@ impl PromptHandler {
         }
     }
 
-    pub(crate) async fn handle(&self) -> anyhow::Result<WalletCommand> {
+    pub(crate) async fn handle(&self) -> anyhow::Result<Command> {
         let input = PromptHandler::read_line(self.prompt.to_string()).await.unwrap();
-
+        let cmd = Command::from_str(input);
         // Try to parse user input to select command
         let res = self.try_parse(&input).await;
         if res.is_err() {
@@ -42,16 +46,16 @@ impl PromptHandler {
         // Process command
         let cmd = res.unwrap();
         match &cmd {
-            WalletCommand::CreateWallet(name) => {
+            Command::CreateWallet(name) => {
                 let wallet: Wallet = Wallet::new(&name);
                 prompt.show_wallet(&wallet);
                 storage.save(&name, &wallet)?
             }
-            WalletCommand::ShowWallets => {
+            Command::ShowWallets => {
                 let wallets: Vec<Wallet> = storage.load_all()?;
                 prompt.show_wallets(&wallets)
             }
-            WalletCommand::OpenWallet(wallet) => {
+            Command::OpenWallet(wallet) => {
                 let prompt_result = handle_open_wallet_prompt(&prompt, &storage).await?;
                 // handle res err if any
             }
@@ -71,7 +75,7 @@ impl PromptHandler {
         }).await
     }
 
-    async fn try_parse(&self, input: &String) -> anyhow::Result<WalletCommand> {
+    async fn try_parse(&self, input: &String) -> anyhow::Result<Command> {
         let x = input.split(' ').collect::<Vec<_>>().as_slice();
     }
 }

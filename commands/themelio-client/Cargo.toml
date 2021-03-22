@@ -4,8 +4,6 @@ version = "0.1.0"
 authors = ["nullchinchilla <nullchinchilla@pm.me>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 anyhow="1"
 rustyline = "7.1.0"
@@ -13,6 +11,8 @@ sled="0.34.6"
 smol="1"
 smol-timeout="0.6.0"
 structopt = "0.3.18"
+strum = "0.20"
+strum_macros = "0.20"
 
 blkstructs={path="../../libs/blkstructs"}
 #tmelcrypt={path="../../libs/tmelcrypt"}

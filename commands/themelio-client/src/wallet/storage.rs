@@ -1,9 +1,9 @@
-pub struct WalletStorage {
+/// Uses sled map(s) to persist client-side data
+pub struct ClientStorage {
     wallets: SledMap<String, WalletData>
 }
 
-impl WalletStorage {
-    /// Opens a WalletStorage, given a sled database.
+impl ClientStorage {
     pub fn new(db: sled::Db) -> Self {
         let wallets = SledMap::new(db.open_tree("wallet").unwrap());
         Self {

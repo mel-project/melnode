@@ -1,7 +1,8 @@
 use structopt::StructOpt;
 
-use crate::wallet::handler::{PromptHandler, WalletCommand};
-use crate::wallet::storage::WalletStorage;
+use crate::wallet::handler::{PromptHandler, Command};
+use crate::wallet::storage::ClientStorage;
+use anyhow::Error;
 
 mod wallet;
 
@@ -27,21 +28,21 @@ pub struct ClientOpts {
     network: blkstructs::NetID
 }
 
+/// Run client with command line options
 fn main() {
     let opts: ClientOpts = ClientOpts::from_args();
-    smolscale::block_on(run_client(opts));
+    smolscale::block_on(run_client_prompt(opts));
 }
 
-async fn run_client(opts: ClientOpts) -> anyhow::Result<()> {
-    // Create prompt handler from client, storage and package version
+/// Handle a prompt until exit command
+async fn run_client_prompt(opts: ClientOpts) -> anyhow::Result<()> {
     let client = nodeprot::ValClient::new(opts.network, opts.host);
-    let storage = WalletStorage::new(sled::open(&opts.database).unwrap());
+    let storage = ClientStorage::new(sled::open(&opts.database).unwrap());
     let prompt = PromptHandler::new(client, storage, env!("CARGO_PKG_VERSION"));
 
-    // Handle prompt input and output until user selects exit command
     loop {
-        let res = prompt.handle().await;
-        if res.is_ok() && res.unwrap() == WalletCommand::Exit {
+        let res_cmd = prompt.handle().await;
+        if res_cmd.is_ok() && res_cmd.unwrap() == Command::Exit {
             Ok(())
         }
     }
