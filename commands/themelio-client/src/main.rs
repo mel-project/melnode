@@ -1,10 +1,8 @@
 mod wallet;
 
 use structopt::StructOpt;
-use std::path::PathBuf;
-
-use wallet::handler::handle_prompt;
 use crate::wallet::storage::WalletStorage;
+use crate::wallet::handler::{PromptHandler, WalletPromptOpt};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "Themelio Client CLI")]
@@ -21,21 +19,29 @@ pub struct ClientOpts {
 
     // File path to database for client wallet storage
     #[structopt(long, short, parse(from_os_str), default_value="/tmp/testclient")]
-    database: PathBuf,
+    database: std::path::PathBuf,
+
+    // Specify whether we are connecting to mainnet or testnet
+    #[structopt(long)]
+    network: blkstructs::NetID
 }
 
 fn main() {
     let opts: ClientOpts = ClientOpts::from_args();
-    smolscale::block_on(run_client(opts.host, opts.database))
+    smolscale::block_on(run_client(opts));
 }
 
-async fn run_client(host: smol::net::SocketAddr, database: PathBuf) {
-    let prompt = WalletPrompt::new();
-    let db: sled::Db = sled::Db::new(database);
-    let mut storage = WalletStorage::new(db);
+async fn run_client(opts: ClientOpts) -> anyhow::Result<()> {
+    // Create prompt handler from client, storage and package version
+    let client = nodeprot::ValClient::new(opts.network, opts.host);
+    let storage = WalletStorage::new(sled::open(&opts.database).unwrap());
+    let prompt = PromptHandler::new(client, storage, env!("CARGO_PKG_VERSION"));
 
+    // Handle prompt input and output until user exits
     loop {
-        let prompt_result = handle_prompt(&prompt, &storage).await?;
-        // handle res err handling if any here
+        let res = prompt.handle().await;
+        if res.is_ok() && res.unwrap() == WalletPromptOpt::Exit {
+            Ok(())
+        }
     }
 }
