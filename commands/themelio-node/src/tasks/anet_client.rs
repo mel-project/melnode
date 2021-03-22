@@ -91,7 +91,7 @@
 //                             break;
 //                         }
 //                         Err(err) => {
-//                             eprintln!("Error encountered when running active wallet {}", err);
+//                             eprintln!("Error encountered when running open wallet {}", err);
 //                             continue;
 //                         }
 //                     }
@@ -131,7 +131,7 @@
 //     .await
 // }
 
-// /// Handle command line inputs for active wallet mode
+// /// Handle command line inputs for open wallet mode
 // async fn run_active_wallet(
 //     wallet_name: &str,
 //     active_wallet: &mut ActiveWallet,
