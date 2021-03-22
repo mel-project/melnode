@@ -1,6 +1,9 @@
+extern crate strum;
+#[macro_use]
+extern crate strum_macros;
 use structopt::StructOpt;
 
-use crate::wallet::handler::{PromptHandler, Command};
+use crate::wallet::handler::{WalletHandler, WalletCommand};
 use crate::wallet::storage::ClientStorage;
 use anyhow::Error;
 
@@ -38,11 +41,11 @@ fn main() {
 async fn run_client_prompt(opts: ClientOpts) -> anyhow::Result<()> {
     let client = nodeprot::ValClient::new(opts.network, opts.host);
     let storage = ClientStorage::new(sled::open(&opts.database).unwrap());
-    let prompt = PromptHandler::new(client, storage, env!("CARGO_PKG_VERSION"));
+    let prompt = WalletHandler::new(client, storage, env!("CARGO_PKG_VERSION"));
 
     loop {
         let res_cmd = prompt.handle().await;
-        if res_cmd.is_ok() && res_cmd.unwrap() == Command::Exit {
+        if res_cmd.is_ok() && res_cmd.unwrap() == WalletCommand::Exit {
             Ok(())
         }
     }
