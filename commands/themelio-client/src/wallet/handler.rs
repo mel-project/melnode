@@ -1,6 +1,8 @@
 use std::path::PathBuf;
-use crate::wallet::storage::WalletStorage;
+
 use nodeprot::ValClient;
+
+use crate::wallet::storage::WalletStorage;
 
 pub enum WalletCommand {
     CreateWallet(String),

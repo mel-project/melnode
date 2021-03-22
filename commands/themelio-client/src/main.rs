@@ -1,8 +1,9 @@
-mod wallet;
-
 use structopt::StructOpt;
-use crate::wallet::storage::WalletStorage;
+
 use crate::wallet::handler::{PromptHandler, WalletCommand};
+use crate::wallet::storage::WalletStorage;
+
+mod wallet;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "Themelio Client CLI")]
