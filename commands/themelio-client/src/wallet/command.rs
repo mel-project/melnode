@@ -8,9 +8,8 @@ use nodeprot::ValClient;
 use crate::storage::ClientStorage;
 use crate::wallet::command::WalletCommand::Create;
 
-// #[derive(Debug, Eq, PartialEq, ToString)]
 #[derive(Eq, PartialEq, Debug, EnumString)]
-// #[strum(serialize_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum WalletCommand {
     Create(String),
     Import(PathBuf),
@@ -30,8 +29,6 @@ pub struct WalletCommandHandler {
 impl WalletCommandHandler {
     pub(crate) fn new(client: ValClient, storage: ClientStorage, version: &str) -> Self {
         let prompt_stack: Vec<String> = vec![format!("v{}", version).green().to_string()];
-
-        let prompt_stack: Vec<String> = vec![format!("v{}", version).green().to_string()];
         let prompt = format!("[client wallet {}]% ", prompt_stack.join(" "));
         Self {
             client,
@@ -41,17 +38,12 @@ impl WalletCommandHandler {
     }
 
     pub(crate) async fn handle(&self) -> anyhow::Result<WalletCommand> {
+        // Parse input into a command
         let input = WalletCommandHandler::read_line(self.prompt.to_string()).await.unwrap();
+        let cmd: WalletCommand = WalletCommand::from_str(&input)?;
 
-        let cmd = WalletCommand::from_str(&input);
-        // Try to parse user input to select command
-        // let res = self.try_parse(&input).await;
-        // if res.is_err() {
-        //     Err("Could not parse input arguments to command")
-        // }
-        //
-        // // Process command
-        // let cmd = res.unwrap();
+        // Process command
+        println!("Hi");
         // match &cmd {
         //     WalletCommand::Create(name) => {
         //         let wallet: Wallet = Wallet::new(&name);
