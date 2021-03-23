@@ -6,11 +6,11 @@ use structopt::StructOpt;
 
 use storage::ClientStorage;
 
-use crate::wallet::command::{WalletCommandHandler, WalletCommand};
+use crate::wallet::command::{WalletCommand, WalletCommandHandler};
 use blkstructs::NetID;
 
-mod wallet;
 pub mod storage;
+mod wallet;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "Themelio Client CLI")]
@@ -26,7 +26,7 @@ pub struct ClientOpts {
     host: smol::net::SocketAddr,
 
     // File path to database for client wallet storage
-    #[structopt(long, short, parse(from_os_str), default_value="/tmp/testclient")]
+    #[structopt(long, short, parse(from_os_str), default_value = "/tmp/testclient")]
     database: std::path::PathBuf,
 }
 
