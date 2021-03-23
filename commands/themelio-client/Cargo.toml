@@ -10,14 +10,13 @@ rustyline = "7.1.0"
 sled="0.34.6"
 smol="1"
 smol-timeout="0.6.0"
+smolscale="0.1"
 structopt = "0.3.18"
 strum = "0.20"
 strum_macros = "0.20"
+colored = "2.0.0"
+tabwriter = "1.2.1"
+#tracing-subscriber = "0.2.16"
 
 blkstructs={path="../../libs/blkstructs"}
-#tmelcrypt={path="../../libs/tmelcrypt"}
-#melnet={path="../../libs/melnet"}
-#autosmt={path="../../libs/autosmt"}
-#stdcode={path="../../libs/stdcode"}
 nodeprot={path="../../libs/nodeprot"}
-#neosymph={path="../../libs/neosymph"}

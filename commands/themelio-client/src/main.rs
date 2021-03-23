@@ -6,7 +6,8 @@ use structopt::StructOpt;
 
 use storage::ClientStorage;
 
-use crate::wallet::command::{ClientCommandHandler, WalletCommand};
+use crate::wallet::command::{WalletCommandHandler, WalletCommand};
+use blkstructs::NetID;
 
 mod wallet;
 pub mod storage;
@@ -27,10 +28,6 @@ pub struct ClientOpts {
     // File path to database for client wallet storage
     #[structopt(long, short, parse(from_os_str), default_value="/tmp/testclient")]
     database: std::path::PathBuf,
-
-    // Specify whether we are connecting to the main network or the test network
-    #[structopt(long)]
-    network: blkstructs::NetID
 }
 
 /// Run client with command line options
@@ -41,14 +38,14 @@ fn main() {
 
 /// Handle a prompt until exit command
 async fn run_client_prompt(opts: ClientOpts) -> anyhow::Result<()> {
-    let client = nodeprot::ValClient::new(opts.network, opts.host);
+    let client = nodeprot::ValClient::new(NetID::Testnet, opts.host);
     let storage = ClientStorage::new(sled::open(&opts.database).unwrap());
-    let handler = ClientCommandHandler::new(client, storage, env!("CARGO_PKG_VERSION"));
+    let handler = WalletCommandHandler::new(client, storage, env!("CARGO_PKG_VERSION"));
 
     loop {
         let res_cmd = handler.handle().await;
         if res_cmd.is_ok() && res_cmd.unwrap() == WalletCommand::Exit {
-            Ok(())
+            return Ok(());
         }
     }
 }
