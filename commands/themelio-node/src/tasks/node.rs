@@ -43,25 +43,7 @@ pub async fn run_node(opt: NodeConfig) {
     log::info!("bootstrapping with {:?}", opt.bootstrap);
     let storage = NodeStorage::new(
         sled::open(&opt.database).unwrap(),
-        GenesisConfig {
-            network: blkstructs::NetID::Testnet,
-            init_micromels: 1 << 100,
-            init_covhash: melvm::Covenant::always_true().hash(),
-            stakes: {
-                let mut toret = HashMap::new();
-                toret.insert(
-                    HashVal::default(),
-                    StakeDoc {
-                        pubkey: insecure_testnet_keygen(0).0,
-                        e_start: 0,
-                        e_post_end: 1 << 32,
-                        syms_staked: 1 << 100,
-                    },
-                );
-                toret
-            },
-            init_fee_pool: 1 << 100,
-        },
+        testnet_genesis_config(),
     )
     .share();
     let _node_prot = NodeProtocol::new(opt.listen, opt.bootstrap.clone(), storage.clone());
@@ -81,4 +63,26 @@ pub async fn run_node(opt: NodeConfig) {
     };
 
     smol::future::pending::<()>().await;
+}
+
+pub async fn testnet_genesis_config() -> GenesisConfig {
+    GenesisConfig {
+        network: blkstructs::NetID::Testnet,
+        init_micromels: 1 << 100,
+        init_covhash: melvm::Covenant::always_true().hash(),
+        stakes: {
+            let mut toret = HashMap::new();
+            toret.insert(
+                HashVal::default(),
+                StakeDoc {
+                    pubkey: insecure_testnet_keygen(0).0,
+                    e_start: 0,
+                    e_post_end: 1 << 32,
+                    syms_staked: 1 << 100,
+                },
+            );
+            toret
+        },
+        init_fee_pool: 1 << 100,
+    }
 }
