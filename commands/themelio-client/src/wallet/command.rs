@@ -15,8 +15,8 @@ pub enum WalletCommand {
     Import(PathBuf),
     Export(PathBuf),
     Show,
-    Open,
-    // Open(WalletData),
+    Open(String),
+    Help,
     Exit,
 }
 
@@ -43,29 +43,27 @@ impl WalletCommandHandler {
         let cmd: WalletCommand = WalletCommand::from_str(&input)?;
 
         // Process command
-        println!("Hi");
-        // match &cmd {
-        //     WalletCommand::Create(name) => {
-        //         let wallet: Wallet = Wallet::new(&name);
-        //         prompt.show_wallet(&wallet);
-        //         storage.save(&name, &wallet)?
-        //     }
-        //     WalletCommand::Show => {
-        //         let wallets: Vec<Wallet> = storage.load_all()?;
-        //         prompt.show_wallets(&wallets)
-        //     }
-        //     WalletCommand::Open(wallet) => {
-        //         let prompt_result = handle_open_wallet_prompt(&prompt, &storage).await?;
-        //         // handle res err if any
-        //     }
-        //     // WalletPromptOpt::ImportWallet(_import_path) => {}
-        //     // WalletPromptOpt::ExportWallet(_export_path) => {}
-        //     _ => {}
-        // };
+        match &cmd {
+            WalletCommand::Create(name) => {
+                // let wallet: Wallet = Wallet::new(&name);
+                // prompt.show_wallet(&wallet);
+                // storage.save(&name, &wallet)?
+            }
+            WalletCommand::Show => {
+                // let wallets: Vec<Wallet> = storage.load_all()?;
+                // prompt.show_wallets(&wallets)
+            }
+            WalletCommand::Open(wallet) => {
+                // let prompt_result = handle_open_wallet_prompt(&prompt, &storage).await?;
+                // // handle res err if any
+            }
+            // WalletPromptOpt::ImportWallet(_import_path) => {}
+            // WalletPromptOpt::ExportWallet(_export_path) => {}
+            _ => {}
+        };
 
-        // Return which command was processed successfully
-        // Ok(cmd)
-        Ok(WalletCommand::Exit)
+        // Return processed command
+        Ok(cmd)
     }
 
     async fn read_line(prompt: String) -> anyhow::Result<String> {
