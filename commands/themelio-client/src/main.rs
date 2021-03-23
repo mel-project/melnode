@@ -36,7 +36,7 @@ fn main() {
 
 /// Handle a prompt until exit command
 async fn run_client_prompt(opts: ClientOpts) -> anyhow::Result<()> {
-    let handler = WalletCommandHandler::new(opts.host, opts.database,env!("CARGO_PKG_VERSION"));
+    let handler = WalletCommandHandler::new(opts.host, opts.database,env!("CARGO_PKG_VERSION").to_string());
 
     loop {
         let res_cmd = handler.handle().await;

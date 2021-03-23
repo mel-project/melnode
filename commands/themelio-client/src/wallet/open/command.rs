@@ -1,6 +1,8 @@
 use nodeprot::ValClient;
 use crate::storage::ClientStorage;
 use tmelcrypt::HashVal;
+use blkstructs::NetID;
+use colored::Colorize;
 
 /// TODO: May need to use custom ToStr strum derives per field instead of snake_case
 #[derive(Eq, PartialEq, Debug, EnumString)]
@@ -18,19 +20,23 @@ pub enum OpenWalletCommand {
 }
 
 pub struct OpenWalletCommandHandler {
-    client: ValClient,
-    storage: ClientStorage,
-    prompt: String
+    host: smol::net::SocketAddr,
+    database: std::path::PathBuf,
+    version: String,
+    prompt: String,
+    name: String,
 }
 
 impl OpenWalletCommandHandler {
-    pub(crate) fn new(client: ValClient, storage: ClientStorage, version: &str, name: &str) -> Self {
+    pub(crate) fn new(host: smol::net::SocketAddr, database: std::path::PathBuf, version: String, name: String) -> Self {
         let prompt_stack: Vec<String> = vec![format!("v{}", version).green().to_string()];
         let prompt = format!("[client wallet {} {}]% ", name, prompt_stack.join(" "));
         Self {
-            client,
-            storage,
+            host,
+            database,
+            version,
             prompt,
+            name
         }
     }
 
@@ -42,10 +48,15 @@ impl OpenWalletCommandHandler {
             .unwrap();
         let cmd: OpenWalletCommand = WalletCommand::from_str(&input)?;
 
-        // Process command
-        let snapshot = self.client.trust(0, HashVal::default());
-        // take snapshot from valclient
-        // use snapshot
+        // Init storage
+        let storage = ClientStorage::new(sled::open(&self.database).unwrap());
+
+        // Take snapshot
+        let client = nodeprot::ValClient::new(NetID::Testnet, self.host);
+        client.trust(0, HashVal::default());
+        let snapshot = client.snapshot().await;
+
+        // Process command with snapshot
         match &cmd {
             OpenWalletCommand::Faucet(_, _) => {}
             OpenWalletCommand::SendCoins(_, _, _) => {}

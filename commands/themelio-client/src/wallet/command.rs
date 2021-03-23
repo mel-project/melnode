@@ -24,16 +24,18 @@ pub enum WalletCommand {
 pub struct WalletCommandHandler {
     host: smol::net::SocketAddr,
     database: std::path::PathBuf,
+    version: String,
     prompt: String,
 }
 
 impl WalletCommandHandler {
-    pub(crate) fn new(host: smol::net::SocketAddr, database: std::path::PathBuf, version: &str) -> Self {
+    pub(crate) fn new(host: smol::net::SocketAddr, database: std::path::PathBuf, version: String) -> Self {
         let prompt_stack: Vec<String> = vec![format!("v{}", version).green().to_string()];
         let prompt = format!("[client wallet {}]% ", prompt_stack.join(" "));
         Self {
             host,
             database,
+            version,
             prompt,
         }
     }
@@ -86,7 +88,7 @@ impl WalletCommandHandler {
 
     // Run commands on an open wallet until user exits
     async fn open(&self, name: &String) -> anyhow::Result<()> {
-        let handler = OpenWalletCommandHandler::new(self.client, storage, env!("CARGO_PKG_VERSION"), name);
+        let handler = OpenWalletCommandHandler::new(self.host.clone(), self.database.clone(), self.version.clone(), name.clone());
 
         loop {
             let res_cmd = handler.handle().await;
