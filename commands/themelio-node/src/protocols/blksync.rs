@@ -61,7 +61,7 @@ async fn get_one_block(
         }
     }
     for txh in unknown_txhashes {
-        let (tx_content, proof) = client
+        let (tx_content, _proof) = client
             .get_smt_branch(
                 height,
                 nodeprot::Substate::Transactions,

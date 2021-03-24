@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::Context;
 use async_trait::async_trait;
-use blkstructs::{Block, SealedState, StakeMapping, Transaction};
+use blkstructs::{Block, SealedState, StakeMapping, Transaction, STAKE_EPOCH};
 use broadcaster::BroadcastChannel;
 use chainstate::ChainState;
 use msg::{ActualProposal, Message, ProposalMsg, SignedMessage, Signer};
@@ -252,6 +252,21 @@ pub struct StreamletCfg<N: Network, L: TxLookup> {
 }
 
 impl<N: Network, L: TxLookup> StreamletCfg<N, L> {
+    /// Creates a streamlet configuration given a state, network, and lookup function.
+    pub fn new(last_sealed: SealedState, my_sk: Ed25519SK, network: N, lookup: L) -> Self {
+        let first_stake = last_sealed.inner_ref().stakes.val_iter().next().unwrap();
+        Self {
+            network,
+            lookup,
+            genesis: last_sealed.clone(),
+            stakes: last_sealed.inner_ref().stakes.clone(),
+            epoch: last_sealed.inner_ref().height / STAKE_EPOCH,
+            start_time: std::time::UNIX_EPOCH + Duration::from_secs(1614578400),
+            my_sk,
+            get_proposer: Box::new(move |_height| first_stake.pubkey),
+        }
+    }
+
     fn get_proposer(&self, height: u64) -> Ed25519PK {
         (self.get_proposer)(height)
     }

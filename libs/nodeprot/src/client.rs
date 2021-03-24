@@ -84,7 +84,7 @@ impl ValClient {
     /// Helper function to obtain the trusted staker set.
     async fn get_trusted_stakers(&self) -> melnet::Result<(u64, StakeMapping)> {
         let (trusted_height, trusted_hash) = self.trusted_height.lock().unwrap().unwrap();
-        let temp_forest = autosmt::Forest::load(autosmt::MemDB::default());
+        let temp_forest = autosmt::Forest::load(autosmt::MemDB::default()); 
         let stakers = self
             .raw
             .get_stakers_raw(self.trusted_height.lock().unwrap().unwrap().0)
