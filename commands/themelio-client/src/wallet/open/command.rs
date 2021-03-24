@@ -3,10 +3,12 @@ use crate::storage::ClientStorage;
 use tmelcrypt::HashVal;
 use blkstructs::NetID;
 use colored::Colorize;
+use std::str::FromStr;
+use strum_macros::EnumString;
+use crate::wallet::common::read_line;
 
-/// TODO: May need to use custom ToStr strum derives per field instead of snake_case
 #[derive(Eq, PartialEq, Debug, EnumString)]
-#[strum(serialize_all = "snake_case")]
+#[strum(serialize_all = "snake_case")] // TODO: convert to custom derives
 pub enum OpenWalletCommand {
     Faucet(u128, String),
     // Deposit,
@@ -30,7 +32,7 @@ pub struct OpenWalletCommandHandler {
 impl OpenWalletCommandHandler {
     pub(crate) fn new(host: smol::net::SocketAddr, database: std::path::PathBuf, version: String, name: String) -> Self {
         let prompt_stack: Vec<String> = vec![format!("v{}", version).green().to_string()];
-        let prompt = format!("[client wallet {} {}]% ", name, prompt_stack.join(" "));
+        let prompt = format!("[client wallet {} {}]% ", "replace_with_wallet_name", prompt_stack.join(" "));
         Self {
             host,
             database,
@@ -43,28 +45,30 @@ impl OpenWalletCommandHandler {
     /// Parse user input into a wallet command process the command
     pub(crate) async fn handle(&self) -> anyhow::Result<OpenWalletCommand> {
         // Parse input into a command
-        let input = OpenWalletCommandHandler::read_line(self.prompt.to_string())
-            .await
-            .unwrap();
-        let cmd: OpenWalletCommand = WalletCommand::from_str(&input)?;
-
-        // Init storage
-        let storage = ClientStorage::new(sled::open(&self.database).unwrap());
-
-        // Take snapshot
-        let client = nodeprot::ValClient::new(NetID::Testnet, self.host);
-        client.trust(0, HashVal::default());
-        let snapshot = client.snapshot().await;
-
-        // Process command with snapshot
-        match &cmd {
-            OpenWalletCommand::Faucet(_, _) => {}
-            OpenWalletCommand::SendCoins(_, _, _) => {}
-            OpenWalletCommand::AddCoins(_) => {}
-            OpenWalletCommand::Balance => {}
-            OpenWalletCommand::Help => {}
-            OpenWalletCommand::Exit => {}
-        };
+        let input = read_line(self.prompt.to_string())
+            .await;
+        if input.is_err() {
+            return Ok(OpenWalletCommand::Exit)
+        }
+        let cmd: OpenWalletCommand = OpenWalletCommand::from_str(&input.unwrap())?;
+        //
+        // // Init storage
+        // let storage = ClientStorage::new(sled::open(&self.database).unwrap());
+        //
+        // // Take snapshot
+        // let client = nodeprot::ValClient::new(NetID::Testnet, self.host);
+        // client.trust(0, HashVal::default());
+        // let snapshot = client.snapshot().await;
+        //
+        // // Process command with snapshot
+        // match &cmd {
+        //     // OpenWalletCommand::Faucet(_, _) => {}
+        //     // OpenWalletCommand::SendCoins(_, _, _) => {}
+        //     // OpenWalletCommand::AddCoins(_) => {}
+        //     OpenWalletCommand::Balance => {}
+        //     OpenWalletCommand::Help => {}
+        //     OpenWalletCommand::Exit => {}
+        // };
 
         //flow pseudo-code - note should use ValClientSnapshot
 
@@ -113,7 +117,8 @@ impl OpenWalletCommandHandler {
         // 	- load storage
         // 	- print storage coins
         // Return processed command
-        Ok(cmd)
+        // Ok(cmd)
+        Ok(OpenWalletCommand::Exit)
     }
 
     async fn read_line(prompt: String) -> anyhow::Result<String> {

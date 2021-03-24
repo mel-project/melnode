@@ -44,9 +44,11 @@ impl WalletCommandHandler {
     pub(crate) async fn handle(&self) -> anyhow::Result<WalletCommand> {
         // Parse input into a command
         let input = read_line(self.prompt.to_string())
-            .await
-            .unwrap();
-        let cmd: WalletCommand = WalletCommand::from_str(&input)?;
+            .await;
+        if input.is_err() {
+            return Ok(WalletCommand::Exit)
+        }
+        let cmd: WalletCommand = WalletCommand::from_str(&input.unwrap())?;
 
         // Process command
         // let client = nodeprot::ValClient::new(NetID::Testnet, opts.host);
