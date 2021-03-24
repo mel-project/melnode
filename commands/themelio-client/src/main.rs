@@ -5,10 +5,9 @@ extern crate strum_macros;
 mod storage;
 mod wallet;
 
-use structopt::StructOpt;
-use storage::ClientStorage;
 use crate::wallet::command::{WalletCommand, WalletCommandHandler};
-
+use storage::ClientStorage;
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "Themelio Client CLI")]
@@ -36,7 +35,11 @@ fn main() {
 
 /// Handle a prompt until exit command
 async fn run_client_prompt(opts: ClientOpts) -> anyhow::Result<()> {
-    let handler = WalletCommandHandler::new(opts.host, opts.database,env!("CARGO_PKG_VERSION").to_string());
+    let handler = WalletCommandHandler::new(
+        opts.host,
+        opts.database,
+        env!("CARGO_PKG_VERSION").to_string(),
+    );
 
     loop {
         let res_cmd = handler.handle().await;

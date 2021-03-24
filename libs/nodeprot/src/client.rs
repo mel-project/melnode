@@ -14,6 +14,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use tmelcrypt::HashVal;
 
 use crate::{AbbreviatedBlock, NodeRequest, StateSummary, Substate};
+use std::hash::Hash;
 
 /// A higher-level client that validates all information.
 #[derive(Debug, Clone)]
@@ -46,6 +47,18 @@ impl ValClient {
     }
 
     /// Obtains the latest validated snapshot. Use this method first to get something to validate info against.
+    pub async fn snapshot_latest(&self) -> melnet::Result<ValClientSnapshot> {
+        self.trust_latest();
+        self.snapshot().await
+    }
+
+    // trust latest height
+    async fn trust_latest(&self) {
+        let summary = self.raw.get_summary().await.unwrap(); // Add error handling
+        self.trust(summary.height, summary.header.hash());
+    }
+
+    /// Obtains a validated snapshot based on what height was trusted.
     pub async fn snapshot(&self) -> melnet::Result<ValClientSnapshot> {
         let summary = self.raw.get_summary().await?;
         let (height, stakers) = self.get_trusted_stakers().await?;

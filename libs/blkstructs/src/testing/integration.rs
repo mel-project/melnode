@@ -3,13 +3,9 @@
 // use crate::testing::factory::*;
 use crate::testing::fixtures::{genesis_state, tx_send_mel_from_seed_coin, SEND_MEL_AMOUNT};
 use crate::testing::utils::{
-    filter_tx_outputs_by_pk, random_valid_txx,
-    tx_create_token, tx_deposit, tx_send_mels_to,
+    filter_tx_outputs_by_pk, random_valid_txx, tx_create_token, tx_deposit, tx_send_mels_to,
 };
-use crate::{
-    melvm, CoinData, CoinID, SmtMapping, State, Transaction,
-    DENOM_TMEL, MICRO_CONVERTER,
-};
+use crate::{melvm, CoinData, CoinID, SmtMapping, State, Transaction, DENOM_TMEL, MICRO_CONVERTER};
 use rstest::*;
 use tmelcrypt::{Ed25519PK, Ed25519SK};
 

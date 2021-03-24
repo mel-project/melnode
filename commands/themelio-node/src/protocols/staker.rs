@@ -75,17 +75,17 @@ async fn staker_loop(gossiper: SymphGossip, storage: SharedStorage, my_sk: Ed255
                             None
                         };
 
-                            if height == provis_state.height
-                                && Some(last_state.header().hash())
-                                    == provis_state.history.get(&(height - 1)).0.map(|v| v.hash())
-                            {
-                                let proposal = provis_state.clone().seal(action).to_block().abbreviate();
-                                log::info!("responding normally to prop solicit with mempool-based proposal (height={}, hash={:?})", proposal.header.height, proposal.header.hash());
-                                let prop_msg = ProposalMsg{proposal, last_nonempty: None};
-                                prop_send.send(prop_msg).unwrap();
-                                continue
-                            }
-                        
+                        if height == provis_state.height
+                            && Some(last_state.header().hash())
+                                == provis_state.history.get(&(height - 1)).0.map(|v| v.hash())
+                        {
+                            let proposal = provis_state.clone().seal(action).to_block().abbreviate();
+                            log::info!("responding normally to prop solicit with mempool-based proposal (height={}, hash={:?})", proposal.header.height, proposal.header.hash());
+                            let prop_msg = ProposalMsg{proposal, last_nonempty: None};
+                            prop_send.send(prop_msg).unwrap();
+                            continue
+                        }
+
                         let mut basis = last_state.clone();
                         let mut last_nonempty = None;
                         while basis.header().height + 1 < height {

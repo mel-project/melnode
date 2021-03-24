@@ -4,13 +4,13 @@ use std::str::FromStr;
 use strum_macros::EnumString;
 
 use crate::storage::ClientStorage;
+use crate::wallet::common::read_line;
+use crate::wallet::open::command::{OpenWalletCommand, OpenWalletCommandHandler};
 use colored::Colorize;
 use nodeprot::ValClient;
-use crate::wallet::open::command::{OpenWalletCommandHandler, OpenWalletCommand};
-use crate::wallet::common::read_line;
 
 #[derive(Eq, PartialEq, Debug, EnumString)]
-#[strum(serialize_all = "snake_case")] // TODO: convert to custom derives
+#[strum(serialize_all = "kebab-case")]
 pub enum WalletCommand {
     Create(String),
     Import(PathBuf),
@@ -29,7 +29,11 @@ pub struct WalletCommandHandler {
 }
 
 impl WalletCommandHandler {
-    pub(crate) fn new(host: smol::net::SocketAddr, database: std::path::PathBuf, version: String) -> Self {
+    pub(crate) fn new(
+        host: smol::net::SocketAddr,
+        database: std::path::PathBuf,
+        version: String,
+    ) -> Self {
         let prompt_stack: Vec<String> = vec![format!("v{}", version).green().to_string()];
         let prompt = format!("[client wallet {}]% ", prompt_stack.join(" "));
         Self {
@@ -43,10 +47,9 @@ impl WalletCommandHandler {
     /// Parse user input into a wallet command process the command
     pub(crate) async fn handle(&self) -> anyhow::Result<WalletCommand> {
         // Parse input into a command
-        let input = read_line(self.prompt.to_string())
-            .await;
+        let input = read_line(self.prompt.to_string()).await;
         if input.is_err() {
-            return Ok(WalletCommand::Exit)
+            return Ok(WalletCommand::Exit);
         }
         let cmd: WalletCommand = WalletCommand::from_str(&input.unwrap())?;
 
@@ -90,7 +93,12 @@ impl WalletCommandHandler {
 
     // Run commands on an open wallet until user exits
     async fn open(&self, name: &String) -> anyhow::Result<()> {
-        let handler = OpenWalletCommandHandler::new(self.host.clone(), self.database.clone(), self.version.clone(), name.clone());
+        let handler = OpenWalletCommandHandler::new(
+            self.host.clone(),
+            self.database.clone(),
+            self.version.clone(),
+            name.clone(),
+        );
 
         loop {
             let res_cmd = handler.handle().await;

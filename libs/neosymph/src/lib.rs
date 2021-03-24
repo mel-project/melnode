@@ -5,8 +5,6 @@ mod protocol;
 pub use msg::ConfirmResp;
 pub use protocol::*;
 
-
-
 #[cfg(test)]
 mod tests {
     #[test]

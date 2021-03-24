@@ -1,9 +1,7 @@
 mod sled_tree;
 use std::sync::Arc;
 
-use blkstructs::{
-    ConsensusProof, GenesisConfig, SealedState, State, StateError, Transaction,
-};
+use blkstructs::{ConsensusProof, GenesisConfig, SealedState, State, StateError, Transaction};
 use dashmap::DashMap;
 use parking_lot::RwLock;
 pub use sled_tree::*;

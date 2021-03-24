@@ -162,7 +162,7 @@ mod tests {
 
     #[test]
     fn test_key_to_path_first() {
-        let first =tmelcrypt::HashVal::default();
+        let first = tmelcrypt::HashVal::default();
         let actual_first_path = key_to_path(first).to_vec();
         let expected_first_path = vec![false; 256];
         assert_eq!(actual_first_path, expected_first_path);
@@ -256,7 +256,6 @@ mod tests {
         // in case there is an external failure while processing the buffer
         // (perhaps mock this somehow?) the method will panic / abort
     }
-
 
     #[test]
     fn test_compress_decompress_expected() {
