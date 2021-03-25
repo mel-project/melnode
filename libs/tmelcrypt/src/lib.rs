@@ -97,7 +97,7 @@ impl AsRef<[u8]> for HashVal {
 
 impl fmt::Debug for HashVal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("#<{}>", hex::encode(&self.0[0..5])))
+        f.write_fmt(format_args!("#<{}>", hex::encode(&self.0)))
     }
 }
 
