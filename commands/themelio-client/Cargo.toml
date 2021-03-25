@@ -6,7 +6,9 @@ edition = "2018"
 
 [dependencies]
 anyhow="1"
+im="15"
 rustyline = "7.1.0"
+serde={version="1", features=["derive"]}
 sled="0.34.6"
 smol="1"
 smol-timeout="0.6.0"

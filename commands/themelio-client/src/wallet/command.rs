@@ -3,11 +3,9 @@ use std::str::FromStr;
 
 use strum_macros::EnumString;
 
-use crate::storage::ClientStorage;
 use crate::wallet::common::read_line;
 use crate::wallet::open::command::{OpenWalletCommand, OpenWalletCommandHandler};
 use colored::Colorize;
-use nodeprot::ValClient;
 
 #[derive(Eq, PartialEq, Debug, EnumString)]
 #[strum(serialize_all = "kebab-case")]
