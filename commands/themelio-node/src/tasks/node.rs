@@ -42,7 +42,7 @@ pub async fn run_node(opt: NodeConfig) {
     log::info!("themelio-core v{} initializing...", VERSION);
     log::info!("bootstrapping with {:?}", opt.bootstrap);
     let storage =
-        NodeStorage::new(sled::open(&opt.database).unwrap(), testnet_genesis_config()).share();
+        NodeStorage::new(sled::open(&opt.database).unwrap(), testnet_genesis_config().await).share();
     let _node_prot = NodeProtocol::new(opt.listen, opt.bootstrap.clone(), storage.clone());
     let _staker_prot = if let Some(v) = opt.test_stakeholder {
         let my_sk = insecure_testnet_keygen(v).1;
