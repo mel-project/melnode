@@ -7,6 +7,8 @@ use crate::wallet::common::read_line;
 use crate::wallet::open::command::{OpenWalletCommand, OpenWalletCommandHandler};
 use colored::Colorize;
 use crate::wallet::data::WalletData;
+use blkstructs::melvm::Covenant;
+use crate::storage::ClientStorage;
 
 #[derive(Eq, PartialEq, Debug, EnumString)]
 #[strum(serialize_all = "kebab-case")]
@@ -53,11 +55,10 @@ impl WalletCommandHandler {
         let cmd: WalletCommand = WalletCommand::from_str(&input.unwrap())?;
 
         // Process command
-        // let client = nodeprot::ValClient::new(NetID::Testnet, opts.host);
-        // let storage = ClientStorage::new(sled::open(&opts.database).unwrap());
+        let storage = ClientStorage::new(sled::open(&self.database).unwrap());
         match &cmd {
-            WalletCommand::Create(name) => self.create(name).await?,
-            WalletCommand::Import(path) => self.import(path).await?,
+            WalletCommand::Create(name) => self.create(&storage, name).await?,
+            WalletCommand::Import(path) => self.import(&storage, path).await?,
             WalletCommand::Export(path) => self.export(path).await?,
             WalletCommand::Show => self.show().await?,
             WalletCommand::Open(name) => self.open(name).await?,
@@ -69,11 +70,16 @@ impl WalletCommandHandler {
         Ok(cmd)
     }
 
-    async fn create(&self, name: &String) -> anyhow::Result<()> {
-        let (sk, pk, wallet) = WalletData::generate();
-        self.print_keypair(sk, pk);
-        self.
-        self.output_keypair(sk, pk);
+    async fn create(&self, storage: &ClientStorage, name: &String) -> anyhow::Result<()> {
+        // Check if wallet with same name already exits
+
+
+        // Generate wallet data from keypair
+        let (pk, sk) = tmelcrypt::ed25519_keygen();
+        let script = Covenant::std_ed25519_pk(pk);
+        let wallet_data = WalletData::new(script);
+
+        // Display contents of keypair and wallet data
 
         // let wallet: Wallet = Wallet::new(&name);
         // prompt.show_wallet(&wallet);
@@ -81,22 +87,25 @@ impl WalletCommandHandler {
         Ok(())
     }
 
-    async fn import(&self, path: &PathBuf) -> anyhow::Result<()> {
+    async fn import(&self, storage: &ClientStorage, path: &PathBuf) -> anyhow::Result<()> {
         anyhow::bail!("Not Implemented")
     }
 
-    async fn export(&self, path: &PathBuf) -> anyhow::Result<()> {
+    async fn export(&self, storage: &ClientStorage, path: &PathBuf) -> anyhow::Result<()> {
         anyhow::bail!("Not Implemented")
     }
 
-    async fn show(&self) -> anyhow::Result<()> {
+    async fn show(&self, storage: &ClientStorage) -> anyhow::Result<()> {
         // let wallets: Vec<Wallet> = storage.load_all()?;
         // prompt.show_wallets(&wallets)
         Ok(())
     }
 
     // Run commands on an open wallet until user exits
-    async fn open(&self, name: &String) -> anyhow::Result<()> {
+    async fn open(&self, storage: &ClientStorage, name: &String) -> anyhow::Result<()> {
+        // Load wallet data from storage
+
+        // Initialize open wallet command handler
         let handler = OpenWalletCommandHandler::new(
             self.host.clone(),
             self.database.clone(),

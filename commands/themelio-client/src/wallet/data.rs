@@ -24,13 +24,6 @@ impl WalletData {
         }
     }
 
-    /// Generates wallet data keypair and returns keypair and wallet data
-    pub fn generate() -> (Ed25519SK, Ed25519PK, Self) {
-        let (pk, sk) = tmelcrypt::ed25519_keygen();
-        let script = melvm::Covenant::std_ed25519_pk(pk);
-        (sk, pk, WalletData::new(script))
-    }
-
     /// Unspent Coins
     pub fn unspent_coins(&self) -> im::HashMap<CoinID, CoinDataHeight> {
         self.unspent_coins.clone()
