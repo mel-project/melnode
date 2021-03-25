@@ -126,3 +126,4 @@ async fn staker_loop(gossiper: SymphGossip, storage: SharedStorage, my_sk: Ed255
         })
         .await;
 }
+

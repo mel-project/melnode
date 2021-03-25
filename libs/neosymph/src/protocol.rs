@@ -10,6 +10,10 @@ use tmelcrypt::Ed25519PK;
 
 const NETNAME: &str = "testnet-staker";
 
+const SYMPH_GOSSIP: &str = "symph-gossip";
+
+const CONFIRM_GOSSIP: &str = "confirm-gossip";
+
 /// A helper structure for the gossip network.
 #[derive(Clone)]
 pub struct SymphGossip {
@@ -22,6 +26,7 @@ pub struct SymphGossip {
 }
 
 impl SymphGossip {
+    /// Creates a new SymphGossip instance from a vector of bootstrap addresses.
     pub fn new(addr: SocketAddr, bootstrap: Vec<SocketAddr>) -> anyhow::Result<Self> {
         let network = melnet::NetState::new_with_name(NETNAME);
         for addr in bootstrap {
@@ -31,7 +36,7 @@ impl SymphGossip {
         let (send_incoming, incoming) = smol::channel::unbounded();
         let stuff_incoming = send_incoming.clone();
         network.register_verb(
-            "gossip",
+            SYMPH_GOSSIP,
             melnet::anon_responder(
                 move |req: melnet::Request<SignedMessage, Option<ConfirmResp>>| {
                     let _ = send_incoming.try_send(req.body.clone());
@@ -52,6 +57,9 @@ impl SymphGossip {
             _task: Arc::new(_task),
         })
     }
+
+    /// Broadcasts a confirmation message.
+    pub fn broadcast_confimation(&self, confirm_sig: Vec<u8>) {}
 }
 
 #[async_trait]
@@ -66,7 +74,7 @@ impl Network for SymphGossip {
                 let msg = msg.clone();
                 smolscale::spawn(async move {
                     if let Err(err) = melnet::g_client()
-                        .request::<_, Option<ConfirmResp>>(neigh, NETNAME, "gossip", msg)
+                        .request::<_, Option<ConfirmResp>>(neigh, NETNAME, SYMPH_GOSSIP, msg)
                         .await
                     {
                         log::warn!("error broadcasting: {:?}", err);

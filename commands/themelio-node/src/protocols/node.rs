@@ -1,7 +1,8 @@
-use std::{collections::BTreeMap, net::SocketAddr, time::Duration};
+use std::{collections::BTreeMap, net::SocketAddr, sync::Arc, time::Duration};
 
 use autosmt::CompressedProof;
 use blkstructs::{ConsensusProof, NetID, Transaction};
+
 use melnet::MelnetError;
 use neosymph::TxLookup;
 use nodeprot::{AbbreviatedBlock, NodeClient, NodeResponder, NodeServer, StateSummary, Substate};
