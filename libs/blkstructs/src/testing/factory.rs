@@ -4,8 +4,10 @@
 
 use std::collections::HashMap;
 
-use crate::{Block, CoinData, CoinDataHeight, CoinID, DENOM_TMEL, GenesisConfig, Header, melvm, ProposerAction, StakeDoc, Transaction, TxKind};
-
+use crate::{
+    melvm, Block, CoinData, CoinDataHeight, CoinID, GenesisConfig, Header, ProposerAction,
+    StakeDoc, Transaction, TxKind, DENOM_TMEL,
+};
 
 beaver::define! {
     pub CoinIDFactory (CoinID) {
@@ -77,7 +79,7 @@ beaver::define! {
         fee_multiplier -> |n| n as u128,
         dosc_speed ->  |n| n as u128,
         pools_hash -> |_| tmelcrypt::HashVal::random(),
-        stake_doc_hash -> |_| tmelcrypt::HashVal::random(),
+        stakes_hash -> |_| tmelcrypt::HashVal::random(),
     }
 }
 

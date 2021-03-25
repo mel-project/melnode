@@ -84,7 +84,7 @@ impl ValClient {
     /// Helper function to obtain the trusted staker set.
     async fn get_trusted_stakers(&self) -> melnet::Result<(u64, StakeMapping)> {
         let (trusted_height, trusted_hash) = self.trusted_height.lock().unwrap().unwrap();
-        let temp_forest = autosmt::Forest::load(autosmt::MemDB::default()); 
+        let temp_forest = autosmt::Forest::load(autosmt::MemDB::default());
         let stakers = self
             .raw
             .get_stakers_raw(self.trusted_height.lock().unwrap().unwrap().0)
@@ -96,7 +96,7 @@ impl ValClient {
                 "remote block contradicted trusted block hash".into(),
             ));
         }
-        let trusted_stake_hash = abbr_block.header.stake_doc_hash;
+        let trusted_stake_hash = abbr_block.header.stakes_hash;
         let mut mapping = temp_forest.get_tree(HashVal::default());
         for (k, v) in stakers {
             mapping = mapping.set(k, &v);
@@ -196,7 +196,7 @@ impl ValClientSnapshot {
             Substate::Coins => self.header.coins_hash,
             Substate::History => self.header.history_hash,
             Substate::Pools => self.header.pools_hash,
-            Substate::Stakes => self.header.stake_doc_hash,
+            Substate::Stakes => self.header.stakes_hash,
             Substate::Transactions => self.header.transactions_hash,
         };
         let (val, branch) = self.raw.get_smt_branch(self.height, substate, key).await?;
