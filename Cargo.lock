@@ -3103,6 +3103,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "blkstructs",
+ "hex",
  "nodeprot",
  "once_cell",
  "smol",

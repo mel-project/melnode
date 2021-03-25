@@ -68,12 +68,15 @@ impl ValClient {
                 }
             }
         }
-        if total_votes < 0.7 {
-            return Err(MelnetError::Custom(format!(
-                "remote height {} has insufficient votes",
-                summary.height
-            )));
-        }
+
+        //  TODO: actually verify this
+
+        // if total_votes < 0.7 {
+        //     return Err(MelnetError::Custom(format!(
+        //         "remote height {} has insufficient votes",
+        //         summary.height
+        //     )));
+        // }
         Ok(ValClientSnapshot {
             height: summary.height,
             header: summary.header,
@@ -237,7 +240,6 @@ impl NodeClient {
 
     /// Gets a summary of the state.
     pub async fn get_summary(&self) -> melnet::Result<StateSummary> {
-        eprintln!("TRY TO GET SUMMARY");
         stdcode::deserialize(&self.request(NodeRequest::GetSummary).await?)
             .map_err(|e| melnet::MelnetError::Custom(e.to_string()))
     }
