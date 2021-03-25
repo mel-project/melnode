@@ -85,10 +85,7 @@ impl ValClient {
     async fn get_trusted_stakers(&self) -> melnet::Result<(u64, StakeMapping)> {
         let (trusted_height, trusted_hash) = self.trusted_height.lock().unwrap().unwrap();
         let temp_forest = autosmt::Forest::load(autosmt::MemDB::default());
-        let stakers = self
-            .raw
-            .get_stakers_raw(self.trusted_height.lock().unwrap().unwrap().0)
-            .await?;
+        let stakers = self.raw.get_stakers_raw(trusted_height).await?;
         // first obtain trusted SMT branch
         let (abbr_block, _) = self.raw.get_abbr_block(trusted_height).await?;
         if abbr_block.header.hash() != trusted_hash {
@@ -240,6 +237,7 @@ impl NodeClient {
 
     /// Gets a summary of the state.
     pub async fn get_summary(&self) -> melnet::Result<StateSummary> {
+        eprintln!("TRY TO GET SUMMARY");
         stdcode::deserialize(&self.request(NodeRequest::GetSummary).await?)
             .map_err(|e| melnet::MelnetError::Custom(e.to_string()))
     }
