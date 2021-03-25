@@ -3,8 +3,9 @@ use serde::{Deserialize, Serialize};
 use std::collections;
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
+/// Immutable & cloneable in-memory data that can be persisted.
+/// Does not store secrets!
 #[derive(Serialize, Deserialize, Debug, Clone)]
-/// An immutable, cloneable in-memory data that can be synced to disk. Does not contain any secrets!
 pub struct WalletData {
     unspent_coins: im::HashMap<CoinID, CoinDataHeight>,
     spent_coins: im::HashMap<CoinID, CoinDataHeight>,
@@ -23,6 +24,13 @@ impl WalletData {
         }
     }
 
+    /// Generates wallet data keypair and returns keypair and wallet data
+    pub fn generate() -> (Ed25519SK, Ed25519PK, Self) {
+        let (pk, sk) = tmelcrypt::ed25519_keygen();
+        let script = melvm::Covenant::std_ed25519_pk(pk);
+        (sk, pk, WalletData::new(script))
+    }
+
     /// Unspent Coins
     pub fn unspent_coins(&self) -> im::HashMap<CoinID, CoinDataHeight> {
         self.unspent_coins.clone()
@@ -31,13 +39,6 @@ impl WalletData {
     /// Spent Coins
     pub fn spent_coins(&self) -> im::HashMap<CoinID, CoinDataHeight> {
         self.spent_coins.clone()
-    }
-
-    /// Generates wallet data from script based on keypair
-    pub fn generate() -> (Ed25519SK, Ed25519PK, Self) {
-        let (pk, sk) = tmelcrypt::ed25519_keygen();
-        let script = melvm::Covenant::std_ed25519_pk(pk);
-        (sk, pk, WalletData::new(script))
     }
 
     /// Inserts a coin into the data, returning whether or not the coin already exists.

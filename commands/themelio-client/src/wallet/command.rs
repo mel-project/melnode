@@ -6,6 +6,7 @@ use strum_macros::EnumString;
 use crate::wallet::common::read_line;
 use crate::wallet::open::command::{OpenWalletCommand, OpenWalletCommandHandler};
 use colored::Colorize;
+use crate::wallet::data::WalletData;
 
 #[derive(Eq, PartialEq, Debug, EnumString)]
 #[strum(serialize_all = "kebab-case")]
@@ -69,6 +70,11 @@ impl WalletCommandHandler {
     }
 
     async fn create(&self, name: &String) -> anyhow::Result<()> {
+        let (sk, pk, wallet) = WalletData::generate();
+        self.print_keypair(sk, pk);
+        self.
+        self.output_keypair(sk, pk);
+
         // let wallet: Wallet = Wallet::new(&name);
         // prompt.show_wallet(&wallet);
         // storage.save(&name, &wallet)?

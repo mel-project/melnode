@@ -2,7 +2,6 @@ mod storage;
 mod wallet;
 
 use crate::wallet::command::{WalletCommand, WalletCommandHandler};
-use storage::ClientStorage;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
