@@ -1,11 +1,7 @@
 use blkstructs::{AbbrBlock, Block};
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::BTreeMap,
-    sync::atomic::AtomicU64,
-    time::SystemTime,
-};
+use std::{collections::BTreeMap, sync::atomic::AtomicU64, time::SystemTime};
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
 /// A message signer
@@ -72,7 +68,6 @@ impl SignedMessage {
 pub enum Message {
     Proposal(ProposalMsg),
     Vote(VoteMsg),
-    GetConfirm(GetConfirmMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -112,10 +107,4 @@ pub struct VoteMsg {
 pub struct GetConfirmMsg {
     pub height: u64,
     pub hash: HashVal,
-}
-
-/// Message that responds to a GetConfirmMsg
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ConfirmResp {
-    pub signatures: BTreeMap<Ed25519PK, Bytes>,
 }

@@ -1,9 +1,6 @@
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 
-use crate::{
-    msg::{ConfirmResp, SignedMessage},
-    Network,
-};
+use crate::{msg::SignedMessage, Network};
 use async_trait::async_trait;
 use smol::channel::{Receiver, Sender};
 use tmelcrypt::Ed25519PK;
@@ -12,7 +9,7 @@ const NETNAME: &str = "testnet-staker";
 
 const SYMPH_GOSSIP: &str = "symph-gossip";
 
-const CONFIRM_GOSSIP: &str = "confirm-gossip";
+const CONFIRM_SOLICIT: &str = "confirm-solicit";
 
 /// A helper structure for the gossip network.
 #[derive(Clone)]
@@ -27,7 +24,11 @@ pub struct SymphGossip {
 
 impl SymphGossip {
     /// Creates a new SymphGossip instance from a vector of bootstrap addresses.
-    pub fn new(addr: SocketAddr, bootstrap: Vec<SocketAddr>) -> anyhow::Result<Self> {
+    pub fn new(
+        addr: SocketAddr,
+        bootstrap: Vec<SocketAddr>,
+        get_sig: impl Fn(u64) -> Option<(Ed25519PK, Vec<u8>)> + Send + Sync + 'static,
+    ) -> anyhow::Result<Self> {
         let network = melnet::NetState::new_with_name(NETNAME);
         for addr in bootstrap {
             network.add_route(addr);
@@ -37,12 +38,17 @@ impl SymphGossip {
         let stuff_incoming = send_incoming.clone();
         network.register_verb(
             SYMPH_GOSSIP,
-            melnet::anon_responder(
-                move |req: melnet::Request<SignedMessage, Option<ConfirmResp>>| {
-                    let _ = send_incoming.try_send(req.body.clone());
-                    req.respond(Ok(None))
-                },
-            ),
+            melnet::anon_responder(move |req: melnet::Request<SignedMessage, ()>| {
+                let _ = send_incoming.try_send(req.body.clone());
+                req.respond(Ok(()))
+            }),
+        );
+        network.register_verb(
+            CONFIRM_SOLICIT,
+            melnet::anon_responder(move |req: melnet::Request<u64, _>| {
+                let body = req.body;
+                req.respond(Ok(get_sig(body)))
+            }),
         );
         let net2 = network.clone();
         let _task = smolscale::spawn(async move {
@@ -58,8 +64,16 @@ impl SymphGossip {
         })
     }
 
-    /// Broadcasts a confirmation message.
-    pub fn broadcast_confimation(&self, confirm_sig: Vec<u8>) {}
+    /// Solicits *some* confirmation signature for a block.
+    pub async fn solicit_confirmation(
+        &self,
+        height: u64,
+    ) -> anyhow::Result<Option<(Ed25519PK, Vec<u8>)>> {
+        let random_route = *self.network.routes().first().unwrap();
+        Ok(melnet::g_client()
+            .request(random_route, NETNAME, CONFIRM_SOLICIT, height)
+            .await?)
+    }
 }
 
 #[async_trait]
@@ -74,7 +88,7 @@ impl Network for SymphGossip {
                 let msg = msg.clone();
                 smolscale::spawn(async move {
                     if let Err(err) = melnet::g_client()
-                        .request::<_, Option<ConfirmResp>>(neigh, NETNAME, SYMPH_GOSSIP, msg)
+                        .request::<_, ()>(neigh, NETNAME, SYMPH_GOSSIP, msg)
                         .await
                     {
                         log::warn!("error broadcasting: {:?}", err);

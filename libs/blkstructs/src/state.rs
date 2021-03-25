@@ -474,7 +474,7 @@ pub struct ProposerAction {
     pub reward_dest: HashVal,
 }
 
-pub type ConsensusProof = BTreeMap<Ed25519PK, Bytes>;
+pub type ConsensusProof = BTreeMap<Ed25519PK, Vec<u8>>;
 
 /// ConfirmedState represents a fully confirmed state with a consensus proof.
 #[derive(Clone, Debug)]

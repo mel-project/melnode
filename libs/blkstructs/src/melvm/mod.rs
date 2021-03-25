@@ -383,7 +383,7 @@ impl Executor {
                     Value::Bytes(bts) => Some(Value::Int(U256::from(*bts.get(idx)?))),
                     Value::Vector(elems) => {
                         Some(elems.get(idx).unwrap().clone().as_ref().clone()) // Previously: Some(elems.get(idx)?.clone()),
-                    },
+                    }
                     _ => None,
                 }
             })?,
@@ -652,7 +652,9 @@ impl Value {
                 } else {
                     let vec: Option<im::Vector<Self>> =
                         vec.into_iter().map(Self::from_serde_json).collect();
-                    Some(Self::Vector(vec.unwrap().iter().map(|e| Box::new(e.clone())).collect()))
+                    Some(Self::Vector(
+                        vec.unwrap().iter().map(|e| Box::new(e.clone())).collect(),
+                    ))
                     // Some(Self::Vector(vec.unwrap().clone()))
                 }
             }
@@ -661,7 +663,9 @@ impl Value {
                 for (_, v) in obj {
                     vec.push_back(Self::from_serde_json(v)?)
                 }
-                Some(Self::Vector(vec.iter().map(|e| Box::new(e.clone())).collect()))
+                Some(Self::Vector(
+                    vec.iter().map(|e| Box::new(e.clone())).collect(),
+                ))
             }
         }
     }

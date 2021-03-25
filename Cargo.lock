@@ -2913,6 +2913,7 @@ name = "stdcode"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "hex",
  "serde",
 ]
 
@@ -3276,6 +3277,7 @@ dependencies = [
  "serde",
  "serde-big-array",
  "sha2 0.8.2",
+ "stdcode",
 ]
 
 [[package]]

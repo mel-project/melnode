@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 bincode="1"
 serde="1"
+hex="0.4"

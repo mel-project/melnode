@@ -15,7 +15,7 @@ big_array! { BigArray; }
     Copy, Clone, Eq, PartialEq, Hash, Arbitrary, Ord, PartialOrd, Default, Serialize, Deserialize,
 )]
 /// Represents an 256-byte hash value.
-pub struct HashVal(pub [u8; 32]);
+pub struct HashVal(#[serde(with = "stdcode::hex32")] pub [u8; 32]);
 
 impl HashVal {
     /// Randomly generates a HashVal. This will almost certainly not collide with the actual hash of anything.
