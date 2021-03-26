@@ -72,25 +72,20 @@ impl WalletCommandHandler {
     }
 
     async fn create(&self, storage: &ClientStorage, name: &String) -> anyhow::Result<()> {
-        use node::storage::SledMap;
-
-        SledMap::new()
-        use sled;
-        NodeStorage::new(sled::open(&opt.database).unwrap(), testnet_genesis_config().await).share();
-        sled.open()
         // Check if wallet with same name already exits
-        if storage.get(&name);
+        if let Some(_wallet_data) = storage.get_wallet_by_name(&name).await? {
+            // display message
+            return Ok(());
+        }
 
-        // Generate wallet data from keypair
+        // Generate wallet data from keypair and store it
         let (pk, sk) = tmelcrypt::ed25519_keygen();
         let script = Covenant::std_ed25519_pk(pk);
         let wallet_data = WalletData::new(script);
+        storage.insert_wallet(&name, &wallet_data).await?;
 
         // Display contents of keypair and wallet data
 
-        // let wallet: Wallet = Wallet::new(&name);
-        // prompt.show_wallet(&wallet);
-        // storage.save(&name, &wallet)?
         Ok(())
     }
 
