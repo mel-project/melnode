@@ -59,9 +59,9 @@ impl WalletCommandHandler {
         match &cmd {
             WalletCommand::Create(name) => self.create(&storage, name).await?,
             WalletCommand::Import(path) => self.import(&storage, path).await?,
-            WalletCommand::Export(path) => self.export(path).await?,
-            WalletCommand::Show => self.show().await?,
-            WalletCommand::Open(name) => self.open(name).await?,
+            WalletCommand::Export(path) => self.export(&storage, path).await?,
+            WalletCommand::Show => self.show(&storage).await?,
+            WalletCommand::Open(name) => self.open(&storage, name).await?,
             WalletCommand::Help => self.help().await?,
             WalletCommand::Exit => {}
         };
