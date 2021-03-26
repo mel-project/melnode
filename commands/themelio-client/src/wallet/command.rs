@@ -14,6 +14,7 @@ use crate::storage::ClientStorage;
 #[strum(serialize_all = "kebab-case")]
 pub enum WalletCommand {
     Create(String),
+    // Delete(String),
     Import(PathBuf),
     Export(PathBuf),
     Show,
@@ -71,8 +72,14 @@ impl WalletCommandHandler {
     }
 
     async fn create(&self, storage: &ClientStorage, name: &String) -> anyhow::Result<()> {
-        // Check if wallet with same name already exits
+        use node::storage::SledMap;
 
+        SledMap::new()
+        use sled;
+        NodeStorage::new(sled::open(&opt.database).unwrap(), testnet_genesis_config().await).share();
+        sled.open()
+        // Check if wallet with same name already exits
+        if storage.get(&name);
 
         // Generate wallet data from keypair
         let (pk, sk) = tmelcrypt::ed25519_keygen();

@@ -25,15 +25,16 @@ pub struct ClientOpts {
 /// Run client with command line options
 fn main() {
     let opts: ClientOpts = ClientOpts::from_args();
-    smolscale::block_on(run_client_prompt(opts));
+    smolscale::block_on(run_client_prompt(opts)).unwrap();
 }
 
 /// Handle a prompt until exit command
 async fn run_client_prompt(opts: ClientOpts) -> anyhow::Result<()> {
+    let version = env!("CARGO_PKG_VERSION").to_string();
     let handler = WalletCommandHandler::new(
         opts.host,
         opts.database,
-        env!("CARGO_PKG_VERSION").to_string(),
+        version
     );
 
     loop {
