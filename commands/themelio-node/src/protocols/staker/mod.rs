@@ -140,6 +140,7 @@ async fn staker_loop(
                         for state in states {
                             if state.header().height > last_confirmed {
                                 let height = state.header().height;
+                                last_confirmed = height;
                                 let mut consensus_proof = BTreeMap::new();
                                 unconfirmed_finalized.insert(height, state.header().hash());
                                 // until we have full strength
@@ -166,6 +167,8 @@ async fn staker_loop(
                             if let Err(err) = storage.apply_block(block, proof) {
                                 log::warn!("can't apply finalized block {}", state.inner_ref().height);
                                 // break
+                            } else {
+                                log::debug!("SUCCESSFULLY COMMITTED HEIGHT {}", state.inner_ref().height);
                             }
                         }
                     }

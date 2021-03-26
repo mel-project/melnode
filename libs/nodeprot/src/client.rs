@@ -69,14 +69,12 @@ impl ValClient {
             }
         }
 
-        //  TODO: actually verify this
-
-        // if total_votes < 0.7 {
-        //     return Err(MelnetError::Custom(format!(
-        //         "remote height {} has insufficient votes",
-        //         summary.height
-        //     )));
-        // }
+        if total_votes < 0.7 {
+            return Err(MelnetError::Custom(format!(
+                "remote height {} has insufficient votes",
+                summary.height
+            )));
+        }
         Ok(ValClientSnapshot {
             height: summary.height,
             header: summary.header,
