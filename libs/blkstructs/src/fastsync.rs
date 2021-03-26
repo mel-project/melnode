@@ -51,16 +51,16 @@ impl FastSyncDecoder {
         } else if self.partial_pools.root_hash() != self.header.pools_hash {
             eprintln!("process pools");
             process_tree_chunk(self.header.pools_hash, &mut self.partial_pools, chunk)?;
-        } else if self.partial_stakes.root_hash() != self.header.stake_doc_hash {
+        } else if self.partial_stakes.root_hash() != self.header.stakes_hash {
             eprintln!("process stakes");
-            process_tree_chunk(self.header.stake_doc_hash, &mut self.partial_stakes, chunk)?;
+            process_tree_chunk(self.header.stakes_hash, &mut self.partial_stakes, chunk)?;
         }
 
         if (self.partial_history.root_hash()) == (self.header.history_hash)
             && (self.partial_coins.root_hash()) == (self.header.coins_hash)
             && (self.partial_transactions.root_hash()) == (self.header.transactions_hash)
             && (self.partial_pools.root_hash()) == (self.header.pools_hash)
-            && (self.partial_stakes.root_hash()) == (self.header.stake_doc_hash)
+            && (self.partial_stakes.root_hash()) == (self.header.stakes_hash)
         {
             return Ok(Some(SealedState::force_new(State {
                 network: self.header.network,

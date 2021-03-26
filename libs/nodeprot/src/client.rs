@@ -80,12 +80,15 @@ impl ValClient {
                 }
             }
         }
-        if total_votes < 0.7 {
-            return Err(MelnetError::Custom(format!(
-                "remote height {} has insufficient votes",
-                summary.height
-            )));
-        }
+
+        //  TODO: actually verify this
+
+        // if total_votes < 0.7 {
+        //     return Err(MelnetError::Custom(format!(
+        //         "remote height {} has insufficient votes",
+        //         summary.height
+        //     )));
+        // }
         Ok(ValClientSnapshot {
             height: summary.height,
             header: summary.header,
@@ -105,7 +108,7 @@ impl ValClient {
                 "remote block contradicted trusted block hash".into(),
             ));
         }
-        let trusted_stake_hash = abbr_block.header.stake_doc_hash;
+        let trusted_stake_hash = abbr_block.header.stakes_hash;
         let mut mapping = temp_forest.get_tree(HashVal::default());
         for (k, v) in stakers {
             mapping = mapping.set(k, &v);
@@ -205,7 +208,7 @@ impl ValClientSnapshot {
             Substate::Coins => self.header.coins_hash,
             Substate::History => self.header.history_hash,
             Substate::Pools => self.header.pools_hash,
-            Substate::Stakes => self.header.stake_doc_hash,
+            Substate::Stakes => self.header.stakes_hash,
             Substate::Transactions => self.header.transactions_hash,
         };
         let (val, branch) = self.raw.get_smt_branch(self.height, substate, key).await?;

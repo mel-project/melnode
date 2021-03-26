@@ -126,7 +126,7 @@ impl NodeServer for AuditorResponder {
         let highest = storage.highest_state();
         let proof = storage
             .get_consensus(highest.header().height)
-            .expect("highest state did not have a consensus proof");
+            .unwrap_or_default();
         Ok(StateSummary {
             netid: NetID::Testnet,
             height: self.storage.read().highest_height(),

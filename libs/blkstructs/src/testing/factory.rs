@@ -2,9 +2,11 @@
 // For structs which don't have serialization support
 // build the structure manually or use a custom function with sub-factories where appropriate.
 
-use crate::melvm;
+use std::collections::HashMap;
+
 use crate::{
-    CoinData, CoinDataHeight, CoinID, ProposerAction, StakeDoc, Transaction, TxKind, DENOM_TMEL,
+    melvm, Block, CoinData, CoinDataHeight, CoinID, GenesisConfig, Header, ProposerAction,
+    StakeDoc, Transaction, TxKind, DENOM_TMEL,
 };
 
 beaver::define! {
@@ -77,7 +79,7 @@ beaver::define! {
 //         fee_multiplier -> |n| n as u128,
 //         dosc_speed ->  |n| n as u128,
 //         pools_hash -> |_| tmelcrypt::HashVal::random(),
-//         stake_doc_hash -> |_| tmelcrypt::HashVal::random(),
+//         stake_hash -> |_| tmelcrypt::HashVal::random(),
 //     }
 // }
 

@@ -386,7 +386,7 @@ impl SealedState {
             fee_multiplier: inner.fee_multiplier,
             dosc_speed: inner.dosc_speed,
             pools_hash: inner.pools.root_hash(),
-            stake_doc_hash: inner.stakes.root_hash(),
+            stakes_hash: inner.stakes.root_hash(),
         }
     }
 
@@ -510,7 +510,7 @@ pub struct Header {
     pub fee_multiplier: u128,
     pub dosc_speed: u128,
     pub pools_hash: HashVal,
-    pub stake_doc_hash: HashVal,
+    pub stakes_hash: HashVal,
 }
 
 impl Header {
