@@ -17,7 +17,7 @@ use crate::msg::{self, VoteMsg};
 
 mod chainstate;
 
-const BLOCK_INTERVAL_SECS: u64 = 30;
+const BLOCK_INTERVAL_SECS: u64 = 1;
 
 /// A Streamlet is a single-epoch  instance of Symphonia.
 pub struct Streamlet<N: Network, L: TxLookup> {

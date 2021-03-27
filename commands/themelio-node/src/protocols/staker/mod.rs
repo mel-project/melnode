@@ -8,8 +8,6 @@ use std::{collections::BTreeMap, net::SocketAddr, sync::Arc, time::Duration};
 use tmelcrypt::{Ed25519SK, HashVal};
 use tracing::instrument;
 
-mod confirm;
-
 /// This encapsulates the staker-specific peer-to-peer.
 pub struct StakerProtocol {
     _network_task: smol::Task<()>,
