@@ -1,7 +1,7 @@
 use blkstructs::{melvm, CoinData, CoinDataHeight, CoinID, Transaction, TxKind};
 use serde::{Deserialize, Serialize};
 use std::collections;
-use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
+use tmelcrypt::{HashVal};
 
 /// Immutable & cloneable in-memory data that can be persisted.
 /// Does not store secrets!

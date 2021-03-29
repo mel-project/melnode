@@ -56,7 +56,7 @@ impl WalletCommandHandler {
         let cmd: WalletCommand = WalletCommand::from_str(&input.unwrap())?;
 
         // Process command
-        let storage = ClientStorage::new(sled::open(&self.database).unwrap());
+        let storage = ClientStorage::new(&self.database);
         match &cmd {
             WalletCommand::Create(name) => self.create(&storage, name).await?,
             WalletCommand::Import(path) => self.import(&storage, path).await?,
@@ -98,21 +98,26 @@ impl WalletCommandHandler {
     }
 
     async fn show(&self, storage: &ClientStorage) -> anyhow::Result<()> {
-        // let wallets: Vec<Wallet> = storage.load_all()?;
+        let wallets = storage.get_all_wallets().await?;
         // prompt.show_wallets(&wallets)
         Ok(())
     }
 
-    // Run commands on an open wallet until user exits
+    /// If wallet does not exist finish the open command,
+    /// otherwise run commands in open wallet mode until exit command.
     async fn open(&self, storage: &ClientStorage, name: &String) -> anyhow::Result<()> {
         // Load wallet data from storage
+        let wallet = storage.get_wallet_by_name(&name).await?;
+        if wallet.is_none() {
+            // Display no wallet found and return
+        }
 
         // Initialize open wallet command handler
         let handler = OpenWalletCommandHandler::new(
             self.host.clone(),
-            self.database.clone(),
             self.version.clone(),
             name.clone(),
+            wallet.unwrap(),
         );
 
         loop {

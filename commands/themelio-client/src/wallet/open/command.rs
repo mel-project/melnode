@@ -2,10 +2,10 @@ use crate::storage::ClientStorage;
 use crate::wallet::common::read_line;
 use blkstructs::NetID;
 use colored::Colorize;
-use nodeprot::{ValClient, ValClientSnapshot};
+use nodeprot::{ValClientSnapshot};
 use std::str::FromStr;
 use strum_macros::EnumString;
-use tmelcrypt::HashVal;
+use crate::wallet::data::WalletData;
 
 #[derive(Eq, PartialEq, Debug, EnumString)]
 #[strum(serialize_all = "kebab-case")]
@@ -23,18 +23,18 @@ pub enum OpenWalletCommand {
 
 pub struct OpenWalletCommandHandler {
     host: smol::net::SocketAddr,
-    database: std::path::PathBuf,
     version: String,
-    prompt: String,
     name: String,
+    wallet: WalletData,
+    prompt: String,
 }
 
 impl OpenWalletCommandHandler {
     pub(crate) fn new(
         host: smol::net::SocketAddr,
-        database: std::path::PathBuf,
         version: String,
         name: String,
+        wallet: WalletData,
     ) -> Self {
         let prompt_stack: Vec<String> = vec![format!("v{}", version).green().to_string()];
         let prompt = format!(
@@ -44,10 +44,10 @@ impl OpenWalletCommandHandler {
         );
         Self {
             host,
-            database,
             version,
-            prompt,
             name,
+            wallet,
+            prompt,
         }
     }
 
