@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use strum_macros::EnumString;
+use strum_macros::{EnumString, ToString as StrumToString};
 
 use crate::wallet::common::read_line;
 use crate::wallet::open::command::{OpenWalletCommand, OpenWalletCommandHandler};
@@ -9,18 +9,47 @@ use colored::Colorize;
 use crate::wallet::data::WalletData;
 use blkstructs::melvm::Covenant;
 use crate::storage::ClientStorage;
+use tabwriter::TabWriter;
 
-#[derive(Eq, PartialEq, Debug, EnumString)]
+use std::io::prelude::*;
+
+#[derive(Eq, PartialEq, Debug, EnumString, StrumToString)]
 #[strum(serialize_all = "kebab-case")]
 pub enum WalletCommand {
     Create(String),
-    // Delete(String),
+    Delete(String),
     Import(PathBuf),
     Export(PathBuf),
     Show,
     Open(String),
     Help,
     Exit,
+}
+
+impl WalletCommand {
+    /// Use strum to parse command and fill in input params
+    pub fn parse_from_str(input: &String) -> anyhow::Result<WalletCommand> {
+        let cmd: WalletCommand = WalletCommand::from_str(&input)?;
+        let split_input: Vec<&str> = input.split_whitespace().collect();
+
+        let cmd = match cmd {
+            WalletCommand::Create(_) => {
+                if split_input.len() != 2 {
+                    anyhow::bail!("Invalid input params for wallet create");
+                }
+                WalletCommand::Create(split_input[1].to_string())
+            }
+            WalletCommand::Open(_) => {
+                if split_input.len() != 2 {
+                    anyhow::bail!("Invalid input params for wallet open");
+                }
+                WalletCommand::Open(split_input[1].to_string())
+            }
+            _ => { cmd }
+        };
+
+        Ok(cmd)
+    }
 }
 
 pub struct WalletCommandHandler {
@@ -53,12 +82,14 @@ impl WalletCommandHandler {
         if input.is_err() {
             return Ok(WalletCommand::Exit);
         }
-        let cmd: WalletCommand = WalletCommand::from_str(&input.unwrap())?;
+        let input = input.unwrap();
+        let cmd = WalletCommand::parse_from_str(&input)?;
 
         // Process command
         let storage = ClientStorage::new(&self.database);
         match &cmd {
             WalletCommand::Create(name) => self.create(&storage, name).await?,
+            WalletCommand::Delete(name) => self.delete(&storage, name).await?,
             WalletCommand::Import(path) => self.import(&storage, path).await?,
             WalletCommand::Export(path) => self.export(&storage, path).await?,
             WalletCommand::Show => self.show(&storage).await?,
@@ -72,9 +103,11 @@ impl WalletCommandHandler {
     }
 
     async fn create(&self, storage: &ClientStorage, name: &String) -> anyhow::Result<()> {
+
         // Check if wallet with same name already exits
-        if let Some(_wallet_data) = storage.get_wallet_by_name(&name).await? {
+        if let Some(_stored_wallet_data) = storage.get_wallet_by_name(&name).await? {
             // display message
+            eprintln!(">> {}: wallet data associated with that name already exists", "ERROR".red().bold());
             return Ok(());
         }
 
@@ -85,10 +118,23 @@ impl WalletCommandHandler {
         storage.insert_wallet(&name, &wallet_data).await?;
 
         // Display contents of keypair and wallet data
+        let mut tw = TabWriter::new(vec![]);
+        writeln!(tw, ">> New data:\t{}", name.bold()).unwrap();
+        writeln!(
+            tw,
+            ">> Address:\t{}",
+            wallet_data.my_script.hash().to_addr().yellow()
+        )
+        .unwrap();
+        writeln!(tw, ">> Secret:\t{}", hex::encode(sk.0).dimmed()).unwrap();
+        tw.flush().unwrap();
 
         Ok(())
     }
 
+    async fn delete(&self, storage: &ClientStorage, name: &String) -> anyhow::Result<()> {
+        anyhow::bail!("Not Implemented")
+    }
     async fn import(&self, storage: &ClientStorage, path: &PathBuf) -> anyhow::Result<()> {
         anyhow::bail!("Not Implemented")
     }
@@ -129,6 +175,14 @@ impl WalletCommandHandler {
     }
 
     async fn help(&self) -> anyhow::Result<()> {
+        eprintln!("\nAvailable commands are: ");
+        eprintln!(">> create <wallet-name>");
+        eprintln!(">> open <wallet-name> <secret>");
+        eprintln!(">> show");
+        eprintln!(">> import <path>");
+        eprintln!(">> export <wallet-name> <path>");
+        eprintln!(">> help");
+        eprintln!(">> exit");
         Ok(())
     }
 }

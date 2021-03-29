@@ -3126,6 +3126,7 @@ dependencies = [
  "anyhow",
  "blkstructs",
  "colored",
+ "hex",
  "im",
  "nodeprot",
  "rustyline",
