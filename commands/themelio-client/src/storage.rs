@@ -35,4 +35,10 @@ impl ClientStorage {
         let wallet_data = map.get(name);
         Ok(wallet_data)
     }
+
+    pub async fn get_all_wallets(&self) {
+        let db = sled::open(&self.path).unwrap();
+        let tree = db.open_tree(WALLET_NAMESPACE).unwrap();
+        
+    }
 }
