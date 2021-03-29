@@ -1,14 +1,12 @@
 use crate::services::storage::SharedStorage;
 
-use blkstructs::{melvm, AbbrBlock, ConsensusProof, ProposerAction, Transaction};
+use blkstructs::{melvm, AbbrBlock, ProposerAction, Transaction, STAKE_EPOCH};
 use dashmap::DashMap;
 use neosymph::{msg::ProposalMsg, StreamletCfg, StreamletEvt, SymphGossip};
 use smol::prelude::*;
 use std::{collections::BTreeMap, net::SocketAddr, sync::Arc, time::Duration};
 use tmelcrypt::{Ed25519SK, HashVal};
 use tracing::instrument;
-
-mod confirm;
 
 /// This encapsulates the staker-specific peer-to-peer.
 pub struct StakerProtocol {
@@ -37,7 +35,28 @@ impl StakerProtocol {
             })?
         };
         let _network_task = smolscale::spawn(async move {
-            staker_loop(gossiper, storage, unconfirmed_finalized, my_sk, 0).await
+            // we get the correct starting epoch
+            let genesis_epoch = storage.read().highest_height() / STAKE_EPOCH;
+            for current_epoch in genesis_epoch.. {
+                log::info!("epoch transitioning into {}!", current_epoch);
+                // we race the staker loop with epoch termination. epoch termination for now is just a sleep loop that waits until the last block in the epoch is confirmed.
+                let staker_fut = staker_loop(
+                    gossiper.clone(),
+                    storage.clone(),
+                    unconfirmed_finalized.clone(),
+                    my_sk,
+                    current_epoch,
+                );
+                let epoch_termination = async {
+                    loop {
+                        smol::Timer::after(Duration::from_secs(1)).await;
+                        if (storage.read().highest_height() + 1) / STAKE_EPOCH != current_epoch {
+                            break;
+                        }
+                    }
+                };
+                staker_fut.race(epoch_termination).await
+            }
         });
         Ok(Self { _network_task })
     }
@@ -88,15 +107,14 @@ async fn staker_loop(
                     StreamletEvt::SolicitProp(last_state, height, prop_send) => {
                         let provis_state = storage.read().mempool().to_state();
                         let out_of_bounds = height / blkstructs::STAKE_EPOCH != epoch;
-
                         let action = if !out_of_bounds {
                             log::info!("bad/missing provisional state. proposing a quasiempty block for height {} because our provis height is {:?}.", height, provis_state.height);
                             Some(ProposerAction {
                             fee_multiplier_delta: 0,
                             reward_dest: my_script.hash(),
                         })} else {
-                            log::warn!("proposing a truly empty block due to out-of-bounds");
-                            None
+                            log::warn!("proposing a SPECIAL block due to out-of-bounds");
+                            Some(neosymph::OOB_PROPOSER_ACTION)
                         };
                     if height == provis_state.height
                         && Some(last_state.header().hash())
@@ -138,6 +156,11 @@ async fn staker_loop(
                         // For every state we haven't already confirmed, we finalize it.
                         let mut confirmed_states = vec![];
                         for state in states {
+                            // If this state is beyond our epoch, then we do NOT confirm it.
+                            if state.header().height / STAKE_EPOCH > epoch {
+                                log::warn!("block {} is BEYOND OUR EPOCH! This means we CANNOT confirm it!", state.header().height);
+                                continue;
+                            }
                             if state.header().height > last_confirmed {
                                 let height = state.header().height;
                                 last_confirmed = height;

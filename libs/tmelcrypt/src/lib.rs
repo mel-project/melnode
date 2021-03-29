@@ -15,6 +15,7 @@ big_array! { BigArray; }
     Copy, Clone, Eq, PartialEq, Hash, Arbitrary, Ord, PartialOrd, Default, Serialize, Deserialize,
 )]
 /// Represents an 256-byte hash value.
+#[serde(transparent)]
 pub struct HashVal(#[serde(with = "stdcode::hex32")] pub [u8; 32]);
 
 impl HashVal {
@@ -125,7 +126,8 @@ pub fn ed25519_keygen() -> (Ed25519PK, Ed25519SK) {
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 /// An ed25519 public key.
-pub struct Ed25519PK(pub [u8; 32]);
+#[serde(transparent)]
+pub struct Ed25519PK(#[serde(with = "stdcode::hex32")] pub [u8; 32]);
 
 impl Ed25519PK {
     pub fn verify(&self, msg: &[u8], sig: &[u8]) -> bool {

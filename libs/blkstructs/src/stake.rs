@@ -1,8 +1,8 @@
 use crate::SmtMapping;
 use serde::{Deserialize, Serialize};
 
-/// A stake epoch is 500,000 blocks.
-pub const STAKE_EPOCH: u64 = 500_000;
+/// A stake epoch is 200,000 blocks.
+pub const STAKE_EPOCH: u64 = 200000;
 
 /// StakeDoc is a stake document. It encapsulates all the information needed to verify consensus proofs.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
