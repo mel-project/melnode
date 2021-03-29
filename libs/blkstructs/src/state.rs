@@ -1,9 +1,8 @@
 pub use crate::stake::*;
-use crate::{constants::*, preseal_melmint, CoinDataHeight, TxKind};
+use crate::{constants::*, melvm::Covenant, preseal_melmint, CoinDataHeight, TxKind};
 use crate::{smtmapping::*, CoinData};
 use crate::{transaction as txn, CoinID};
 use applytx::StateHandle;
-use bytes::Bytes;
 use defmac::defmac;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -65,6 +64,36 @@ pub struct GenesisConfig {
     pub stakes: HashMap<HashVal, StakeDoc>,
     /// Initial fee pool, in micromels.
     pub init_fee_pool: u128,
+}
+
+impl GenesisConfig {
+    /// The "standard" testnet genesis.
+    pub fn std_testnet() -> Self {
+        Self {
+            network: NetID::Testnet,
+            init_micromels: 1 << 32,
+            init_covhash: Covenant::always_true().hash(),
+            stakes: vec![(
+                HashVal::default(),
+                StakeDoc {
+                    pubkey: Ed25519PK(
+                        hex::decode(
+                            "c8d4dd8823ce61278ef4d668e40459fa1853026cbb965261ec1c50a9ba3afa03",
+                        )
+                        .unwrap()
+                        .try_into()
+                        .unwrap(),
+                    ),
+                    e_start: 0,
+                    e_post_end: 1 << 32,
+                    syms_staked: MICRO_CONVERTER,
+                },
+            )]
+            .into_iter()
+            .collect(),
+            init_fee_pool: 1 << 64,
+        }
+    }
 }
 
 /// Identifies a network.

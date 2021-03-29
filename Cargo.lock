@@ -3116,6 +3116,15 @@ name = "themelio-client"
 version = "0.1.0"
 
 [[package]]
+name = "themelio-crypttool"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "structopt",
+ "tmelcrypt",
+]
+
+[[package]]
 name = "themelio-node"
 version = "0.1.0"
 dependencies = [

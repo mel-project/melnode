@@ -1,7 +1,7 @@
-use blkstructs::SealedState;
+use blkstructs::{ProposerAction, SealedState};
 use tmelcrypt::{Ed25519PK, HashVal};
 
-use crate::msg;
+use crate::{msg, OOB_PROPOSER_ACTION};
 
 /// Type that encapsulates the state of a Streamlet instance.
 #[derive(Clone)]
@@ -110,7 +110,8 @@ impl ChainState {
         }
         // process the actual block
         if prop.height() > self.last_block_in_epoch()
-            && (!prop.block.transactions.is_empty() || prop.block.proposer_action.is_some())
+            && (!prop.block.transactions.is_empty()
+                || prop.block.proposer_action != Some(OOB_PROPOSER_ACTION))
         {
             anyhow::bail!("proposal is out of epoch bounds yet it isn't totally empty")
         }

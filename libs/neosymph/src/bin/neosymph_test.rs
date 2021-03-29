@@ -1,7 +1,9 @@
 use std::time::SystemTime;
 
 use blkstructs::{melvm, AbbrBlock, ProposerAction, Transaction, STAKE_EPOCH};
-use neosymph::{msg::ProposalMsg, MockNet, Streamlet, StreamletCfg, StreamletEvt, TxLookup};
+use neosymph::{
+    msg::ProposalMsg, MockNet, Streamlet, StreamletCfg, StreamletEvt, TxLookup, OOB_PROPOSER_ACTION,
+};
 use once_cell::sync::Lazy;
 use smol::prelude::*;
 use tmelcrypt::{Ed25519SK, HashVal};
@@ -54,7 +56,7 @@ async fn run_instance(net: MockNet, idx: usize) {
                                 .hash(),
                         })
                     } else {
-                        None
+                        Some(OOB_PROPOSER_ACTION)
                     };
 
                     let mut basis = ss.clone();

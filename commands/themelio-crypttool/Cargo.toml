@@ -1,0 +1,12 @@
+[package]
+name = "themelio-crypttool"
+version = "0.1.0"
+authors = ["nullchinchilla <nullchinchilla@pm.me>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tmelcrypt={path="../../libs/tmelcrypt"}
+structopt="0.3.21"
+hex="0.4"
