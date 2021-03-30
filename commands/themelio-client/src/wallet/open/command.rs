@@ -34,12 +34,8 @@ impl OpenWalletCommandHandler {
         name: String,
         wallet: WalletData,
     ) -> Self {
-        let prompt_stack: Vec<String> = vec![format!("v{}", version).green().to_string()];
-        let prompt = format!(
-            "[client wallet {} {}]% ",
-            "replace_with_wallet_name",
-            prompt_stack.join(" ")
-        );
+        let prompt_stack: Vec<String> = vec![format!("themelio-client").cyan().bold().to_string(), format!("(v{})", version).magenta().to_string(), format!("➜ ").cyan().bold().to_string(), format!("wallet:({})", name).cyan().italic().to_string()];
+        let prompt = format!("{}", prompt_stack.join(" "));
         Self {
             host,
             version,

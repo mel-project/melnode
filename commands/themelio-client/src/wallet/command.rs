@@ -59,7 +59,7 @@ impl WalletCommandHandler {
 
     /// Parse user input into a wallet command process the command
     pub(crate) async fn handle(&self) -> anyhow::Result<WalletCommand> {
-        // Parse input into a command
+        // Convert user input into a command
         let input = read_line(self.prompt.to_string()).await;
         if input.is_err() {
             return Ok(WalletCommand::Exit);
@@ -69,16 +69,16 @@ impl WalletCommandHandler {
             anyhow::bail!("Unable to parse command");
         }
 
-        // Process command
+        // Process the command
         let storage = ClientStorage::new(&self.database);
         let cmd = cmd.unwrap();
         match &cmd {
-            WalletCommand::Create(name) => self.create(&storage, name).await?,
-            WalletCommand::Delete(name) => self.delete(&storage, name).await?,
-            WalletCommand::Import(path) => self.import(&storage, &PathBuf::from(path.clone())).await?,
-            WalletCommand::Export(path) => self.export(&storage, &PathBuf::from(path.clone())).await?,
+            WalletCommand::Create(wallet_name) => self.create(&storage, wallet_name).await?,
+            WalletCommand::Delete(wallet_name) => self.delete(&storage, wallet_name).await?,
+            WalletCommand::Import(import_path) => self.import(&storage, import_path).await?,
+            WalletCommand::Export(export_path) => self.export(&storage, export_path).await?,
             WalletCommand::Show => self.show(&storage).await?,
-            WalletCommand::Open(name) => self.open(&storage, name).await?,
+            WalletCommand::Open(wallet_name) => self.open(&storage, wallet_name).await?,
             WalletCommand::Help => self.help().await?,
             WalletCommand::Exit => {}
         };
@@ -90,12 +90,11 @@ impl WalletCommandHandler {
     async fn create(&self, storage: &ClientStorage, name: &String) -> anyhow::Result<()> {
         // Check if wallet with same name already exits
         if let Some(_stored_wallet_data) = storage.get_wallet_by_name(&name).await? {
-            // display message
-            eprintln!(">> {}: wallet data associated with that name already exists", "ERROR".red().bold());
+            eprintln!(">> {}: wallet named '{}' already exists", "ERROR".red().bold(), &name);
             return Ok(());
         }
 
-        // Generate wallet data from keypair and store it
+        // Generate wallet data and store it
         let (pk, sk) = tmelcrypt::ed25519_keygen();
         let script = Covenant::std_ed25519_pk(pk);
         let wallet_data = WalletData::new(script);
@@ -111,7 +110,7 @@ impl WalletCommandHandler {
         )
         .unwrap();
         writeln!(tw, ">> Secret:\t{}", hex::encode(sk.0).dimmed()).unwrap();
-        tw.flush().unwrap();
+        eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
 
         Ok(())
     }
@@ -119,11 +118,11 @@ impl WalletCommandHandler {
     async fn delete(&self, storage: &ClientStorage, name: &String) -> anyhow::Result<()> {
         anyhow::bail!("Not Implemented")
     }
-    async fn import(&self, storage: &ClientStorage, path: &PathBuf) -> anyhow::Result<()> {
+    async fn import(&self, storage: &ClientStorage, path: &String) -> anyhow::Result<()> {
         anyhow::bail!("Not Implemented")
     }
 
-    async fn export(&self, storage: &ClientStorage, path: &PathBuf) -> anyhow::Result<()> {
+    async fn export(&self, storage: &ClientStorage, path: &String) -> anyhow::Result<()> {
         anyhow::bail!("Not Implemented")
     }
 

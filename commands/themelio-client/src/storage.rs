@@ -38,7 +38,6 @@ impl ClientStorage {
     }
 
     /// Get a map of wallet data by name which contains all persisted wallet data
-    /// TODO: Make this specific to a logged in user
     pub async fn get_all_wallets(&self) -> anyhow::Result<BTreeMap<String, WalletData>>{
         let db = sled::open(&self.path).unwrap();
         let tree = db.open_tree(WALLET_NAMESPACE).unwrap();
