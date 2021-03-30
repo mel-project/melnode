@@ -67,25 +67,35 @@ impl OpenWalletCommandHandler {
     }
 
     /// Parse user input into a wallet command process the command
-    pub(crate) async fn handle(&self, storage: &ClientStorage) -> anyhow::Result<OpenWalletCommand> {
-        // Convert user input into a command
+    pub(crate) async fn handle(
+        &self,
+        storage: &ClientStorage,
+    ) -> anyhow::Result<OpenWalletCommand> {
+        // Convert valid user input into a command is
         let input = read_line(self.prompt.to_string()).await;
         if input.is_err() {
+            eprintln!(
+                ">> {}: unable to retreive or process input from user",
+                "ERROR".red().bold(),
+            );
             return Ok(OpenWalletCommand::Exit);
         }
         let cmd = OpenWalletCommand::try_from(input.unwrap());
         if cmd.is_err() {
             anyhow::bail!("Unable to parse command");
         }
+        let cmd = cmd.unwrap();
 
-        // Take snapshot of latest state (TODO: this is trusting node, gotta figure out a simple / less trusted mode where it starts from geneses)
+        // Take snapshot of latest state
+        // TODO: this is trusting node, gotta figure out a simple / less trusted mode
+        // where it starts from geneses, but stores / caches state
         let client = nodeprot::ValClient::new(NetID::Testnet, self.host);
         let snapshot = client.snapshot_latest().await.unwrap(); // fix error handling
 
-        // Process command with snapshot
+        // // Process command with snapshot
         // match &cmd {
         //     OpenWalletCommand::Faucet(amount, denom) => { self.faucet(&snapshot, *amount, denom).await?; }
-        //     OpenWalletCommand::SendCoins(dest, amount, denom) => { self.send_coins(&snapshot, dest, *amount, denom).await?; }
+        //     OpenWalletCommand::SendCoins(dest, amount, denom) => { self.send_coins(&snapshot, dest, amount, denom).await?; }
         //     OpenWalletCommand::AddCoins(coin_id) => { self.add_coins(&storage, coin_id).await?; }
         //     OpenWalletCommand::Balance => { self.balance(&storage).await?; }
         //     OpenWalletCommand::Help => { self.help().await?; }

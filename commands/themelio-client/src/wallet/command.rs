@@ -200,6 +200,9 @@ impl WalletCommandHandler {
             wallet,
         );
 
+        // Handle an command on an opened wallet.
+        // TODO: Likely better to store database variable in constructor
+        // than to pass the storage into handle, but both work.
         loop {
             let res_cmd = handler.handle(&storage).await;
             if res_cmd.is_ok() && res_cmd.unwrap() == OpenWalletCommand::Exit {
