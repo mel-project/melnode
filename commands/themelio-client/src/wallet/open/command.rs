@@ -32,6 +32,7 @@ impl OpenWalletCommandHandler {
         host: smol::net::SocketAddr,
         version: String,
         name: String,
+        secret: String,
         wallet: WalletData,
     ) -> Self {
         let prompt_stack: Vec<String> = vec![format!("themelio-client").cyan().bold().to_string(), format!("(v{})", version).magenta().to_string(), format!("➜ ").cyan().bold().to_string(), format!("wallet:({})", name).cyan().italic().to_string()];

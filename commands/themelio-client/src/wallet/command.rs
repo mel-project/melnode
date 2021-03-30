@@ -8,7 +8,7 @@ use tabwriter::TabWriter;
 use serde::{Serialize, Deserialize};
 
 use std::io::prelude::*;
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::path::PathBuf;
 use serde_scan::ScanError;
 
@@ -20,7 +20,7 @@ pub enum WalletCommand {
     Import(String),
     Export(String),
     Show,
-    Open(String),
+    Open(String, String),
     Help,
     Exit,
 }
@@ -78,7 +78,7 @@ impl WalletCommandHandler {
             WalletCommand::Import(import_path) => self.import(&storage, import_path).await?,
             WalletCommand::Export(export_path) => self.export(&storage, export_path).await?,
             WalletCommand::Show => self.show(&storage).await?,
-            WalletCommand::Open(wallet_name) => self.open(&storage, wallet_name).await?,
+            WalletCommand::Open(wallet_name, secret) => self.open(&storage, wallet_name, secret).await?,
             WalletCommand::Help => self.help().await?,
             WalletCommand::Exit => {}
         };
@@ -146,19 +146,28 @@ impl WalletCommandHandler {
 
     /// If wallet does not exist finish the open command,
     /// otherwise run commands in open wallet mode until exit command.
-    async fn open(&self, storage: &ClientStorage, name: &String) -> anyhow::Result<()> {
-        // Load wallet data from storage
+    async fn open(&self, storage: &ClientStorage, name: &String, secret: &String) -> anyhow::Result<()> {
+        // Load wallet data from storage by name and make sure it exists.
         let wallet = storage.get_wallet_by_name(&name).await?;
         if wallet.is_none() {
             // Display no wallet found and return
         }
+        let wallet = wallet.unwrap();
 
-        // Initialize open wallet command handler
+        // Verify the wallet secret correspond to the wallet address / public key
+        let wallet_secret = hex::decode(secret)?;
+        let wallet_secret = tmelcrypt::Ed25519SK(wallet_secret.as_slice().try_into()?);
+        if Covenant::std_ed25519_pk(wallet_secret.to_public()) != wallet.my_script {
+            anyhow::bail!("unlocking failed, make sure you have the right secret!")
+        }
+
+        // Initialize open wallet command handler to handle transacting with wallet
         let handler = OpenWalletCommandHandler::new(
             self.host.clone(),
             self.version.clone(),
             name.clone(),
-            wallet.unwrap(),
+            secret.clone(),
+             wallet,
         );
 
         loop {
