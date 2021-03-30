@@ -3,12 +3,10 @@ use crate::wallet::common::read_line;
 use blkstructs::NetID;
 use colored::Colorize;
 use nodeprot::{ValClientSnapshot};
-use std::str::FromStr;
-use strum_macros::EnumString;
 use crate::wallet::data::WalletData;
 
-#[derive(Eq, PartialEq, Debug, EnumString)]
-#[strum(serialize_all = "kebab-case")]
+#[derive(Eq, PartialEq, Debug)]
+// #[strum(serialize_all = "kebab-case")]
 pub enum OpenWalletCommand {
     Faucet(u128, String),
     Deposit,
@@ -54,18 +52,18 @@ impl OpenWalletCommandHandler {
     /// Parse user input into a wallet command process the command
     pub(crate) async fn handle(&self) -> anyhow::Result<OpenWalletCommand> {
         // Parse input into a command
-        let input = read_line(self.prompt.to_string()).await;
-        if input.is_err() {
-            return Ok(OpenWalletCommand::Exit);
-        }
-        let cmd: OpenWalletCommand = OpenWalletCommand::from_str(&input.unwrap())?;
-
-        // Init storage from wallet name
-        // let storage = ClientStorage::new(sled::open(&self.database).unwrap());
-
-        // Take snapshot of latest state
-        let client = nodeprot::ValClient::new(NetID::Testnet, self.host);
-        let snapshot = client.snapshot_latest().await.unwrap(); // fix error handling
+        // let input = read_line(self.prompt.to_string()).await;
+        // if input.is_err() {
+        //     return Ok(OpenWalletCommand::Exit);
+        // }
+        // let cmd: OpenWalletCommand = OpenWalletCommand::from_str(&input.unwrap())?;
+        //
+        // // Init storage from wallet name
+        // // let storage = ClientStorage::new(sled::open(&self.database).unwrap());
+        //
+        // // Take snapshot of latest state
+        // let client = nodeprot::ValClient::new(NetID::Testnet, self.host);
+        // let snapshot = client.snapshot_latest().await.unwrap(); // fix error handling
 
         // Process command with snapshot
         // match &cmd {

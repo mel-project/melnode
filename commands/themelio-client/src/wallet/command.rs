@@ -1,8 +1,3 @@
-use std::path::PathBuf;
-use std::str::FromStr;
-
-use strum_macros::{EnumString, ToString as StrumToString};
-
 use crate::wallet::common::read_line;
 use crate::wallet::open::command::{OpenWalletCommand, OpenWalletCommandHandler};
 use colored::Colorize;
@@ -10,45 +5,32 @@ use crate::wallet::data::WalletData;
 use blkstructs::melvm::Covenant;
 use crate::storage::ClientStorage;
 use tabwriter::TabWriter;
+use serde::{Serialize, Deserialize};
 
 use std::io::prelude::*;
+use std::convert::TryFrom;
+use std::path::PathBuf;
+use serde_scan::ScanError;
 
-#[derive(Eq, PartialEq, Debug, EnumString, StrumToString)]
-#[strum(serialize_all = "kebab-case")]
+#[derive(Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum WalletCommand {
     Create(String),
     Delete(String),
-    Import(PathBuf),
-    Export(PathBuf),
+    Import(String),
+    Export(String),
     Show,
     Open(String),
     Help,
     Exit,
 }
 
-impl WalletCommand {
-    /// Use strum to parse command and fill in input params
-    pub fn parse_from_str(input: &String) -> anyhow::Result<WalletCommand> {
-        let cmd: WalletCommand = WalletCommand::from_str(&input)?;
-        let split_input: Vec<&str> = input.split_whitespace().collect();
+impl TryFrom<String> for WalletCommand {
+    type Error = ScanError;
 
-        let cmd = match cmd {
-            WalletCommand::Create(_) => {
-                if split_input.len() != 2 {
-                    anyhow::bail!("Invalid input params for wallet create");
-                }
-                WalletCommand::Create(split_input[1].to_string())
-            }
-            WalletCommand::Open(_) => {
-                if split_input.len() != 2 {
-                    anyhow::bail!("Invalid input params for wallet open");
-                }
-                WalletCommand::Open(split_input[1].to_string())
-            }
-            _ => { cmd }
-        };
-
-        Ok(cmd)
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        let cmd: Result<WalletCommand, _> = serde_scan::from_str(&value);
+        cmd
     }
 }
 
@@ -82,16 +64,19 @@ impl WalletCommandHandler {
         if input.is_err() {
             return Ok(WalletCommand::Exit);
         }
-        let input = input.unwrap();
-        let cmd = WalletCommand::parse_from_str(&input)?;
+        let cmd = WalletCommand::try_from(input.unwrap());
+        if cmd.is_err() {
+            anyhow::bail!("Unable to parse command");
+        }
 
         // Process command
         let storage = ClientStorage::new(&self.database);
+        let cmd = cmd.unwrap();
         match &cmd {
             WalletCommand::Create(name) => self.create(&storage, name).await?,
             WalletCommand::Delete(name) => self.delete(&storage, name).await?,
-            WalletCommand::Import(path) => self.import(&storage, path).await?,
-            WalletCommand::Export(path) => self.export(&storage, path).await?,
+            WalletCommand::Import(path) => self.import(&storage, &PathBuf::from(path.clone())).await?,
+            WalletCommand::Export(path) => self.export(&storage, &PathBuf::from(path.clone())).await?,
             WalletCommand::Show => self.show(&storage).await?,
             WalletCommand::Open(name) => self.open(&storage, name).await?,
             WalletCommand::Help => self.help().await?,
@@ -103,7 +88,6 @@ impl WalletCommandHandler {
     }
 
     async fn create(&self, storage: &ClientStorage, name: &String) -> anyhow::Result<()> {
-
         // Check if wallet with same name already exits
         if let Some(_stored_wallet_data) = storage.get_wallet_by_name(&name).await? {
             // display message
