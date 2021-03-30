@@ -1,16 +1,15 @@
-use crate::wallet::common::read_line;
-use crate::wallet::open::command::{OpenWalletCommand, OpenWalletCommandHandler};
-use colored::Colorize;
-use crate::wallet::data::WalletData;
-use blkstructs::melvm::Covenant;
 use crate::storage::ClientStorage;
+use crate::wallet::common::read_line;
+use crate::wallet::data::WalletData;
+use crate::wallet::open::command::{OpenWalletCommand, OpenWalletCommandHandler};
+use blkstructs::melvm::Covenant;
+use colored::Colorize;
+use serde::{Deserialize, Serialize};
 use tabwriter::TabWriter;
-use serde::{Serialize, Deserialize};
 
-use std::io::prelude::*;
-use std::convert::{TryFrom, TryInto};
-use std::path::PathBuf;
 use serde_scan::ScanError;
+use std::convert::{TryFrom, TryInto};
+use std::io::prelude::*;
 
 #[derive(Eq, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -47,7 +46,11 @@ impl WalletCommandHandler {
         database: std::path::PathBuf,
         version: String,
     ) -> Self {
-        let prompt_stack: Vec<String> = vec![format!("themelio-client").cyan().bold().to_string(), format!("(v{})", version).magenta().to_string(), format!("➜ ").cyan().bold().to_string()];
+        let prompt_stack: Vec<String> = vec![
+            format!("themelio-client").cyan().bold().to_string(),
+            format!("(v{})", version).magenta().to_string(),
+            format!("➜ ").cyan().bold().to_string(),
+        ];
         let prompt = format!("{}", prompt_stack.join(" "));
         Self {
             host,
@@ -78,7 +81,9 @@ impl WalletCommandHandler {
             WalletCommand::Import(import_path) => self.import(&storage, import_path).await?,
             WalletCommand::Export(export_path) => self.export(&storage, export_path).await?,
             WalletCommand::Show => self.show(&storage).await?,
-            WalletCommand::Open(wallet_name, secret) => self.open(&storage, wallet_name, secret).await?,
+            WalletCommand::Open(wallet_name, secret) => {
+                self.open(&storage, wallet_name, secret).await?
+            }
             WalletCommand::Help => self.help().await?,
             WalletCommand::Exit => {}
         };
@@ -90,12 +95,19 @@ impl WalletCommandHandler {
     async fn create(&self, storage: &ClientStorage, name: &String) -> anyhow::Result<()> {
         // Check if wallet has only alphanumerics
         if name.chars().all(char::is_alphanumeric) == false {
-            eprintln!(">> {}: wallet named can only contain alphanumerics", "ERROR".red().bold());
+            eprintln!(
+                ">> {}: wallet name can only contain alphanumerics",
+                "ERROR".red().bold()
+            );
             return Ok(());
         }
         // Check if wallet with same name already exits
         if let Some(_stored_wallet_data) = storage.get_wallet_by_name(&name).await? {
-            eprintln!(">> {}: wallet named '{}' already exists", "ERROR".red().bold(), &name);
+            eprintln!(
+                ">> {}: wallet named '{}' already exists",
+                "ERROR".red().bold(),
+                &name
+            );
             return Ok(());
         }
 
@@ -146,7 +158,12 @@ impl WalletCommandHandler {
 
     /// If wallet does not exist finish the open command,
     /// otherwise run commands in open wallet mode until exit command.
-    async fn open(&self, storage: &ClientStorage, name: &String, secret: &String) -> anyhow::Result<()> {
+    async fn open(
+        &self,
+        storage: &ClientStorage,
+        name: &String,
+        secret: &String,
+    ) -> anyhow::Result<()> {
         // Load wallet data from storage by name and make sure it exists.
         let wallet = storage.get_wallet_by_name(&name).await?;
         if wallet.is_none() {
@@ -167,7 +184,7 @@ impl WalletCommandHandler {
             self.version.clone(),
             name.clone(),
             secret.clone(),
-             wallet,
+            wallet,
         );
 
         loop {

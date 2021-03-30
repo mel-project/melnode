@@ -1,9 +1,9 @@
 use crate::storage::ClientStorage;
 use crate::wallet::common::read_line;
+use crate::wallet::data::WalletData;
 use blkstructs::NetID;
 use colored::Colorize;
-use nodeprot::{ValClientSnapshot};
-use crate::wallet::data::WalletData;
+use nodeprot::ValClientSnapshot;
 
 #[derive(Eq, PartialEq, Debug)]
 // #[strum(serialize_all = "kebab-case")]
@@ -35,7 +35,12 @@ impl OpenWalletCommandHandler {
         secret: String,
         wallet: WalletData,
     ) -> Self {
-        let prompt_stack: Vec<String> = vec![format!("themelio-client").cyan().bold().to_string(), format!("(v{})", version).magenta().to_string(), format!("➜ ").cyan().bold().to_string(), format!("wallet:({})", name).cyan().italic().to_string()];
+        let prompt_stack: Vec<String> = vec![
+            format!("themelio-client").cyan().bold().to_string(),
+            format!("(v{})", version).magenta().to_string(),
+            format!("➜ ").cyan().bold().to_string(),
+            format!("wallet:({})", name).cyan().italic().to_string(),
+        ];
         let prompt = format!("{}", prompt_stack.join(" "));
         Self {
             host,

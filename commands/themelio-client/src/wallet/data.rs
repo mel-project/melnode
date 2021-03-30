@@ -1,7 +1,7 @@
 use blkstructs::{melvm, CoinData, CoinDataHeight, CoinID, Transaction, TxKind};
 use serde::{Deserialize, Serialize};
 use std::collections;
-use tmelcrypt::{HashVal};
+use tmelcrypt::HashVal;
 
 /// Immutable & cloneable in-memory data that can be persisted.
 /// Does not store secrets!
@@ -38,9 +38,9 @@ impl WalletData {
     pub fn insert_coin(&mut self, coin_id: CoinID, coin_data_height: CoinDataHeight) -> bool {
         self.spent_coins.get(&coin_id).is_none()
             && self
-            .unspent_coins
-            .insert(coin_id, coin_data_height)
-            .is_none()
+                .unspent_coins
+                .insert(coin_id, coin_data_height)
+                .is_none()
     }
 
     /// Creates an **unsigned** transaction out of the coins in the data. Does not spend it yet.

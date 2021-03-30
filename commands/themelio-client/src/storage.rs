@@ -1,9 +1,9 @@
+use crate::wallet::data::WalletData;
 use anyhow;
 use sled;
-use storage::SledMap;
-use std::path::PathBuf;
-use crate::wallet::data::WalletData;
 use std::collections::BTreeMap;
+use std::path::PathBuf;
+use storage::SledMap;
 
 const WALLET_NAMESPACE: &[u8; 6] = b"wallet";
 
@@ -14,9 +14,7 @@ pub struct ClientStorage {
 
 impl ClientStorage {
     pub fn new(path: &PathBuf) -> Self {
-        Self {
-            path: path.clone(),
-        }
+        Self { path: path.clone() }
     }
 
     /// Insert wallet data by wallet name
@@ -38,7 +36,7 @@ impl ClientStorage {
     }
 
     /// Get a map of wallet data by name which contains all persisted wallet data
-    pub async fn get_all_wallets(&self) -> anyhow::Result<BTreeMap<String, WalletData>>{
+    pub async fn get_all_wallets(&self) -> anyhow::Result<BTreeMap<String, WalletData>> {
         let db = sled::open(&self.path).unwrap();
         let tree = db.open_tree(WALLET_NAMESPACE).unwrap();
         let map = SledMap::<String, WalletData>::new(tree);
