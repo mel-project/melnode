@@ -27,6 +27,7 @@ pub enum WalletCommand {
 impl TryFrom<String> for WalletCommand {
     type Error = ScanError;
 
+    /// Uses serde scan internally to parse a whitespace delimited string into a command
     fn try_from(value: String) -> Result<Self, Self::Error> {
         let cmd: Result<WalletCommand, _> = serde_scan::from_str(&value);
         cmd
@@ -92,6 +93,7 @@ impl WalletCommandHandler {
         Ok(cmd)
     }
 
+    /// Create wallet data by name and store it if its valid and does not already exist
     async fn create(&self, storage: &ClientStorage, name: &String) -> anyhow::Result<()> {
         // Check if wallet has only alphanumerics
         if name.chars().all(char::is_alphanumeric) == false {
@@ -143,7 +145,7 @@ impl WalletCommandHandler {
         anyhow::bail!("Not Implemented")
     }
 
-    /// Shows all stored wallet names and wallet address
+    /// Shows all stored wallet names and the corresponding wallet address
     async fn show(&self, storage: &ClientStorage) -> anyhow::Result<()> {
         let mut tw = TabWriter::new(vec![]);
         writeln!(tw, ">> [NAME]\t[ADDRESS]")?;
@@ -164,10 +166,16 @@ impl WalletCommandHandler {
         name: &String,
         secret: &String,
     ) -> anyhow::Result<()> {
+        eprintln!("hi");
         // Load wallet data from storage by name and make sure it exists.
         let wallet = storage.get_wallet_by_name(&name).await?;
         if wallet.is_none() {
-            // Display no wallet found and return
+            eprintln!(
+                ">> {}: wallet named '{}' does not exist in the database",
+                "ERROR".red().bold(),
+                &name
+            );
+            return Ok(());
         }
         let wallet = wallet.unwrap();
 
@@ -175,7 +183,12 @@ impl WalletCommandHandler {
         let wallet_secret = hex::decode(secret)?;
         let wallet_secret = tmelcrypt::Ed25519SK(wallet_secret.as_slice().try_into()?);
         if Covenant::std_ed25519_pk(wallet_secret.to_public()) != wallet.my_script {
-            anyhow::bail!("unlocking failed, make sure you have the right secret!")
+            eprintln!(
+                ">> {}: wallet named '{}' cannot be unlocked with this secret",
+                "ERROR".red().bold(),
+                &name
+            );
+            return Ok(());
         }
 
         // Initialize open wallet command handler to handle transacting with wallet
@@ -188,7 +201,7 @@ impl WalletCommandHandler {
         );
 
         loop {
-            let res_cmd = handler.handle().await;
+            let res_cmd = handler.handle(&storage).await;
             if res_cmd.is_ok() && res_cmd.unwrap() == OpenWalletCommand::Exit {
                 return Ok(());
             }

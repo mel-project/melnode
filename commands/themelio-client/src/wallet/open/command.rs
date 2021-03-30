@@ -4,25 +4,39 @@ use crate::wallet::data::WalletData;
 use blkstructs::NetID;
 use colored::Colorize;
 use nodeprot::ValClientSnapshot;
+use serde::{Deserialize, Serialize};
+use serde_scan::ScanError;
+use std::convert::TryFrom;
 
-#[derive(Eq, PartialEq, Debug)]
-// #[strum(serialize_all = "kebab-case")]
+#[derive(Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum OpenWalletCommand {
-    Faucet(u128, String),
+    Faucet(String, String),
     Deposit,
     Withdraw,
     Swap,
-    SendCoins(String, u128, String),
+    SendCoins(String, String, String),
     AddCoins(String),
     Balance,
     Help,
     Exit,
 }
 
+impl TryFrom<String> for OpenWalletCommand {
+    type Error = ScanError;
+
+    /// Uses serde scan internally to parse a whitespace delimited string into a command
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        let cmd: Result<OpenWalletCommand, _> = serde_scan::from_str(&value);
+        cmd
+    }
+}
+
 pub struct OpenWalletCommandHandler {
     host: smol::net::SocketAddr,
     version: String,
     name: String,
+    secret: String,
     wallet: WalletData,
     prompt: String,
 }
@@ -39,33 +53,34 @@ impl OpenWalletCommandHandler {
             format!("themelio-client").cyan().bold().to_string(),
             format!("(v{})", version).magenta().to_string(),
             format!("➜ ").cyan().bold().to_string(),
-            format!("wallet:({})", name).cyan().italic().to_string(),
+            format!("wallet ({}) ➜ ", name).cyan().italic().to_string(),
         ];
         let prompt = format!("{}", prompt_stack.join(" "));
         Self {
             host,
             version,
             name,
+            secret,
             wallet,
             prompt,
         }
     }
 
     /// Parse user input into a wallet command process the command
-    pub(crate) async fn handle(&self) -> anyhow::Result<OpenWalletCommand> {
-        // Parse input into a command
-        // let input = read_line(self.prompt.to_string()).await;
-        // if input.is_err() {
-        //     return Ok(OpenWalletCommand::Exit);
-        // }
-        // let cmd: OpenWalletCommand = OpenWalletCommand::from_str(&input.unwrap())?;
-        //
-        // // Init storage from wallet name
-        // // let storage = ClientStorage::new(sled::open(&self.database).unwrap());
-        //
-        // // Take snapshot of latest state
-        // let client = nodeprot::ValClient::new(NetID::Testnet, self.host);
-        // let snapshot = client.snapshot_latest().await.unwrap(); // fix error handling
+    pub(crate) async fn handle(&self, storage: &ClientStorage) -> anyhow::Result<OpenWalletCommand> {
+        // Convert user input into a command
+        let input = read_line(self.prompt.to_string()).await;
+        if input.is_err() {
+            return Ok(OpenWalletCommand::Exit);
+        }
+        let cmd = OpenWalletCommand::try_from(input.unwrap());
+        if cmd.is_err() {
+            anyhow::bail!("Unable to parse command");
+        }
+
+        // Take snapshot of latest state (TODO: this is trusting node, gotta figure out a simple / less trusted mode where it starts from geneses)
+        let client = nodeprot::ValClient::new(NetID::Testnet, self.host);
+        let snapshot = client.snapshot_latest().await.unwrap(); // fix error handling
 
         // Process command with snapshot
         // match &cmd {
