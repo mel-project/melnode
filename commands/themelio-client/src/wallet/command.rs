@@ -88,6 +88,11 @@ impl WalletCommandHandler {
     }
 
     async fn create(&self, storage: &ClientStorage, name: &String) -> anyhow::Result<()> {
+        // Check if wallet has only alphanumerics
+        if name.chars().all(char::is_alphanumeric) == false {
+            eprintln!(">> {}: wallet named can only contain alphanumerics", "ERROR".red().bold());
+            return Ok(());
+        }
         // Check if wallet with same name already exits
         if let Some(_stored_wallet_data) = storage.get_wallet_by_name(&name).await? {
             eprintln!(">> {}: wallet named '{}' already exists", "ERROR".red().bold(), &name);
@@ -126,9 +131,16 @@ impl WalletCommandHandler {
         anyhow::bail!("Not Implemented")
     }
 
+    /// Shows all stored wallet names and wallet address
     async fn show(&self, storage: &ClientStorage) -> anyhow::Result<()> {
+        let mut tw = TabWriter::new(vec![]);
+        writeln!(tw, ">> [NAME]\t[ADDRESS]")?;
         let wallets = storage.get_all_wallets().await?;
-        // prompt.show_wallets(&wallets)
+        for (name, wallet) in wallets.iter() {
+            writeln!(tw, ">> {}\t{}", name, wallet.my_script.hash().to_addr())?;
+        }
+        tw.flush()?;
+        eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
         Ok(())
     }
 
