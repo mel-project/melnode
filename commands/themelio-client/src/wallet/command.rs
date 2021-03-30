@@ -48,7 +48,7 @@ impl WalletCommandHandler {
         version: String,
     ) -> Self {
         let prompt_stack: Vec<String> = vec![format!("v{}", version).green().to_string()];
-        let prompt = format!("[client wallet {}]% ", prompt_stack.join(" "));
+        let prompt = format!("[themelio-client ({})] >>> ", prompt_stack.join(" "));
         Self {
             host,
             database,
