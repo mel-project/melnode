@@ -47,8 +47,8 @@ impl WalletCommandHandler {
         database: std::path::PathBuf,
         version: String,
     ) -> Self {
-        let prompt_stack: Vec<String> = vec![format!("v{}", version).green().to_string()];
-        let prompt = format!("[themelio-client ({})] >>> ", prompt_stack.join(" "));
+        let prompt_stack: Vec<String> = vec![format!("themelio-client").cyan().bold().to_string(), format!("(v{})", version).magenta().to_string(), format!("➜ ").cyan().bold().to_string()];
+        let prompt = format!("{}", prompt_stack.join(" "));
         Self {
             host,
             database,
