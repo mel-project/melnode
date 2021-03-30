@@ -4,6 +4,7 @@ members = [
     "commands/themelio-bxms",
     "commands/themelio-client",
     "commands/themelio-node",
+    "commands/themelio-crypttool",
 
     "libs/autosmt",
     "libs/blkstructs",

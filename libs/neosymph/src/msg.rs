@@ -68,7 +68,6 @@ impl SignedMessage {
 pub enum Message {
     Proposal(ProposalMsg),
     Vote(VoteMsg),
-    GetConfirm(GetConfirmMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -108,10 +107,4 @@ pub struct VoteMsg {
 pub struct GetConfirmMsg {
     pub height: u64,
     pub hash: HashVal,
-}
-
-/// Message that responds to a GetConfirmMsg
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ConfirmResp {
-    pub signatures: BTreeMap<Ed25519PK, Bytes>,
 }

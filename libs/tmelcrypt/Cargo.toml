@@ -15,6 +15,7 @@ rand="0.7"
 base32="0.4"
 arbitrary={version="0.4.4", features=["derive"]}
 serde-big-array = "0.3.0"
+stdcode={path="../stdcode"}
 
 [dependencies.ed25519-dalek]
 features = ["legacy_compatibility"]

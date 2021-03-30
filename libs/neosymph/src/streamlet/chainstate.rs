@@ -1,7 +1,7 @@
-use blkstructs::SealedState;
+use blkstructs::{ProposerAction, SealedState};
 use tmelcrypt::{Ed25519PK, HashVal};
 
-use crate::msg;
+use crate::{msg, OOB_PROPOSER_ACTION};
 
 /// Type that encapsulates the state of a Streamlet instance.
 #[derive(Clone)]
@@ -75,9 +75,10 @@ impl ChainState {
         log::debug!(
             "added vote from {:?}; now {} votes for {:?}",
             voter,
-            blk.votes.len(),
+            blk.vote_weight,
             blk.state.header().hash()
         );
+        dbg!(&blk);
         Ok(())
     }
 
@@ -109,7 +110,8 @@ impl ChainState {
         }
         // process the actual block
         if prop.height() > self.last_block_in_epoch()
-            && (!prop.block.transactions.is_empty() || prop.block.proposer_action.is_some())
+            && (!prop.block.transactions.is_empty()
+                || prop.block.proposer_action != Some(OOB_PROPOSER_ACTION))
         {
             anyhow::bail!("proposal is out of epoch bounds yet it isn't totally empty")
         }
@@ -195,7 +197,6 @@ impl ChainState {
             if let Some(penultimate) = toret.get(toret.len() - 2) {
                 new_self.insert_block(penultimate.clone());
             }
-            assert_eq!(self.get_lnc_tip(), new_self.get_lnc_tip());
             *self = new_self;
         }
         toret.into_iter().map(|v| v.state).collect()
@@ -280,7 +281,7 @@ impl ChainState {
 }
 
 /// An individual entry in the chainstate
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct CsBlock {
     pub state: SealedState,
     votes: im::HashSet<Ed25519PK>,

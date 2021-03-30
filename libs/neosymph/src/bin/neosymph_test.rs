@@ -1,7 +1,9 @@
 use std::time::SystemTime;
 
-use blkstructs::{melvm, AbbrBlock, ProposerAction, Transaction};
-use neosymph::{msg::ProposalMsg, MockNet, Streamlet, StreamletCfg, StreamletEvt, TxLookup};
+use blkstructs::{melvm, AbbrBlock, ProposerAction, Transaction, STAKE_EPOCH};
+use neosymph::{
+    msg::ProposalMsg, MockNet, Streamlet, StreamletCfg, StreamletEvt, TxLookup, OOB_PROPOSER_ACTION,
+};
 use once_cell::sync::Lazy;
 use smol::prelude::*;
 use tmelcrypt::{Ed25519SK, HashVal};
@@ -47,11 +49,15 @@ async fn run_instance(net: MockNet, idx: usize) {
                         lnc_tip.as_ref().map(|lnc_tip| lnc_tip.header().hash())
                     );
 
-                    let action = Some(ProposerAction {
-                        fee_multiplier_delta: 0,
-                        reward_dest: melvm::Covenant::std_ed25519_pk(TEST_SKK[idx].to_public())
-                            .hash(),
-                    });
+                    let action = if height / STAKE_EPOCH == 0 {
+                        Some(ProposerAction {
+                            fee_multiplier_delta: 0,
+                            reward_dest: melvm::Covenant::std_ed25519_pk(TEST_SKK[idx].to_public())
+                                .hash(),
+                        })
+                    } else {
+                        Some(OOB_PROPOSER_ACTION)
+                    };
 
                     let mut basis = ss.clone();
                     let mut last_nonempty = None;

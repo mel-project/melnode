@@ -15,9 +15,6 @@ pub const DENOM_NEWCOIN: &[u8] = b"";
 /// Maximum coin value
 pub const MAX_COINVAL: u128 = 1 << 120;
 
-/// Auction interval
-pub const AUCTION_INTERVAL: u64 = 20;
-
 /// 1e6
 pub const MICRO_CONVERTER: u128 = 1_000_000;
 

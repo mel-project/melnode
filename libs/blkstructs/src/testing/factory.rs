@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    melvm, Block, CoinData, CoinDataHeight, CoinID, GenesisConfig, Header, ProposerAction,
+    melvm, Block, CoinData, CoinDataHeight, CoinID, GenesisConfig, Header, NetID, ProposerAction,
     StakeDoc, Transaction, TxKind, DENOM_TMEL,
 };
 
@@ -54,6 +54,7 @@ beaver::define! {
 
 // beaver::define! {
 //     pub GenesisConfigFactory (GenesisConfig) {
+//         network -> |_| NetID::Testnet,
 //         init_micromels -> |n| n as u128,
 //         init_covhash -> |_| tmelcrypt::HashVal::random(),
 //         stakes -> |_| HashMap::new(),
@@ -70,6 +71,7 @@ beaver::define! {
 
 // beaver::define! {
 //     pub HeaderFactory (Header) {
+//         network -> |_| NetID::Testnet,
 //         previous -> |_| tmelcrypt::HashVal::random(),
 //         height -> |n| n as u64,
 //         history_hash -> |_| tmelcrypt::HashVal::random(),
