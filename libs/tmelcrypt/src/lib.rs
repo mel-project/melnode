@@ -3,11 +3,11 @@ use ed25519_dalek::{Signer, Verifier};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_big_array::big_array;
-use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
+use std::{convert::TryFrom, str::FromStr};
 
 big_array! { BigArray; }
 
@@ -158,8 +158,19 @@ impl fmt::Debug for Ed25519PK {
     }
 }
 #[derive(Copy, Clone, Serialize, Deserialize)]
-/// An ed25519 secret key.
+/// An ed25519 secret key. Implements FromStr that converts from hexadecimal.
 pub struct Ed25519SK(#[serde(with = "BigArray")] pub [u8; 64]);
+
+impl FromStr for Ed25519SK {
+    type Err = hex::FromHexError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let vv = hex::decode(s)?;
+        Ok(Ed25519SK(
+            vv.try_into()
+                .map_err(|_| hex::FromHexError::InvalidStringLength)?,
+        ))
+    }
+}
 
 impl PartialEq for Ed25519SK {
     fn eq(&self, other: &Self) -> bool {
