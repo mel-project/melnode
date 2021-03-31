@@ -203,6 +203,7 @@ impl Covenant {
             OpCode::VPUSH => output.push(0x54),
             OpCode::VSLICE => output.push(0x55),
             OpCode::BEMPTY => output.push(0x56),
+            OpCode::VSET => output.push(0x57),
             // control flow
             OpCode::JMP(val) => {
                 output.push(0xa0);
@@ -381,8 +382,21 @@ impl Executor {
                 let idx = idx.as_u16()? as usize;
                 match vec {
                     Value::Bytes(bts) => Some(Value::Int(U256::from(*bts.get(idx)?))),
-                    Value::Vector(elems) => {
-                        Some(elems.get(idx).unwrap().clone().as_ref().clone()) // Previously: Some(elems.get(idx)?.clone()),
+                    Value::Vector(elems) => Some(elems.get(idx)?.clone()),
+                    _ => None,
+                }
+            })?,
+            OpCode::VSET => self.do_triop(|vec, idx, value| {
+                let idx = idx.as_u16()? as usize;
+                match vec {
+                    Value::Bytes(mut bts) => {
+                        let converted = value.as_u16()? as u8;
+                        bts[idx] = converted;
+                        Some(Value::Bytes(bts))
+                    }
+                    Value::Vector(mut elems) => {
+                        elems[idx] = value;
+                        Some(elems.get(idx)?.clone())
                     }
                     _ => None,
                 }
@@ -416,7 +430,7 @@ impl Executor {
             OpCode::BEMPTY => self.stack.push(Value::Bytes(im::Vector::new())),
             OpCode::VPUSH => self.do_binop(|vec, val| match vec {
                 Value::Vector(mut vec) => {
-                    vec.push_back(Box::new(val));
+                    vec.push_back(val);
                     Some(Value::Vector(vec))
                 }
                 Value::Bytes(mut vec) => {
@@ -510,6 +524,7 @@ pub enum OpCode {
     LOADIMM(u16),
     // vector operations
     VREF,
+    VSET,
     VAPPEND,
     VSLICE,
     VLENGTH,
@@ -557,6 +572,7 @@ impl OpCode {
             OpCode::LOADIMM(_) => 50,
 
             OpCode::VREF => 10,
+            OpCode::VSET => 50,
             OpCode::VAPPEND => 50,
             OpCode::VSLICE => 50,
             OpCode::VLENGTH => 10,
@@ -582,7 +598,7 @@ impl OpCode {
 pub enum Value {
     Int(U256),
     Bytes(im::Vector<u8>),
-    Vector(im::Vector<Box<Value>>),
+    Vector(im::Vector<Value>),
 }
 
 impl Value {
@@ -652,9 +668,7 @@ impl Value {
                 } else {
                     let vec: Option<im::Vector<Self>> =
                         vec.into_iter().map(Self::from_serde_json).collect();
-                    Some(Self::Vector(
-                        vec.unwrap().iter().map(|e| Box::new(e.clone())).collect(),
-                    ))
+                    Some(Self::Vector(vec.unwrap().iter().cloned().collect()))
                     // Some(Self::Vector(vec.unwrap().clone()))
                 }
             }
@@ -663,9 +677,7 @@ impl Value {
                 for (_, v) in obj {
                     vec.push_back(Self::from_serde_json(v)?)
                 }
-                Some(Self::Vector(
-                    vec.iter().map(|e| Box::new(e.clone())).collect(),
-                ))
+                Some(Self::Vector(vec.iter().cloned().collect()))
             }
         }
     }
