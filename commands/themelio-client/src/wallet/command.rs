@@ -135,7 +135,7 @@ impl WalletCommandHandler {
     }
 
     async fn delete(&self, storage: &ClientStorage, name: &String) -> anyhow::Result<()> {
-        anyhow::bail!("Not Implemented")
+        todo!("Not implemented")
     }
     async fn import(&self, storage: &ClientStorage, path: &String) -> anyhow::Result<()> {
         anyhow::bail!("Not Implemented")
