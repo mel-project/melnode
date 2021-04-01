@@ -88,7 +88,7 @@ async fn staker_loop(
         genesis,
         stakes: stakes.clone(),
         epoch,
-        start_time: std::time::UNIX_EPOCH + Duration::from_secs(1614578400),
+        start_time: std::time::UNIX_EPOCH + Duration::from_secs(1617253200), // Apr 1 2021
         my_sk,
         get_proposer: Box::new(move |_height| first_stake.pubkey),
     };
