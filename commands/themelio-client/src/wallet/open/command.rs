@@ -1,4 +1,4 @@
-use crate::storage::ClientStorage;
+use crate::storage::WalletStorage;
 use crate::wallet::common::read_line;
 use crate::wallet::data::WalletData;
 use blkstructs::NetID;
@@ -72,7 +72,7 @@ impl OpenWalletCommandHandler {
     /// Parse user input into a wallet command process the command
     pub(crate) async fn handle(
         &self,
-        storage: &ClientStorage,
+        storage: &WalletStorage,
     ) -> anyhow::Result<OpenWalletCommand> {
         // Convert valid user input into a command is
         let input = read_line(self.prompt.to_string()).await;
@@ -144,14 +144,14 @@ impl OpenWalletCommandHandler {
         // 	- update storage
         anyhow::bail!("Not Implemented")
     }
-    async fn add_coins(&self, storage: &ClientStorage, coin_id: &String) -> anyhow::Result<()> {
+    async fn add_coins(&self, storage: &WalletStorage, coin_id: &String) -> anyhow::Result<()> {
         // - receive
         // 	- input coin id
         // 	- query
         // 	- update storage
         anyhow::bail!("Not Implemented")
     }
-    async fn balance(&self, storage: &ClientStorage) -> anyhow::Result<()> {
+    async fn balance(&self, storage: &WalletStorage) -> anyhow::Result<()> {
         // - balance
         // 	- load storage
         // 	- print storage balance

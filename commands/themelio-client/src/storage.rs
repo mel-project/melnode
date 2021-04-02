@@ -8,11 +8,11 @@ use storage::SledMap;
 const WALLET_NAMESPACE: &[u8; 6] = b"wallet";
 
 /// Uses sled map(s) to persist client-side data
-pub struct ClientStorage {
+pub struct WalletStorage {
     path: PathBuf,
 }
 
-impl ClientStorage {
+impl WalletStorage {
     pub fn new(path: &PathBuf) -> Self {
         Self { path: path.clone() }
     }
