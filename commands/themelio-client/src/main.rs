@@ -34,8 +34,8 @@ async fn run_client_prompt(opts: ClientOpts) -> anyhow::Result<()> {
     let handler = WalletCommandHandler::new(opts.host, opts.database, version);
 
     loop {
-        let res_cmd = handler.handle().await;
-        if res_cmd.is_ok() && res_cmd.unwrap() == WalletCommand::Exit {
+        let res_cmd = handler.handle().await?;
+        if res_cmd == WalletCommand::Exit {
             return Ok(());
         }
     }

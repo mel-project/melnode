@@ -18,20 +18,20 @@ impl ClientStorage {
     }
 
     /// Insert wallet data by wallet name
-    pub async fn insert_wallet(&self, name: &String, data: &WalletData) -> anyhow::Result<()> {
+    pub async fn insert_wallet(&self, name: &str, data: &WalletData) -> anyhow::Result<()> {
         let db = sled::open(&self.path)?;
         let tree = db.open_tree(WALLET_NAMESPACE)?;
         let map = SledMap::<String, WalletData>::new(tree);
-        map.insert(name.clone(), data.clone());
+        map.insert(name.to_string(), data.clone());
         Ok(())
     }
 
     /// Get wallet data given wallet name if it exists
-    pub async fn get_wallet_by_name(&self, name: &String) -> anyhow::Result<Option<WalletData>> {
+    pub async fn get_wallet_by_name(&self, name: &str) -> anyhow::Result<Option<WalletData>> {
         let db = sled::open(&self.path)?;
         let tree = db.open_tree(WALLET_NAMESPACE)?;
         let map = SledMap::<String, WalletData>::new(tree);
-        let wallet_data = map.get(name);
+        let wallet_data = map.get(&name.to_string());
         Ok(wallet_data)
     }
 

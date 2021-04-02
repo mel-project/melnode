@@ -20,6 +20,7 @@ pub enum WalletCommand {
     Export(String),
     Show,
     Open(String, String),
+    Use(String, String),
     Help,
     Exit,
 }
@@ -64,37 +65,49 @@ impl WalletCommandHandler {
     /// Parse user input into a wallet command process the command
     pub(crate) async fn handle(&self) -> anyhow::Result<WalletCommand> {
         // Convert user input into a command
-        let input = read_line(self.prompt.to_string()).await;
-        if input.is_err() {
-            return Ok(WalletCommand::Exit);
-        }
-        let cmd = WalletCommand::try_from(input.unwrap());
-        if cmd.is_err() {
-            anyhow::bail!("Unable to parse command");
-        }
+        let input = read_line(self.prompt.to_string()).await?;
+        let (wallet_cmd, open_wallet_cmd) = self.get_commands(
+            &input[..]
+        ).await?;
 
         // Process the command
         let storage = ClientStorage::new(&self.database);
-        let cmd = cmd.unwrap();
-        match &cmd {
+        match &wallet_cmd {
             WalletCommand::Create(wallet_name) => self.create(&storage, wallet_name).await?,
             WalletCommand::Delete(wallet_name) => self.delete(&storage, wallet_name).await?,
             WalletCommand::Import(import_path) => self.import(&storage, import_path).await?,
             WalletCommand::Export(export_path) => self.export(&storage, export_path).await?,
             WalletCommand::Show => self.show(&storage).await?,
             WalletCommand::Open(wallet_name, secret) => {
-                self.open(&storage, wallet_name, secret).await?
+                self.open_wallet(&storage, wallet_name, secret).await?
+            },
+            WalletCommand::Use(wallet_name, secret) => {
+                self.use_wallet(&storage, wallet_name, secret, &open_wallet_cmd.unwrap()).await?
             }
             WalletCommand::Help => self.help().await?,
-            WalletCommand::Exit => {}
+            WalletCommand::Exit => { }
         };
 
         // Return processed command
-        Ok(cmd)
+        Ok(wallet_cmd)
+    }
+
+    /// Given the user input parse it into a wallet and (if applicable) open wallet command
+    async fn get_commands(&self, input: &str) -> anyhow::Result<(WalletCommand, Option<OpenWalletCommand>)> {
+        if input.starts_with("wallet-use") {
+            let args: Vec<String> = input.split(" ").map(|s| s.to_string()).collect();
+            let (left, right): (&str, &str) = (&args[0..2].join(" "), &args[2..].join(" "));
+            let wallet_cmd = WalletCommand::try_from(left.to_string())?;
+            let open_wallet_cmd = OpenWalletCommand::try_from(right.to_string())?;
+            Ok((wallet_cmd, Some(open_wallet_cmd)))
+        } else {
+            let wallet_cmd = WalletCommand::try_from(input.to_string())?;
+            Ok((wallet_cmd, None))
+        }
     }
 
     /// Create wallet data by name and store it if its valid and does not already exist
-    async fn create(&self, storage: &ClientStorage, name: &String) -> anyhow::Result<()> {
+    async fn create(&self, storage: &ClientStorage, name: &str) -> anyhow::Result<()> {
         // Check if wallet has only alphanumerics
         if name.chars().all(char::is_alphanumeric) == false {
             eprintln!(
@@ -104,7 +117,7 @@ impl WalletCommandHandler {
             return Ok(());
         }
         // Check if wallet with same name already exits
-        if let Some(_stored_wallet_data) = storage.get_wallet_by_name(&name).await? {
+        if let Some(_stored_wallet_data) = storage.get_wallet_by_name(name).await? {
             eprintln!(
                 ">> {}: wallet named '{}' already exists",
                 "ERROR".red().bold(),
@@ -117,7 +130,7 @@ impl WalletCommandHandler {
         let (pk, sk) = tmelcrypt::ed25519_keygen();
         let script = Covenant::std_ed25519_pk(pk);
         let wallet_data = WalletData::new(script);
-        storage.insert_wallet(&name, &wallet_data).await?;
+        storage.insert_wallet(name, &wallet_data).await?;
 
         // Display contents of keypair and wallet data
         let mut tw = TabWriter::new(vec![]);
@@ -134,14 +147,14 @@ impl WalletCommandHandler {
         Ok(())
     }
 
-    async fn delete(&self, storage: &ClientStorage, name: &String) -> anyhow::Result<()> {
+    async fn delete(&self, storage: &ClientStorage, name: &str) -> anyhow::Result<()> {
         todo!("Not implemented")
     }
-    async fn import(&self, storage: &ClientStorage, path: &String) -> anyhow::Result<()> {
+    async fn import(&self, storage: &ClientStorage, path: &str) -> anyhow::Result<()> {
         anyhow::bail!("Not Implemented")
     }
 
-    async fn export(&self, storage: &ClientStorage, path: &String) -> anyhow::Result<()> {
+    async fn export(&self, storage: &ClientStorage, path: &str) -> anyhow::Result<()> {
         anyhow::bail!("Not Implemented")
     }
 
@@ -160,15 +173,14 @@ impl WalletCommandHandler {
 
     /// If wallet does not exist finish the open command,
     /// otherwise run commands in open wallet mode until exit command.
-    async fn open(
+    async fn open_wallet(
         &self,
         storage: &ClientStorage,
-        name: &String,
-        secret: &String,
+        name: &str,
+        secret: &str,
     ) -> anyhow::Result<()> {
-        eprintln!("hi");
         // Load wallet data from storage by name and make sure it exists.
-        let wallet = storage.get_wallet_by_name(&name).await?;
+        let wallet = storage.get_wallet_by_name(name).await?;
         if wallet.is_none() {
             eprintln!(
                 ">> {}: wallet named '{}' does not exist in the database",
@@ -209,6 +221,17 @@ impl WalletCommandHandler {
                 return Ok(());
             }
         }
+    }
+
+    /// Use a particular wallet to run an open wallet command
+    async fn use_wallet(
+        &self,
+        storage: &ClientStorage,
+        name: &str,
+        secret: &str,
+        open_wallet_command: &OpenWalletCommand,
+    ) -> anyhow::Result<()> {
+        Ok(())
     }
 
     async fn help(&self) -> anyhow::Result<()> {

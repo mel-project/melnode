@@ -44,11 +44,14 @@ pub struct OpenWalletCommandHandler {
 impl OpenWalletCommandHandler {
     pub(crate) fn new(
         host: smol::net::SocketAddr,
-        version: String,
-        name: String,
-        secret: String,
+        version: &str,
+        name: &str,
+        secret: &str,
         wallet: WalletData,
     ) -> Self {
+        let version = version.to_string();
+        let name = name.to_string();
+        let secret = secret.to_string();
         let prompt_stack: Vec<String> = vec![
             format!("themelio-client").cyan().bold().to_string(),
             format!("(v{})", version).magenta().to_string(),
