@@ -11,16 +11,14 @@ use serde_scan::ScanError;
 use std::convert::{TryFrom, TryInto};
 use std::io::prelude::*;
 
-#[derive(Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Debug, Serialize, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum WalletCommand {
     Create(String),
-    Delete(String),
-    Import(String),
-    Export(String),
     Show,
     Open(String, String),
     Use(String, String),
+    Delete(String),
     Help,
     Exit,
 }
@@ -33,4 +31,16 @@ impl TryFrom<String> for WalletCommand {
         let cmd: Result<WalletCommand, _> = serde_scan::from_str(&value);
         cmd
     }
+}
+
+pub struct CreateResult {}
+
+pub enum WalletCommandResult {
+    Create(CreateResult),
+    Show(ShowResult),
+    Open(OpenResult),
+    Use(UseResult),
+    Delete(DeleteResult),
+    Help,
+    Exit
 }

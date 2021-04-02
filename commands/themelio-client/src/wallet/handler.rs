@@ -1,66 +1,47 @@
-use crate::wallet::common::read_line;
-use crate::wallet::command::WalletCommand;
+use crate::wallet::command::{WalletCommand, WalletCommandResult};
+use crate::wallet::prompt::WalletPrompt;
+use crate::wallet::open::command::OpenWalletCommand;
 
 pub struct WalletCommandHandler {
-    version: String,
+    host: smol::net::SocketAddr,
+    database: std::path::PathBuf,
 }
 
-
 impl WalletCommandHandler {
-    pub(crate) fn new(
-        version: &str,
-    ) -> Self {
-        Self {
-            version: version.to_string(),
-        }
+    pub(crate) fn new(host: &smol::net::SocketAddr, database: &std::path::PathBuf) -> Self {
+        let host = host.clone();
+        let database = database.clone();
+        Self { host, database }
     }
 
     /// Parse user input into a wallet command process the command
-    pub(crate) async fn handle(&self, host: smol::net::SocketAddr, database: std::path::PathBuf) -> anyhow::Result<WalletCommand> {
-        // Convert user input into a command
-        let input = read_line(self.prompt.to_string()).await?;
-        let (wallet_cmd, open_wallet_cmd) = self.get_commands(
-            &input[..]
-        ).await?;
-
-        // Process the command
-        let storage = ClientStorage::new(&self.database);
-        match &wallet_cmd {
-            WalletCommand::Create(wallet_name) => self.create(&storage, wallet_name).await?,
-            WalletCommand::Delete(wallet_name) => self.delete(&storage, wallet_name).await?,
-            WalletCommand::Import(import_path) => self.import(&storage, import_path).await?,
-            WalletCommand::Export(export_path) => self.export(&storage, export_path).await?,
-            WalletCommand::Show => self.show(&storage).await?,
-            WalletCommand::Open(wallet_name, secret) => {
-                self.open_wallet(&storage, wallet_name, secret).await?
-            },
-            WalletCommand::Use(wallet_name, secret) => {
-                self.use_wallet(&storage, wallet_name, secret, &open_wallet_cmd.unwrap()).await?
-            }
+    pub(crate) async fn handle(&self, cmd: WalletCommand, open_cmd: Option<OpenWalletCommand>) -> anyhow::Result<WalletCommandResult> {
+        // Process the command and return a command result
+        match &cmd {
+            WalletCommand::Create(name) => self.create(name).await?,
+            WalletCommand::Show => self.show().await?,
+            WalletCommand::Open(name, secret) => self.open(name, secret).await?,
+            WalletCommand::Use(name, secret) => self.use_(name, secret, open_cmd).await?,
+            WalletCommand::Delete(name) => self.delete(name).await?,
             WalletCommand::Help => self.help().await?,
-            WalletCommand::Exit => { }
-        };
-
-        // Return processed command
-        Ok(wallet_cmd)
-    }
-
-    /// Given the user input parse it into a wallet and (if applicable) open wallet command
-    async fn get_commands(&self, input: &str) -> anyhow::Result<(WalletCommand, Option<OpenWalletCommand>)> {
-        if input.starts_with("wallet-use") {
-            let args: Vec<String> = input.split(" ").map(|s| s.to_string()).collect();
-            let (left, right): (&str, &str) = (&args[0..2].join(" "), &args[2..].join(" "));
-            let wallet_cmd = WalletCommand::try_from(left.to_string())?;
-            let open_wallet_cmd = OpenWalletCommand::try_from(right.to_string())?;
-            Ok((wallet_cmd, Some(open_wallet_cmd)))
-        } else {
-            let wallet_cmd = WalletCommand::try_from(input.to_string())?;
-            Ok((wallet_cmd, None))
+            WalletCommand::Exit => { self.exit().await? }
         }
     }
 
-    /// Create wallet data by name and store it if its valid and does not already exist
-    async fn create(&self, storage: &ClientStorage, name: &str) -> anyhow::Result<()> {
+    /// Create wallet given a valid and unique name and store it
+    async fn create(&self, name: &str) -> anyhow::Result<WalletCommandResult> {
+        let wallet = Wallet::new(&self.host, &self.database)?;
+
+        let (pk, sk) = wallet.create()?;
+
+        let prompt = WalletPrompt::new();
+
+        prompt.create_wallet_display(pk, sk)?;
+        let
+        let storage = WalletStorage::new(&self.database);
+        let wallet = Wallet::new(name)?;
+
+
         // Check if wallet has only alphanumerics
         if name.chars().all(char::is_alphanumeric) == false {
             eprintln!(
@@ -100,19 +81,12 @@ impl WalletCommandHandler {
         Ok(())
     }
 
-    async fn delete(&self, storage: &ClientStorage, name: &str) -> anyhow::Result<()> {
+    async fn delete(&self, name: &str) -> anyhow::Result<WalletCommandResult> {
         todo!("Not implemented")
-    }
-    async fn import(&self, storage: &ClientStorage, path: &str) -> anyhow::Result<()> {
-        anyhow::bail!("Not Implemented")
-    }
-
-    async fn export(&self, storage: &ClientStorage, path: &str) -> anyhow::Result<()> {
-        anyhow::bail!("Not Implemented")
     }
 
     /// Shows all stored wallet names and the corresponding wallet address
-    async fn show(&self, storage: &ClientStorage) -> anyhow::Result<()> {
+    async fn show(&self) -> anyhow::Result<WalletCommandResult> {
         let mut tw = TabWriter::new(vec![]);
         writeln!(tw, ">> [NAME]\t[ADDRESS]")?;
         let wallets = storage.get_all_wallets().await?;
@@ -126,12 +100,11 @@ impl WalletCommandHandler {
 
     /// If wallet does not exist finish the open command,
     /// otherwise run commands in open wallet mode until exit command.
-    async fn open_wallet(
+    async fn open(
         &self,
-        storage: &ClientStorage,
         name: &str,
         secret: &str,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<WalletCommandResult> {
         // Load wallet data from storage by name and make sure it exists.
         let wallet = storage.get_wallet_by_name(name).await?;
         if wallet.is_none() {
@@ -177,17 +150,16 @@ impl WalletCommandHandler {
     }
 
     /// Use a particular wallet to run an open wallet command
-    async fn use_wallet(
+    async fn use_(
         &self,
-        storage: &ClientStorage,
         name: &str,
         secret: &str,
         open_wallet_command: &OpenWalletCommand,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<WalletCommandResult> {
         Ok(())
     }
 
-    async fn help(&self) -> anyhow::Result<()> {
+    async fn help(&self) -> anyhow::Result<WalletCommandResult> {
         eprintln!("\nAvailable commands are: ");
         eprintln!(">> create <wallet-name>");
         eprintln!(">> open <wallet-name> <secret>");

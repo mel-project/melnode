@@ -18,7 +18,7 @@ impl WalletStorage {
     }
 
     /// Insert wallet data by wallet name
-    pub async fn insert_wallet(&self, name: &str, data: &WalletData) -> anyhow::Result<()> {
+    pub async fn add_wallet(&self, name: &str, data: &WalletData) -> anyhow::Result<()> {
         let db = sled::open(&self.path)?;
         let tree = db.open_tree(WALLET_NAMESPACE)?;
         let map = SledMap::<String, WalletData>::new(tree);
@@ -41,5 +41,11 @@ impl WalletStorage {
         let tree = db.open_tree(WALLET_NAMESPACE).unwrap();
         let map = SledMap::<String, WalletData>::new(tree);
         Ok(map.get_all().collect())
+    }
+
+
+    /// Insert wallet data by wallet name
+    pub async fn remove_wallet(&self, name: &str) -> anyhow::Result<()> {
+       todo!("Not implemented")
     }
 }

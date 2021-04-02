@@ -1,10 +1,14 @@
-struct WalletPrompt {
+use crate::wallet::command::WalletCommand;
+use crate::wallet::open::command::OpenWalletCommand;
+use crate::wallet::common::read_line;
+use std::convert::TryFrom;
+
+pub struct WalletPrompt {
     prompt: String
 }
 
 impl WalletPrompt {
     pub fn new(version: &str) -> Self {
-        let prompt = WalletPrompt::new(version);
         let prompt_stack: Vec<String> = vec![
             format!("themelio-client").cyan().bold().to_string(),
             format!("(v{})", version).magenta().to_string(),
@@ -15,5 +19,27 @@ impl WalletPrompt {
             prompt
         }
     }
-}
 
+    /// Given the user input parse it into a wallet and (if applicable) open wallet command
+    pub(crate) async fn input(&self) -> anyhow::Result<(WalletCommand, Option<OpenWalletCommand>)> {
+        let input = read_line(self.prompt.clone()).await?;
+
+        let wallet_use_mode: String = WalletCommand::Use(String::default(), String::default())
+            .to_string()
+            .split(" ")
+            .map(|s|s.to_string())
+            .next()
+            .unwrap();
+
+        if input.starts_with(&wallet_use_mode) {
+            let args: Vec<String> = input.split(" ").map(|s| s.to_string()).collect();
+            let (left, right): (&str, &str) = (&args[0..2].join(" "), &args[2..].join(" "));
+            let wallet_cmd = WalletCommand::try_from(left.to_string())?;
+            let open_wallet_cmd = OpenWalletCommand::try_from(right.to_string())?;
+            Ok((wallet_cmd, Some(open_wallet_cmd)))
+        } else {
+            let wallet_cmd = WalletCommand::try_from(input.to_string())?;
+            Ok((wallet_cmd, None))
+        }
+    }
+}

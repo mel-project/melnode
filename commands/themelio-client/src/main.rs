@@ -3,8 +3,9 @@ mod wallet;
 mod lib;
 
 use structopt::StructOpt;
-use crate::wallet::command::WalletCommand;
+use crate::wallet::command::WalletCommandResult;
 use crate::wallet::handler::WalletCommandHandler;
+use crate::wallet::prompt::WalletPrompt;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "Themelio Client CLI")]
@@ -27,18 +28,33 @@ pub struct ClientOpts {
 /// Run client with command line options
 fn main() {
     let opts: ClientOpts = ClientOpts::from_args();
-    smolscale::block_on(run_client_prompt(opts)).unwrap();
+    let handler = WalletCommandHandler::new(&opts.host, &opts.database);
+    let version= env!("CARGO_PKG_VERSION");
+    smolscale::block_on(run_client_prompt(&handler, version)).unwrap();
 }
 
-/// Handle a prompt until exit command
-async fn run_client_prompt(opts: ClientOpts) -> anyhow::Result<()> {
-    let version = env!("CARGO_PKG_VERSION");
-    let handler = WalletCommandHandler::new(version);
-
+/// Execute a command and process the command result until a user exits
+async fn run_client_prompt(handler: &WalletCommandHandler, version: &str) -> anyhow::Result<()> {
+    let prompt = WalletPrompt::new(version);
     loop {
-        let res_cmd = handler.handle(opts.host, opts.database).await?;
-        if res_cmd == WalletCommand::Exit {
-            return Ok(());
+        // Get user input and parse it into a command
+        let (wallet_cmd, open_wallet_cmd) = prompt.input().await?;
+
+        // Handle command
+        let handler_result = handler.handle(wallet_cmd, open_wallet_cmd).await;
+
+        // Handle command result
+        match handler_result {
+            Ok(cmd_res) => {
+                prompt.output(cmd_res);
+                if cmd_res == WalletCommandResult::Exit {
+                    return Ok(());
+                }
+            }
+            Err(err) => {
+                // Show error with eprintln!("...")
+            }
         }
+
     }
 }
