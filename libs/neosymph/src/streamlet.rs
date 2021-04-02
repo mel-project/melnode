@@ -116,6 +116,7 @@ impl<N: Network, L: TxLookup> Streamlet<N, L> {
     }
 
     fn process_msg(&mut self, sender: Ed25519PK, msg: Message) -> anyhow::Result<()> {
+        dbg!(&msg);
         match msg {
             Message::Proposal(prop) => {
                 log::warn!("STUPIDLY putting in proposal");

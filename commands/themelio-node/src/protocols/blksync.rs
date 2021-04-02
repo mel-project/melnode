@@ -44,7 +44,7 @@ async fn get_one_block(
     height: u64,
     get_cached_tx: &(impl Sync + Fn(HashVal) -> Option<Transaction>),
 ) -> anyhow::Result<(Block, ConsensusProof)> {
-    log::debug!("get_one_block({})", height);
+    log::trace!("get_one_block({})", height);
     let client = NodeClient::new(NetID::Testnet, remote);
     let remote_state: (AbbreviatedBlock, ConsensusProof) = client.get_abbr_block(height).await?;
     // now let's check the state

@@ -13,7 +13,6 @@ members = [
     "libs/melpow",
     "libs/neosymph",
     "libs/stdcode",
-    "libs/symphonia",
     "libs/tmelcrypt"
 ]
 

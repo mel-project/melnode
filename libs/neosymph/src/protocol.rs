@@ -91,7 +91,7 @@ impl Network for SymphGossip {
                         .request::<_, ()>(neigh, NETNAME, SYMPH_GOSSIP, msg)
                         .await
                     {
-                        log::warn!("error broadcasting: {:?}", err);
+                        log::warn!("error broadcasting to {}: {:?}", neigh, err);
                         return;
                     }
                 })
@@ -113,17 +113,20 @@ impl Network for SymphGossip {
             if msg.body().is_none() {
                 continue;
             }
-            log::debug!("got gossip msg {:?}", msg);
+            log::trace!("got gossip msg from {:?}", msg.sender);
             let last_seq = self
                 .sender_to_seq
                 .get(&msg.sender)
                 .cloned()
                 .unwrap_or_default();
             if msg.sequence <= last_seq {
+                log::trace!("discarding duplicate message");
                 continue;
             }
             self.sender_to_seq.insert(msg.sender, msg.sequence);
-            self.broadcast(msg.clone()).await;
+            let this = self.clone();
+            let msg2 = msg.clone();
+            smolscale::spawn(async move { this.broadcast(msg2).await }).detach();
             return msg;
         }
     }

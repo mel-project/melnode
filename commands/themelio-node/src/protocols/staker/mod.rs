@@ -1,11 +1,13 @@
 use crate::services::storage::SharedStorage;
 
-use blkstructs::{melvm, AbbrBlock, ProposerAction, Transaction, STAKE_EPOCH};
+use blkstructs::{
+    melvm, AbbrBlock, ProposerAction, SealedState, StakeMapping, Transaction, STAKE_EPOCH,
+};
 use dashmap::DashMap;
 use neosymph::{msg::ProposalMsg, StreamletCfg, StreamletEvt, SymphGossip};
 use smol::prelude::*;
-use std::{collections::BTreeMap, net::SocketAddr, sync::Arc, time::Duration};
-use tmelcrypt::{Ed25519SK, HashVal};
+use std::{collections::BTreeMap, convert::TryInto, net::SocketAddr, sync::Arc, time::Duration};
+use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 use tracing::instrument;
 
 /// This encapsulates the staker-specific peer-to-peer.
@@ -70,6 +72,70 @@ impl neosymph::TxLookup for WrappedSharedStorage {
     }
 }
 
+// a helper function that returns a proposer-calculator for a given epoch, given the SealedState before the epoch.
+fn gen_get_proposer(pre_epoch: SealedState, stakes: StakeMapping) -> impl Fn(u64) -> Ed25519PK {
+    let end_height = if pre_epoch.inner_ref().height < STAKE_EPOCH {
+        0
+    } else if pre_epoch.inner_ref().height / STAKE_EPOCH
+        != (pre_epoch.inner_ref().height + 1) / STAKE_EPOCH
+    {
+        pre_epoch.inner_ref().height
+    } else {
+        (pre_epoch.inner_ref().height / STAKE_EPOCH * STAKE_EPOCH) - 1
+    };
+    // majority beacon of all the blocks in the previous epoch
+    let beacon_components = if end_height >= STAKE_EPOCH {
+        (end_height - STAKE_EPOCH..=end_height)
+            .map(|height| pre_epoch.inner_ref().history.get(&height).0.unwrap().hash())
+            .collect::<Vec<_>>()
+    } else {
+        vec![HashVal::default()]
+    };
+    let seed = tmelcrypt::majority_beacon(&beacon_components);
+    move |height: u64| {
+        // we sum the number of µsyms staked
+        // TODO: overflow?
+        let total_staked = stakes
+            .val_iter()
+            .filter_map(|v| {
+                if v.e_post_end > height / STAKE_EPOCH && v.e_start <= height / STAKE_EPOCH {
+                    Some(v.syms_staked)
+                } else {
+                    None
+                }
+            })
+            .sum::<u128>();
+        // "clamp" the subseed
+        // we hash the seed with the height
+        let mut seed = tmelcrypt::hash_keyed(&height.to_be_bytes(), &seed);
+        let seed = loop {
+            let numseed = u128::from_be_bytes(
+                (&tmelcrypt::hash_keyed(&height.to_be_bytes(), &seed).0[0..16])
+                    .try_into()
+                    .unwrap(),
+            );
+            let numseed = numseed >> total_staked.leading_zeros();
+            if numseed < total_staked {
+                break numseed;
+            }
+            seed = tmelcrypt::hash_single(&seed);
+        };
+        // now we go through the stakedocs
+        let mut stake_docs = stakes.val_iter().collect::<Vec<_>>();
+        stake_docs.sort_by_key(|v| v.pubkey);
+        let mut sum = 0;
+        for stake in stake_docs {
+            if stake.e_post_end > height / STAKE_EPOCH && stake.e_start <= height / STAKE_EPOCH {
+                sum += stake.syms_staked;
+                if seed <= sum {
+                    return stake.pubkey;
+                }
+            }
+        }
+        unreachable!()
+    }
+}
+
 #[allow(clippy::clippy::or_fun_call)]
 #[instrument(skip(gossiper, storage, my_sk))]
 async fn staker_loop(
@@ -81,16 +147,15 @@ async fn staker_loop(
 ) {
     let genesis = storage.read().highest_state();
     let stakes = genesis.inner_ref().stakes.clone();
-    let first_stake = genesis.inner_ref().stakes.val_iter().next().unwrap();
     let config = StreamletCfg {
         network: gossiper.clone(),
         lookup: WrappedSharedStorage(storage.clone()),
-        genesis,
+        genesis: genesis.clone(),
         stakes: stakes.clone(),
         epoch,
         start_time: std::time::UNIX_EPOCH + Duration::from_secs(1617253200), // Apr 1 2021
         my_sk,
-        get_proposer: Box::new(move |_height| first_stake.pubkey),
+        get_proposer: Box::new(gen_get_proposer(genesis.clone(), stakes.clone())),
     };
     let mut streamlet = neosymph::Streamlet::new(config);
     let events = streamlet.subscribe();
