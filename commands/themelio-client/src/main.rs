@@ -45,17 +45,17 @@ async fn run_client_prompt(dispatcher: &WalletCommandDispatcher, version: &str) 
         // Handle the dispatcher result
         match dispatcher_result {
             Ok(cmd_res) => {
-                // Output command results
-                prompt.output_result(&cmd_res).await?;
+                // Output command result
+                prompt.output(&cmd_res).await?;
 
-                // Check for exit command
+                // Check whether to exit client prompt loop
                 if cmd_res == WalletCommandResult::Exit {
                     return Ok(());
                 }
             }
             Err(err) => {
-                // Output error description
-                prompt.output_error(&err, &wallet_cmd);
+                // Output command error
+                prompt.error(&err, &wallet_cmd);
             }
         }
     }

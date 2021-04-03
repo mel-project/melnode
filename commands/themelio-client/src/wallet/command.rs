@@ -3,7 +3,6 @@ use crate::wallet::common::read_line;
 use crate::wallet::data::WalletData;
 use crate::wallet::open::command::{OpenWalletCommand, OpenWalletCommandDispatcher};
 // use blkstructs::melvm::Covenant;
-// use colored::Colorize;
 use serde::{Deserialize, Serialize};
 // use tabwriter::TabWriter;
 
