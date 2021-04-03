@@ -4,7 +4,7 @@ mod lib;
 
 use structopt::StructOpt;
 use crate::wallet::command::WalletCommandResult;
-use crate::wallet::handler::WalletCommandHandler;
+use crate::wallet::dispatcher::WalletCommandDispatcher;
 use crate::wallet::prompt::WalletPrompt;
 
 #[derive(Debug, StructOpt)]
@@ -28,33 +28,35 @@ pub struct ClientOpts {
 /// Run client with command line options
 fn main() {
     let opts: ClientOpts = ClientOpts::from_args();
-    let handler = WalletCommandHandler::new(&opts.host, &opts.database);
-    let version= env!("CARGO_PKG_VERSION");
-    smolscale::block_on(run_client_prompt(&handler, version)).unwrap();
+    let dispatcher = WalletCommandDispatcher::new(&opts.host, &opts.database);
+    smolscale::block_on(run_client_prompt(&dispatcher, env!("CARGO_PKG_VERSION"))).unwrap();
 }
 
 /// Execute a command and process the command result until a user exits
-async fn run_client_prompt(handler: &WalletCommandHandler, version: &str) -> anyhow::Result<()> {
+async fn run_client_prompt(dispatcher: &WalletCommandDispatcher, version: &str) -> anyhow::Result<()> {
     let prompt = WalletPrompt::new(version);
     loop {
-        // Get user input and parse it into a command
+        // Get command from user input
         let (wallet_cmd, open_wallet_cmd) = prompt.input().await?;
 
-        // Handle command
-        let handler_result = handler.handle(wallet_cmd, open_wallet_cmd).await;
+        // Dispatch the command
+        let dispatcher_result = dispatcher.dispatch(&wallet_cmd, &open_wallet_cmd).await;
 
-        // Handle command result
-        match handler_result {
+        // Handle the dispatcher result
+        match dispatcher_result {
             Ok(cmd_res) => {
-                prompt.output(cmd_res);
+                // Output command results
+                prompt.output_result(&cmd_res).await?;
+
+                // Check for exit command
                 if cmd_res == WalletCommandResult::Exit {
                     return Ok(());
                 }
             }
             Err(err) => {
-                // Show error with eprintln!("...")
+                // Output error description
+                prompt.output_error(&err, &wallet_cmd);
             }
         }
-
     }
 }

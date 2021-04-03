@@ -32,7 +32,7 @@ impl TryFrom<String> for OpenWalletCommand {
     }
 }
 
-pub struct OpenWalletCommandHandler {
+pub struct OpenWalletCommandDispatcher {
     host: smol::net::SocketAddr,
     version: String,
     name: String,
@@ -41,7 +41,7 @@ pub struct OpenWalletCommandHandler {
     prompt: String,
 }
 
-impl OpenWalletCommandHandler {
+impl OpenWalletCommandDispatcher {
     pub(crate) fn new(
         host: smol::net::SocketAddr,
         version: &str,

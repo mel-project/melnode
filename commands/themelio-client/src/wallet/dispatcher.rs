@@ -2,12 +2,12 @@ use crate::wallet::command::{WalletCommand, WalletCommandResult};
 use crate::wallet::prompt::WalletPrompt;
 use crate::wallet::open::command::OpenWalletCommand;
 
-pub struct WalletCommandHandler {
+pub struct WalletCommandDispatcher {
     host: smol::net::SocketAddr,
     database: std::path::PathBuf,
 }
 
-impl WalletCommandHandler {
+impl WalletCommandDispatcher {
     pub(crate) fn new(host: &smol::net::SocketAddr, database: &std::path::PathBuf) -> Self {
         let host = host.clone();
         let database = database.clone();
@@ -15,16 +15,16 @@ impl WalletCommandHandler {
     }
 
     /// Parse user input into a wallet command process the command
-    pub(crate) async fn handle(&self, cmd: WalletCommand, open_cmd: Option<OpenWalletCommand>) -> anyhow::Result<WalletCommandResult> {
+    pub(crate) async fn dispatch(&self, cmd: &WalletCommand, open_cmd: &Option<OpenWalletCommand>) -> anyhow::Result<WalletCommandResult> {
         // Process the command and return a command result
         match &cmd {
-            WalletCommand::Create(name) => self.create(name).await?,
-            WalletCommand::Show => self.show().await?,
-            WalletCommand::Open(name, secret) => self.open(name, secret).await?,
-            WalletCommand::Use(name, secret) => self.use_(name, secret, open_cmd).await?,
-            WalletCommand::Delete(name) => self.delete(name).await?,
-            WalletCommand::Help => self.help().await?,
-            WalletCommand::Exit => { self.exit().await? }
+            WalletCommand::Create(name) => self.create(name).await,
+            WalletCommand::Show => self.show().await,
+            WalletCommand::Open(name, secret) => self.open(name, secret).await,
+            WalletCommand::Use(name, secret) => self.use_(name, secret, open_cmd).await,
+            WalletCommand::Delete(name) => self.delete(name).await,
+            WalletCommand::Help => self.help().await,
+            WalletCommand::Exit => { self.exit().await }
         }
     }
 
@@ -154,7 +154,7 @@ impl WalletCommandHandler {
         &self,
         name: &str,
         secret: &str,
-        open_wallet_command: &OpenWalletCommand,
+        open_wallet_command: Option<OpenWalletCommand>,
     ) -> anyhow::Result<WalletCommandResult> {
         Ok(())
     }
@@ -171,6 +171,10 @@ impl WalletCommandHandler {
         eprintln!(">> exit");
         eprintln!(">> ");
 
-        Ok(())
+        Ok(WalletCommandResult::Help)
+    }
+
+    async fn exit(&self) -> anyhow::Result<WalletCommandResult> {
+        Ok(WalletCommandResult::Exit)
     }
 }
