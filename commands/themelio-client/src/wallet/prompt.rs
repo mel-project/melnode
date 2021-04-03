@@ -22,7 +22,7 @@ impl WalletPrompt {
         }
     }
 
-    /// Given the user input parse it into a wallet and (if applicable) open wallet command
+    /// Get user input and parse it into a wallet command
     pub(crate) async fn input(&self) -> anyhow::Result<(WalletCommand, Option<OpenWalletCommand>)> {
         let input = read_line(self.prompt.clone()).await?;
 
@@ -45,10 +45,12 @@ impl WalletPrompt {
         }
     }
 
+    /// Output the command result
     pub(crate) async fn output(&self, cmd_result: &WalletCommandResult) -> anyhow::Result<()> {
         Ok(())
     }
 
+    /// Output the error when dispatching command
     pub(crate) async fn error(&self, err: &Error, wallet_cmd: &WalletCommand) -> anyhow::Result<()> {
         eprintln!("ERROR: {} when dispatching {:?}", err, wallet_cmd);
         Ok(())

@@ -16,7 +16,7 @@ impl WalletCommandDispatcher {
 
     /// Parse user input into a wallet command process the command
     pub(crate) async fn dispatch(&self, cmd: &WalletCommand, open_cmd: &Option<OpenWalletCommand>) -> anyhow::Result<WalletCommandResult> {
-        // Process the command and return a command result
+        // Dispatch a command and return a command result
         match &cmd {
             WalletCommand::Create(name) => self.create(name).await,
             WalletCommand::Show => self.show().await,
@@ -154,7 +154,7 @@ impl WalletCommandDispatcher {
         &self,
         name: &str,
         secret: &str,
-        open_wallet_command: Option<OpenWalletCommand>,
+        open_wallet_command: &Option<OpenWalletCommand>,
     ) -> anyhow::Result<WalletCommandResult> {
         Ok(())
     }

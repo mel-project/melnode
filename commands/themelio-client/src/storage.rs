@@ -18,7 +18,7 @@ impl WalletStorage {
     }
 
     /// Insert wallet data by wallet name
-    pub async fn add_wallet(&self, name: &str, data: &WalletData) -> anyhow::Result<()> {
+    pub async fn insert(&self, name: &str, data: &WalletData) -> anyhow::Result<()> {
         let db = sled::open(&self.path)?;
         let tree = db.open_tree(WALLET_NAMESPACE)?;
         let map = SledMap::<String, WalletData>::new(tree);
@@ -27,7 +27,7 @@ impl WalletStorage {
     }
 
     /// Get wallet data given wallet name if it exists
-    pub async fn get_wallet_by_name(&self, name: &str) -> anyhow::Result<Option<WalletData>> {
+    pub async fn get(&self, name: &str) -> anyhow::Result<Option<WalletData>> {
         let db = sled::open(&self.path)?;
         let tree = db.open_tree(WALLET_NAMESPACE)?;
         let map = SledMap::<String, WalletData>::new(tree);
@@ -36,16 +36,15 @@ impl WalletStorage {
     }
 
     /// Get a map of wallet data by name which contains all persisted wallet data
-    pub async fn get_all_wallets(&self) -> anyhow::Result<BTreeMap<String, WalletData>> {
+    pub async fn get_all(&self) -> anyhow::Result<BTreeMap<String, WalletData>> {
         let db = sled::open(&self.path).unwrap();
         let tree = db.open_tree(WALLET_NAMESPACE).unwrap();
         let map = SledMap::<String, WalletData>::new(tree);
         Ok(map.get_all().collect())
     }
 
-
     /// Insert wallet data by wallet name
-    pub async fn remove_wallet(&self, name: &str) -> anyhow::Result<()> {
+    pub async fn remove(&self, name: &str) -> anyhow::Result<()> {
        todo!("Not implemented")
     }
 }
