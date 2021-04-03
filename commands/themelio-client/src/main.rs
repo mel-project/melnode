@@ -4,7 +4,7 @@ mod lib;
 
 use structopt::StructOpt;
 use crate::wallet::command::WalletCommandResult;
-use crate::wallet::dispatcher::WalletCommandDispatcher;
+use crate::wallet::dispatcher::Dispatcher;
 use crate::wallet::prompt::WalletPrompt;
 
 #[derive(Debug, StructOpt)]
@@ -27,36 +27,9 @@ pub struct ClientOpts {
 
 /// Run client with command line options
 fn main() {
+    let version = env!("CARGO_PKG_VERSION");
     let opts: ClientOpts = ClientOpts::from_args();
-    let dispatcher = WalletCommandDispatcher::new(&opts.host, &opts.database);
-    smolscale::block_on(run_client_prompt(&dispatcher, env!("CARGO_PKG_VERSION"))).unwrap();
+    let dispatcher = Dispatcher::new(&opts.host, &opts.database, version);
+    smolscale::block_on(dispatcher.run()).unwrap();
 }
 
-/// Execute a command and process the command result until a user exits
-async fn run_client_prompt(dispatcher: &WalletCommandDispatcher, version: &str) -> anyhow::Result<()> {
-    let prompt = WalletPrompt::new(version);
-    loop {
-        // Get command from user input
-        let (wallet_cmd, open_wallet_cmd) = prompt.input().await?;
-
-        // Dispatch the command
-        let dispatcher_result = dispatcher.dispatch(&wallet_cmd, &open_wallet_cmd).await;
-
-        // Handle the dispatcher result
-        match dispatcher_result {
-            Ok(cmd_res) => {
-                // Output command result
-                prompt.output(&cmd_res).await?;
-
-                // Check whether to exit client prompt loop
-                if cmd_res == WalletCommandResult::Exit {
-                    return Ok(());
-                }
-            }
-            Err(err) => {
-                // Output command error
-                prompt.error(&err, &wallet_cmd);
-            }
-        }
-    }
-}

@@ -22,6 +22,31 @@ pub enum OpenWalletCommand {
     Exit,
 }
 
+#[derive(Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum OpenWalletCommandResult {
+    Faucet,
+    Deposit,
+    Withdraw,
+    Swap,
+    SendCoins(String, String, String), // break this into two results or actually init with mut and modify and show?
+    AddCoins(String),
+    Balance,
+    Help,
+    Exit,
+}
+
+// #[derive(Eq, PartialEq, Debug)]
+// pub enum WalletCommandResult {
+//     Create(CreateResult),
+//     Show(ShowResult),
+//     Open(OpenResult),
+//     Use(UseResult),
+//     Delete(DeleteResult),
+//     Help,
+//     Exit
+// }
+
 impl TryFrom<String> for OpenWalletCommand {
     type Error = ScanError;
 
