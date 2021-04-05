@@ -116,7 +116,6 @@ impl<N: Network, L: TxLookup> Streamlet<N, L> {
     }
 
     fn process_msg(&mut self, sender: Ed25519PK, msg: Message) -> anyhow::Result<()> {
-        dbg!(&msg);
         match msg {
             Message::Proposal(prop) => {
                 log::warn!("STUPIDLY putting in proposal");
@@ -165,8 +164,10 @@ impl<N: Network, L: TxLookup> Streamlet<N, L> {
             self.partial_props.remove(&prop.block.header.hash());
             let height = prop.height();
             let hash = prop.block.header.hash();
-            if let Err(err) = self.chain.process_proposal(prop) {
+            if let Err(err) = self.chain.process_proposal(prop.clone()) {
                 log::warn!("rejecting proposal at height {}: {:?}", height, err);
+                log::warn!("{:#?}", prop);
+                log::warn!("{}", self.chain.graphviz());
             } else {
                 log::debug!(
                     "{:?} voting for proposal at height {}",
@@ -306,6 +307,9 @@ impl MockNet {
 #[async_trait]
 impl Network for MockNet {
     async fn broadcast(&self, msg: SignedMessage) {
+        if fastrand::f32() < 0.1 {
+            return;
+        }
         self.bus.send(&msg).await.expect("this can't be closed");
     }
 

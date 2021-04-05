@@ -78,7 +78,6 @@ impl GenesisConfig {
                 "2ae54755b2e98a3059c68334af97b38603032be53bb2a1a3a183ae0f9d3bdaaf",
                 "3aa3b5e2d64916a055da79635a4406999b66dfbe25afb10fa306aa01e42308a6",
                 "85e374cc3e4dbf47b9a9697126e2e2ae90011b78a54b84adeb2ffe516b79769a",
-                "f186f4a15278a8bbb445c0703dea57c6a009218b2922a4cfa2f9eab4a4e0e7d5",
             ]
             .iter()
             .map(|v| Ed25519PK(hex::decode(v).unwrap().try_into().unwrap()))
