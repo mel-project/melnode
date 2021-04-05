@@ -104,6 +104,13 @@ impl NodeStorage {
         cproof: ConsensusProof,
     ) -> anyhow::Result<()> {
         let highest_height = self.highest_height();
+        if blk.header.height != highest_height + 1 {
+            anyhow::bail!(
+                "cannot apply block {} to height {}",
+                blk.header.height,
+                highest_height
+            );
+        }
         let mut last_state = self
             .get_state(highest_height)
             .expect("database corruption: no state at the stated highest height")

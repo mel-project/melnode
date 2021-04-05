@@ -62,7 +62,7 @@ impl Dispatcher {
 
     /// Create wallet given a valid and unique name and store it
     async fn create(&self, name: &str) -> anyhow::Result<WalletCommandResult> {
-        
+
         let wallet = Wallet::new(&self.host, &self.database);
 
         let command_result = wallet.create()?;

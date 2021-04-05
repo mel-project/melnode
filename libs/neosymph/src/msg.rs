@@ -77,6 +77,7 @@ pub struct ProposalMsg {
 }
 
 /// An actualized proposal
+#[derive(Clone, Debug)]
 pub struct ActualProposal {
     pub block: Block,
     pub last_nonempty: Option<(u64, HashVal)>,
