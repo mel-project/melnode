@@ -1,4 +1,4 @@
-use crate::Transaction;
+pub use crate::Transaction;
 use arbitrary::Arbitrary;
 use primitive_types::U256;
 use serde::{Deserialize, Serialize};
@@ -248,13 +248,13 @@ impl Covenant {
     }
 }
 
-struct Executor {
-    stack: Vec<Value>,
-    heap: HashMap<u16, Value>,
+pub struct Executor {
+    pub stack: Vec<Value>,
+    pub heap: HashMap<u16, Value>,
 }
 
 impl Executor {
-    fn new(heap_init: HashMap<u16, Value>) -> Self {
+    pub fn new(heap_init: HashMap<u16, Value>) -> Self {
         Executor {
             stack: Vec::new(),
             heap: heap_init,
@@ -281,7 +281,7 @@ impl Executor {
         stack.push(op(x)?);
         Some(())
     }
-    fn do_op(&mut self, op: &OpCode, pc: u32) -> Option<u32> {
+    pub fn do_op(&mut self, op: &OpCode, pc: u32) -> Option<u32> {
         match op {
             // arithmetic
             OpCode::ADD => {
@@ -616,7 +616,7 @@ impl Value {
             Some(num.low_u32() as u16)
         }
     }
-    fn from_bytes(bts: &[u8]) -> Self {
+    pub fn from_bytes(bts: &[u8]) -> Self {
         let mut new = im::Vector::new();
         for b in bts {
             new.push_back(*b);
@@ -680,6 +680,17 @@ impl Value {
                 Some(Self::Vector(vec.iter().cloned().collect()))
             }
         }
+    }
+}
+
+impl From<&Transaction> for Value {
+    fn from(tx: &Transaction) -> Self {
+        let ss = serde_json::to_string(tx)
+            .expect("Transaction serialization should not fail.");
+        let ss: serde_json::Value = serde_json::from_str(&ss)
+            .expect("Serialized tx should be convertable into a json Value.");
+        Self::from_serde_json(ss)
+            .expect("Json Value from Transaction should convert to Value.")
     }
 }
 
