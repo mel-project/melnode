@@ -73,23 +73,25 @@ impl GenesisConfig {
             network: NetID::Testnet,
             init_micromels: 1 << 32,
             init_covhash: Covenant::always_true().hash(),
-            stakes: vec![(
-                HashVal::default(),
-                StakeDoc {
-                    pubkey: Ed25519PK(
-                        hex::decode(
-                            "c8d4dd8823ce61278ef4d668e40459fa1853026cbb965261ec1c50a9ba3afa03",
-                        )
-                        .unwrap()
-                        .try_into()
-                        .unwrap(),
-                    ),
-                    e_start: 0,
-                    e_post_end: 1 << 32,
-                    syms_staked: MICRO_CONVERTER,
-                },
-            )]
-            .into_iter()
+            stakes: [
+                "fae1ff56a62639c7959bf200465f4e06291e4e4dbd751cf4d2c13a8a6bea537c",
+                "2ae54755b2e98a3059c68334af97b38603032be53bb2a1a3a183ae0f9d3bdaaf",
+                "3aa3b5e2d64916a055da79635a4406999b66dfbe25afb10fa306aa01e42308a6",
+                "85e374cc3e4dbf47b9a9697126e2e2ae90011b78a54b84adeb2ffe516b79769a",
+            ]
+            .iter()
+            .map(|v| Ed25519PK(hex::decode(v).unwrap().try_into().unwrap()))
+            .map(|pubkey| {
+                (
+                    tmelcrypt::hash_single(&pubkey.0),
+                    StakeDoc {
+                        pubkey,
+                        e_start: 0,
+                        e_post_end: 1 << 32,
+                        syms_staked: 1,
+                    },
+                )
+            })
             .collect(),
             init_fee_pool: 1 << 64,
         }
@@ -342,7 +344,6 @@ impl State {
             stakes: SmtMapping::new(empty_tree),
         }
     }
-
     pub fn get_height_entropy(&self, height: u64) -> HashVal {
         // get the last 1021 block hashes
         let hashes: Vec<HashVal> = (0..height)

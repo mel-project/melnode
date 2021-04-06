@@ -125,7 +125,6 @@ impl<N: Network, L: TxLookup> Streamlet<N, L> {
                 .chain
                 .process_vote(sender, vmsg.voting_for)
                 .context("can't process vote")?,
-            _ => anyhow::bail!("not a valid message in this context"),
         }
         Ok(())
     }

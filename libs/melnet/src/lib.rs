@@ -92,22 +92,12 @@ impl NetState {
             })
         };
         loop {
-            let conn = listener.accept().await;
+            let (conn, _) = listener.accept().await.unwrap();
             let self_copy = self.clone();
-            match conn {
-                Ok((conn, _)) => {
-                    //let conn: Async<TcpStream> = conn;
-                    smolscale::spawn(async move {
-                        let _ = self_copy.server_handle(conn).await;
-                    })
-                    .detach();
-                }
-                Err(err) => {
-                    debug!("exiting listener due to {:?}", err);
-                    spammer.cancel().await;
-                    return;
-                }
-            }
+            smolscale::spawn(async move {
+                let _ = self_copy.server_handle(conn).await;
+            })
+            .detach();
         }
     }
 

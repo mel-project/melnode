@@ -1,10 +1,19 @@
-use std::{collections::HashMap, net::SocketAddr, sync::Arc};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Duration};
 
-use crate::{msg::SignedMessage, Network};
+use crate::{
+    msg::{Message, SignedMessage},
+    Network,
+};
+use anyhow::Context;
 use async_trait::async_trait;
+use melnet::NetState;
+use msgstate::{MsgState, MsgStateDiff, MsgStateStatus};
+use parking_lot::Mutex;
 use smol::channel::{Receiver, Sender};
+use smol::prelude::*;
+use smol_timeout::TimeoutExt;
 use tmelcrypt::Ed25519PK;
-
+mod msgstate;
 const NETNAME: &str = "testnet-staker";
 
 const SYMPH_GOSSIP: &str = "symph-gossip";
@@ -17,8 +26,9 @@ pub struct SymphGossip {
     network: melnet::NetState,
     stuff_incoming: Sender<SignedMessage>,
     incoming: Receiver<SignedMessage>,
+
     // a mapping of seqnos to senders
-    sender_to_seq: HashMap<Ed25519PK, u64>,
+    messages: Arc<Mutex<MsgState>>,
     _task: Arc<smol::Task<()>>,
 }
 
@@ -35,14 +45,20 @@ impl SymphGossip {
         }
         network.add_route(addr);
         let (send_incoming, incoming) = smol::channel::unbounded();
-        let stuff_incoming = send_incoming.clone();
-        network.register_verb(
-            SYMPH_GOSSIP,
-            melnet::anon_responder(move |req: melnet::Request<SignedMessage, ()>| {
-                let _ = send_incoming.try_send(req.body.clone());
-                req.respond(Ok(()))
-            }),
-        );
+        let messages = Arc::new(Mutex::new(MsgState::default()));
+        {
+            let messages = messages.clone();
+            network.register_verb(
+                SYMPH_GOSSIP,
+                melnet::anon_responder(
+                    move |req: melnet::Request<MsgStateStatus, MsgStateDiff>| {
+                        let status = req.body.clone();
+                        let diff = messages.lock().oneside_diff(status);
+                        req.respond(Ok(diff))
+                    },
+                ),
+            );
+        }
         network.register_verb(
             CONFIRM_SOLICIT,
             melnet::anon_responder(move |req: melnet::Request<u64, _>| {
@@ -51,15 +67,19 @@ impl SymphGossip {
             }),
         );
         let net2 = network.clone();
+        let msg2 = messages.clone();
+        let sinc = send_incoming.clone();
         let _task = smolscale::spawn(async move {
+            let net3 = net2.clone();
             net2.run_server(smol::net::TcpListener::bind(addr).await.unwrap())
+                .race(broadcast_loop(net3, msg2, sinc))
                 .await;
         });
         Ok(Self {
+            stuff_incoming: send_incoming,
             network,
-            stuff_incoming,
             incoming,
-            sender_to_seq: HashMap::new(),
+            messages,
             _task: Arc::new(_task),
         })
     }
@@ -72,7 +92,10 @@ impl SymphGossip {
         let random_route = *self.network.routes().first().unwrap();
         Ok(melnet::g_client()
             .request(random_route, NETNAME, CONFIRM_SOLICIT, height)
-            .await?)
+            .timeout(Duration::from_secs(10))
+            .await
+            .ok_or_else(|| anyhow::anyhow!("melnet timeout"))?
+            .context(format!("error connecting to {}", random_route))?)
     }
 }
 
@@ -80,26 +103,7 @@ impl SymphGossip {
 impl Network for SymphGossip {
     async fn broadcast(&self, msg: SignedMessage) {
         let _ = self.stuff_incoming.try_send(msg.clone());
-        let neighs = self.network.routes();
-        let bcast_tasks: Vec<_> = neighs
-            .into_iter()
-            .take(16)
-            .map(|neigh| {
-                let msg = msg.clone();
-                smolscale::spawn(async move {
-                    if let Err(err) = melnet::g_client()
-                        .request::<_, ()>(neigh, NETNAME, SYMPH_GOSSIP, msg)
-                        .await
-                    {
-                        log::warn!("error broadcasting: {:?}", err);
-                        return;
-                    }
-                })
-            })
-            .collect();
-        for task in bcast_tasks {
-            task.await
-        }
+        self.messages.lock().insert(msg);
     }
 
     async fn receive(&mut self) -> SignedMessage {
@@ -113,18 +117,42 @@ impl Network for SymphGossip {
             if msg.body().is_none() {
                 continue;
             }
-            log::debug!("got gossip msg {:?}", msg);
-            let last_seq = self
-                .sender_to_seq
-                .get(&msg.sender)
-                .cloned()
-                .unwrap_or_default();
-            if msg.sequence <= last_seq {
-                continue;
-            }
-            self.sender_to_seq.insert(msg.sender, msg.sequence);
-            self.broadcast(msg.clone()).await;
             return msg;
         }
+    }
+}
+
+// Broadcast loop.
+async fn broadcast_loop(
+    network: NetState,
+    messages: Arc<Mutex<MsgState>>,
+    send_incoming: Sender<SignedMessage>,
+) {
+    loop {
+        let status = messages.lock().snapshot();
+        // log::trace!("status obtained: {:?}", status);
+        let neighbor = network.routes()[0];
+
+        let res = melnet::g_client()
+            .request(neighbor, NETNAME, SYMPH_GOSSIP, status)
+            .timeout(Duration::from_secs(10))
+            .await;
+        match res {
+            Some(Ok(diff)) => {
+                // log::trace!("diff obtained: {:?}", diff);
+                let mut new_msgs = messages.lock().apply_diff(diff);
+                // we sort the new messages by putting all the proposals before all the votes.
+                // this prevents 'dangling votes'
+                new_msgs.sort_by_key(|v| match &v.body() {
+                    Some(Message::Proposal(..)) => 0,
+                    _ => 1,
+                });
+                for msg in new_msgs {
+                    let _ = send_incoming.try_send(msg);
+                }
+            }
+            other => log::warn!("broadcast_loop error: {:?}", other),
+        }
+        smol::Timer::after(Duration::from_millis(100)).await;
     }
 }

@@ -1,8 +1,0 @@
-[network]
-latency_mean_ms = [0.0, 2000.0]
-latency_std_dev = [0.0, 3.0]
-loss_probability = [0.0, 0.05]
-
-[participants]
-pareto_alpha = [0.0, 10.0]
-num_participants = [300, 1500]
