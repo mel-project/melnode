@@ -179,10 +179,11 @@ async fn staker_loop(
             match evt {
                 StreamletEvt::SolicitProp(last_state, height, prop_send) => {
                     // If we already have a higher state, this means that we were offline and need to reboot symphonia.
-                    if height <= storage.read().highest_height() {
-                        anyhow::bail!("We already have a higher state, so we MUST die")
+                    let last_confirmed_state = storage.read().highest_state();
+                    if last_confirmed_state.inner_ref().height > last_state.inner_ref().height {
+                        log::warn!("LCS has bigger height than we have! Update chainstate and skip this round to be safe.");
+                        // cstate.force_finalize(last_state);
                     }
-
                     let provis_state = storage.read().mempool().to_state();
                     let out_of_bounds = height / blkstructs::STAKE_EPOCH != epoch;
                     let action = if !out_of_bounds {
@@ -250,7 +251,7 @@ async fn staker_loop(
                         unconfirmed_finalized
                             .insert(state.inner_ref().height, state.header().hash());
                     }
-                    let confirmation_semaphore = Semaphore::new(256);
+                    let confirmation_semaphore = Semaphore::new(16);
                     let mut confirmation_tasks = FuturesUnordered::new();
                     for state in states {
                         // If this state is beyond our epoch, then we do NOT confirm it.
