@@ -206,7 +206,7 @@ impl ValClientSnapshot {
 }
 
 /// A client to a particular node server.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct NodeClient {
     remote: SocketAddr,
     netname: String,
@@ -258,17 +258,7 @@ impl NodeClient {
         elem: Substate,
         key: HashVal,
     ) -> melnet::Result<(Vec<u8>, FullProof)> {
-        let tuple: (Vec<u8>, CompressedProof) = stdcode::deserialize(
-            &self
-                .request(NodeRequest::GetSmtBranch(height, elem, key))
-                .await?,
-        )
-        .map_err(|e| melnet::MelnetError::Custom(e.to_string()))?;
-        let decompressed = tuple
-            .1
-            .decompress()
-            .ok_or_else(|| melnet::MelnetError::Custom("could not decompress proof".into()))?;
-        Ok((tuple.0, decompressed))
+        get_smt_branch(self.clone(), height, elem, key).await
     }
 
     /// Gets the stakers, **as the raw SMT mapping**
@@ -276,4 +266,24 @@ impl NodeClient {
         stdcode::deserialize(&self.request(NodeRequest::GetStakersRaw(height)).await?)
             .map_err(|e| melnet::MelnetError::Custom(e.to_string()))
     }
+}
+
+#[cached::proc_macro::cached(result = true)]
+async fn get_smt_branch(
+    this: NodeClient,
+    height: u64,
+    elem: Substate,
+    keyhash: HashVal,
+) -> melnet::Result<(Vec<u8>, FullProof)> {
+    let tuple: (Vec<u8>, CompressedProof) = stdcode::deserialize(
+        &this
+            .request(NodeRequest::GetSmtBranch(height, elem, keyhash))
+            .await?,
+    )
+    .map_err(|e| melnet::MelnetError::Custom(e.to_string()))?;
+    let decompressed = tuple
+        .1
+        .decompress()
+        .ok_or_else(|| melnet::MelnetError::Custom("could not decompress proof".into()))?;
+    Ok((tuple.0, decompressed))
 }

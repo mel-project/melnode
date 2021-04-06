@@ -1913,6 +1913,7 @@ version = "0.1.0"
 dependencies = [
  "autosmt",
  "blkstructs",
+ "cached",
  "melnet",
  "serde",
  "stdcode",
@@ -3050,12 +3051,15 @@ dependencies = [
  "anyhow",
  "blkstructs",
  "hex",
+ "log",
  "nodeprot",
  "once_cell",
  "smol",
  "structopt",
  "tide",
  "tmelcrypt",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
