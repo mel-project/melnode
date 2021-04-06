@@ -447,14 +447,12 @@ impl Executor {
             // control flow
             OpCode::BEZ(jgap) => {
                 let top = self.stack.pop()?;
-                self.stack.push(top.clone());
                 if top == Value::Int(U256::zero()) {
                     return Some(pc + 1 + *jgap as u32);
                 }
             }
             OpCode::BNZ(jgap) => {
                 let top = self.stack.pop()?;
-                self.stack.push(top.clone());
                 if top != Value::Int(U256::zero()) {
                     return Some(pc + 1 + *jgap as u32);
                 }
