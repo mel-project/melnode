@@ -12,13 +12,13 @@ use std::io::prelude::*;
 use std::collections::BTreeMap;
 
 /// Format the CLI prompt with the version of the binary
-pub(crate) async fn format_prompt(version: &str) -> String {
+pub(crate) async fn format_prompt(version: &str) -> anyhow::Result<String> {
     let prompt_stack: Vec<String> = vec![
         format!("themelio-client").cyan().bold().to_string(),
         format!("(v{})", version).magenta().to_string(),
         format!("➜ ").cyan().bold().to_string(),
     ];
-    format!("{}", prompt_stack.join(" "))
+    Ok(format!("{}", prompt_stack.join(" ")))
 }
 
 /// Get user input and parse it into a wallet command
@@ -49,11 +49,7 @@ pub(crate) async fn new_wallet_info(name: &str, sk: Ed25519SK, wallet_data: &Wal
     // Display contents of keypair and address from covenant
     let mut tw = TabWriter::new(vec![]);
     writeln!(tw, ">> New data:\t{}", name.bold()).unwrap();
-    writeln!(
-        tw,
-        ">> Address:\t{}",
-        wallet_data.my_script.hash().to_addr().yellow()
-    ).unwrap();
+    writeln!(tw, ">> Address:\t{}", wallet_data.my_script.hash().to_addr().yellow()).unwrap();
     writeln!(tw, ">> Secret:\t{}", hex::encode(sk.0).dimmed()).unwrap();
     eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
     Ok(())
@@ -76,7 +72,7 @@ pub(crate) async fn output_cmd_error(err: &Error, wallet_cmd: &WalletCommand) ->
 }
 
 /// Show available input commands
-pub(crate) async fn help() {
+pub(crate) async fn output_help() -> anyhow::Result<()> {
     eprintln!("\nAvailable commands are: ");
     eprintln!(">> create <wallet-name>");
     eprintln!(">> open <wallet-name> <secret>");
@@ -85,4 +81,11 @@ pub(crate) async fn help() {
     eprintln!(">> help");
     eprintln!(">> exit");
     eprintln!(">> ");
+    Ok(())
+}
+
+/// Show exit message
+pub(crate) async fn output_exit() -> anyhow::Result<()> {
+    eprintln!("\nExiting Themelio Client");
+    Ok(())
 }
