@@ -1,16 +1,17 @@
 use crate::wallet::command::WalletCommand;
 use crate::wallet::open::command::OpenWalletCommand;
 use crate::wallet::wallet::Wallet;
-use crate::wallet::prompt;
-use crate::wallet::open::dispatcher as open_dispatcher;
+use crate::wallet::prompter::{Input, Output};
+use crate::wallet::open::dispatcher::OpenWalletDispatcher;
+use crate::wallet::error::ClientError;
 
-pub struct Dispatcher {
+pub struct WalletDispatcher {
     host: smol::net::SocketAddr,
     database: std::path::PathBuf,
     version: String
 }
 
-impl Dispatcher {
+impl WalletDispatcher {
     pub(crate) fn new(host: &smol::net::SocketAddr, database: &std::path::PathBuf, version: &str) -> Self {
         let host = host.clone();
         let database = database.clone();
@@ -20,96 +21,96 @@ impl Dispatcher {
 
     /// Dispatch commands from user input and show output using prompt until user exits.
     pub(crate) async fn run(&self) -> anyhow::Result<()> {
-        let prompt = prompt::format_prompt(&self.version).await?;
+        let prompt = Input::format_prompt(&self.version).await?;
 
         loop {
-            // Get command from user input
-            let (cmd, open_cmd) = prompt::input_command(&prompt).await?;
+            // Get command from user input.
+            let (cmd, open_cmd) = Input::command(&prompt).await?;
 
-            // Exit if the user chooses to exit
+            // Exit if the user chooses to exit.
             if cmd == WalletCommand::Exit {
+                Output::exit().await?;
                 return Ok(());
             }
 
-            // Dispatch the command
+            // Dispatch the command (with an optional 'open' command for 'use' single-line mode).
             let dispatch_result = &self.dispatch(&cmd, &open_cmd).await;
 
-            // Output error, if any, and continue running
+            // Output error, if any, and continue running.
             match dispatch_result {
-                Err(err) => prompt::output_cmd_error(err, &cmd).await?,
+                Err(err) => Output::error(err, &cmd).await?,
                 _ => {}
             }
         }
     }
 
-    /// Parse user input into a wallet command process the command
+    /// Parse user input into a wallet command process the command.
     async fn dispatch(&self, cmd: &WalletCommand, open_cmd: &Option<OpenWalletCommand>) -> anyhow::Result<()> {
-        // Dispatch a command and return a command result
+        // Dispatch a command and return a command result.
         match &cmd {
             WalletCommand::Create(name) => self.create(name).await,
             WalletCommand::Show => self.show().await,
             WalletCommand::Open(name, secret) => self.open(name, secret).await,
-            WalletCommand::Use(name, secret) => self.use_(name, secret, open_cmd).await,
+            WalletCommand::Use(name, secret) => self.use_(name, secret, open_cmd.unwrap()).await,
             WalletCommand::Delete(name) => self.delete(name).await,
             WalletCommand::Help => self.help().await,
             WalletCommand::Exit => { self.exit().await }
         }
     }
 
-    /// Create wallet given a valid and unique name and store it
+    /// Create a new wallet and output it's information to user.
     async fn create(&self, name: &str) -> anyhow::Result<()> {
         let wallet = Wallet::new(&self.host, &self.database);
         let (sk, wallet_data) = wallet.create(name).await?;
-        prompt::new_wallet_info(name, sk, &wallet_data);
+        Output::wallet(name, sk, &wallet_data);
         Ok(())
     }
 
+    /// Delete an existing wallet.
     async fn delete(&self, name: &str) -> anyhow::Result<()> {
         todo!("Not implemented")
     }
 
-    /// Shows all stored wallet names and the corresponding wallet address
+    /// Shows all stored wallet data.
     async fn show(&self) -> anyhow::Result<()> {
         let wallet = Wallet::new(&self.host, &self.database);
         let wallets = wallet.get_all().await?;
-        prompt::wallets_info(wallets).await;
+        Output::wallets(wallets).await;
         Ok(())
     }
 
-    /// If wallet does not exist finish the open command,
-    /// otherwise run commands in open wallet mode until exit command.
+    /// Open a wallet given the name and secret and run in open wallet dispatch mode.
     async fn open(
         &self,
         name: &str,
         secret: &str,
     ) -> anyhow::Result<()> {
-        let dispatcher = open_dispatcher::Dispatcher::new(&opts.host, &opts.database, version, name);
-
+        let dispatcher = OpenWalletDispatcher::new(&self.host, &self.database, &self.version, name, secret);
         dispatcher.run().await?;
-
-        Ok(());
-
+        Ok(())
     }
 
-    /// Use a particular wallet to run a single open wallet command
+    /// Use a particular wallet to dispatch a single open wallet command.
     async fn use_(
         &self,
         name: &str,
         secret: &str,
-        open_wallet_command: &Option<OpenWalletCommand>,
+        open_wallet_command: OpenWalletCommand,
     ) -> anyhow::Result<()> {
-        let dispatcher = open_dispatcher::Dispatcher::new(&self.host, &self.database, &self.version, name);
-        dispatcher.run_once().await?;
-        Ok(());
-    }
-
-    async fn help(&self) -> anyhow::Result<()> {
-        prompt::output_help().await?;
+        let dispatcher = OpenWalletDispatcher::new(&self.host, &self.database, &self.version, name, secret);
+        dispatcher.dispatch(&open_wallet_command).await?;
         Ok(())
     }
 
+    /// Output help message to user.
+    async fn help(&self) -> anyhow::Result<()> {
+        Output::help().await?;
+        Ok(())
+    }
+
+    /// Output exit message to user.
     async fn exit(&self) -> anyhow::Result<()> {
-        prompt::output_exit().await?;
+        Output::exit().await?;
         Ok(())
     }
 }

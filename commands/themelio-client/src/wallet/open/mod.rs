@@ -1,3 +1,3 @@
 pub mod command;
-pub mod prompt;
+pub mod prompter;
 pub mod dispatcher;

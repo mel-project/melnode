@@ -2,7 +2,7 @@ mod storage;
 mod wallet;
 
 use structopt::StructOpt;
-use crate::wallet::dispatcher::Dispatcher;
+use crate::wallet::dispatcher::WalletDispatcher;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "Themelio Client CLI")]
@@ -17,7 +17,7 @@ pub struct ClientOpts {
     #[structopt(long)]
     host: smol::net::SocketAddr,
 
-    // File path to database for client wallet storage
+    /// File path to database for client wallet storage
     #[structopt(long, short, parse(from_os_str), default_value = "/tmp/testclient")]
     database: std::path::PathBuf,
 }
@@ -26,7 +26,7 @@ pub struct ClientOpts {
 fn main() {
     let version = env!("CARGO_PKG_VERSION");
     let opts: ClientOpts = ClientOpts::from_args();
-    let dispatcher = Dispatcher::new(&opts.host, &opts.database, version);
+    let dispatcher = WalletDispatcher::new(&opts.host, &opts.database, version);
     smolscale::block_on(dispatcher.run()).unwrap();
 }
 

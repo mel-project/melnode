@@ -10,5 +10,5 @@ pub enum ClientError {
     #[error("provided secret does not unlock wallet with name {:?} ", .0)]
     InvalidWalletSecret(String),
     #[error("provided invalid input arguments to client {:?} ", .0)]
-    InvalidInput(String),
+    InvalidInputArgs(String),
 }

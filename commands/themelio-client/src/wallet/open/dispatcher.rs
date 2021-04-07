@@ -1,8 +1,8 @@
 use crate::wallet::wallet::Wallet;
-use crate::wallet::open::prompt;
+use crate::wallet::open::prompter::{Input, Output};
 use crate::wallet::open::command::OpenWalletCommand;
 
-pub struct Dispatcher {
+pub struct OpenWalletDispatcher {
     host: smol::net::SocketAddr,
     database: std::path::PathBuf,
     version: String,
@@ -10,7 +10,7 @@ pub struct Dispatcher {
     secret: String,
 }
 
-impl Dispatcher {
+impl OpenWalletDispatcher {
     pub(crate) fn new(host: &smol::net::SocketAddr, database: &std::path::PathBuf, version: &str, name: &str, secret: &str) -> Self {
         let host = host.clone();
         let database = database.clone();
@@ -22,14 +22,15 @@ impl Dispatcher {
 
     /// Dispatch commands from user input and show output using prompt until user exits.
     pub(crate) async fn run(&self) -> anyhow::Result<()> {
-        let prompt = prompt::format_prompt(&self.version, &self.name).await?;
+        let prompt = Input::format_prompt(&self.version, &self.name).await?;
 
         loop {
             // Get command from user input
-            let open_cmd = prompt::input_command(&prompt).await?;
+            let open_cmd = Input::command(&prompt).await?;
 
             // Exit if the user chooses to exit
             if open_cmd == OpenWalletCommand::Exit {
+                Output::exit.await?;
                 return Ok(());
             }
 
@@ -38,29 +39,14 @@ impl Dispatcher {
 
             // Output error, if any, and continue running
             match dispatch_result {
-                Err(err) => prompt::output_cmd_error(err, &open_cmd).await?,
+                Err(err) => Output::error(err, &open_cmd).await?,
                 _ => {}
             }
         }
     }
 
-    /// Dispatch commands from user input and show output using prompt until user exits.
-    pub(crate) async fn run_once(&self, open_cmd: OpenWalletCommand) -> anyhow::Result<()> {
-        // Exit if the user chooses to exit
-        if open_cmd == OpenWalletCommand::Exit {
-            return Ok(());
-        }
-
-        // Dispatch the command
-        let dispatch_result = &self.dispatch(&open_cmd).await;
-
-        // if dispatch_result.is_err() {
-        //     // prompt::output_cmd_error(dispatcherr, &open_cmd).await?
-        // }
-    }
-
     /// Parse user input into a wallet command process the command
-    async fn dispatch(&self, open_cmd: &OpenWalletCommand) -> anyhow::Result<()> {
+    pub(crate) async fn dispatch(&self, open_cmd: &OpenWalletCommand) -> anyhow::Result<()> {
         // Dispatch a command and return a command result
         match &open_cmd {
             OpenWalletCommand::Faucet(amt, denom) => { self.faucet(amt, denom).await?; }
@@ -83,11 +69,11 @@ impl Dispatcher {
 
         let coin = wallet.faucet(&wallet_data, self.amt, self.denom).await?;
 
-        prompt::output_faucet_tx(wallet_data, coin).await?;
+        prompter::output_faucet_tx(wallet_data, coin).await?;
 
         self.confirm_faucet_tx(coin).await?;
 
-        prompt::faucet_tx_confirmed().await?;
+        prompter::faucet_tx_confirmed().await?;
 
         Ok(())
     }
@@ -95,7 +81,7 @@ impl Dispatcher {
     async fn confirm_faucet(&self, coin_id: CoinId) -> anyhow::Result<()> {
         loop {
 
-            prompt::faucet_tx_confirming().await?;
+            prompter::faucet_tx_confirming().await?;
         }
         //                 eprintln!(
 //                     ">> Faucet transaction for {} mels broadcast!",
@@ -181,7 +167,7 @@ impl Dispatcher {
 //                     }
 //                 }
     }
-    async fn balance(&self, amt: &str, denom: &str) -> anyhow::Result<()> {
+    async fn balance(&self) -> anyhow::Result<()> {
         let wallet = Wallet::new(&self.host, &self.database);
         let wallet_data = wallet.open(&self.name, &self.secret).await?;
         // let prompt = open::prompt::format_prompt(&self.version).await?;
@@ -192,7 +178,7 @@ impl Dispatcher {
 
     /// Show available open wallet inputs to user
     async fn help(&self) -> anyhow::Result<()> {
-        prompt::output_help().await?;
+        prompter::output_help().await?;
         Ok(())
     }
 }
