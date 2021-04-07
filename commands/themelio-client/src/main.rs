@@ -29,4 +29,3 @@ fn main() {
     let dispatcher = WalletDispatcher::new(&opts.host, &opts.database, version);
     smolscale::block_on(dispatcher.run()).unwrap();
 }
-

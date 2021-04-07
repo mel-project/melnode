@@ -3,7 +3,6 @@ use crate::wallet::open::command::OpenWalletCommand;
 use crate::wallet::wallet::Wallet;
 use crate::wallet::prompter::{Input, Output};
 use crate::wallet::open::dispatcher::OpenWalletDispatcher;
-use crate::wallet::error::ClientError;
 
 pub struct WalletDispatcher {
     host: smol::net::SocketAddr,
@@ -44,7 +43,7 @@ impl WalletDispatcher {
         }
     }
 
-    /// Parse user input into a wallet command process the command.
+    /// Dispatch and process the command.
     async fn dispatch(&self, cmd: &WalletCommand, open_cmd: &Option<OpenWalletCommand>) -> anyhow::Result<()> {
         // Dispatch a command and return a command result.
         match &cmd {

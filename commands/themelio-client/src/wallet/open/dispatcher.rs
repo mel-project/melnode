@@ -25,19 +25,19 @@ impl OpenWalletDispatcher {
         let prompt = Input::format_prompt(&self.version, &self.name).await?;
 
         loop {
-            // Get command from user input
+            // Get command from user input.
             let open_cmd = Input::command(&prompt).await?;
 
-            // Exit if the user chooses to exit
+            // Exit if the user chooses to exit.
             if open_cmd == OpenWalletCommand::Exit {
                 Output::exit.await?;
                 return Ok(());
             }
 
-            // Dispatch the command
+            // Dispatch the command.
             let dispatch_result = &self.dispatch(&open_cmd).await;
 
-            // Output error, if any, and continue running
+            // Output error, if any, and continue running.
             match dispatch_result {
                 Err(err) => Output::error(err, &open_cmd).await?,
                 _ => {}
@@ -45,7 +45,7 @@ impl OpenWalletDispatcher {
         }
     }
 
-    /// Parse user input into a wallet command process the command
+    /// Dispatch and process the command.
     pub(crate) async fn dispatch(&self, open_cmd: &OpenWalletCommand) -> anyhow::Result<()> {
         // Dispatch a command and return a command result
         match &open_cmd {
