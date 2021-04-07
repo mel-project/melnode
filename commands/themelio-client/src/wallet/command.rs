@@ -51,29 +51,3 @@ impl TryFrom<String> for WalletCommand {
         cmd
     }
 }
-
-#[derive(Eq, PartialEq, Debug)]
-pub struct CreateResult {}
-
-#[derive(Eq, PartialEq, Debug)]
-pub struct ShowResult {}
-
-#[derive(Eq, PartialEq, Debug)]
-pub struct OpenResult {}
-
-#[derive(Eq, PartialEq, Debug)]
-pub struct UseResult {}
-
-#[derive(Eq, PartialEq, Debug)]
-pub struct DeleteResult {}
-
-#[derive(Eq, PartialEq, Debug)]
-pub enum WalletCommandResult {
-    Create(CreateResult),
-    Show(ShowResult),
-    Open(OpenResult),
-    Use(UseResult),
-    Delete(DeleteResult),
-    Help,
-    Exit
-}

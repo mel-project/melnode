@@ -1,6 +1,7 @@
-use crate::wallet::command::{WalletCommand, WalletCommandResult};
+use crate::wallet::command::WalletCommand;
 use crate::wallet::open::command::OpenWalletCommand;
 use crate::wallet::prompt::*;
+use crate::wallet::wallet::Wallet;
 
 pub struct Dispatcher {
     host: smol::net::SocketAddr,
@@ -27,12 +28,9 @@ impl Dispatcher {
             // Dispatch the command
             let dispatch_result = &self.dispatch(&cmd, &open_cmd).await;
 
-            // Handle the dispatch result
+            // Check if we errored or if user wants to exit
             match dispatch_result {
                 Ok(cmd_res) => {
-                    // Output command result
-                    // output_cmd_result(&cmd_res).await?;
-
                     // Check whether to exit client prompt loop
                     if *cmd_res == WalletCommandResult::Exit {
                         return Ok(());
@@ -40,14 +38,14 @@ impl Dispatcher {
                 }
                 Err(err) => {
                     // Output command error
-                    // output_dispatch_err(&err, &wallet_cmd);
+                    output_cmd_error(err, &cmd).await?;
                 }
             }
         }
     }
 
     /// Parse user input into a wallet command process the command
-    async fn dispatch(&self, cmd: &WalletCommand, open_cmd: &Option<OpenWalletCommand>) -> anyhow::Result<WalletCommandResult> {
+    async fn dispatch(&self, cmd: &WalletCommand, open_cmd: &Option<OpenWalletCommand>) -> anyhow::Result<()> {
         // Dispatch a command and return a command result
         match &cmd {
             WalletCommand::Create(name) => self.create(name).await,
@@ -61,81 +59,23 @@ impl Dispatcher {
     }
 
     /// Create wallet given a valid and unique name and store it
-    async fn create(&self, name: &str) -> anyhow::Result<WalletCommandResult> {
-
+    async fn create(&self, name: &str) -> anyhow::Result<()> {
         let wallet = Wallet::new(&self.host, &self.database);
-
-        let command_result = wallet.create()?;
-        // only alpha & name doesn't exist? then store and
-        // return wallet name, address, & secret
-
-        Ok(command_result)
-        //
-        // let (pk, sk) = wallet.create()?;
-        //
-        // let prompt = WalletPrompt::new();
-        //
-        // prompt.create_wallet_display(pk, sk)?;
-        // let
-        // let storage = WalletStorage::new(&self.database);
-        // let wallet = Wallet::new(name)?;
-        //
-        //
-        // // Check if wallet has only alphanumerics
-        // if name.chars().all(char::is_alphanumeric) == false {
-        //     eprintln!(
-        //         ">> {}: wallet name can only contain alphanumerics",
-        //         "ERROR".red().bold()
-        //     );
-        //     return Ok(());
-        // }
-        // // Check if wallet with same name already exits
-        // if let Some(_stored_wallet_data) = storage.get_wallet_by_name(name).await? {
-        //     eprintln!(
-        //         ">> {}: wallet named '{}' already exists",
-        //         "ERROR".red().bold(),
-        //         &name
-        //     );
-        //     return Ok(());
-        // }
-        //
-        // // Generate wallet data and store it
-        // let (pk, sk) = tmelcrypt::ed25519_keygen();
-        // let script = Covenant::std_ed25519_pk(pk);
-        // let wallet_data = WalletData::new(script);
-        // storage.insert_wallet(name, &wallet_data).await?;
-        //
-        // // Display contents of keypair and wallet data
-        // let mut tw = TabWriter::new(vec![]);
-        // writeln!(tw, ">> New data:\t{}", name.bold()).unwrap();
-        // writeln!(
-        //     tw,
-        //     ">> Address:\t{}",
-        //     wallet_data.my_script.hash().to_addr().yellow()
-        // )
-        //     .unwrap();
-        // writeln!(tw, ">> Secret:\t{}", hex::encode(sk.0).dimmed()).unwrap();
-        // eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
-
-        // Ok(())
+        let (sk, wallet_data) = wallet.create(name).await?;
+        new_wallet_info(name, sk, &wallet_data);
+        Ok(())
     }
 
-    async fn delete(&self, name: &str) -> anyhow::Result<WalletCommandResult> {
+    async fn delete(&self, name: &str) -> anyhow::Result<()> {
         todo!("Not implemented")
     }
 
     /// Shows all stored wallet names and the corresponding wallet address
-    async fn show(&self) -> anyhow::Result<WalletCommandResult> {
-        Ok(WalletCommandResult::Help)
-        // let mut tw = TabWriter::new(vec![]);
-        // writeln!(tw, ">> [NAME]\t[ADDRESS]")?;
-        // let wallets = storage.get_all_wallets().await?;
-        // for (name, wallet) in wallets.iter() {
-        //     writeln!(tw, ">> {}\t{}", name, wallet.my_script.hash().to_addr())?;
-        // }
-        // tw.flush()?;
-        // eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
-        // Ok(())
+    async fn show(&self) -> anyhow::Result<()> {
+        let wallet = Wallet::new(&self.host, &self.database);
+        let wallets = wallet.get_all().await?;
+        wallets_info(wallets).await;
+        Ok(())
     }
 
     /// If wallet does not exist finish the open command,
@@ -144,8 +84,10 @@ impl Dispatcher {
         &self,
         name: &str,
         secret: &str,
-    ) -> anyhow::Result<WalletCommandResult> {
-        // init wallet
+    ) -> anyhow::Result<()> {
+        let wallet = Wallet::new(&self.host, &self.database);
+
+        let wallet_data = wallet.open(name, secret).await?;
 
         // wallet.load(name)? // error if it doesn't exist or secret doesn't match
         // returns wallet data ...
@@ -159,7 +101,7 @@ impl Dispatcher {
         // note the inner loop in open is more complicated and makes more use of prompt and flow interactions...
         // that means WalletOpenCommandResult::* (all but exit) aren't relevant
 
-        Ok(WalletCommandResult::Help)
+        Ok(())
         // // Load wallet data from storage by name and make sure it exists.
         // let wallet = storage.get_wallet_by_name(name).await?;
         // if wallet.is_none() {
@@ -171,18 +113,7 @@ impl Dispatcher {
         //     return Ok(());
         // }
         // let wallet = wallet.unwrap();
-        //
-        // // Verify the wallet secret correspond to the wallet address / public key
-        // let wallet_secret = hex::decode(secret)?;
-        // let wallet_secret = tmelcrypt::Ed25519SK(wallet_secret.as_slice().try_into()?);
-        // if Covenant::std_ed25519_pk(wallet_secret.to_public()) != wallet.my_script {
-        //     eprintln!(
-        //         ">> {}: wallet named '{}' cannot be unlocked with this secret",
-        //         "ERROR".red().bold(),
-        //         &name
-        //     );
-        //     return Ok(());
-        // }
+
         //
         // // Initialize open wallet command handler to handle transacting with wallet
         // let handler = OpenWalletCommandHandler::new(
@@ -210,11 +141,11 @@ impl Dispatcher {
         name: &str,
         secret: &str,
         open_wallet_command: &Option<OpenWalletCommand>,
-    ) -> anyhow::Result<WalletCommandResult> {
-       Ok(WalletCommandResult::Help)
+    ) -> anyhow::Result<()> {
+       Ok(())
     }
 
-    async fn help(&self) -> anyhow::Result<WalletCommandResult> {
+    async fn help(&self) -> anyhow::Result<()> {
         // eprintln!("\nAvailable commands are: ");
         // eprintln!(">> create <wallet-name>");
         // eprintln!(">> open <wallet-name> <secret>");
@@ -226,10 +157,10 @@ impl Dispatcher {
         // eprintln!(">> exit");
         // eprintln!(">> ");
 
-        Ok(WalletCommandResult::Help)
+        Ok(())
     }
 
-    async fn exit(&self) -> anyhow::Result<WalletCommandResult> {
-        Ok(WalletCommandResult::Exit)
+    async fn exit(&self) -> anyhow::Result<()> {
+        Ok(())
     }
 }

@@ -1,11 +1,17 @@
-use crate::wallet::command::{WalletCommand, WalletCommandResult};
+use crate::wallet::command::WalletCommand;
 use crate::wallet::open::command::OpenWalletCommand;
 use crate::wallet::common::read_line;
 use colored::Colorize;
 use std::convert::TryFrom;
 use anyhow::Error;
+use tabwriter::TabWriter;
+use tmelcrypt::Ed25519SK;
+use crate::wallet::data::WalletData;
 
-/// Format a
+use std::io::prelude::*;
+use std::collections::BTreeMap;
+
+/// Format the CLI prompt with the version of the binary
 pub(crate) async fn format_prompt(version: &str) -> String {
     let prompt_stack: Vec<String> = vec![
         format!("themelio-client").cyan().bold().to_string(),
@@ -38,13 +44,45 @@ pub(crate) async fn input_command(prompt: &str) -> anyhow::Result<(WalletCommand
     }
 }
 
-// /// Output the command result
-// pub(crate) async fn output(&self, cmd_result: &WalletCommandResult) -> anyhow::Result<()> {
-//     Ok(())
-// }
-//
-// /// Output the error when dispatching command
-// pub(crate) async fn error(&self, err: &Error, wallet_cmd: &WalletCommand) -> anyhow::Result<()> {
-//     eprintln!("ERROR: {} when dispatching {:?}", err, wallet_cmd);
-//     Ok(())
-// }
+/// Display name, secret key and covenant of the wallet
+pub(crate) async fn new_wallet_info(name: &str, sk: Ed25519SK, wallet_data: &WalletData) -> anyhow::Result<()>{
+    // Display contents of keypair and address from covenant
+    let mut tw = TabWriter::new(vec![]);
+    writeln!(tw, ">> New data:\t{}", name.bold()).unwrap();
+    writeln!(
+        tw,
+        ">> Address:\t{}",
+        wallet_data.my_script.hash().to_addr().yellow()
+    ).unwrap();
+    writeln!(tw, ">> Secret:\t{}", hex::encode(sk.0).dimmed()).unwrap();
+    eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
+    Ok(())
+}
+
+pub(crate) async fn wallets_info(wallets: BTreeMap<String, WalletData>) {
+    let mut tw = TabWriter::new(vec![]);
+    writeln!(tw, ">> [NAME]\t[ADDRESS]");
+    for (name, wallet) in wallets {
+        writeln!(tw, ">> {}\t{}", name, wallet.my_script.hash().to_addr());
+    }
+    tw.flush();
+    eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
+}
+
+/// Output the error when dispatching command
+pub(crate) async fn output_cmd_error(err: &Error, wallet_cmd: &WalletCommand) -> anyhow::Result<()> {
+    eprintln!("ERROR: {} when dispatching {:?}", err, wallet_cmd);
+    Ok(())
+}
+
+/// Show available input commands
+pub(crate) async fn help() {
+    eprintln!("\nAvailable commands are: ");
+    eprintln!(">> create <wallet-name>");
+    eprintln!(">> open <wallet-name> <secret>");
+    eprintln!(">> use <wallet-name> <secret> <open-wallet-args>");
+    eprintln!(">> show");
+    eprintln!(">> help");
+    eprintln!(">> exit");
+    eprintln!(">> ");
+}

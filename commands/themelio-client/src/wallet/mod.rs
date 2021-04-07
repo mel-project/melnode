@@ -5,3 +5,4 @@ pub mod open;
 pub mod prompt;
 pub mod dispatcher;
 pub mod wallet;
+pub mod error;

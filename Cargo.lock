@@ -3096,6 +3096,7 @@ dependencies = [
  "storage",
  "structopt",
  "tabwriter",
+ "thiserror",
  "tmelcrypt",
 ]
 
