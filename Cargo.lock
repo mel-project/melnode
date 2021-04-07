@@ -1805,7 +1805,7 @@ dependencies = [
  "async-net",
  "by_address",
  "derivative",
- "env_logger 0.7.1",
+ "env_logger 0.8.3",
  "im",
  "lazy_static",
  "log",

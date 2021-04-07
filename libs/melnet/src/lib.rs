@@ -49,7 +49,7 @@ impl NetState {
         this.setup_routing();
         // Spam neighbors with random routes
         // INTENTIONALLY not detach so that it cancels automatically
-        let spammer = {
+        let _spammer = {
             let state = self.clone();
             smolscale::spawn(async move {
                 let mut rng = rand::rngs::OsRng {};
