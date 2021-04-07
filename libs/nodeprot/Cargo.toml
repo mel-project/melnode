@@ -13,3 +13,5 @@ tmelcrypt={path="../tmelcrypt"}
 melnet={path="../melnet"} 
 serde={version="1", features=["derive"]}
 autosmt={path="../autosmt"}
+
+cached="0.23"

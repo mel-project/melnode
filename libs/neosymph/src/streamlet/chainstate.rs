@@ -1,4 +1,4 @@
-use blkstructs::{ProposerAction, SealedState};
+use blkstructs::SealedState;
 use tmelcrypt::{Ed25519PK, HashVal};
 
 use crate::{msg, OOB_PROPOSER_ACTION};
@@ -78,7 +78,18 @@ impl ChainState {
             blk.vote_weight,
             blk.state.header().hash()
         );
-        dbg!(&blk);
+        Ok(())
+    }
+
+    /// Forcibly sets a block to final
+    pub fn force_finalize(&mut self, state: SealedState) -> anyhow::Result<()> {
+        log::warn!("force finalizing {:?}", state.header().hash());
+        let synth = CsBlock {
+            state,
+            vote_weight: 1.0,
+            votes: Default::default(),
+        };
+        self.insert_block(synth);
         Ok(())
     }
 
