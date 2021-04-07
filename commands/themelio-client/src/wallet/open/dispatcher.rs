@@ -22,6 +22,11 @@ impl OpenWalletDispatcher {
 
     /// Dispatch commands from user input and show output using prompt until user exits.
     pub(crate) async fn run(&self) -> anyhow::Result<()> {
+        // Unlock the wallet.
+        let wallet = Wallet::new(&self.host, &self.database);
+        wallet.unlock(&self.name, &self.secret).await?;
+
+        // Show user input prompt for wallet
         let prompt = Input::format_prompt(&self.version, &self.name).await?;
 
         loop {
@@ -30,7 +35,7 @@ impl OpenWalletDispatcher {
 
             // Exit if the user chooses to exit.
             if open_cmd == OpenWalletCommand::Exit {
-                Output::exit.await?;
+                Output::exit().await?;
                 return Ok(());
             }
 
