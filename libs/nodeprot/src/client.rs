@@ -2,6 +2,7 @@ use std::{
     collections::BTreeMap,
     net::SocketAddr,
     sync::{Arc, Mutex},
+    time::Instant,
 };
 
 use autosmt::{CompressedProof, FullProof};
@@ -157,28 +158,28 @@ impl ValClientSnapshot {
     }
 
     /// Gets a historical header.
-    pub async fn get_history(&self, height: u64) -> melnet::Result<Header> {
+    pub async fn get_history(&self, height: u64) -> melnet::Result<Option<Header>> {
         self.get_smt_value_serde(Substate::History, height).await
     }
 
     /// Gets a coin.
-    pub async fn get_coin(&self, coinid: CoinID) -> melnet::Result<CoinDataHeight> {
+    pub async fn get_coin(&self, coinid: CoinID) -> melnet::Result<Option<CoinDataHeight>> {
         self.get_smt_value_serde(Substate::Coins, coinid).await
     }
 
     /// Gets a pool info.
-    pub async fn get_pool(&self, denom: &[u8]) -> melnet::Result<PoolState> {
+    pub async fn get_pool(&self, denom: &[u8]) -> melnet::Result<Option<PoolState>> {
         self.get_smt_value_serde(Substate::Pools, denom).await
     }
 
     /// Gets a stake info.
-    pub async fn get_stake(&self, staking_txhash: HashVal) -> melnet::Result<StakeDoc> {
+    pub async fn get_stake(&self, staking_txhash: HashVal) -> melnet::Result<Option<StakeDoc>> {
         self.get_smt_value_serde(Substate::Stakes, staking_txhash)
             .await
     }
 
     /// Gets a transaction.
-    pub async fn get_transaction(&self, txhash: HashVal) -> melnet::Result<Transaction> {
+    pub async fn get_transaction(&self, txhash: HashVal) -> melnet::Result<Option<Transaction>> {
         self.get_smt_value_serde(Substate::Transactions, txhash)
             .await
     }
@@ -188,16 +189,19 @@ impl ValClientSnapshot {
         &self,
         substate: Substate,
         key: S,
-    ) -> melnet::Result<D> {
+    ) -> melnet::Result<Option<D>> {
         let val = self
             .get_smt_value(
                 substate,
                 tmelcrypt::hash_single(&stdcode::serialize(&key).unwrap()),
             )
             .await?;
+        if val.is_empty() {
+            return Ok(None);
+        }
         let val = stdcode::deserialize(&val)
             .map_err(|_| MelnetError::Custom("fatal deserialization error".into()))?;
-        Ok(val)
+        Ok(Some(val))
     }
 
     /// Gets a local SMT branch, validated.
@@ -237,9 +241,13 @@ impl NodeClient {
 
     /// Helper function to do a request.
     async fn request(&self, req: NodeRequest) -> melnet::Result<Vec<u8>> {
-        melnet::g_client()
+        eprintln!("==> {:?}", req);
+        let start = Instant::now();
+        let res: Vec<u8> = melnet::g_client()
             .request(self.remote, &self.netname, "node", req)
-            .await
+            .await?;
+        eprintln!("<== {:?} ({} bytes)", start.elapsed(), res.len());
+        Ok(res)
     }
 
     /// Sends a tx.
@@ -250,8 +258,7 @@ impl NodeClient {
 
     /// Gets a summary of the state.
     pub async fn get_summary(&self) -> melnet::Result<StateSummary> {
-        stdcode::deserialize(&self.request(NodeRequest::GetSummary).await?)
-            .map_err(|e| melnet::MelnetError::Custom(e.to_string()))
+        get_summary(self.clone()).await
     }
 
     /// Gets an "abbreviated block".
@@ -259,8 +266,7 @@ impl NodeClient {
         &self,
         height: u64,
     ) -> melnet::Result<(AbbreviatedBlock, ConsensusProof)> {
-        stdcode::deserialize(&self.request(NodeRequest::GetAbbrBlock(height)).await?)
-            .map_err(|e| melnet::MelnetError::Custom(e.to_string()))
+        get_abbr_block(self.clone(), height).await
     }
 
     /// Gets an SMT branch.
@@ -275,9 +281,32 @@ impl NodeClient {
 
     /// Gets the stakers, **as the raw SMT mapping**
     pub async fn get_stakers_raw(&self, height: u64) -> melnet::Result<BTreeMap<HashVal, Vec<u8>>> {
-        stdcode::deserialize(&self.request(NodeRequest::GetStakersRaw(height)).await?)
-            .map_err(|e| melnet::MelnetError::Custom(e.to_string()))
+        get_stakers_raw(self.clone(), height).await
     }
+}
+
+#[cached::proc_macro::cached(result = true)]
+async fn get_stakers_raw(
+    this: NodeClient,
+    height: u64,
+) -> melnet::Result<BTreeMap<HashVal, Vec<u8>>> {
+    stdcode::deserialize(&this.request(NodeRequest::GetStakersRaw(height)).await?)
+        .map_err(|e| melnet::MelnetError::Custom(e.to_string()))
+}
+
+#[cached::proc_macro::cached(result = true)]
+async fn get_abbr_block(
+    this: NodeClient,
+    height: u64,
+) -> melnet::Result<(AbbreviatedBlock, ConsensusProof)> {
+    stdcode::deserialize(&this.request(NodeRequest::GetAbbrBlock(height)).await?)
+        .map_err(|e| melnet::MelnetError::Custom(e.to_string()))
+}
+
+#[cached::proc_macro::cached(result = true, time = 5)]
+async fn get_summary(this: NodeClient) -> melnet::Result<StateSummary> {
+    stdcode::deserialize(&this.request(NodeRequest::GetSummary).await?)
+        .map_err(|e| melnet::MelnetError::Custom(e.to_string()))
 }
 
 #[cached::proc_macro::cached(result = true)]

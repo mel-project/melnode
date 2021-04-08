@@ -1,4 +1,8 @@
-use std::{collections::BTreeMap, net::SocketAddr, sync::Arc, time::Duration};
+use std::{
+    collections::BTreeMap,
+    net::SocketAddr,
+    time::{Duration, Instant},
+};
 
 use autosmt::CompressedProof;
 use blkstructs::{ConsensusProof, NetID, Transaction};
@@ -122,11 +126,13 @@ impl NodeServer for AuditorResponder {
     }
 
     fn get_summary(&self) -> melnet::Result<StateSummary> {
+        let start = Instant::now();
         let storage = self.storage.read();
         let highest = storage.highest_state();
         let proof = storage
             .get_consensus(highest.header().height)
             .unwrap_or_default();
+        dbg!(start.elapsed());
         Ok(StateSummary {
             netid: NetID::Testnet,
             height: self.storage.read().highest_height(),

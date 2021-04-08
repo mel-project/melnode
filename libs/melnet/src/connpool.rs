@@ -148,14 +148,11 @@ async fn singlehost_monitor(
     }
 
     loop {
+        let heap_overflow = heap.len() > 256;
         let deadline = async {
-            if let Some((min, _)) = heap.peek_min() {
-                let now = Instant::now();
-                if now < *min {
-                    Timer::after(*min - now).await;
-                } else {
-                    Timer::after(Duration::from_secs(0)).await;
-                }
+            if heap_overflow {
+            } else if let Some((min, _)) = heap.peek_min() {
+                Timer::at(*min).await;
             } else {
                 smol::future::pending().await
             };
@@ -171,7 +168,7 @@ async fn singlehost_monitor(
 
         match evt {
             Evt::Insertion(insertion) => {
-                let inserted_deadline = Instant::now() + Duration::from_secs(1);
+                let inserted_deadline = Instant::now() + Duration::from_secs(60);
                 heap.push((inserted_deadline, ByAddress(Box::new(insertion))));
             }
             Evt::Request(send_response) => {
