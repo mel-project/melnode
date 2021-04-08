@@ -147,7 +147,7 @@ impl State {
     /// Creates a new State from a config
     pub fn genesis(db: &autosmt::Forest, cfg: GenesisConfig) -> Self {
         let empty_tree = db.get_tree(HashVal::default());
-        Self {
+        let mut new_state = Self {
             network: cfg.network,
             height: 0,
             history: SmtMapping::new(empty_tree.clone()),
@@ -166,7 +166,20 @@ impl State {
                 }
                 stakes
             },
-        }
+        };
+        // init micromels etc
+        new_state.coins.insert(
+            CoinID::zero_zero(),
+            CoinDataHeight {
+                height: 0,
+                coin_data: CoinData {
+                    denom: DENOM_TMEL.into(),
+                    value: cfg.init_micromels,
+                    covhash: cfg.init_covhash,
+                },
+            },
+        );
+        new_state
     }
 
     /// Generates an encoding of the state that, in conjunction with a SMT database, can recover the entire state.

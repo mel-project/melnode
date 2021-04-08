@@ -1,5 +1,6 @@
 use std::convert::TryInto;
 
+use blkstructs::CoinID;
 use nodeprot::ValClient;
 use std::fmt::Debug;
 use tide::{Body, StatusCode};
@@ -43,10 +44,34 @@ pub async fn get_transaction(req: tide::Request<ValClient>) -> tide::Result<Body
     let txhash: HashVal = HashVal(
         txhash
             .try_into()
-            .map_err(|_| anyhow::anyhow!("not the right length"))?,
+            .map_err(|_| anyhow::anyhow!("not the right length"))
+            .map_err(to_badreq)?,
     );
     let last_snap = req.state().snapshot().await?;
     let older = last_snap.get_older(height).await?;
     let tx = older.get_transaction(txhash).await?;
     Ok(Body::from_json(&tx.ok_or_else(notfound)?)?)
+}
+
+/// Get a particular coin
+#[tracing::instrument]
+pub async fn get_coin(req: tide::Request<ValClient>) -> tide::Result<Body> {
+    let height: u64 = req.param("height")?.parse()?;
+    let coinid_string: String = req.param("coinid")?.into();
+    let coinid_exploded: Vec<&str> = coinid_string.split('-').collect();
+    if coinid_exploded.len() != 2 {
+        return Err(to_badreq(anyhow::anyhow!("bad coinid")));
+    }
+    let txhash: Vec<u8> = hex::decode(&coinid_exploded[0])?;
+    let txhash: HashVal = HashVal(
+        txhash
+            .try_into()
+            .map_err(|_| anyhow::anyhow!("not the right length"))
+            .map_err(to_badreq)?,
+    );
+    let index: u8 = coinid_exploded[1].parse().map_err(to_badreq)?;
+    let last_snap = req.state().snapshot().await?;
+    let older = last_snap.get_older(height).await?;
+    let cdh = older.get_coin(dbg!(CoinID { txhash, index })).await?;
+    Ok(Body::from_json(&cdh.ok_or_else(notfound)?)?)
 }

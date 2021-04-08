@@ -70,7 +70,7 @@ impl Client {
             .unwrap();
     }
     /// Does a melnet request to any given endpoint.
-    pub async fn request<TInput: Serialize, TOutput: DeserializeOwned>(
+    pub async fn request<TInput: Serialize, TOutput: DeserializeOwned + std::fmt::Debug>(
         &self,
         addr: SocketAddr,
         netname: &str,
@@ -79,6 +79,7 @@ impl Client {
     ) -> Result<TOutput> {
         // grab a connection
         let mut conn = self.connect(addr).await.map_err(MelnetError::Network)?;
+        conn.set_nodelay(true).unwrap();
         // send a request
         let rr = stdcode::serialize(&RawRequest {
             proto_ver: PROTO_VER,
