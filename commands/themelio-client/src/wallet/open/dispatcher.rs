@@ -1,6 +1,7 @@
 use crate::wallet::wallet::Wallet;
 use crate::wallet::open::prompter::{Input, Output};
 use crate::wallet::open::command::OpenWalletCommand;
+use blkstructs::CoinID;
 
 pub struct OpenWalletDispatcher {
     host: smol::net::SocketAddr,
@@ -58,36 +59,37 @@ impl OpenWalletDispatcher {
             OpenWalletCommand::Deposit => { todo!("") }
             OpenWalletCommand::Withdraw => { todo!("") }
             OpenWalletCommand::Swap => { todo!("") }
-            OpenWalletCommand::SendCoins(dest, amt, denom) => { self.send_coins(dest, amt, denom).await?; }
-            OpenWalletCommand::AddCoins(coin_id) => { self.add_coins(coin_id).await?; }
+            // OpenWalletCommand::SendCoins(dest, amt, denom) => { self.send_coins(dest, amt, denom).await?; }
+            // OpenWalletCommand::AddCoins(coin_id) => { self.add_coins(coin_id).await?; }
             OpenWalletCommand::Balance => { self.balance().await?; }
             OpenWalletCommand::Help => { self.help().await?; }
             OpenWalletCommand::Exit => {}
+            _ => {}
         }
         Ok(())
     }
 
     async fn faucet(&self, amt: &str, denom: &str) -> anyhow::Result<()> {
-        let wallet = Wallet::new(&self.host, &self.database);
-
-        let wallet_data = wallet.open(&self.name, &self.secret).await?;
-
-        let coin = wallet.faucet(&wallet_data, self.amt, self.denom).await?;
-
-        prompter::output_faucet_tx(wallet_data, coin).await?;
-
-        self.confirm_faucet_tx(coin).await?;
-
-        prompter::faucet_tx_confirmed().await?;
+        // let wallet = Wallet::new(&self.host, &self.database);
+        //
+        // let wallet_data = wallet.open(&self.name, &self.secret).await?;
+        //
+        // let coin = wallet.faucet(&wallet_data, self.amt, self.denom).await?;
+        //
+        // prompter::output_faucet_tx(wallet_data, coin).await?;
+        //
+        // self.confirm_faucet_tx(coin).await?;
+        //
+        // prompter::faucet_tx_confirmed().await?;
 
         Ok(())
     }
 
-    async fn confirm_faucet(&self, coin_id: CoinId) -> anyhow::Result<()> {
-        loop {
-
-            prompter::faucet_tx_confirming().await?;
-        }
+    async fn confirm_faucet(&self, _coin_id: CoinID) -> anyhow::Result<()> {
+        // loop {
+        //
+        //     prompter::faucet_tx_confirming().await?;
+        // }
         //                 eprintln!(
 //                     ">> Faucet transaction for {} mels broadcast!",
 //                     number.to_string().bold()
@@ -108,10 +110,11 @@ impl OpenWalletDispatcher {
 //                         );
 //                         break;
 //                     }
+        Ok(())
     }
     async fn send_coins(&self, amt: &str, denom: &str) -> anyhow::Result<()> {
-        let wallet = Wallet::new(&self.host, &self.database);
-        let wallet_data = wallet.open(&self.name, &self.secret).await?;
+        // let wallet = Wallet::new(&self.host, &self.database);
+        // let wallet_data = wallet.open(&self.name, &self.secret).await?;
         // let prompt = open::prompt::format_prompt(&self.version).await?;
         //                 let tx = active_wallet.create_tx(dest_addr, amount, unit).await?;
 //                 let fee_prompt = format!("Do you wish to send a tx with a fee of {} (y/n): ", tx.fee);
@@ -145,10 +148,11 @@ impl OpenWalletDispatcher {
 //                         break;
 //                     }
 //                 }
+        Ok(())
     }
     async fn add_coins(&self, amt: &str, denom: &str) -> anyhow::Result<()> {
-        let wallet = Wallet::new(&self.host, &self.database);
-        let wallet_data = wallet.open(&self.name, &self.secret).await?;
+        // let wallet = Wallet::new(&self.host, &self.database);
+        // let wallet_data = wallet.open(&self.name, &self.secret).await?;
         // let prompt = open::prompt::format_prompt(&self.version).await?;
         //                 let (coin_data_height, coin_id, _full_proof) =
 //                     active_wallet.get_coin_data_by_id(coin_id).await?;
@@ -171,10 +175,12 @@ impl OpenWalletDispatcher {
 //                         eprintln!("Added coin to wallet");
 //                     }
 //                 }
+        Ok(())
     }
     async fn balance(&self) -> anyhow::Result<()> {
-        let wallet = Wallet::new(&self.host, &self.database);
-        let wallet_data = wallet.open(&self.name, &self.secret).await?;
+        Ok(())
+        // let wallet = Wallet::new(&self.host, &self.database);
+        // let wallet_data = wallet.open(&self.name, &self.secret).await?;
         // let prompt = open::prompt::format_prompt(&self.version).await?;
         //                 let balance = active_wallet.get_balance().await?;
 //                 eprintln!(">> **** BALANCE ****");
@@ -183,7 +189,7 @@ impl OpenWalletDispatcher {
 
     /// Show available open wallet inputs to user
     async fn help(&self) -> anyhow::Result<()> {
-        prompter::output_help().await?;
+        // prompter::output_help().await?;
         Ok(())
     }
 }

@@ -67,7 +67,7 @@ impl WalletDispatcher {
     }
 
     /// Delete an existing wallet.
-    async fn delete(&self, name: &str) -> anyhow::Result<()> {
+    async fn delete(&self, _name: &str) -> anyhow::Result<()> {
         todo!("Not implemented")
     }
 
