@@ -5,7 +5,6 @@ use crate::wallet::error::ClientError;
 use tmelcrypt::Ed25519SK;
 use std::collections::BTreeMap;
 use std::convert::TryInto;
-use anyhow::Error;
 
 pub struct Wallet {
     host: smol::net::SocketAddr,
@@ -67,7 +66,6 @@ impl Wallet {
         if wallet_data.my_script.0 != sk.0 {
             anyhow::bail!(ClientError::InvalidWalletSecret(name.to_string()))
         }
-
         Ok(wallet_data)
     }
 }
