@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_scan::ScanError;
 use std::convert::TryFrom;
 
-#[derive(Eq, PartialEq, Serialize, Debug, Deserialize)]
+#[derive(Eq, PartialEq, Clone, Serialize, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum OpenWalletCommand {
     Faucet(String, String),

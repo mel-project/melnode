@@ -8,28 +8,24 @@ pub struct OpenWalletDispatcher {
     version: String,
     name: String,
     secret: String,
-    locked: bool,
 }
 
 impl OpenWalletDispatcher {
-    pub(crate) fn new(host: &smol::net::SocketAddr, database: &std::path::PathBuf, version: &str, name: &str, secret: &str) -> Self {
+    /// Create a new open wallet dispatcher if wallet exists and we can load it with the secret.
+    pub(crate) async fn new(host: &smol::net::SocketAddr, database: &std::path::PathBuf, version: &str, name: &str, secret: &str) -> anyhow::Result<Self> {
         let host = host.clone();
         let database = database.clone();
         let version = version.to_string();
         let name = name.to_string();
         let secret = secret.to_string();
-        let locked = true;
-        Self { host, database, version, name, secret, locked }
+
+        let _ = Wallet::load(&host, &database, &name, &secret).await?;
+
+        Ok(Self { host, database, version, name, secret })
     }
 
     /// Dispatch commands from user input and show output using prompt until user exits.
     pub(crate) async fn run(&self) -> anyhow::Result<()> {
-        // Ensure we can unlock the wallet given the wallet name and secret.
-        let valid_secret = Wallet::check_secret(&self.host, &self.database, &self.name, &self.secret).await?;
-        if !valid_secret {
-            anyhow::bail!(ClientError::InvalidWalletSecret(name));
-        }
-
         // Format user prompt.
         let prompt = Input::format_prompt(&self.version, &self.name).await?;
 
@@ -44,7 +40,7 @@ impl OpenWalletDispatcher {
             }
 
             // Dispatch the command.
-            let dispatch_result = &self.dispatch(&open_cmd, &wallet).await;
+            let dispatch_result = &self.dispatch(&open_cmd).await;
 
             // Output error, if any, and continue running.
             match dispatch_result {
@@ -55,15 +51,15 @@ impl OpenWalletDispatcher {
     }
 
     /// Dispatch and process the command.
-    pub(crate) async fn dispatch(&self, open_cmd: &OpenWalletCommand, wallet: &Wallet) -> anyhow::Result<()> {
+    pub(crate) async fn dispatch(&self, open_cmd: &OpenWalletCommand) -> anyhow::Result<()> {
         // Dispatch a command and return a command result
         match &open_cmd {
-            OpenWalletCommand::Faucet(amt, denom) => { self.faucet(amt, denom, wallet).await?; }
+            OpenWalletCommand::Faucet(amt, denom) => { self.faucet(amt, denom).await?; }
             OpenWalletCommand::Deposit => { todo!("") }
             OpenWalletCommand::Withdraw => { todo!("") }
             OpenWalletCommand::Swap => { todo!("") }
-            OpenWalletCommand::SendCoins(dest, amt, denom) => { self.send_coins(dest, amt, denom, wallet).await?; }
-            OpenWalletCommand::AddCoins(coin_id) => { self.add_coins(coin_id, wallet).await?; }
+            OpenWalletCommand::SendCoins(dest, amt, denom) => { self.send_coins(dest, amt, denom).await?; }
+            OpenWalletCommand::AddCoins(coin_id) => { self.add_coins(coin_id).await?; }
             OpenWalletCommand::Balance => { self.balance().await?; }
             OpenWalletCommand::Help => { self.help().await?; }
             OpenWalletCommand::Exit => {}

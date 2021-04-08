@@ -5,6 +5,7 @@ use crate::wallet::error::ClientError;
 use tmelcrypt::Ed25519SK;
 use std::collections::BTreeMap;
 use std::convert::TryInto;
+use anyhow::Error;
 
 pub struct Wallet {
     host: smol::net::SocketAddr,
@@ -16,6 +17,13 @@ impl Wallet {
         let host = host.clone();
         let database = database.clone();
         Self { host, database }
+    }
+
+    /// Loads existing wallet if wallet name exists and can be unlocked using secret
+    pub async fn load(host: &smol::net::SocketAddr, database: &std::path::PathBuf, name: &str, secret: &str) -> anyhow::Result<Wallet> {
+        let wallet = Wallet::new(host, database);
+        let _wallet_data = wallet.open(name, secret).await?;
+        Ok(wallet)
     }
 
     /// Create a wallet from wallet name if name is valid and wallet doesn't already exist

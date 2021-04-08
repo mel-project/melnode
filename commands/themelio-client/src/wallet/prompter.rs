@@ -62,7 +62,7 @@ impl Output {
         Ok(())
     }
 
-    pub(crate) async fn all_wallets(wallets: BTreeMap<String, WalletData>) {
+    pub(crate) async fn wallets(wallets: BTreeMap<String, WalletData>) {
         let mut tw = TabWriter::new(vec![]);
         writeln!(tw, ">> [NAME]\t[ADDRESS]");
         for (name, wallet) in wallets {

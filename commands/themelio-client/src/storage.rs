@@ -7,7 +7,7 @@ use storage::SledMap;
 
 const WALLET_NAMESPACE: &[u8; 6] = b"wallet";
 
-/// Uses sled map(s) to persist client-side data
+/// Uses sled map(s) to persist client-side data.
 pub struct WalletStorage {
     path: PathBuf,
 }
@@ -17,7 +17,7 @@ impl WalletStorage {
         Self { path: path.clone() }
     }
 
-    /// Insert wallet data by wallet name
+    /// Insert wallet data by wallet name.
     pub async fn insert(&self, name: &str, data: &WalletData) -> anyhow::Result<()> {
         let db = sled::open(&self.path)?;
         let tree = db.open_tree(WALLET_NAMESPACE)?;
@@ -26,7 +26,7 @@ impl WalletStorage {
         Ok(())
     }
 
-    /// Get wallet data given wallet name if it exists
+    /// Get wallet data given wallet name if it exists.
     pub async fn get(&self, name: &str) -> anyhow::Result<Option<WalletData>> {
         let db = sled::open(&self.path)?;
         let tree = db.open_tree(WALLET_NAMESPACE)?;
@@ -35,7 +35,7 @@ impl WalletStorage {
         Ok(wallet_data)
     }
 
-    /// Get a map of wallet data by name which contains all persisted wallet data
+    /// Get a map of wallet data by name which contains all persisted wallet data.
     pub async fn get_all(&self) -> anyhow::Result<BTreeMap<String, WalletData>> {
         let db = sled::open(&self.path).unwrap();
         let tree = db.open_tree(WALLET_NAMESPACE).unwrap();
@@ -43,7 +43,7 @@ impl WalletStorage {
         Ok(map.get_all().collect())
     }
 
-    /// Insert wallet data by wallet name
+    /// Insert wallet data by wallet name.
     pub async fn remove(&self, name: &str) -> anyhow::Result<()> {
        todo!("Not implemented")
     }

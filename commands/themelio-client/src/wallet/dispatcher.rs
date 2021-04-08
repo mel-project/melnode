@@ -51,7 +51,7 @@ impl WalletDispatcher {
             WalletCommand::Create(name) => self.create(name).await,
             WalletCommand::Show => self.show().await,
             WalletCommand::Open(name, secret) => self.open(name, secret).await,
-            WalletCommand::Use(name, secret) => self.use_(name, secret, open_cmd.unwrap()).await,
+            WalletCommand::Use(name, secret) => self.use_(name, secret, &open_cmd).await,
             WalletCommand::Delete(name) => self.delete(name).await,
             WalletCommand::Help => self.help().await,
             WalletCommand::Exit => { self.exit().await }
@@ -85,7 +85,7 @@ impl WalletDispatcher {
         name: &str,
         secret: &str,
     ) -> anyhow::Result<()> {
-        let dispatcher = OpenWalletDispatcher::new(&self.host, &self.database, &self.version, name, secret);
+        let dispatcher = OpenWalletDispatcher::new(&self.host, &self.database, &self.version, name, secret).await?;
         dispatcher.run().await?;
         Ok(())
     }
@@ -95,10 +95,10 @@ impl WalletDispatcher {
         &self,
         name: &str,
         secret: &str,
-        open_wallet_command: OpenWalletCommand,
+        open_wallet_command: &Option<OpenWalletCommand>,
     ) -> anyhow::Result<()> {
-        let dispatcher = OpenWalletDispatcher::new(&self.host, &self.database, &self.version, name, secret);
-        dispatcher.dispatch(&open_wallet_command).await?;
+        let dispatcher = OpenWalletDispatcher::new(&self.host, &self.database, &self.version, name, secret).await?;
+        dispatcher.dispatch(&open_wallet_command.clone().unwrap()).await?;
         Ok(())
     }
 
