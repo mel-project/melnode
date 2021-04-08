@@ -20,6 +20,7 @@ impl WalletDispatcher {
 
     /// Dispatch commands from user input and show output using prompt until user exits.
     pub(crate) async fn run(&self) -> anyhow::Result<()> {
+        // Format user prompt.
         let prompt = Input::format_prompt(&self.version).await?;
 
         loop {
