@@ -1,6 +1,8 @@
 use crate::wallet::common::read_line;
 use crate::wallet::open::command::OpenWalletCommand;
 use anyhow::Error;
+use colored::Colorize;
+use std::convert::TryFrom;
 
 pub struct Input {}
 
