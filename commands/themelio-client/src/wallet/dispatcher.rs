@@ -4,6 +4,7 @@ use crate::wallet::wallet::Wallet;
 use crate::wallet::prompter::{Input, Output};
 use crate::wallet::open::dispatcher::OpenWalletDispatcher;
 
+
 pub struct WalletDispatcher {
     host: smol::net::SocketAddr,
     database: std::path::PathBuf,
@@ -11,7 +12,7 @@ pub struct WalletDispatcher {
 }
 
 impl WalletDispatcher {
-    pub(crate) fn new(host: &smol::net::SocketAddr, database: &std::path::PathBuf, version: &str) -> Self {
+    pub fn new(host: &smol::net::SocketAddr, database: &std::path::PathBuf, version: &str) -> Self {
         let host = host.clone();
         let database = database.clone();
         let version = version.to_string();
@@ -19,7 +20,7 @@ impl WalletDispatcher {
     }
 
     /// Dispatch commands from user input and show output using prompt until user exits.
-    pub(crate) async fn run(&self) -> anyhow::Result<()> {
+    pub async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
         let prompt = Input::format_prompt(&self.version).await?;
 
