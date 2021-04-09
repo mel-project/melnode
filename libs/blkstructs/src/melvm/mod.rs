@@ -1,4 +1,4 @@
-pub use crate::{Transaction, CoinData, CoinID};
+pub use crate::{CoinData, CoinID, Transaction};
 use arbitrary::Arbitrary;
 use primitive_types::U256;
 use serde::{Deserialize, Serialize};
@@ -34,6 +34,7 @@ impl Covenant {
     fn check_opt(&self, tx: &Transaction) -> Option<()> {
         //let tx_val = Value::from_serde(&tx)?;
         let tx_val = Value::from(tx.clone());
+        dbg!(&tx_val);
         let ops = self.to_ops()?;
         let mut hm = HashMap::new();
         hm.insert(0, tx_val);
@@ -694,7 +695,8 @@ impl From<CoinData> for Value {
         Value::Vector(im::vector![
             cd.covhash.0.into(),
             cd.value.into(),
-            cd.denom.into()])
+            cd.denom.into()
+        ])
     }
 }
 
@@ -702,7 +704,8 @@ impl From<CoinID> for Value {
     fn from(c: CoinID) -> Self {
         Value::Vector(im::vector![
             c.txhash.0.into(),
-            Value::Int(U256::from(c.index))])
+            Value::Int(U256::from(c.index))
+        ])
     }
 }
 
@@ -714,23 +717,23 @@ impl From<Covenant> for Value {
 
 impl From<[u8; 32]> for Value {
     fn from(v: [u8; 32]) -> Self {
-        Value::Bytes(v.into_iter().cloned().collect::<im::Vector<u8>>())
+        Value::Bytes(v.iter().cloned().collect::<im::Vector<u8>>())
     }
 }
 
 impl From<Vec<u8>> for Value {
     fn from(v: Vec<u8>) -> Self {
-        Value::Vector(v.into_iter()
-            .map(|x| Value::Int(U256::from(x)))
-            .collect::<im::Vector<Value>>())
+        Value::Bytes(v.into_iter().collect::<im::Vector<u8>>())
     }
 }
 
 impl<T: Into<Value>> From<Vec<T>> for Value {
     fn from(v: Vec<T>) -> Self {
-        Value::Vector(v.into_iter()
-            .map(|x| x.into())
-            .collect::<im::Vector<Value>>())
+        Value::Vector(
+            v.into_iter()
+                .map(|x| x.into())
+                .collect::<im::Vector<Value>>(),
+        )
     }
 }
 
@@ -743,7 +746,8 @@ impl From<Transaction> for Value {
             tx.fee.into(),
             tx.scripts.into(),
             tx.data.into(),
-            tx.sigs.into()])
+            tx.sigs.into()
+        ])
     }
 }
 
