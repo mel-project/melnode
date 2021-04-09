@@ -102,6 +102,7 @@ impl NetState {
     }
 
     async fn server_handle(&self, mut conn: TcpStream) -> anyhow::Result<()> {
+        conn.set_nodelay(true)?;
         loop {
             let opt = self
                 .server_handle_one(&mut conn)
