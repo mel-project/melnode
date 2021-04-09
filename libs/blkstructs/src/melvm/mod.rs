@@ -628,7 +628,7 @@ impl Value {
             Value::Int(U256::one())
         } else {
             Value::Int(U256::zero())
-        }https://github.com/themeliolabs/themelio-core/blob/2164e212db9e262e033bd4c5db33ba7bbeab8c71/libs/blkstructs/src/transaction.rs#L45
+        }
     }
 
     fn as_bytes(&self) -> Option<im::Vector<u8>> {
