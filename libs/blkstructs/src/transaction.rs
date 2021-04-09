@@ -40,6 +40,7 @@ pub struct Transaction {
     pub outputs: Vec<CoinData>,
     pub fee: u128,
     pub scripts: Vec<melvm::Covenant>,
+    #[serde(with = "stdcode::hex")]
     pub data: Vec<u8>,
     pub sigs: Vec<Vec<u8>>,
 }
@@ -161,6 +162,7 @@ impl CoinID {
 pub struct CoinData {
     pub covhash: tmelcrypt::HashVal,
     pub value: u128,
+    #[serde(with = "stdcode::hex")]
     pub denom: Vec<u8>,
 }
 

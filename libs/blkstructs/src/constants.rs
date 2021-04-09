@@ -18,8 +18,5 @@ pub const MAX_COINVAL: u128 = 1 << 120;
 /// 1e6
 pub const MICRO_CONVERTER: u128 = 1_000_000;
 
-/// Entropy gathering block count
-pub const ENTROPY_BLOCKS: usize = 1021;
-
 /// Coin destruction covhash
 pub const COVHASH_DESTROY: HashVal = HashVal([0; 32]);

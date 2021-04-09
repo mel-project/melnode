@@ -357,18 +357,9 @@ impl State {
             stakes: SmtMapping::new(empty_tree),
         }
     }
-    pub fn get_height_entropy(&self, height: u64) -> HashVal {
-        // get the last 1021 block hashes
-        let hashes: Vec<HashVal> = (0..height)
-            .rev()
-            .take(ENTROPY_BLOCKS as _)
-            .map(|height| self.history.get(&height).0.unwrap().hash())
-            .collect();
-        // bitwise majority
-        tmelcrypt::majority_beacon(&hashes)
-    }
 }
 
+/// Returns the "fake" CoinID where the block reward for the given block is stored.
 pub fn reward_coin_pseudoid(height: u64) -> CoinID {
     CoinID {
         txhash: tmelcrypt::hash_keyed(b"reward_coin_pseudoid", &height.to_be_bytes()),

@@ -17,7 +17,7 @@ where
     // serializer.collect_str(&Base64(bytes))
 }
 
-pub fn deserialize<'de, D, B: AsRef<[u8]>>(deserializer: D) -> Result<Vec<u8>, D::Error>
+pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
 where
     D: Deserializer<'de>,
 {
