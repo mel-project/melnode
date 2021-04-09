@@ -628,7 +628,7 @@ impl Value {
             Value::Int(U256::one())
         } else {
             Value::Int(U256::zero())
-        }
+        }https://github.com/themeliolabs/themelio-core/blob/2164e212db9e262e033bd4c5db33ba7bbeab8c71/libs/blkstructs/src/transaction.rs#L45
     }
 
     fn as_bytes(&self) -> Option<im::Vector<u8>> {
@@ -683,11 +683,6 @@ impl Value {
     }
 }
 
-impl From<u8> for Value {
-    fn from(n: u8) -> Self {
-        Value::Int(U256::from(n))
-    }
-}
 impl From<u128> for Value {
     fn from(n: u128) -> Self {
         Value::Int(U256::from(n))
@@ -707,7 +702,7 @@ impl From<CoinID> for Value {
     fn from(c: CoinID) -> Self {
         Value::Vector(im::vector![
             c.txhash.0.into(),
-            c.index.into()])
+            Value::Int(U256::from(c.index))])
     }
 }
 
@@ -723,6 +718,14 @@ impl From<[u8; 32]> for Value {
     }
 }
 
+impl From<Vec<u8>> for Value {
+    fn from(v: Vec<u8>) -> Self {
+        Value::Vector(v.into_iter()
+            .map(|x| Value::Int(U256::from(x)))
+            .collect::<im::Vector<Value>>())
+    }
+}
+
 impl<T: Into<Value>> From<Vec<T>> for Value {
     fn from(v: Vec<T>) -> Self {
         Value::Vector(v.into_iter()
@@ -734,7 +737,7 @@ impl<T: Into<Value>> From<Vec<T>> for Value {
 impl From<Transaction> for Value {
     fn from(tx: Transaction) -> Self {
         Value::Vector(im::vector![
-            (tx.kind as u8).into(),
+            Value::Int(U256::from(tx.kind as u8)),
             tx.inputs.into(),
             tx.outputs.into(),
             tx.fee.into(),
