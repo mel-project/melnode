@@ -34,7 +34,6 @@ impl Covenant {
     fn check_opt(&self, tx: &Transaction) -> Option<()> {
         //let tx_val = Value::from_serde(&tx)?;
         let tx_val = Value::from(tx.clone());
-        dbg!(&tx_val);
         let ops = self.to_ops()?;
         let mut hm = HashMap::new();
         hm.insert(0, tx_val);
