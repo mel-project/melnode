@@ -32,9 +32,9 @@ async fn main_inner() -> anyhow::Result<()> {
     let client = ValClient::new(NetID::Testnet, args.connect);
     // TODO read this from an argument
     client.trust(
-        14045,
+        1890,
         HashVal(
-            hex::decode("26115e62677743abf10210a15e8be8984e63f3a34fb43ff11907e885814ef9cd")?
+            hex::decode("c3463cef489bef71cb70c6db1a593170f745bb9e0a8ca05a24425392c8864806")?
                 .try_into()
                 .unwrap(),
         ),
@@ -46,6 +46,8 @@ async fn main_inner() -> anyhow::Result<()> {
         .get(raw::get_transaction);
     app.at("/raw/blocks/:height/coins/:coinid")
         .get(raw::get_coin);
+    app.at("/raw/blocks/:height/pools/:denom")
+        .get(raw::get_pool);
     tracing::info!("Starting REST endpoint at {}", args.listen);
     app.listen(args.listen).await?;
     Ok(())

@@ -1,4 +1,4 @@
-pub use crate::Transaction;
+pub use crate::{CoinData, CoinID, Transaction};
 use arbitrary::Arbitrary;
 use primitive_types::U256;
 use serde::{Deserialize, Serialize};
@@ -32,7 +32,8 @@ impl Covenant {
     }
 
     fn check_opt(&self, tx: &Transaction) -> Option<()> {
-        let tx_val = Value::from_serde(&tx)?;
+        //let tx_val = Value::from_serde(&tx)?;
+        let tx_val = Value::from(tx.clone());
         let ops = self.to_ops()?;
         let mut hm = HashMap::new();
         hm.insert(0, tx_val);
@@ -111,6 +112,7 @@ impl Covenant {
             0x54 => output.push(OpCode::VPUSH),
             0x55 => output.push(OpCode::VSLICE),
             0x56 => output.push(OpCode::BEMPTY),
+            0x57 => output.push(OpCode::VSET),
             // control flow
             0xa0 => output.push(OpCode::JMP(u16arg(bcode)?)),
             0xa1 => output.push(OpCode::BEZ(u16arg(bcode)?)),
@@ -681,14 +683,70 @@ impl Value {
     }
 }
 
-impl From<&Transaction> for Value {
-    fn from(tx: &Transaction) -> Self {
-        let ss = serde_json::to_string(tx)
-            .expect("Transaction serialization should not fail.");
-        let ss: serde_json::Value = serde_json::from_str(&ss)
-            .expect("Serialized tx should be convertable into a json Value.");
-        Self::from_serde_json(ss)
-            .expect("Json Value from Transaction should convert to Value.")
+impl From<u128> for Value {
+    fn from(n: u128) -> Self {
+        Value::Int(U256::from(n))
+    }
+}
+
+impl From<CoinData> for Value {
+    fn from(cd: CoinData) -> Self {
+        Value::Vector(im::vector![
+            cd.covhash.0.into(),
+            cd.value.into(),
+            cd.denom.into()
+        ])
+    }
+}
+
+impl From<CoinID> for Value {
+    fn from(c: CoinID) -> Self {
+        Value::Vector(im::vector![
+            c.txhash.0.into(),
+            Value::Int(U256::from(c.index))
+        ])
+    }
+}
+
+impl From<Covenant> for Value {
+    fn from(c: Covenant) -> Self {
+        Value::Bytes(c.0.into())
+    }
+}
+
+impl From<[u8; 32]> for Value {
+    fn from(v: [u8; 32]) -> Self {
+        Value::Bytes(v.iter().cloned().collect::<im::Vector<u8>>())
+    }
+}
+
+impl From<Vec<u8>> for Value {
+    fn from(v: Vec<u8>) -> Self {
+        Value::Bytes(v.into_iter().collect::<im::Vector<u8>>())
+    }
+}
+
+impl<T: Into<Value>> From<Vec<T>> for Value {
+    fn from(v: Vec<T>) -> Self {
+        Value::Vector(
+            v.into_iter()
+                .map(|x| x.into())
+                .collect::<im::Vector<Value>>(),
+        )
+    }
+}
+
+impl From<Transaction> for Value {
+    fn from(tx: Transaction) -> Self {
+        Value::Vector(im::vector![
+            Value::Int(U256::from(tx.kind as u8)),
+            tx.inputs.into(),
+            tx.outputs.into(),
+            tx.fee.into(),
+            tx.scripts.into(),
+            tx.data.into(),
+            tx.sigs.into()
+        ])
     }
 }
 
@@ -739,8 +797,10 @@ mod tests {
         )])
         .unwrap();
         println!("script length is {}", check_sig_script.0.len());
-        let tx = Transaction::empty_test().sign_ed25519(sk);
+        let mut tx = Transaction::empty_test().sign_ed25519(sk);
         assert!(check_sig_script.check(&tx));
+        tx.sigs[0][0] ^= 123;
+        assert!(!check_sig_script.check(&tx));
     }
 
     #[quickcheck]

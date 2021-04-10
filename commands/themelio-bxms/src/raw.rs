@@ -75,3 +75,16 @@ pub async fn get_coin(req: tide::Request<ValClient>) -> tide::Result<Body> {
     let cdh = older.get_coin(dbg!(CoinID { txhash, index })).await?;
     Ok(Body::from_json(&cdh.ok_or_else(notfound)?)?)
 }
+
+/// Get a particular pool
+#[tracing::instrument]
+pub async fn get_pool(req: tide::Request<ValClient>) -> tide::Result<Body> {
+    let height: u64 = req.param("height")?.parse()?;
+    let denom_string: String = req.param("denom")?.into();
+    let denom = hex::decode(&denom_string).map_err(to_badreq)?;
+
+    let last_snap = req.state().snapshot().await?;
+    let older = last_snap.get_older(height).await?;
+    let cdh = older.get_pool(&denom).await.map_err(to_badgateway)?;
+    Ok(Body::from_json(&cdh.ok_or_else(notfound)?)?)
+}
