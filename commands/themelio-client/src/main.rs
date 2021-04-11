@@ -23,7 +23,7 @@ pub struct ClientOpts {
     database: std::path::PathBuf,
 
     #[structopt(subcommand)]
-    sub: WalletSubCommand,
+    sub: Option<WalletSubCommand>,
 }
 
 #[derive(StructOpt, Debug)]
@@ -31,47 +31,33 @@ enum WalletSubCommand {
     Create {
         wallet_name: String
     },
-    Open {
-        wallet_name: String,
-        secret: String
+    Faucet {
+        amount: String,
+        unit: String
     },
-    Use {
-        wallet_name: String,
-        secret: String,
-        sub: OpenWalletSubCommand
+    SendCoins {
+        address: String,
+        amount: String,
+        unit: String
     },
+    AddCoins {
+        coin_id: String
+    },
+    Deposit,
+    Withdraw,
+    Swap,
+    Balance,
     Show,
     Exit
 }
-
-#[derive(StructOpt, Debug)]
-enum OpenWalletSubCommand {
-    // Faucet {
-    //     amount: String,
-    //     unit: String
-    // },
-    // SendCoins {
-    //     address: String,
-    //     amount: String,
-    //     unit: String
-    // },
-    // AddCoins {
-    //     coin_id: String
-    // },
-    // Deposit,
-    // Withdraw,
-    // Swap,
-    // Balance,
-    Help,
-    Exit
-}
-use std::fmt;
-
-impl fmt::Display for OpenWalletSubCommand {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
+//
+// use std::fmt;
+//
+// impl fmt::Display for OpenWalletSubCommand {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         write!(f, "{:?}", self)
+//     }
+// }
 // use std::fmt::{Display, Formatter};
 //
 // impl Display for OpenWalletSubCommand {
@@ -79,22 +65,22 @@ impl fmt::Display for OpenWalletSubCommand {
 //        Ok("hi")
 //     }
 // }
-impl FromStr for OpenWalletSubCommand {
-    // type Error = ScanError;
-    //
-    // /// Uses serde scan internally to parse a whitespace delimited string into a command
-    // fn try_from(value: String) -> Result<Self, Self::Error> {
-    //     let cmd: Result<OpenWalletSubCommand, _> = serde_scan::from_str(&value);
-    //     cmd
-    // }
-
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let x = OpenWalletSubCommand::Exit;
-        Ok(x)
-    }
-}
+// impl FromStr for OpenWalletSubCommand {
+//     // type Error = ScanError;
+//     //
+//     // /// Uses serde scan internally to parse a whitespace delimited string into a command
+//     // fn try_from(value: String) -> Result<Self, Self::Error> {
+//     //     let cmd: Result<OpenWalletSubCommand, _> = serde_scan::from_str(&value);
+//     //     cmd
+//     // }
+//
+//     type Err = ();
+//
+//     fn from_str(s: &str) -> Result<Self, Self::Err> {
+//         let x = OpenWalletSubCommand::Exit;
+//         Ok(x)
+//     }
+// }
 
 // eprintln!("\nAvailable commands are: ");
 // eprintln!(">> faucet <amount> <unit>");
