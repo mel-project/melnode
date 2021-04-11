@@ -3105,6 +3105,7 @@ dependencies = [
  "structopt",
  "tabwriter",
  "tmelcrypt",
+ "toml",
  "tracing",
  "tracing-subscriber",
 ]

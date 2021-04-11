@@ -1,7 +1,8 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use crate::protocols::{NodeProtocol, StakerProtocol};
 use crate::{config::VERSION, services::NodeStorage};
+use anyhow::Context;
 use blkstructs::{melvm, GenesisConfig, StakeDoc};
 use smol::net::SocketAddr;
 use structopt::StructOpt;
@@ -36,18 +37,30 @@ pub struct NodeConfig {
     /// Listen address for the staker network.
     #[structopt(long)]
     staker_listen: Option<SocketAddr>,
+
+    /// If given, uses this TOML file to configure the genesis state rather than the default testnet.
+    #[structopt(long)]
+    genesis_config: Option<PathBuf>,
 }
 
 /// Runs the main function for a node.
 #[instrument(skip(opt))]
-pub async fn run_node(opt: NodeConfig) {
+pub async fn run_node(opt: NodeConfig) -> anyhow::Result<()> {
     let _ = std::fs::create_dir_all(&opt.database);
     log::info!("themelio-core v{} initializing...", VERSION);
     log::info!("bootstrapping with {:?}", opt.bootstrap);
     // TODO: make this configurable rather than hardcoding the testnet
+    let genesis = if let Some(path) = opt.genesis_config {
+        let genesis_toml = smol::fs::read(&path)
+            .await
+            .context("cannot read genesis config")?;
+        toml::from_slice(&genesis_toml)?
+    } else {
+        GenesisConfig::std_testnet()
+    };
     let storage = NodeStorage::new(
-        sled::open(&opt.database).unwrap(),
-        GenesisConfig::std_testnet(),
+        sled::open(&opt.database).context("cannot open database")?,
+        genesis,
     )
     .share();
     let _node_prot = NodeProtocol::new(opt.listen, opt.bootstrap.clone(), storage.clone());
@@ -65,5 +78,5 @@ pub async fn run_node(opt: NodeConfig) {
         None
     };
 
-    smol::future::pending::<()>().await;
+    smol::future::pending().await
 }
