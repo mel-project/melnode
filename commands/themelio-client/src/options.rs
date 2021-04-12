@@ -22,6 +22,9 @@ pub struct ClientOpts {
 }
 
 #[derive(StructOpt, Debug)]
+/// Represents the sub options to run a specific command.
+/// If Shell is specified it will enter into an interactive shell,
+/// otherwise it will execute a single command and exit.
 pub(crate) enum ClientSubOpts {
     CreateWallet {
         wallet_name: String
@@ -38,6 +41,7 @@ pub(crate) enum ClientSubOpts {
     AddCoins {
         coin_id: String
     },
+    // TODO: Add in correct fields for deposit, withdraw and swap
     // DepositCoins {
     //     covhash_a: String,
     //     amount_a: String,

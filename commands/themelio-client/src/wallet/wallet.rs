@@ -1,10 +1,10 @@
-use crate::data::WalletData;
 use blkstructs::melvm::Covenant;
 use crate::wallet::storage::WalletStorage;
 use crate::error::ClientError;
 use tmelcrypt::Ed25519SK;
 use std::collections::BTreeMap;
 use std::convert::TryInto;
+use crate::wallet::data::WalletData;
 
 pub struct Wallet {
     host: smol::net::SocketAddr,
