@@ -1,12 +1,12 @@
 use crate::common::read_line;
-use crate::shell::sub::command::OpenWalletCommand;
+use crate::shell::sub::command::SubShellCommand;
 use anyhow::Error;
 use colored::Colorize;
 use std::convert::TryFrom;
 
-pub struct Input {}
+pub struct SubShellInput {}
 
-impl Input {
+impl SubShellInput {
     /// Format the CLI prompt with the version of the binary
     pub(crate) async fn format_prompt(version: &str, name: &str) -> anyhow::Result<String> {
         let prompt_stack: Vec<String> = vec![
@@ -20,19 +20,19 @@ impl Input {
     }
 
     /// Get user input and parse it into a shell command
-    pub(crate) async fn command(prompt: &str) -> anyhow::Result<OpenWalletCommand> {
+    pub(crate) async fn command(prompt: &str) -> anyhow::Result<SubShellCommand> {
         let input = read_line(prompt.to_string()).await?;
 
-        let open_wallet_cmd = OpenWalletCommand::try_from(input.to_string())?;
+        let open_wallet_cmd = SubShellCommand::try_from(input.to_string())?;
         Ok(open_wallet_cmd)
     }
 }
 
-pub struct Output {}
+pub struct SubShellOutput {}
 
-impl Output {
+impl SubShellOutput {
     /// Output the error when dispatching command
-    pub(crate) async fn error(err: &Error, wallet_cmd: &OpenWalletCommand) -> anyhow::Result<()> {
+    pub(crate) async fn error(err: &Error, wallet_cmd: &SubShellCommand) -> anyhow::Result<()> {
         eprintln!("ERROR: {} when dispatching {:?}", err, wallet_cmd);
         Ok(())
     }

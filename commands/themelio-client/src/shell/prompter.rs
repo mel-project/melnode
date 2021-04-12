@@ -1,5 +1,5 @@
 use crate::shell::command::ShellCommand;
-use crate::shell::sub::command::OpenWalletCommand;
+use crate::shell::sub::command::SubShellCommand;
 use crate::common::read_line;
 use colored::Colorize;
 use std::convert::TryFrom;
@@ -25,7 +25,7 @@ impl ShellInput {
     }
 
     /// Get user input and parse it into a shell command
-    pub(crate) async fn command(prompt: &str) -> anyhow::Result<(ShellCommand, Option<OpenWalletCommand>)> {
+    pub(crate) async fn command(prompt: &str) -> anyhow::Result<(ShellCommand, Option<SubShellCommand>)> {
         let input = read_line(prompt.to_string()).await?;
 
         let wallet_use_mode: String = ShellCommand::Use(String::default(), String::default())
@@ -39,7 +39,7 @@ impl ShellInput {
             let args: Vec<String> = input.split(" ").map(|s| s.to_string()).collect();
             let (left, right): (&str, &str) = (&args[0..2].join(" "), &args[2..].join(" "));
             let wallet_cmd = ShellCommand::try_from(left.to_string())?;
-            let open_wallet_cmd = OpenWalletCommand::try_from(right.to_string())?;
+            let open_wallet_cmd = SubShellCommand::try_from(right.to_string())?;
             Ok((wallet_cmd, Some(open_wallet_cmd)))
         } else {
             let wallet_cmd = ShellCommand::try_from(input.to_string())?;

@@ -1,9 +1,9 @@
 use crate::wallet::wallet::Wallet;
-use crate::shell::sub::prompter::{Input, Output};
-use crate::shell::sub::command::OpenWalletCommand;
+use crate::shell::sub::prompter::{SubShellInput, SubShellOutput};
+use crate::shell::sub::command::SubShellCommand;
 use blkstructs::CoinID;
 
-pub(crate) struct OpenWalletDispatcher {
+pub(crate) struct SubShellDispatcher {
     host: smol::net::SocketAddr,
     database: std::path::PathBuf,
     version: String,
@@ -11,7 +11,7 @@ pub(crate) struct OpenWalletDispatcher {
     secret: String,
 }
 
-impl OpenWalletDispatcher {
+impl SubShellDispatcher {
     /// Create a new sub shell dispatcher if shell exists and we can load it with the secret.
     pub(crate) async fn new(host: &smol::net::SocketAddr, database: &std::path::PathBuf, version: &str, name: &str, secret: &str) -> anyhow::Result<Self> {
         let host = host.clone();
@@ -28,15 +28,15 @@ impl OpenWalletDispatcher {
     /// Dispatch commands from user input and show output using prompt until user exits.
     pub(crate) async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
-        let prompt = Input::format_prompt(&self.version, &self.name).await?;
+        let prompt = SubShellInput::format_prompt(&self.version, &self.name).await?;
 
         loop {
             // Get command from user input.
-            let open_cmd = Input::command(&prompt).await?;
+            let open_cmd = SubShellInput::command(&prompt).await?;
 
             // Exit if the user chooses to exit.
-            if open_cmd == OpenWalletCommand::Exit {
-                Output::exit().await?;
+            if open_cmd == SubShellCommand::Exit {
+                SubShellOutput::exit().await?;
                 return Ok(());
             }
 
@@ -45,25 +45,25 @@ impl OpenWalletDispatcher {
 
             // Output error, if any, and continue running.
             match dispatch_result {
-                Err(err) => Output::error(err, &open_cmd).await?,
+                Err(err) => SubShellOutput::error(err, &open_cmd).await?,
                 _ => {}
             }
         }
     }
 
     /// Dispatch and process the command.
-    pub(crate) async fn dispatch(&self, open_cmd: &OpenWalletCommand) -> anyhow::Result<()> {
+    pub(crate) async fn dispatch(&self, open_cmd: &SubShellCommand) -> anyhow::Result<()> {
         // Dispatch a command and return a command result
         match &open_cmd {
-            OpenWalletCommand::Faucet(amt, denom) => { self.faucet(amt, denom).await?; }
-            OpenWalletCommand::Deposit => { todo!("") }
-            OpenWalletCommand::Withdraw => { todo!("") }
-            OpenWalletCommand::Swap => { todo!("") }
+            SubShellCommand::Faucet(amt, denom) => { self.faucet(amt, denom).await?; }
+            SubShellCommand::Deposit => { todo!("") }
+            SubShellCommand::Withdraw => { todo!("") }
+            SubShellCommand::Swap => { todo!("") }
             // OpenWalletCommand::SendCoins(dest, amt, denom) => { self.send_coins(dest, amt, denom).await?; }
             // OpenWalletCommand::AddCoins(coin_id) => { self.add_coins(coin_id).await?; }
-            OpenWalletCommand::Balance => { self.balance().await?; }
-            OpenWalletCommand::Help => { self.help().await?; }
-            OpenWalletCommand::Exit => {}
+            SubShellCommand::Balance => { self.balance().await?; }
+            SubShellCommand::Help => { self.help().await?; }
+            SubShellCommand::Exit => {}
             _ => {}
         }
         Ok(())

@@ -1,8 +1,8 @@
 use crate::shell::command::ShellCommand;
-use crate::shell::sub::command::OpenWalletCommand;
+use crate::shell::sub::command::SubShellCommand;
 use crate::wallet::wallet::Wallet;
 use crate::shell::prompter::{ShellInput, ShellOutput};
-use crate::shell::sub::dispatcher::OpenWalletDispatcher;
+use crate::shell::sub::dispatcher::SubShellDispatcher;
 
 pub(crate) struct ShellDispatcher {
     host: smol::net::SocketAddr,
@@ -45,7 +45,7 @@ impl ShellDispatcher {
     }
 
     /// Dispatch and process the command.
-    pub async fn dispatch(&self, cmd: &ShellCommand, open_cmd: &Option<OpenWalletCommand>) -> anyhow::Result<()> {
+    pub async fn dispatch(&self, cmd: &ShellCommand, open_cmd: &Option<SubShellCommand>) -> anyhow::Result<()> {
         // Dispatch a command and return a command result.
         match &cmd {
             ShellCommand::Create(name) => self.create(name).await,
@@ -85,7 +85,7 @@ impl ShellDispatcher {
         name: &str,
         secret: &str,
     ) -> anyhow::Result<()> {
-        let dispatcher = OpenWalletDispatcher::new(&self.host, &self.database, &self.version, name, secret).await?;
+        let dispatcher = SubShellDispatcher::new(&self.host, &self.database, &self.version, name, secret).await?;
         dispatcher.run().await?;
         Ok(())
     }
@@ -95,9 +95,9 @@ impl ShellDispatcher {
         &self,
         name: &str,
         secret: &str,
-        open_wallet_command: &Option<OpenWalletCommand>,
+        open_wallet_command: &Option<SubShellCommand>,
     ) -> anyhow::Result<()> {
-        let dispatcher = OpenWalletDispatcher::new(&self.host, &self.database, &self.version, name, secret).await?;
+        let dispatcher = SubShellDispatcher::new(&self.host, &self.database, &self.version, name, secret).await?;
         dispatcher.dispatch(&open_wallet_command.clone().unwrap()).await?;
         Ok(())
     }
