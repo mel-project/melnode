@@ -38,9 +38,22 @@ pub(crate) enum ClientSubOpts {
     AddCoins {
         coin_id: String
     },
-    // DepositCoins,
-    // WithdrawCoins,
-    // SwapCoins,
+    // DepositCoins {
+    //     covhash_a: String,
+    //     amount_a: String,
+    //     covhash_b: String,
+    //     amount_b: String,
+    // },
+    // WithdrawCoins {
+    //     covhash_a: String,
+    //     amount_a: String,
+    //     covhash_b: String,
+    //     amount_b: String,
+    // },
+    // SwapCoins {
+    //     covhash: String,
+    //     amount: String,
+    // },
     ShowBalance,
     ShowWallets,
     Shell,
