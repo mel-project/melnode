@@ -4,8 +4,7 @@ use crate::wallet::wallet::Wallet;
 use crate::shell::prompter::{ShellInput, ShellOutput};
 use crate::shell::sub::dispatcher::OpenWalletDispatcher;
 
-
-pub struct ShellDispatcher {
+pub(crate) struct ShellDispatcher {
     host: smol::net::SocketAddr,
     database: std::path::PathBuf,
     version: String

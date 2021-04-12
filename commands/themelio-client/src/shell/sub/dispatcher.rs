@@ -3,7 +3,7 @@ use crate::shell::sub::prompter::{Input, Output};
 use crate::shell::sub::command::OpenWalletCommand;
 use blkstructs::CoinID;
 
-pub struct OpenWalletDispatcher {
+pub(crate) struct OpenWalletDispatcher {
     host: smol::net::SocketAddr,
     database: std::path::PathBuf,
     version: String,

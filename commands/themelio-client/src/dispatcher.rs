@@ -1,4 +1,5 @@
 use crate::options::{ClientOpts, ClientSubOpts};
+use crate::shell::dispatcher::ShellDispatcher;
 
 pub(crate) struct ClientDispatcher {
     opts: ClientOpts,
@@ -19,7 +20,10 @@ impl ClientDispatcher {
             ClientSubOpts::AddCoins { .. } => {}
             ClientSubOpts::ShowBalance => {}
             ClientSubOpts::ShowWallets => {}
-            ClientSubOpts::Shell => {}
+            ClientSubOpts::Shell => {
+                let shell_dispatcher = ShellDispatcher::new(&self.opts.host, &self.opts.database, &self.version);
+                shell_dispatcher.run().await?
+            }
             ClientSubOpts::Exit => {}
         }
         Ok(())
