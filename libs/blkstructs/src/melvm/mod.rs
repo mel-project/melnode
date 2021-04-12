@@ -398,7 +398,7 @@ impl Executor {
                     }
                     Value::Vector(mut elems) => {
                         elems[idx] = value;
-                        Some(elems.get(idx)?.clone())
+                        Some(Value::Vector(elems))
                     }
                     _ => None,
                 }
