@@ -42,6 +42,7 @@ async fn main_inner() -> anyhow::Result<()> {
     let mut app = tide::with_state(client);
     app.at("/raw/latest").get(raw::get_latest);
     app.at("/raw/blocks/:height").get(raw::get_header);
+    app.at("/raw/blocks/:height/full").get(raw::get_full_block);
     app.at("/raw/blocks/:height/transactions/:txhash")
         .get(raw::get_transaction);
     app.at("/raw/blocks/:height/coins/:coinid")

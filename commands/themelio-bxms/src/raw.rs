@@ -23,7 +23,7 @@ fn notfound() -> tide::Error {
 #[tracing::instrument]
 pub async fn get_latest(req: tide::Request<ValClient>) -> tide::Result<Body> {
     let last_snap = req.state().snapshot().await.map_err(to_badgateway)?;
-    Ok(Body::from_json(&last_snap.header())?)
+    Ok(Body::from_json(&last_snap.current_header())?)
 }
 
 /// Get a particular block header
@@ -87,4 +87,14 @@ pub async fn get_pool(req: tide::Request<ValClient>) -> tide::Result<Body> {
     let older = last_snap.get_older(height).await?;
     let cdh = older.get_pool(&denom).await.map_err(to_badgateway)?;
     Ok(Body::from_json(&cdh.ok_or_else(notfound)?)?)
+}
+
+/// Get a particular block
+#[tracing::instrument]
+pub async fn get_full_block(req: tide::Request<ValClient>) -> tide::Result<Body> {
+    let height: u64 = req.param("height")?.parse().map_err(to_badreq)?;
+    let last_snap = req.state().snapshot().await.map_err(to_badgateway)?;
+    let older = last_snap.get_older(height).await.map_err(to_badgateway)?;
+    let block = older.current_block().await.map_err(to_badgateway)?;
+    Ok(Body::from_json(&block)?)
 }
