@@ -71,4 +71,5 @@ impl Wallet {
     }
 
     // add wallet, send-coins, add-coins, balance, (add a flag to constructor for the -y assumption
+    // may need prespend wrapped here.
 }

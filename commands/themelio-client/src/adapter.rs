@@ -26,7 +26,7 @@ impl WalletAdapter {
     }
     pub async fn faucet(&self, amount: &str, unit: &str) -> anyhow::Result<()> {
         let wallet = self.load_wallet()?;
-        wallet.fuacet(wallet_name).await?;
+        wallet.faucet(amount, unit).await?;
         Ok(())
     }
     pub async fn send_coins(&self, address: &str, amount: &str, unit: &str) -> anyhow::Result<()> {
