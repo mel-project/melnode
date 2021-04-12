@@ -1,25 +1,26 @@
-use crate::command::ClientSubcommand;
+use crate::options::{ClientOpts, ClientSubOpts};
 
-pub(crate) struct ClientDispatcher {}
+pub(crate) struct ClientDispatcher {
+    opts: ClientOpts,
+    version: String
+}
 
 impl ClientDispatcher {
-    pub fn new() -> Self {
-        ClientDispatcher {
-            
-        }
+    pub fn new(opts: ClientOpts, version: &str) -> Self {
+        let version = version.to_string();
+        Self { opts, version }
     }
-    pub async fn dispatcher(subcommand: ClientSubcommand) -> anyhow::Result<()> {
-        match subcommand {
-            ClientSubcommand::CreateWallet { .. } => {}
-            ClientSubcommand::Faucet { .. } => {}
-            ClientSubcommand::SendCoins { .. } => {}
-            ClientSubcommand::AddCoins { .. } => {}
-            ClientSubcommand::ShowBalance => {}
-            ClientSubcommand::ShowWallets => {}
-            ClientSubcommand::Shell => {
-                let dispatcher = ShellDispatcher::new(&opts.host, &opts.database, version);
-            }
-            ClientSubcommand::Exit => {}
+
+    pub async fn dispatch(&self) -> anyhow::Result<()> {
+        match self.opts.subcommand {
+            ClientSubOpts::CreateWallet { .. } => {}
+            ClientSubOpts::Faucet { .. } => {}
+            ClientSubOpts::SendCoins { .. } => {}
+            ClientSubOpts::AddCoins { .. } => {}
+            ClientSubOpts::ShowBalance => {}
+            ClientSubOpts::ShowWallets => {}
+            ClientSubOpts::Shell => {}
+            ClientSubOpts::Exit => {}
         }
         Ok(())
     }
