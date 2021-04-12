@@ -2,15 +2,15 @@ use crate::shell::command::ShellCommand;
 use crate::shell::sub::command::SubShellCommand;
 use crate::wallet::wallet::Wallet;
 use crate::shell::prompter::{ShellInput, ShellOutput};
-use crate::shell::sub::dispatcher::SubShellDispatcher;
+use crate::shell::sub::executor::SubShellExecutor;
 
-pub(crate) struct ShellDispatcher {
+pub(crate) struct ShellExecutor {
     host: smol::net::SocketAddr,
     database: std::path::PathBuf,
     version: String
 }
 
-impl ShellDispatcher {
+impl ShellExecutor {
     pub fn new(host: &smol::net::SocketAddr, database: &std::path::PathBuf, version: &str) -> Self {
         let host = host.clone();
         let database = database.clone();
@@ -45,7 +45,7 @@ impl ShellDispatcher {
     }
 
     /// Dispatch and process the command.
-    pub async fn dispatch(&self, cmd: &ShellCommand, open_cmd: &Option<SubShellCommand>) -> anyhow::Result<()> {
+    async fn dispatch(&self, cmd: &ShellCommand, open_cmd: &Option<SubShellCommand>) -> anyhow::Result<()> {
         // Dispatch a command and return a command result.
         match &cmd {
             ShellCommand::CreateWallet(name) => self.create(name).await,
@@ -85,7 +85,7 @@ impl ShellDispatcher {
         name: &str,
         secret: &str,
     ) -> anyhow::Result<()> {
-        let dispatcher = SubShellDispatcher::new(&self.host, &self.database, &self.version, name, secret).await?;
+        let dispatcher = SubShellExecutor::new(&self.host, &self.database, &self.version, name, secret).await?;
         dispatcher.run().await?;
         Ok(())
     }
@@ -97,7 +97,7 @@ impl ShellDispatcher {
         secret: &str,
         open_wallet_command: &Option<SubShellCommand>,
     ) -> anyhow::Result<()> {
-        let dispatcher = SubShellDispatcher::new(&self.host, &self.database, &self.version, name, secret).await?;
+        let dispatcher = SubShellExecutor::new(&self.host, &self.database, &self.version, name, secret).await?;
         dispatcher.dispatch(&open_wallet_command.clone().unwrap()).await?;
         Ok(())
     }

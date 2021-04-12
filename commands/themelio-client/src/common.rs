@@ -6,3 +6,5 @@ pub async fn read_line(prompt: String) -> anyhow::Result<String> {
     })
     .await
 }
+
+// TODO: Add a trait for executors which contains a run method

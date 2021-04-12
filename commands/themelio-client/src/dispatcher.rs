@@ -1,5 +1,5 @@
 use crate::options::{ClientOpts, ClientSubOpts};
-use crate::shell::dispatcher::ShellDispatcher;
+use crate::shell::executor::ShellExecutor;
 use crate::executor::ClientExecutor;
 
 pub struct ClientDispatcher {
@@ -38,7 +38,7 @@ impl ClientDispatcher {
                 executor.show_wallets().await?
             }
             ClientSubOpts::Shell => {
-                let shell_dispatcher = ShellDispatcher::new(&host, &database, &self.version);
+                let shell_dispatcher = ShellExecutor::new(&host, &database, &self.version);
                 shell_dispatcher.run().await?
             }
         }
