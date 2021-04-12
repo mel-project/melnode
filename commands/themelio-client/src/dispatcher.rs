@@ -14,10 +14,11 @@ impl ClientDispatcher {
     }
 
     pub async fn dispatch(&self) -> anyhow::Result<()> {
-        let host = self.opts.host.clone();
-        let database = self.opts.database.clone();
+        let opts = self.opts.clone();
+        let host = opts.host.clone();
+        let database = opts.database.clone();
         let executor = ClientExecutor::new(host, database);
-        match self.opts.subcommand {
+        match opts.subcommand {
             ClientSubOpts::CreateWallet { wallet_name } => {
                 executor.create_wallet(&wallet_name).await?
             }
