@@ -22,6 +22,7 @@ impl ClientOutput {
         Ok(())
     }
 
+    /// Display all stored wallet wallet addresses by name.
     pub(crate) async fn show_wallets(wallets: BTreeMap<String, WalletData>) {
         let mut tw = TabWriter::new(vec![]);
         writeln!(tw, ">> [NAME]\t[ADDRESS]");
@@ -31,4 +32,14 @@ impl ClientOutput {
         tw.flush();
         eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
     }
+
+    /// Send coins to a recipient.
+    pub(crate) async fn send_coins() {}
+
+    /// Add coins into wallet storage.
+    pub(crate) async fn add_coins() {}
+
+    /// Transfer coins from faucet to your wallet.
+    pub(crate) async fn faucet() {}
+
 }
