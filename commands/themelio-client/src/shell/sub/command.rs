@@ -11,7 +11,7 @@ pub enum SubShellCommand {
     // Swap(String, String),
     SendCoins(String, String, String),
     AddCoins(String),
-    Balance,
+    ShowBalance,
     Help,
     Exit,
 }

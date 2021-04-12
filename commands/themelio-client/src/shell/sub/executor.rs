@@ -61,21 +61,22 @@ impl SubShellExecutor {
         // Dispatch a command and return a command result
         match &open_cmd {
             // SubShellCommand::Faucet(amt, denom) => { self.faucet(amt, denom).await?; }
-            // SubShellCommand::Deposit => { todo!("") }
-            // SubShellCommand::Withdraw => { todo!("") }
-            // SubShellCommand::Swap => { todo!("") }
+
             // OpenWalletCommand::SendCoins(dest, amt, denom) => { self.send_coins(dest, amt, denom).await?; }
             // OpenWalletCommand::AddCoins(coin_id) => { self.add_coins(coin_id).await?; }
             // SubShellCommand::Balance => { self.balance().await?; }
             // SubShellCommand::Help => { self.help().await?; }
             // SubShellCommand::Exit => {}
             // _ => {}
-            SubShellCommand::Faucet(amt, unit) => { self.faucet(amt, denom).await?; }
+            SubShellCommand::Faucet(amt, unit) => { self.faucet(amt, unit).await?; }
             SubShellCommand::SendCoins(dest, amt, unit) => { self.send_coins(dest, amt, unit).await?; }
-            SubShellCommand::AddCoins(_) => {}
-            SubShellCommand::Balance => {}
+            SubShellCommand::AddCoins(coin_id) => { self.add_coins(coin_id).await?; }
+            SubShellCommand::ShowBalance => { self.balance().await?; }
             SubShellCommand::Help => {}
             SubShellCommand::Exit => {}
+            // SubShellCommand::Deposit => { todo!("") }
+            // SubShellCommand::Withdraw => { todo!("") }
+            // SubShellCommand::Swap => { todo!("") }
         }
         Ok(())
     }
@@ -123,7 +124,7 @@ impl SubShellExecutor {
 //                     }
         Ok(())
     }
-    async fn send_coins(&self, amt: &str, unit: &str) -> anyhow::Result<()> {
+    async fn send_coins(&self, dest: &str, amt: &str, unit: &str) -> anyhow::Result<()> {
         // let shell = Wallet::new(&self.host, &self.database);
         // let wallet_data = shell.sub(&self.name, &self.secret).await?;
         // let prompt = sub::prompt::format_prompt(&self.version).await?;
@@ -161,7 +162,7 @@ impl SubShellExecutor {
 //                 }
         Ok(())
     }
-    async fn add_coins(&self, amt: &str, denom: &str) -> anyhow::Result<()> {
+    async fn add_coins(&self, coin_id: &str) -> anyhow::Result<()> {
         // let shell = Wallet::new(&self.host, &self.database);
         // let wallet_data = shell.sub(&self.name, &self.secret).await?;
         // let prompt = sub::prompt::format_prompt(&self.version).await?;
