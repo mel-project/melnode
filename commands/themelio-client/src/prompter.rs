@@ -12,7 +12,7 @@ pub struct ClientOutput {
 
 impl ClientOutput {
     /// Display name, secret key and covenant of the shell
-    pub(crate) async fn wallet(name: &str, sk: Ed25519SK, wallet_data: &WalletData) -> anyhow::Result<()> {
+    pub(crate) async fn create_wallet(name: &str, sk: Ed25519SK, wallet_data: &WalletData) -> anyhow::Result<()> {
         // Display contents of keypair and address from covenant
         let mut tw = TabWriter::new(vec![]);
         writeln!(tw, ">> New data:\t{}", name.bold()).unwrap();
@@ -22,7 +22,7 @@ impl ClientOutput {
         Ok(())
     }
 
-    pub(crate) async fn wallets(wallets: BTreeMap<String, WalletData>) {
+    pub(crate) async fn show_wallets(wallets: BTreeMap<String, WalletData>) {
         let mut tw = TabWriter::new(vec![]);
         writeln!(tw, ">> [NAME]\t[ADDRESS]");
         for (name, wallet) in wallets {
