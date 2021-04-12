@@ -1,15 +1,17 @@
 use crate::wallet::wallet::Wallet;
 
-pub(crate) struct ClientExecutor {
+pub(crate) struct WalletAdapter {
     host: smol::net::SocketAddr,
-    database: std::path::PathBuf
+    database: std::path::PathBuf,
+    interactive: bool,
 }
 
-impl ClientExecutor {
-    pub fn new(host: smol::net::SocketAddr, database: std::path::PathBuf) -> Self {
+impl WalletAdapter {
+    pub fn new(host: smol::net::SocketAddr, database: std::path::PathBuf, interactive: bool) -> Self {
         Self {
             host,
-            database
+            database,
+            interactive,
         }
     }
 
@@ -42,7 +44,7 @@ impl ClientExecutor {
         wallet.show_balance().await?;
         Ok(())
     }
-    pub async fn show_wallets(&self, wallet_name: &str) -> anyhow::Result<()> {
+    pub async fn show_wallets(&self) -> anyhow::Result<()> {
         let wallet = self.load_wallet()?;
         Ok(())
     }

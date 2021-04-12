@@ -85,8 +85,8 @@ impl ShellExecutor {
         name: &str,
         secret: &str,
     ) -> anyhow::Result<()> {
-        let dispatcher = SubShellExecutor::new(&self.host, &self.database, &self.version, name, secret).await?;
-        dispatcher.run().await?;
+        let executor = SubShellExecutor::new(&self.host, &self.database, &self.version, name, secret).await?;
+        executor.run().await?;
         Ok(())
     }
 
@@ -97,8 +97,8 @@ impl ShellExecutor {
         secret: &str,
         open_wallet_command: &Option<SubShellCommand>,
     ) -> anyhow::Result<()> {
-        let dispatcher = SubShellExecutor::new(&self.host, &self.database, &self.version, name, secret).await?;
-        dispatcher.dispatch(&open_wallet_command.clone().unwrap()).await?;
+        let executor = SubShellExecutor::new(&self.host, &self.database, &self.version, name, secret).await?;
+        executor.run_once(&open_wallet_command.clone().unwrap()).await?;
         Ok(())
     }
 

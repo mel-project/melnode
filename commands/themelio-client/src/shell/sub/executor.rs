@@ -51,6 +51,11 @@ impl SubShellExecutor {
         }
     }
 
+    /// Call dispatch and return result.
+    pub async fn run_once(&self, open_cmd: &SubShellCommand) -> anyhow::Result<()> {
+        self.dispatch(&open_cmd).await
+    }
+
     /// Dispatch and process the command.
     async fn dispatch(&self, open_cmd: &SubShellCommand) -> anyhow::Result<()> {
         // Dispatch a command and return a command result

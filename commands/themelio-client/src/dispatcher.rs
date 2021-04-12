@@ -1,6 +1,6 @@
 use crate::options::{ClientOpts, ClientSubOpts};
 use crate::shell::executor::ShellExecutor;
-use crate::executor::ClientExecutor;
+use crate::adapter::WalletAdapter;
 
 pub struct ClientDispatcher {
     opts: ClientOpts,
@@ -15,31 +15,29 @@ impl ClientDispatcher {
 
     pub async fn dispatch(&self) -> anyhow::Result<()> {
         let opts = self.opts.clone();
-        let host = opts.host.clone();
-        let database = opts.database.clone();
-        let executor = ClientExecutor::new(host, database);
+        let adapter = WalletAdapter::new(opts.host.clone(), opts.database.clone(), false);
         match opts.subcommand {
             ClientSubOpts::CreateWallet { wallet_name } => {
-                executor.create_wallet(&wallet_name).await?
+                adapter.create_wallet(&wallet_name).await?
             }
             ClientSubOpts::Faucet { amount, unit } => {
-                executor.faucet(&amount, &unit).await?
+                adapter.faucet(&amount, &unit).await?
             }
             ClientSubOpts::SendCoins { address, amount, unit } => {
-                executor.send_coins(&address, &amount, &unit).await?
+                adapter.send_coins(&address, &amount, &unit).await?
             }
             ClientSubOpts::AddCoins { coin_id } => {
-                executor.add_coins(&coin_id).await?
+                adapter.add_coins(&coin_id).await?
             }
             ClientSubOpts::ShowBalance => {
-                executor.show_balance().await?
+                adapter.show_balance().await?
             }
             ClientSubOpts::ShowWallets => {
-                executor.show_wallets().await?
+                adapter.show_wallets().await?
             }
             ClientSubOpts::Shell => {
-                let shell_dispatcher = ShellExecutor::new(&host, &database, &self.version);
-                shell_dispatcher.run().await?
+                let executor = ShellExecutor::new(&opts.host.clone(), &opts.database.clone(), &self.version);
+                executor.run().await?
             }
         }
         Ok(())

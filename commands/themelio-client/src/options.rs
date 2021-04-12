@@ -21,7 +21,7 @@ pub struct ClientOpts {
     pub(crate) subcommand: ClientSubOpts,
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(StructOpt, Clone, Debug)]
 /// Represents the sub options to run a specific command.
 /// If Shell is specified it will enter into an interactive shell,
 /// otherwise it will execute a single command and exit.
