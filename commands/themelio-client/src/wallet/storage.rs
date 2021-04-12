@@ -1,9 +1,9 @@
-use crate::data::WalletData;
 use anyhow;
 use sled;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use storage::SledMap;
+use crate::wallet::data::WalletData;
 
 const WALLET_NAMESPACE: &[u8; 6] = b"shell";
 

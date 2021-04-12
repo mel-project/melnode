@@ -19,16 +19,16 @@ impl ClientDispatcher {
         let executor = ClientExecutor::new(host, database);
         match self.opts.subcommand {
             ClientSubOpts::CreateWallet { wallet_name } => {
-                executor.create_wallet(wallet_name).await?
+                executor.create_wallet(&wallet_name).await?
             }
             ClientSubOpts::Faucet { amount, unit } => {
-                executor.faucet(amount, unit).await?
+                executor.faucet(&amount, &unit).await?
             }
             ClientSubOpts::SendCoins { address, amount, unit } => {
-                executor.send_coins(address, amount, unit).await?
+                executor.send_coins(&address, &amount, &unit).await?
             }
             ClientSubOpts::AddCoins { coin_id } => {
-                executor.add_coins(coin_id).await?
+                executor.add_coins(&coin_id).await?
             }
             ClientSubOpts::ShowBalance => {
                 executor.show_balance().await?

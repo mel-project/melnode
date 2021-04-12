@@ -51,6 +51,7 @@ impl Wallet {
     /// Get all shell data in storage by name
     pub async fn get_all(&self) -> anyhow::Result<BTreeMap<String, WalletData>> {
         let storage = WalletStorage::new(&self.database);
+        let wallet_data_by_name: BTreeMap<String, WalletData> = storage.get_all().await?;
         Ok(storage.get_all().await?)
     }
 
