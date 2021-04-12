@@ -46,8 +46,5 @@ impl ClientExecutor {
         let wallet = self.load_wallet()?;
         Ok(())
     }
-    pub async fn exit(&self, wallet_name: &str) -> anyhow::Result<()> {
-        let wallet = self.load_wallet()?;
-        Ok(())
-    }
+
 }

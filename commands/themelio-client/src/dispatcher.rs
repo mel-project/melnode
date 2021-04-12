@@ -41,9 +41,6 @@ impl ClientDispatcher {
                 let shell_dispatcher = ShellDispatcher::new(&host, &database, &self.version);
                 shell_dispatcher.run().await?
             }
-            ClientSubOpts::Exit => {
-                executor.exit().await?
-            }
         }
         Ok(())
     }
