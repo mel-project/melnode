@@ -1,7 +1,7 @@
 use crate::options::{ClientOpts, ClientSubOpts};
 use crate::shell::dispatcher::ShellDispatcher;
 
-pub(crate) struct ClientDispatcher {
+pub struct ClientDispatcher {
     opts: ClientOpts,
     version: String
 }

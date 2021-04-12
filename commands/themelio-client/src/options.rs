@@ -8,7 +8,7 @@ use structopt::StructOpt;
 /// End users can create, delete, import, and export wallets.
 /// Interacting with the blockchain is done by opening a shell
 /// and creating and sending various transactions.
-pub(crate) struct ClientOpts {
+pub struct ClientOpts {
     /// IP Address with port used to establish a connection to host
     #[structopt(long, default_value="127.0.0.1:8000")]
     pub(crate) host: smol::net::SocketAddr,
