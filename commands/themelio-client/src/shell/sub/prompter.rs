@@ -55,7 +55,7 @@ impl SubShellOutput {
 
     /// Show exit message
     pub(crate) async fn exit() -> anyhow::Result<()> {
-        eprintln!("\nExiting Themelio Client Open Wallet Mode");
+        eprintln!("\nExiting Themelio Client sub-shell");
         Ok(())
     }
 }

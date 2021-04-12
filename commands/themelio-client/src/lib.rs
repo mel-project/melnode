@@ -5,3 +5,4 @@ pub mod error;
 pub mod wallet;
 pub mod dispatcher;
 pub mod adapter;
+pub mod prompter;

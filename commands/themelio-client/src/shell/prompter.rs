@@ -4,12 +4,6 @@ use crate::common::read_line;
 use colored::Colorize;
 use std::convert::TryFrom;
 use anyhow::Error;
-use tabwriter::TabWriter;
-use tmelcrypt::Ed25519SK;
-use crate::data::WalletData;
-
-use std::io::prelude::*;
-use std::collections::BTreeMap;
 
 pub struct ShellInput {}
 
@@ -51,39 +45,18 @@ impl ShellInput {
 pub struct ShellOutput {}
 
 impl ShellOutput {
-    /// Display name, secret key and covenant of the shell
-    pub(crate) async fn wallet(name: &str, sk: Ed25519SK, wallet_data: &WalletData) -> anyhow::Result<()>{
-        // Display contents of keypair and address from covenant
-        let mut tw = TabWriter::new(vec![]);
-        writeln!(tw, ">> New data:\t{}", name.bold()).unwrap();
-        writeln!(tw, ">> Address:\t{}", wallet_data.my_script.hash().to_addr().yellow()).unwrap();
-        writeln!(tw, ">> Secret:\t{}", hex::encode(sk.0).dimmed()).unwrap();
-        eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
-        Ok(())
-    }
-
-    pub(crate) async fn wallets(wallets: BTreeMap<String, WalletData>) {
-        let mut tw = TabWriter::new(vec![]);
-        writeln!(tw, ">> [NAME]\t[ADDRESS]");
-        for (name, wallet) in wallets {
-            writeln!(tw, ">> {}\t{}", name, wallet.my_script.hash().to_addr());
-        }
-        tw.flush();
-        eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
-    }
-
     /// Output the error when dispatching command
-    pub(crate) async fn error(err: &Error, wallet_cmd: &ShellCommand) -> anyhow::Result<()> {
-        eprintln!("ERROR: {} when dispatching {:?}", err, wallet_cmd);
+    pub(crate) async fn error(err: &Error, cmd: &ShellCommand) -> anyhow::Result<()> {
+        eprintln!("ERROR: {} with shell command{:?}", err, cmd);
         Ok(())
     }
 
     /// Show available input commands
     pub(crate) async fn help() -> anyhow::Result<()> {
         eprintln!("\nAvailable commands are: ");
-        eprintln!(">> create <shell-name>");
-        eprintln!(">> sub <shell-name> <secret>");
-        eprintln!(">> use <shell-name> <secret> <sub-shell-args>");
+        eprintln!(">> create <wallet-name>");
+        eprintln!(">> open <wallet-name> <secret>");
+        eprintln!(">> use <wallet-name> <secret> <args>");
         eprintln!(">> show");
         eprintln!(">> help");
         eprintln!(">> exit");
@@ -93,7 +66,7 @@ impl ShellOutput {
 
     /// Show exit message
     pub(crate) async fn exit() -> anyhow::Result<()> {
-        eprintln!("\nExiting Themelio Client");
+        eprintln!("\nExiting Themelio Client shell");
         Ok(())
     }
 }
