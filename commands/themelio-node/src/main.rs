@@ -9,7 +9,7 @@ use tasks::NodeConfig;
 use tracing::instrument;
 
 #[instrument]
-fn main() {
+fn main() -> anyhow::Result<()> {
     // LogTracer::init().unwrap();
     let log_conf = std::env::var("RUST_LOG").unwrap_or_else(|_| "themelio_node=debug,warn".into());
     std::env::set_var("RUST_LOG", log_conf);
