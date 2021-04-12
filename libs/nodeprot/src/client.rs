@@ -7,7 +7,7 @@ use std::{
 
 use autosmt::{CompressedProof, FullProof};
 use blkstructs::{
-    CoinDataHeight, CoinID, ConsensusProof, Header, NetID, PoolState, SmtMapping, StakeDoc,
+    Block, CoinDataHeight, CoinID, ConsensusProof, Header, NetID, PoolState, SmtMapping, StakeDoc,
     StakeMapping, Transaction, STAKE_EPOCH,
 };
 use melnet::MelnetError;
@@ -141,8 +141,18 @@ impl ValClientSnapshot {
     }
 
     /// Gets the header.
-    pub fn header(&self) -> Header {
+    pub fn current_header(&self) -> Header {
         self.header
+    }
+
+    /// Gets the whole block at this height.
+    pub async fn current_block(&self) -> melnet::Result<Block> {
+        let header = self.current_header();
+        let block = get_full_block(self.raw.clone(), self.height).await?;
+        if block.header != header {
+            return Err(MelnetError::Custom("block header does not match".into()));
+        }
+        Ok(block)
     }
 
     /// Gets a historical header.
@@ -291,7 +301,7 @@ async fn get_abbr_block(
         .map_err(|e| melnet::MelnetError::Custom(e.to_string()))
 }
 
-#[cached::proc_macro::cached(result = true, time = 5)]
+#[cached::proc_macro::cached(result = true, time = 5, size = 1)]
 async fn get_summary(this: NodeClient) -> melnet::Result<StateSummary> {
     stdcode::deserialize(&this.request(NodeRequest::GetSummary).await?)
         .map_err(|e| melnet::MelnetError::Custom(e.to_string()))
@@ -315,4 +325,59 @@ async fn get_smt_branch(
         .decompress()
         .ok_or_else(|| melnet::MelnetError::Custom("could not decompress proof".into()))?;
     Ok((tuple.0, decompressed))
+}
+
+#[cached::proc_macro::cached(result = true, size = 100)]
+async fn get_full_block(this: NodeClient, height: u64) -> melnet::Result<Block> {
+    let (abbr_block, _): (AbbreviatedBlock, ConsensusProof) =
+        stdcode::deserialize(&this.request(NodeRequest::GetAbbrBlock(height)).await?)
+            .map_err(|e| melnet::MelnetError::Custom(e.to_string()))?;
+    let semaphore = smol::lock::Semaphore::new(16);
+    let lexec = smol::Executor::new();
+    let txx_tasks: Vec<smol::Task<melnet::Result<Transaction>>> = abbr_block
+        .txhashes
+        .iter()
+        .cloned()
+        .map(|v| {
+            let this = this.clone();
+            let semaphore = &semaphore;
+            lexec.spawn(async move {
+                let _guard = semaphore.acquire().await;
+                let (v, _) = get_smt_branch(
+                    this,
+                    height,
+                    Substate::Transactions,
+                    tmelcrypt::hash_single(&v),
+                )
+                .await?;
+                let tx = stdcode::deserialize(&v).map_err(|_| {
+                    melnet::MelnetError::Custom("could not deserialize transaction".into())
+                })?;
+                Ok(tx)
+            })
+        })
+        .collect();
+    let mut txx = vec![];
+    let mut txx_smt = SmtMapping::new(
+        autosmt::Forest::load(autosmt::MemDB::default()).get_tree(Default::default()),
+    );
+    lexec
+        .run(async move {
+            for task in txx_tasks {
+                let tx = task.await?;
+                txx.push(tx.clone());
+                txx_smt.insert(tx.hash_nosigs(), tx);
+            }
+            if txx_smt.root_hash() != abbr_block.header.transactions_hash {
+                return Err(melnet::MelnetError::Custom(
+                    "full block doesn't hash to the header".into(),
+                ));
+            }
+            Ok(Block {
+                header: abbr_block.header,
+                transactions: txx.into(),
+                proposer_action: abbr_block.proposer_action,
+            })
+        })
+        .await
 }

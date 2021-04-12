@@ -1917,6 +1917,7 @@ dependencies = [
  "hex",
  "melnet",
  "serde",
+ "smol",
  "stdcode",
  "tmelcrypt",
 ]
