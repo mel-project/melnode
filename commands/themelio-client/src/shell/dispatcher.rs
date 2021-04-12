@@ -18,7 +18,7 @@ impl ShellDispatcher {
         Self { host, database, version }
     }
 
-    /// Dispatch commands from user input and show output using prompt until user exits.
+    /// Dispatch commands from user input and show output using shell io prompter until user exits.
     pub async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
         let prompt = ShellInput::format_prompt(&self.version).await?;
@@ -48,11 +48,11 @@ impl ShellDispatcher {
     pub async fn dispatch(&self, cmd: &ShellCommand, open_cmd: &Option<SubShellCommand>) -> anyhow::Result<()> {
         // Dispatch a command and return a command result.
         match &cmd {
-            ShellCommand::Create(name) => self.create(name).await,
-            ShellCommand::Show => self.show().await,
-            ShellCommand::Open(name, secret) => self.open(name, secret).await,
-            ShellCommand::Use(name, secret) => self.use_(name, secret, &open_cmd).await,
-            ShellCommand::Delete(name) => self.delete(name).await,
+            ShellCommand::CreateWallet(name) => self.create(name).await,
+            ShellCommand::ShowWallets => self.show().await,
+            ShellCommand::OpenWallet(name, secret) => self.open(name, secret).await,
+            ShellCommand::UseWallet(name, secret) => self.use_(name, secret, &open_cmd).await,
+            // ShellCommand::DeleteWallet(name) => self.delete(name).await,
             ShellCommand::Help => self.help().await,
             ShellCommand::Exit => { self.exit().await }
         }

@@ -33,6 +33,8 @@ pub(crate) enum ClientSubOpts {
         amount: String,
         unit: String
     },
+    // TODO: add in optional field for handling fee input / agree
+    // For now hard code it in and don't make it interactive
     SendCoins {
         address: String,
         amount: String,
@@ -60,6 +62,5 @@ pub(crate) enum ClientSubOpts {
     // },
     ShowBalance,
     ShowWallets,
-    Shell,
-    Exit
+    Shell
 }

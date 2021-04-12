@@ -28,7 +28,7 @@ impl ShellInput {
     pub(crate) async fn command(prompt: &str) -> anyhow::Result<(ShellCommand, Option<SubShellCommand>)> {
         let input = read_line(prompt.to_string()).await?;
 
-        let wallet_use_mode: String = ShellCommand::Use(String::default(), String::default())
+        let wallet_use_mode: String = ShellCommand::UseWallet(String::default(), String::default())
             .to_string()
             .split(" ")
             .map(|s|s.to_string())

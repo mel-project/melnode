@@ -6,9 +6,9 @@ use std::convert::TryFrom;
 #[serde(rename_all = "kebab-case")]
 pub enum SubShellCommand {
     Faucet(String, String),
-    Deposit,
-    Withdraw,
-    Swap,
+    // Deposit(String, String, String, String),
+    // Withdraw(String, String, String, String),
+    // Swap(String, String),
     SendCoins(String, String, String),
     AddCoins(String),
     Balance,

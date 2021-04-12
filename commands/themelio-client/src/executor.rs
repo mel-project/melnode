@@ -27,7 +27,7 @@ impl ClientExecutor {
         wallet.fuacet(wallet_name).await?;
         Ok(())
     }
-    pub async fn send_coins(&self, coin_id: &str, amount: &str) -> anyhow::Result<()> {
+    pub async fn send_coins(&self, address: &str, amount: &str, unit: &str) -> anyhow::Result<()> {
         let wallet = self.load_wallet()?;
         wallet.send_coins(wallet_name).await?;
         Ok(())

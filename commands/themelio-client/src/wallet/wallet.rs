@@ -69,4 +69,6 @@ impl Wallet {
         }
         Ok(wallet_data)
     }
+
+    // add wallet, send-coins, add-coins, balance, (add a flag to constructor for the -y assumption
 }

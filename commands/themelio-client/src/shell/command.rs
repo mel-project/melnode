@@ -6,11 +6,12 @@ use std::fmt;
 #[derive(Eq, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ShellCommand {
-    Create(String),
-    Show,
-    Open(String, String),
-    Use(String, String),
-    Delete(String),
+    CreateWallet(String),
+    ShowWallets,
+    OpenWallet(String, String),
+    UseWallet(String, String),
+    // TODO: Add in delete wallet
+    // DeleteWallet(String),
     Help,
     Exit,
 }
@@ -19,7 +20,7 @@ impl fmt::Display for ShellCommand {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let x = vec!["hi".to_string()];
         let params: Vec<String> = match self {
-            ShellCommand::Use(a, b) => { vec![a.to_string(), b.to_string()]},
+            ShellCommand::UseWallet(a, b) => { vec![a.to_string(), b.to_string()]},
             _ => { vec![] }
         };
         write!(f, "({:?}", params);
