@@ -49,14 +49,14 @@
 //     let mut tw = TabWriter::new(vec![]);
 
 //     match input.split(' ').collect::<Vec<_>>().as_slice() {
-//         &["wallet-new", wallet_name] => {
+//         &["shell-new", wallet_name] => {
 //             if available_wallets.get(wallet_name).is_some() {
 //                 eprintln!(">> {}: data already exists", "ERROR".red().bold());
 //                 return Ok(false);
 //             }
 //             let (sk, _pk, wallet_data) = WalletData::generate();
-//             let wallet = available_wallets.insert(wallet_name, &wallet_data);
-//             assert!(!wallet, "Internal error: DB state inconsistent");
+//             let shell = available_wallets.insert(wallet_name, &wallet_data);
+//             assert!(!shell, "Internal error: DB state inconsistent");
 //             writeln!(tw, ">> New data:\t{}", wallet_name.bold()).unwrap();
 //             writeln!(
 //                 tw,
@@ -67,11 +67,11 @@
 //             writeln!(tw, ">> Secret:\t{}", hex::encode(sk.0).dimmed()).unwrap();
 //             tw.flush().unwrap();
 //         }
-//         &["wallet-unlock", wallet_name, wallet_secret] => {
-//             if let Some(wallet) = available_wallets.get(&wallet_name) {
+//         &["shell-unlock", wallet_name, wallet_secret] => {
+//             if let Some(shell) = available_wallets.get(&wallet_name) {
 //                 let wallet_secret = hex::decode(wallet_secret)?;
 //                 let wallet_secret = tmelcrypt::Ed25519SK(wallet_secret.as_slice().try_into()?);
-//                 if melvm::Covenant::std_ed25519_pk(wallet_secret.to_public()) != wallet.my_script {
+//                 if melvm::Covenant::std_ed25519_pk(wallet_secret.to_public()) != shell.my_script {
 //                     return Err(anyhow::anyhow!(
 //                         "unlocking failed, make sure you have the right secret!"
 //                     ));
@@ -81,7 +81,7 @@
 //                 loop {
 //                     let mut active_wallet = ActiveWallet::new(
 //                         wallet_secret,
-//                         wallet.clone(),
+//                         shell.clone(),
 //                         cfg.bootstrap,
 //                         &storage_path,
 //                     );
@@ -91,7 +91,7 @@
 //                             break;
 //                         }
 //                         Err(err) => {
-//                             eprintln!("Error encountered when running open wallet {}", err);
+//                             eprintln!("Error encountered when running sub shell {}", err);
 //                             continue;
 //                         }
 //                     }
@@ -99,11 +99,11 @@
 //                 prompt_stack.pop();
 //             }
 //         }
-//         &["wallet-list"] => {
+//         &["shell-list"] => {
 //             let wallets = available_wallets.get_all();
 //             writeln!(tw, ">> [NAME]\t[ADDRESS]")?;
-//             for (name, wallet) in wallets.iter() {
-//                 writeln!(tw, ">> {}\t{}", name, wallet.my_script.hash().to_addr())?;
+//             for (name, shell) in wallets.iter() {
+//                 writeln!(tw, ">> {}\t{}", name, shell.my_script.hash().to_addr())?;
 //             }
 //         }
 //         &["exit"] => {
@@ -111,9 +111,9 @@
 //         }
 //         _other => {
 //             eprintln!("\nAvailable commands are: ");
-//             eprintln!(">> wallet-new <wallet-name>");
-//             eprintln!(">> wallet-unlock <wallet-name> <secret>");
-//             eprintln!(">> wallet-list");
+//             eprintln!(">> shell-new <shell-name>");
+//             eprintln!(">> shell-unlock <shell-name> <secret>");
+//             eprintln!(">> shell-list");
 //             eprintln!(">> exit");
 //             return Ok(false);
 //         }
@@ -131,7 +131,7 @@
 //     .await
 // }
 
-// /// Handle command line inputs for open wallet mode
+// /// Handle command line inputs for sub shell mode
 // async fn run_active_wallet(
 //     wallet_name: &str,
 //     active_wallet: &mut ActiveWallet,
@@ -183,7 +183,7 @@
 //                             }
 //                         );
 //                         active_wallet.add_coin(&coin_id, &coin_data_height).await?;
-//                         eprintln!("Added coin to wallet");
+//                         eprintln!("Added coin to shell");
 //                     }
 //                 }
 //             }

@@ -7,10 +7,10 @@ pub struct WalletRecord {
     pub encoded_data: Vec<u8>,
 }
 
-/// Create wallet schema table if it doesn't already exist
+/// Create shell schema table if it doesn't already exist
 pub fn init(conn: &Connection) -> Result<()> {
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS wallet (
+        "CREATE TABLE IF NOT EXISTS shell (
               id              INTEGER PRIMARY KEY,
               wallet_name     varchar(255) NOT NULL,
               encoded_data    BLOB,
@@ -21,7 +21,7 @@ pub fn init(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Create a wallet record in db
+/// Create a shell record in db
 pub fn insert(conn: &Connection, wallet_name: &str, encoded_data: &[u8]) -> Result<()> {
     let wr = WalletRecord {
         id: 0,
@@ -29,25 +29,25 @@ pub fn insert(conn: &Connection, wallet_name: &str, encoded_data: &[u8]) -> Resu
         encoded_data: encoded_data.into(),
     };
     conn.execute(
-        "INSERT INTO wallet (wallet_name, encoded_data) VALUES (?1, ?2)",
+        "INSERT INTO shell (wallet_name, encoded_data) VALUES (?1, ?2)",
         params![wr.wallet_name, wr.encoded_data],
     )?;
     Ok(())
 }
 
-/// Update a wallet record in db
+/// Update a shell record in db
 pub fn update_by_name(conn: &Connection, wallet_name: &str, encoded_data: &[u8]) -> Result<()> {
     conn.execute(
-        "UPDATE wallet SET encoded_data=(?2) where wallet_name=(?1)",
+        "UPDATE shell SET encoded_data=(?2) where wallet_name=(?1)",
         params![wallet_name, encoded_data],
     )?;
     Ok(())
 }
 
-/// Read a wallet record from db using a wallet name
+/// Read a shell record from db using a shell name
 pub fn read_by_name(conn: &Connection, wallet_name: &str) -> anyhow::Result<WalletRecord> {
     let mut stmt =
-        conn.prepare("SELECT id, wallet_name, encoded_data FROM wallet WHERE wallet_name is (?1)")?;
+        conn.prepare("SELECT id, wallet_name, encoded_data FROM shell WHERE wallet_name is (?1)")?;
     let mut wallet_iter = stmt.query_map(params![wallet_name], |row| {
         let wr = WalletRecord {
             id: row.get(0)?,
@@ -61,10 +61,10 @@ pub fn read_by_name(conn: &Connection, wallet_name: &str) -> anyhow::Result<Wall
         .ok_or_else(|| anyhow::anyhow!("Couldn't find a record"))??)
 }
 
-/// Read all wallet data records from db
+/// Read all shell data records from db
 pub fn read_all(conn: &Connection) -> Result<Vec<WalletRecord>> {
     let mut stmt = conn
-        .prepare("SELECT id, wallet_name, encoded_data FROM wallet")
+        .prepare("SELECT id, wallet_name, encoded_data FROM shell")
         .unwrap();
     let wallet_iter = stmt
         .query_map(params![], |row| {

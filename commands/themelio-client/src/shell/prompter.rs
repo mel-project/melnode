@@ -1,19 +1,19 @@
-use crate::wallet::command::WalletCommand;
-use crate::wallet::open::command::OpenWalletCommand;
-use crate::wallet::common::read_line;
+use crate::shell::command::ShellCommand;
+use crate::shell::sub::command::OpenWalletCommand;
+use crate::common::read_line;
 use colored::Colorize;
 use std::convert::TryFrom;
 use anyhow::Error;
 use tabwriter::TabWriter;
 use tmelcrypt::Ed25519SK;
-use crate::wallet::data::WalletData;
+use crate::data::WalletData;
 
 use std::io::prelude::*;
 use std::collections::BTreeMap;
 
-pub struct Input {}
+pub struct ShellInput {}
 
-impl Input {
+impl ShellInput {
     /// Format the CLI prompt with the version of the binary
     pub(crate) async fn format_prompt(version: &str) -> anyhow::Result<String> {
         let prompt_stack: Vec<String> = vec![
@@ -24,11 +24,11 @@ impl Input {
         Ok(format!("{}", prompt_stack.join(" ")))
     }
 
-    /// Get user input and parse it into a wallet command
-    pub(crate) async fn command(prompt: &str) -> anyhow::Result<(WalletCommand, Option<OpenWalletCommand>)> {
+    /// Get user input and parse it into a shell command
+    pub(crate) async fn command(prompt: &str) -> anyhow::Result<(ShellCommand, Option<OpenWalletCommand>)> {
         let input = read_line(prompt.to_string()).await?;
 
-        let wallet_use_mode: String = WalletCommand::Use(String::default(), String::default())
+        let wallet_use_mode: String = ShellCommand::Use(String::default(), String::default())
             .to_string()
             .split(" ")
             .map(|s|s.to_string())
@@ -38,20 +38,20 @@ impl Input {
         if input.starts_with(&wallet_use_mode) {
             let args: Vec<String> = input.split(" ").map(|s| s.to_string()).collect();
             let (left, right): (&str, &str) = (&args[0..2].join(" "), &args[2..].join(" "));
-            let wallet_cmd = WalletCommand::try_from(left.to_string())?;
+            let wallet_cmd = ShellCommand::try_from(left.to_string())?;
             let open_wallet_cmd = OpenWalletCommand::try_from(right.to_string())?;
             Ok((wallet_cmd, Some(open_wallet_cmd)))
         } else {
-            let wallet_cmd = WalletCommand::try_from(input.to_string())?;
+            let wallet_cmd = ShellCommand::try_from(input.to_string())?;
             Ok((wallet_cmd, None))
         }
     }
 }
 
-pub struct Output {}
+pub struct ShellOutput {}
 
-impl Output {
-    /// Display name, secret key and covenant of the wallet
+impl ShellOutput {
+    /// Display name, secret key and covenant of the shell
     pub(crate) async fn wallet(name: &str, sk: Ed25519SK, wallet_data: &WalletData) -> anyhow::Result<()>{
         // Display contents of keypair and address from covenant
         let mut tw = TabWriter::new(vec![]);
@@ -73,7 +73,7 @@ impl Output {
     }
 
     /// Output the error when dispatching command
-    pub(crate) async fn error(err: &Error, wallet_cmd: &WalletCommand) -> anyhow::Result<()> {
+    pub(crate) async fn error(err: &Error, wallet_cmd: &ShellCommand) -> anyhow::Result<()> {
         eprintln!("ERROR: {} when dispatching {:?}", err, wallet_cmd);
         Ok(())
     }
@@ -81,9 +81,9 @@ impl Output {
     /// Show available input commands
     pub(crate) async fn help() -> anyhow::Result<()> {
         eprintln!("\nAvailable commands are: ");
-        eprintln!(">> create <wallet-name>");
-        eprintln!(">> open <wallet-name> <secret>");
-        eprintln!(">> use <wallet-name> <secret> <open-wallet-args>");
+        eprintln!(">> create <shell-name>");
+        eprintln!(">> sub <shell-name> <secret>");
+        eprintln!(">> use <shell-name> <secret> <sub-shell-args>");
         eprintln!(">> show");
         eprintln!(">> help");
         eprintln!(">> exit");

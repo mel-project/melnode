@@ -1,5 +1,5 @@
-use crate::wallet::common::read_line;
-use crate::wallet::open::command::OpenWalletCommand;
+use crate::common::read_line;
+use crate::shell::sub::command::OpenWalletCommand;
 use anyhow::Error;
 use colored::Colorize;
 use std::convert::TryFrom;
@@ -19,7 +19,7 @@ impl Input {
         Ok(format!("{}", prompt_stack.join(" ")))
     }
 
-    /// Get user input and parse it into a wallet command
+    /// Get user input and parse it into a shell command
     pub(crate) async fn command(prompt: &str) -> anyhow::Result<OpenWalletCommand> {
         let input = read_line(prompt.to_string()).await?;
 

@@ -14,18 +14,18 @@
 // pub struct ActiveWallet {
 //     client: NetClient,
 //     sk: Ed25519SK,
-//     wallet: WalletData,
+//     shell: WalletData,
 //     conn: Connection,
 // }
 //
 // impl ActiveWallet {
-//     pub fn new(sk: Ed25519SK, wallet: WalletData, remote: SocketAddr, path: &str) -> Self {
+//     pub fn new(sk: Ed25519SK, shell: WalletData, remote: SocketAddr, path: &str) -> Self {
 //         let path = Path::new(path);
-//         let conn = Connection::open(path).expect("SQLite connection failure");
-//         wallet::init(&conn).expect("Failed to load wallet");
+//         let conn = Connection::sub(path).expect("SQLite connection failure");
+//         shell::init(&conn).expect("Failed to load shell");
 //         ActiveWallet {
 //             sk,
-//             wallet,
+//             shell,
 //             client: NetClient::new(remote),
 //             conn,
 //         }
@@ -42,7 +42,7 @@
 //             inputs: vec![],
 //             outputs: vec![CoinData {
 //                 denom: DENOM_TMEL.to_owned(),
-//                 covhash: self.wallet.my_script.hash(),
+//                 covhash: self.shell.my_script.hash(),
 //                 value: number * MICRO_CONVERTER,
 //             }],
 //             fee,
@@ -91,7 +91,7 @@
 //         coin_id: &CoinID,
 //         coin_data_height: &CoinDataHeight,
 //     ) -> anyhow::Result<()> {
-//         self.wallet.insert_coin(*coin_id, coin_data_height.clone());
+//         self.shell.insert_coin(*coin_id, coin_data_height.clone());
 //         Ok(())
 //     }
 //
@@ -115,7 +115,7 @@
 //         let fee_multiplier = header.fee_multiplier;
 //
 //         let tx = self
-//             .wallet
+//             .shell
 //             .pre_spend(outputs, fee_multiplier)?
 //             .sign_ed25519(self.sk);
 //
@@ -126,7 +126,7 @@
 //         eprintln!(">> Syncing state...");
 //         self.client.broadcast_tx(to_send.clone()).await?;
 //         eprintln!(">> Transaction {:?} broadcast!", to_send.hash_nosigs());
-//         self.wallet.spend(to_send.clone())?;
+//         self.shell.spend(to_send.clone())?;
 //         Ok(to_send)
 //     }
 //
@@ -144,7 +144,7 @@
 //
 //     pub async fn get_spent_coins(&mut self) -> anyhow::Result<HashMap<CoinID, CoinDataHeight>> {
 //         let mut spent_coins = HashMap::new();
-//         for (coin_id, coin_data) in self.wallet.spent_coins().iter() {
+//         for (coin_id, coin_data) in self.shell.spent_coins().iter() {
 //             spent_coins.insert(*coin_id, coin_data.clone());
 //         }
 //         Ok(spent_coins)
@@ -152,7 +152,7 @@
 //
 //     pub async fn get_unspent_coins(&mut self) -> anyhow::Result<HashMap<CoinID, CoinDataHeight>> {
 //         let mut unspent_coins = HashMap::new();
-//         for (coin_id, coin_data) in self.wallet.unspent_coins().iter() {
+//         for (coin_id, coin_data) in self.shell.unspent_coins().iter() {
 //             unspent_coins.insert(*coin_id, coin_data.clone());
 //         }
 //         Ok(unspent_coins)
@@ -168,9 +168,9 @@
 //     }
 //
 //     pub async fn save(&mut self, wallet_name: &str) -> anyhow::Result<()> {
-//         let encoded_data = stdcode::serialize(&self.wallet).unwrap();
-//         wallet::update_by_name(&self.conn, &wallet_name, &encoded_data)
-//             .expect("Failed to update wallet");
+//         let encoded_data = stdcode::serialize(&self.shell).unwrap();
+//         shell::update_by_name(&self.conn, &wallet_name, &encoded_data)
+//             .expect("Failed to update shell");
 //         Ok(())
 //     }
 // }

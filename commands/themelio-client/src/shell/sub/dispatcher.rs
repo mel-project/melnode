@@ -1,6 +1,6 @@
 use crate::wallet::wallet::Wallet;
-use crate::wallet::open::prompter::{Input, Output};
-use crate::wallet::open::command::OpenWalletCommand;
+use crate::shell::sub::prompter::{Input, Output};
+use crate::shell::sub::command::OpenWalletCommand;
 use blkstructs::CoinID;
 
 pub struct OpenWalletDispatcher {
@@ -12,7 +12,7 @@ pub struct OpenWalletDispatcher {
 }
 
 impl OpenWalletDispatcher {
-    /// Create a new open wallet dispatcher if wallet exists and we can load it with the secret.
+    /// Create a new sub shell dispatcher if shell exists and we can load it with the secret.
     pub(crate) async fn new(host: &smol::net::SocketAddr, database: &std::path::PathBuf, version: &str, name: &str, secret: &str) -> anyhow::Result<Self> {
         let host = host.clone();
         let database = database.clone();
@@ -70,11 +70,11 @@ impl OpenWalletDispatcher {
     }
 
     async fn faucet(&self, amt: &str, denom: &str) -> anyhow::Result<()> {
-        // let wallet = Wallet::new(&self.host, &self.database);
+        // let shell = Wallet::new(&self.host, &self.database);
         //
-        // let wallet_data = wallet.open(&self.name, &self.secret).await?;
+        // let wallet_data = shell.sub(&self.name, &self.secret).await?;
         //
-        // let coin = wallet.faucet(&wallet_data, self.amt, self.denom).await?;
+        // let coin = shell.faucet(&wallet_data, self.amt, self.denom).await?;
         //
         // prompter::output_faucet_tx(wallet_data, coin).await?;
         //
@@ -113,9 +113,9 @@ impl OpenWalletDispatcher {
         Ok(())
     }
     async fn send_coins(&self, amt: &str, denom: &str) -> anyhow::Result<()> {
-        // let wallet = Wallet::new(&self.host, &self.database);
-        // let wallet_data = wallet.open(&self.name, &self.secret).await?;
-        // let prompt = open::prompt::format_prompt(&self.version).await?;
+        // let shell = Wallet::new(&self.host, &self.database);
+        // let wallet_data = shell.sub(&self.name, &self.secret).await?;
+        // let prompt = sub::prompt::format_prompt(&self.version).await?;
         //                 let tx = active_wallet.create_tx(dest_addr, amount, unit).await?;
 //                 let fee_prompt = format!("Do you wish to send a tx with a fee of {} (y/n): ", tx.fee);
 //                 let fee_input = read_line(fee_prompt.to_string()).await.unwrap();
@@ -151,9 +151,9 @@ impl OpenWalletDispatcher {
         Ok(())
     }
     async fn add_coins(&self, amt: &str, denom: &str) -> anyhow::Result<()> {
-        // let wallet = Wallet::new(&self.host, &self.database);
-        // let wallet_data = wallet.open(&self.name, &self.secret).await?;
-        // let prompt = open::prompt::format_prompt(&self.version).await?;
+        // let shell = Wallet::new(&self.host, &self.database);
+        // let wallet_data = shell.sub(&self.name, &self.secret).await?;
+        // let prompt = sub::prompt::format_prompt(&self.version).await?;
         //                 let (coin_data_height, coin_id, _full_proof) =
 //                     active_wallet.get_coin_data_by_id(coin_id).await?;
 //                 match coin_data_height {
@@ -172,22 +172,22 @@ impl OpenWalletDispatcher {
 //                             }
 //                         );
 //                         active_wallet.add_coin(&coin_id, &coin_data_height).await?;
-//                         eprintln!("Added coin to wallet");
+//                         eprintln!("Added coin to shell");
 //                     }
 //                 }
         Ok(())
     }
     async fn balance(&self) -> anyhow::Result<()> {
         Ok(())
-        // let wallet = Wallet::new(&self.host, &self.database);
-        // let wallet_data = wallet.open(&self.name, &self.secret).await?;
-        // let prompt = open::prompt::format_prompt(&self.version).await?;
+        // let shell = Wallet::new(&self.host, &self.database);
+        // let wallet_data = shell.sub(&self.name, &self.secret).await?;
+        // let prompt = sub::prompt::format_prompt(&self.version).await?;
         //                 let balance = active_wallet.get_balance().await?;
 //                 eprintln!(">> **** BALANCE ****");
 //                 eprintln!(">> {}", balance);
     }
 
-    /// Show available open wallet inputs to user
+    /// Show available sub shell inputs to user
     async fn help(&self) -> anyhow::Result<()> {
         // prompter::output_help().await?;
         Ok(())
