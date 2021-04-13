@@ -1,5 +1,7 @@
 use crate::wallet::manager::WalletManager;
 use crate::shell::runner::ShellRunner;
+use crate::shell::io::ShellOutput;
+use crate::shell::sub::io::SubShellOutput;
 
 
 /// Responsible for executing a single client CLI command non-interactively.
@@ -23,7 +25,7 @@ impl CommandExecutor {
     pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<()> {
         let manager = WalletManager::new(&self.host.clone(), &self.database.clone());
         let (secret, wallet_data) = manager.create_wallet(wallet_name).await?;
-        CommandOutput::show_new_wallet(wallet_name, secret, wallet_data).await?;
+        ShellOutput::show_new_wallet(wallet_name, secret, wallet_data).await?;
         Ok(())
     }
 
@@ -31,6 +33,8 @@ impl CommandExecutor {
     /// The results of the faucet tx are shown to the user.
     pub async fn faucet(&self, wallet_name: &str, secret: &str, amount: &str, unit: &str) -> anyhow::Result<()> {
         let manager = WalletManager::new(&self.host.clone(), &self.database.clone());
+        let res = manager.faucet()
+        SubShellOutput::show_faucet_tx().await?;
         let wallet = manager.open(wallet_name, secret).await?;
 
         wallet.faucet(amount)
