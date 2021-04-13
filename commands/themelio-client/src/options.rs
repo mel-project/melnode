@@ -36,7 +36,7 @@ pub enum SubOpts {
         unit: String
     },
     // TODO: determine how to handle fee input for interactive and non-interactive case
-    // ie... do we add in optional field for handling fee input / agree?
+    // ie... do we add in optional field for handling fee input?
     SendCoins {
         wallet_name: String,
         secret: String,
