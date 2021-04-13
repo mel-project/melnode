@@ -3,7 +3,7 @@ use crate::shell::sub::prompter::{SubShellInput, SubShellOutput};
 use crate::shell::sub::command::SubShellCommand;
 use blkstructs::CoinID;
 
-pub(crate) struct SubShellExecutor {
+pub(crate) struct SubShellRunner {
     host: smol::net::SocketAddr,
     database: std::path::PathBuf,
     version: String,
@@ -11,7 +11,7 @@ pub(crate) struct SubShellExecutor {
     secret: String,
 }
 
-impl SubShellExecutor {
+impl SubShellRunner {
     /// Create a new sub shell dispatcher if shell exists and we can load it with the secret.
     pub(crate) async fn new(host: &smol::net::SocketAddr, database: &std::path::PathBuf, version: &str, name: &str, secret: &str) -> anyhow::Result<Self> {
         let host = host.clone();

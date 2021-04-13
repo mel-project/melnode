@@ -32,8 +32,8 @@ pub struct SubShellOutput {}
 
 impl SubShellOutput {
     /// Output the error when dispatching command
-    pub(crate) async fn error(err: &Error, wallet_cmd: &SubShellCommand) -> anyhow::Result<()> {
-        eprintln!("ERROR: {} when dispatching {:?}", err, wallet_cmd);
+    pub(crate) async fn error(err: &Error, sub_shell_cmd: &SubShellCommand) -> anyhow::Result<()> {
+        eprintln!("ERROR: {} when dispatching {:?}", err, sub_shell_cmd);
         Ok(())
     }
 

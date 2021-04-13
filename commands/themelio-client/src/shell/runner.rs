@@ -2,15 +2,15 @@ use crate::shell::command::ShellCommand;
 use crate::shell::sub::command::SubShellCommand;
 use crate::wallet::wallet::Wallet;
 use crate::shell::prompter::{ShellInput, ShellOutput};
-use crate::shell::sub::executor::SubShellExecutor;
+use crate::shell::sub::runner::SubShellRunner;
 
-pub struct ShellExecutor {
+pub struct ShellRunner {
     host: smol::net::SocketAddr,
     database: std::path::PathBuf,
     version: String
 }
 
-impl ShellExecutor {
+impl ShellRunner {
     pub fn new(host: &smol::net::SocketAddr, database: &std::path::PathBuf, version: &str) -> Self {
         let host = host.clone();
         let database = database.clone();
@@ -62,7 +62,7 @@ impl ShellExecutor {
     async fn create(&self, name: &str) -> anyhow::Result<()> {
         let wallet = Wallet::new(&self.host, &self.database);
         let (sk, wallet_data) = wallet.create(name).await?;
-        ShellOutput::wallet(name, sk, &wallet_data);
+        ShellOutput::(name, sk, &wallet_data);
         Ok(())
     }
 
@@ -85,7 +85,7 @@ impl ShellExecutor {
         name: &str,
         secret: &str,
     ) -> anyhow::Result<()> {
-        let executor = SubShellExecutor::new(&self.host, &self.database, &self.version, name, secret).await?;
+        let executor = SubShellRunner::new(&self.host, &self.database, &self.version, name, secret).await?;
         executor.run().await?;
         Ok(())
     }
@@ -97,7 +97,7 @@ impl ShellExecutor {
         secret: &str,
         open_wallet_command: &Option<SubShellCommand>,
     ) -> anyhow::Result<()> {
-        let executor = SubShellExecutor::new(&self.host, &self.database, &self.version, name, secret).await?;
+        let executor = SubShellRunner::new(&self.host, &self.database, &self.version, name, secret).await?;
         executor.run_once(&open_wallet_command.clone().unwrap()).await?;
         Ok(())
     }
