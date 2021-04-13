@@ -1,4 +1,5 @@
 use crate::wallet::manager::WalletManager;
+use crate::prompter::ClientOutput;
 
 
 /// Responsible for executing a single client CLI command.
@@ -21,12 +22,8 @@ impl CommandExecutor {
     /// Creates a new wallet, stores it into db and outputs the name & secret.
     pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<()> {
         let manager = WalletManager::new(&self.host.clone(), &self.database.clone());
-        let wallet_data = manager.create_wallet()
-        ClientOutput::show_new_wallet(wallet_name, wallet_data);
-        ClientPrompter::show_new_wallet
-        let wallet = self.load_wallet()?;
-        wallet.create(wallet_name);
-
+        let (secret, wallet_data) = manager.create_wallet(wallet_name).await?;
+        ClientOutput::show_new_wallet(wallet_name, secret, wallet_data).await?;
         ClientOutput::show_new_wallet(wallet);
         Ok(())
     }
