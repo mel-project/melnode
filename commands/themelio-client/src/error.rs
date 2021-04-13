@@ -4,11 +4,11 @@ use thiserror::Error;
 /// A error that happens on the client side
 pub enum ClientError {
     #[error("invalid wallet name {:?}", .0)]
-    WalletInvalidName(String),
+    InvalidWalletName(String),
     #[error("wallet with name {:?} already exists", .0)]
-    WalletDuplicateName(String),
+    DuplicateWalletName(String),
     #[error("provided secret does not unlock wallet with name {:?} ", .0)]
-    WalletInvalidSecret(String),
+    InvalidWalletSecret(String),
     #[error("provided invalid input arguments to client {:?} ", .0)]
-    ClientInvalidInputArgs(String),
+    InvalidInputArgs(String),
 }

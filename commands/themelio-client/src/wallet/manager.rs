@@ -30,13 +30,13 @@ impl WalletManager {
     pub async fn create_wallet(&self, name: &str) -> anyhow::Result<(Ed25519SK, WalletData)> {
         // Check if shell has only alphanumerics
         if name.chars().all(char::is_alphanumeric) == false {
-            anyhow::bail!(ClientError::WalletInvalidName(name.to_string()))
+            anyhow::bail!(ClientError::InvalidWalletName(name.to_string()))
         }
 
         let storage = WalletStorage::new(&self.database);
         // Check if shell with same name already exits
         if let Some(_stored_wallet_data) = storage.get(name).await? {
-            anyhow::bail!(ClientError::WalletDuplicateName(name.to_string()))
+            anyhow::bail!(ClientError::DuplicateWalletName(name.to_string()))
         }
 
         // Generate shell data and store it
@@ -66,7 +66,7 @@ impl WalletManager {
         let sk: Ed25519SK = Ed25519SK(wallet_secret.as_slice().try_into()?);
 
         if wallet_data.my_script.0 != sk.0 {
-            anyhow::bail!(ClientError::WalletInvalidSecret(name.to_string()))
+            anyhow::bail!(ClientError::InvalidWalletSecret(name.to_string()))
         }
         Ok(wallet_data)
     }
