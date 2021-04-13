@@ -1,7 +1,7 @@
 use crate::shell::command::ShellCommand;
 use crate::shell::sub::command::SubShellCommand;
 use crate::wallet::manager::WalletManager;
-use crate::shell::prompter::{ShellInput, ShellOutput};
+use crate::shell::io::{ShellInput, ShellOutput};
 use crate::shell::sub::runner::SubShellRunner;
 
 pub struct ShellRunner {

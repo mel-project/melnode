@@ -6,11 +6,9 @@ use std::io::prelude::*;
 use std::collections::BTreeMap;
 use crate::wallet::data::WalletData;
 
-pub struct ClientOutput {
+pub struct CommandOutput {}
 
-}
-
-impl ClientOutput {
+impl CommandOutput {
     /// Display name, secret key and covenant of the shell
     pub(crate) async fn show_new_wallet(name: &str, sk: Ed25519SK, wallet_data: WalletData) -> anyhow::Result<()> {
         // Display contents of keypair and address from covenant

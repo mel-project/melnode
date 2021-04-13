@@ -47,7 +47,7 @@ pub struct ShellOutput {}
 impl ShellOutput {
     /// Output the error when dispatching command.
     pub(crate) async fn error(err: &Error, cmd: &ShellCommand) -> anyhow::Result<()> {
-        eprintln!("ERROR: {} with shell command{:?}", err, cmd);
+        eprintln!("ERROR: {} with shell command {:?}", err, cmd);
         Ok(())
     }
 

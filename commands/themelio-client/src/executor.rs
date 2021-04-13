@@ -1,13 +1,12 @@
 use crate::wallet::manager::WalletManager;
-use crate::prompter::ClientOutput;
+use crate::io::CommandOutput;
 
 
-/// Responsible for executing a single client CLI command.
+/// Responsible for executing a single client CLI command non-interactively.
 pub struct CommandExecutor {
     pub host: smol::net::SocketAddr,
     pub database: std::path::PathBuf,
     interactive: bool,
-
 }
 
 impl CommandExecutor {
@@ -23,7 +22,7 @@ impl CommandExecutor {
     pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<()> {
         let manager = WalletManager::new(&self.host.clone(), &self.database.clone());
         let (secret, wallet_data) = manager.create_wallet(wallet_name).await?;
-        ClientOutput::show_new_wallet(wallet_name, secret, wallet_data).await?;
+        CommandOutput::show_new_wallet(wallet_name, secret, wallet_data).await?;
         Ok(())
     }
 
@@ -32,7 +31,7 @@ impl CommandExecutor {
     pub async fn faucet(&self, wallet_name: &str, secret: &str, amount: &str, unit: &str) -> anyhow::Result<()> {
         let manager = WalletManager::new(&self.host.clone(), &self.database.clone());
         let wallet = manager.open(wallet_name, secret).await?;
-        
+
         wallet.faucet(amount)
         manager.load_wallet(wallet_name).await?;
 

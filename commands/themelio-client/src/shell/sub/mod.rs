@@ -1,3 +1,3 @@
 pub mod command;
-pub mod prompter;
+pub mod io;
 pub mod runner;

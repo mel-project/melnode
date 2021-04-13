@@ -1,5 +1,5 @@
 use crate::wallet::manager::WalletManager;
-use crate::shell::sub::prompter::{SubShellInput, SubShellOutput};
+use crate::shell::sub::io::{SubShellInput, SubShellOutput};
 use crate::shell::sub::command::SubShellCommand;
 use blkstructs::CoinID;
 
