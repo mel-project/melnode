@@ -31,6 +31,9 @@ impl CommandExecutor {
     /// The results of the faucet tx are shown to the user.
     pub async fn faucet(&self, wallet_name: &str, secret: &str, amount: &str, unit: &str) -> anyhow::Result<()> {
         let manager = WalletManager::new(&self.host.clone(), &self.database.clone());
+        let wallet = manager.open(wallet_name, secret).await?;
+        
+        wallet.faucet(amount)
         manager.load_wallet(wallet_name).await?;
 
         manager.faucet(wallet_name, secret, amount, unit)

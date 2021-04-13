@@ -79,14 +79,14 @@ impl ShellRunner {
         Ok(())
     }
 
-    /// Open a shell given the name and secret and run in sub shell dispatch mode.
+    /// Open a shell given the name and secret and run in sub shell mode.
     async fn open(
         &self,
         name: &str,
         secret: &str,
     ) -> anyhow::Result<()> {
-        let executor = SubShellRunner::new(&self.host, &self.database, &self.version, name, secret).await?;
-        executor.run().await?;
+        let runner = SubShellRunner::new(&self.host, &self.database, &self.version, name, secret).await?;
+        runner.run().await?;
         Ok(())
     }
 
