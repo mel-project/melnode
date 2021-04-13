@@ -23,7 +23,7 @@ impl ClientOutput {
     }
 
     /// Display all stored wallet wallet addresses by name.
-    pub(crate) async fn show_wallets(wallets: BTreeMap<String, WalletData>) {
+    pub(crate) async fn show_all_wallets(wallets: BTreeMap<String, WalletData>) {
         let mut tw = TabWriter::new(vec![]);
         writeln!(tw, ">> [NAME]\t[ADDRESS]");
         for (name, wallet) in wallets {
@@ -34,12 +34,11 @@ impl ClientOutput {
     }
 
     /// Send coins to a recipient.
-    pub(crate) async fn send_coins() {}
+    pub(crate) async fn show_sent_coins() {}
 
     /// Add coins into wallet storage.
-    pub(crate) async fn add_coins() {}
+    pub(crate) async fn show_added_coins() {}
 
     /// Transfer coins from faucet to your wallet.
-    pub(crate) async fn faucet() {}
-
+    pub(crate) async fn show_faucet_tx() {}
 }
