@@ -32,12 +32,12 @@ impl Covenant {
     }
 
     fn check_opt(&self, tx: &Transaction) -> Option<()> {
-        //let tx_val = Value::from_serde(&tx)?;
         let tx_val = Value::from(tx.clone());
         let ops = self.to_ops()?;
         let mut hm = HashMap::new();
         hm.insert(0, tx_val);
         hm.insert(1, Value::from_bytes(&tx.hash_nosigs().0));
+        hm.insert(2, Value::from_bytes(&tmelcrypt::hash_single(&self.0)));
         Executor::new(hm).run_return(&ops)
     }
 
@@ -398,7 +398,7 @@ impl Executor {
                     }
                     Value::Vector(mut elems) => {
                         elems[idx] = value;
-                        Some(elems.get(idx)?.clone())
+                        Some(Value::Vector(elems))
                     }
                     _ => None,
                 }
