@@ -60,14 +60,6 @@ impl SubShellRunner {
     async fn dispatch(&self, open_cmd: &SubShellCommand) -> anyhow::Result<()> {
         // Dispatch a command and return a command result
         match &open_cmd {
-            // SubShellCommand::Faucet(amt, denom) => { self.faucet(amt, denom).await?; }
-
-            // OpenWalletCommand::SendCoins(dest, amt, denom) => { self.send_coins(dest, amt, denom).await?; }
-            // OpenWalletCommand::AddCoins(coin_id) => { self.add_coins(coin_id).await?; }
-            // SubShellCommand::Balance => { self.balance().await?; }
-            // SubShellCommand::Help => { self.help().await?; }
-            // SubShellCommand::Exit => {}
-            // _ => {}
             SubShellCommand::Faucet(amt, unit) => { self.faucet(amt, unit).await?; }
             SubShellCommand::SendCoins(dest, amt, unit) => { self.send_coins(dest, amt, unit).await?; }
             SubShellCommand::AddCoins(coin_id) => { self.add_coins(coin_id).await?; }
