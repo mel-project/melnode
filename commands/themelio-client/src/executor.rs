@@ -39,6 +39,7 @@ impl CommandExecutor {
 
         // create faucet tx
         let tx = wallet.faucet_tx().await?;
+        // get hash to poll
 
         // get client snapshot
         let network = NetID::Testnet;
@@ -47,7 +48,7 @@ impl CommandExecutor {
         let snapshot = client.snapshot_latest().await?;
 
         // send send using raw
-        snapshot.raw.send_tx(tx).await?;
+        let res = snapshot.raw.send_tx(tx).await?;
 
         // query output state
         snapshot.get_coin(cid).await?;
