@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use storage::SledMap;
 use crate::wallet::data::WalletData;
 
-const WALLET_NAMESPACE: &[u8; 6] = b"shell";
+const WALLET_NAMESPACE: &[u8; 5] = b"shell";
 
 /// Uses sled map(s) to persist client-side data.
 pub struct WalletStorage {

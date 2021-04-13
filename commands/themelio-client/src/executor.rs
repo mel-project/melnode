@@ -3,7 +3,6 @@ use crate::shell::runner::ShellRunner;
 use crate::shell::io::ShellOutput;
 use crate::shell::sub::io::SubShellOutput;
 
-
 /// Responsible for executing a single client CLI command non-interactively.
 pub struct CommandExecutor {
     pub host: smol::net::SocketAddr,
@@ -29,11 +28,24 @@ impl CommandExecutor {
         Ok(())
     }
 
-    /// Opens a wallet by name and secret and creates a faucet tx to wallet.
-    /// The results of the faucet tx are shown to the user.
+    /// Opens a wallet by name and secret and creates a faucet tx to fund the wallet.
+    /// The results of the faucet tx from pending to confirm are shown to the user.
     pub async fn faucet(&self, wallet_name: &str, secret: &str, amount: &str, unit: &str) -> anyhow::Result<()> {
         let manager = WalletManager::new(&self.host.clone(), &self.database.clone());
-        let res = manager.faucet().await?;
+        let wallet_data = manager.load_wallet(wallet_name, secret).await?;
+
+        // new wallet unlock
+
+        // create faucet tx
+
+        // get client snapshot
+
+        // send send using raw
+
+        // query output state
+
+
+        let res = manager.faucet_transaction(wallet_name, amount, unit).await?;
         SubShellOutput::show_faucet_tx().await?;
         Ok(())
     }
