@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-/// A error that happens on the client side
+/// A error that happens on the client side.
 pub enum ClientError {
     #[error("invalid wallet name {:?}", .0)]
     InvalidWalletName(String),
