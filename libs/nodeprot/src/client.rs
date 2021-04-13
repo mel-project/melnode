@@ -125,7 +125,7 @@ impl ValClient {
 pub struct ValClientSnapshot {
     height: u64,
     header: Header,
-    raw: NodeClient,
+    pub raw: NodeClient,
 }
 
 impl ValClientSnapshot {

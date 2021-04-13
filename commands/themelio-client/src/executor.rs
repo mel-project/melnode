@@ -2,6 +2,8 @@ use crate::wallet::manager::WalletManager;
 use crate::shell::runner::ShellRunner;
 use crate::shell::io::ShellOutput;
 use crate::shell::sub::io::SubShellOutput;
+use nodeprot::ValClient;
+use blkstructs::NetID;
 
 /// Responsible for executing a single client CLI command non-interactively.
 pub struct CommandExecutor {
@@ -31,22 +33,26 @@ impl CommandExecutor {
     /// Opens a wallet by name and secret and creates a faucet tx to fund the wallet.
     /// The results of the faucet tx from pending to confirm are shown to the user.
     pub async fn faucet(&self, wallet_name: &str, secret: &str, amount: &str, unit: &str) -> anyhow::Result<()> {
+        // Open wallet
         let manager = WalletManager::new(&self.host.clone(), &self.database.clone());
-        let wallet_data = manager.load_wallet(wallet_name, secret).await?;
-
-        // new wallet unlock
+        let wallet = manager.load_wallet(wallet_name, secret).await?;
 
         // create faucet tx
+        let tx = wallet.faucet_tx().await?;
 
         // get client snapshot
+        let network = NetID::Testnet;
+        let remote = self.host;
+        let client = ValClient::new(network, remote);
+        let snapshot = client.snapshot_latest().await?;
 
         // send send using raw
+        snapshot.raw.send_tx(tx).await?;
 
         // query output state
+        snapshot.get_coin(cid).await?;
 
-
-        let res = manager.faucet_transaction(wallet_name, amount, unit).await?;
-        SubShellOutput::show_faucet_tx().await?;
+        SubShellOutput::faucet_tx(cid).await?;
         Ok(())
     }
 

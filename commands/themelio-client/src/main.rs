@@ -1,6 +1,9 @@
 pub mod lib;
 
-use lib::{executor, options::{Opts, SubOpts}, shell::runner::ShellRunner};
+use lib::options::{Opts, SubOpts};
+use lib::shell::runner::ShellRunner;
+use lib::executor::CommandExecutor;
+
 use structopt::StructOpt;
 
 /// Run a single dispatch given command line options.
@@ -14,7 +17,7 @@ fn main() {
 
 /// Run the command given the command line options input from the user.
 pub async fn run_command(opts: Opts, version: &str) -> anyhow::Result<()> {
-    let executor = executor::CommandExecutor::new(opts.host, opts.database, false);
+    let executor = CommandExecutor::new(opts.host, opts.database, version);
     match opts.sub_opts {
         SubOpts::CreateWallet { wallet_name } => { executor.create_wallet(&wallet_name).await? }
         SubOpts::Faucet { wallet_name, secret, amount, unit } => {
