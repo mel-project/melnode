@@ -155,6 +155,14 @@ impl CoinID {
             index: 0,
         }
     }
+
+    /// The pseudo-coin-ID for the proposer reward for the given height.
+    pub fn proposer_reward(height: u64) -> Self {
+        CoinID {
+            txhash: tmelcrypt::hash_keyed(b"reward_coin_pseudoid", &height.to_be_bytes()),
+            index: 0,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Arbitrary, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]

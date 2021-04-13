@@ -2,22 +2,11 @@ use std::convert::TryInto;
 
 use blkstructs::CoinID;
 use nodeprot::ValClient;
-use std::fmt::Debug;
-use tide::{Body, StatusCode};
+
+use tide::Body;
 use tmelcrypt::HashVal;
 
-fn to_badreq<E: Into<anyhow::Error> + Send + 'static + Sync + Debug>(e: E) -> tide::Error {
-    tide::Error::new(StatusCode::BadRequest, e)
-}
-
-fn to_badgateway<E: Into<anyhow::Error> + Send + 'static + Sync + Debug>(e: E) -> tide::Error {
-    log::warn!("bad upstream: {:#?}", e);
-    tide::Error::new(StatusCode::BadGateway, e)
-}
-
-fn notfound() -> tide::Error {
-    tide::Error::new(StatusCode::NotFound, anyhow::anyhow!("not found"))
-}
+use crate::{notfound, to_badgateway, to_badreq};
 
 /// Get the latest status
 #[tracing::instrument]
