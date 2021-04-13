@@ -7,12 +7,12 @@ use std::convert::TryInto;
 use crate::wallet::data::WalletData;
 use blkstructs::CoinID;
 
-pub struct Wallet {
+pub struct WalletManager {
     host: smol::net::SocketAddr,
     database: std::path::PathBuf
 }
 
-impl Wallet {
+impl WalletManager {
     pub fn new(host: &smol::net::SocketAddr, database: &std::path::PathBuf) -> Self {
         let host = host.clone();
         let database = database.clone();
@@ -20,8 +20,8 @@ impl Wallet {
     }
 
     /// Loads existing wallet iff wallet name exists and can be unlocked using secret.
-    pub async fn load(host: &smol::net::SocketAddr, database: &std::path::PathBuf, name: &str, secret: &str) -> anyhow::Result<Wallet> {
-        let wallet = Wallet::new(host, database);
+    pub async fn load(host: &smol::net::SocketAddr, database: &std::path::PathBuf, name: &str, secret: &str) -> anyhow::Result<WalletManager> {
+        let wallet = WalletManager::new(host, database);
         let _wallet_data = wallet.open(name, secret).await?;
         Ok(wallet)
     }

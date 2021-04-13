@@ -1,4 +1,4 @@
-use crate::wallet::wallet::Wallet;
+use crate::wallet::manager::WalletManager;
 use crate::shell::sub::prompter::{SubShellInput, SubShellOutput};
 use crate::shell::sub::command::SubShellCommand;
 use blkstructs::CoinID;
@@ -20,7 +20,7 @@ impl SubShellRunner {
         let name = name.to_string();
         let secret = secret.to_string();
 
-        let _ = Wallet::load(&host, &database, &name, &secret).await?;
+        let _ = WalletManager::load(&host, &database, &name, &secret).await?;
 
         Ok(Self { host, database, version, name, secret })
     }

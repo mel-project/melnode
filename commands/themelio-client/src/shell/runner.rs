@@ -1,6 +1,6 @@
 use crate::shell::command::ShellCommand;
 use crate::shell::sub::command::SubShellCommand;
-use crate::wallet::wallet::Wallet;
+use crate::wallet::manager::WalletManager;
 use crate::shell::prompter::{ShellInput, ShellOutput};
 use crate::shell::sub::runner::SubShellRunner;
 
@@ -60,7 +60,7 @@ impl ShellRunner {
 
     /// Create a new shell and output it's information to user.
     async fn create(&self, name: &str) -> anyhow::Result<()> {
-        let wallet = Wallet::new(&self.host, &self.database);
+        let wallet = WalletManager::new(&self.host, &self.database);
         let (sk, wallet_data) = wallet.create(name).await?;
         ShellOutput::(name, sk, &wallet_data);
         Ok(())
@@ -73,7 +73,7 @@ impl ShellRunner {
 
     /// Shows all stored shell data.
     async fn show(&self) -> anyhow::Result<()> {
-        let wallet = Wallet::new(&self.host, &self.database);
+        let wallet = WalletManager::new(&self.host, &self.database);
         let wallets = wallet.get_all().await?;
         ShellOutput::wallets(wallets).await;
         Ok(())
