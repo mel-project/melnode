@@ -7,6 +7,7 @@ use std::convert::TryInto;
 use crate::wallet::data::WalletData;
 use blkstructs::CoinID;
 
+/// Responsible for managing storage and network related wallet operations.
 pub struct WalletManager {
     host: smol::net::SocketAddr,
     database: std::path::PathBuf
@@ -28,23 +29,23 @@ impl WalletManager {
 
     /// Create a wallet from wallet name iff name is valid and wallet doesn't already exist.
     pub async fn create_wallet(&self, name: &str) -> anyhow::Result<(Ed25519SK, WalletData)> {
-        // Check if shell has only alphanumerics
+        // Check if wallet has only alphanumerics.
         if name.chars().all(char::is_alphanumeric) == false {
             anyhow::bail!(ClientError::InvalidWalletName(name.to_string()))
         }
 
         let storage = WalletStorage::new(&self.database);
-        // Check if shell with same name already exits
+        // Check if wallet with same name already exits.
         if let Some(_stored_wallet_data) = storage.get(name).await? {
             anyhow::bail!(ClientError::DuplicateWalletName(name.to_string()))
         }
 
-        // Generate shell data and store it
+        // Generate wallet data and store it.
         let (pk, sk) = tmelcrypt::ed25519_keygen();
         let script = Covenant::std_ed25519_pk(pk);
         let wallet_data = WalletData::new(script.clone());
 
-        // Insert shell data and return sk & shell data
+        // Insert wallet data and return sk & wallet data.
         storage.insert(name, &wallet_data).await?;
         Ok((sk, wallet_data))
     }

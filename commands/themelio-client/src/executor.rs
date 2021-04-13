@@ -1,5 +1,4 @@
 use crate::wallet::manager::WalletManager;
-use crate::io::CommandOutput;
 use crate::shell::runner::ShellRunner;
 
 
@@ -73,5 +72,4 @@ impl CommandExecutor {
         executor.run().await?;
         Ok(())
     }
-
 }
