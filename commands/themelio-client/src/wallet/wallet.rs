@@ -5,6 +5,7 @@ use tmelcrypt::Ed25519SK;
 use std::collections::BTreeMap;
 use std::convert::TryInto;
 use crate::wallet::data::WalletData;
+use blkstructs::CoinID;
 
 pub struct Wallet {
     host: smol::net::SocketAddr,
@@ -70,6 +71,23 @@ impl Wallet {
         Ok(wallet_data)
     }
 
-    // add wallet, send-coins, add-coins, balance, (add a flag to constructor for the -y assumption
-    // may need prespend wrapped here.
+    /// Use faucet to mint mels.
+    pub async fn faucet(&self, wallet_data: &WalletData, ) -> anyhow::Result<CoinID> {
+        Ok(CoinID{ txhash: Default::default(), index: 0 })
+    }
+
+    /// Send coins to a recipient.
+    pub async fn send_coins(&self, wallet_data: &WalletData, ) -> anyhow::Result<CoinID> {
+        Ok(CoinID{ txhash: Default::default(), index: 0 })
+    }
+
+    /// Add coins to this wallet
+    pub async fn add_coins(&self, wallet_data: &WalletData, ) -> anyhow::Result<CoinID> {
+        Ok(CoinID{ txhash: Default::default(), index: 0 })
+    }
+
+    /// Check the balance for this wallet.
+    pub async fn balance(&self, wallet_data: &WalletData, ) -> anyhow::Result<CoinID> {
+        Ok(CoinID{ txhash: Default::default(), index: 0 })
+    }
 }
