@@ -45,21 +45,13 @@ impl WalletManager {
 
     /// Loads existing wallet iff wallet name exists and can be unlocked using secret.
     pub async fn load_wallet(host: &smol::net::SocketAddr, database: &std::path::PathBuf, name: &str, secret: &str) -> anyhow::Result<WalletManager> {
-        let wallet = WalletManager::new(host, database);
-        let _wallet_data = wallet.open(name, secret).await?;
-        Ok(wallet)
-    }
-
-
-    /// Get all wallet data in storage by name.
-    pub async fn get_all_wallets(&self) -> anyhow::Result<BTreeMap<String, WalletData>> {
-        let storage = WalletStorage::new(&self.database);
-        let wallet_data_by_name: BTreeMap<String, WalletData> = storage.get_all().await?;
-        Ok(wallet_data_by_name)
+        let manager = WalletManager::new(host, database);
+        let _wallet_data = manager.open_wallet(name, secret).await?;
+        Ok(manager)
     }
 
     /// Get existing wallet data by name given the corresponding secret.
-    pub async fn open(&self, name: &str, secret: &str) -> anyhow::Result<WalletData> {
+    pub async fn open_wallet(&self, name: &str, secret: &str) -> anyhow::Result<WalletData> {
         let storage = WalletStorage::new(&self.database);
         let wallet_data = storage.get(name).await?.unwrap();
 
@@ -71,6 +63,40 @@ impl WalletManager {
             anyhow::bail!(ClientError::InvalidWalletSecret(name.to_string()))
         }
         Ok(wallet_data)
+    }
+
+    /// Get all wallet data in storage by name.
+    pub async fn get_all_wallets(&self) -> anyhow::Result<BTreeMap<String, WalletData>> {
+        let storage = WalletStorage::new(&self.database);
+        let wallet_data_by_name: BTreeMap<String, WalletData> = storage.get_all().await?;
+        Ok(wallet_data_by_name)
+    }
+
+    pub async fn faucet_2() {
+        // ["faucet", number, unit] => {
+//                 let coin = active_wallet.send_faucet_tx(number, unit).await?;
+//                 eprintln!(
+//                     ">> Faucet transaction for {} mels broadcast!",
+//                     number.to_string().bold()
+//                 );
+//                 eprintln!(">> Waiting for confirmation...");
+//                 // loop until we get coin data height and proof from last header
+//                 loop {
+//                     let (coin_data_height, _hdr) = active_wallet.get_coin_data(coin).await?;
+//                     if let Some(cd_height) = coin_data_height {
+//                         eprintln!(
+//                             ">>> Coin is confirmed at current height {}",
+//                             cd_height.height
+//                         );
+
+//                         eprintln!(
+//                             ">> CID = {}",
+//                             hex::encode(stdcode::serialize(&coin).unwrap()).bold()
+//                         );
+//                         break;
+//                     }
+//                 }
+//             }
     }
 
     /// Use faucet to mint mels.
