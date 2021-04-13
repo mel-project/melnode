@@ -1,20 +1,22 @@
 use crate::wallet::manager::WalletManager;
 use crate::io::CommandOutput;
+use crate::shell::runner::ShellRunner;
 
 
 /// Responsible for executing a single client CLI command non-interactively.
 pub struct CommandExecutor {
     pub host: smol::net::SocketAddr,
     pub database: std::path::PathBuf,
-    interactive: bool,
+    pub version: String
 }
 
 impl CommandExecutor {
-    pub fn new(host: smol::net::SocketAddr, database: std::path::PathBuf, interactive: bool) -> Self {
+    pub fn new(host: smol::net::SocketAddr, database: std::path::PathBuf, version: &str) -> Self {
+        let version = version.to_string();
         Self {
             host,
             database,
-            interactive,
+            version,
         }
     }
 
@@ -62,6 +64,13 @@ impl CommandExecutor {
 
     /// Shows all the wallets by name that are stored in the db.
     pub async fn show_wallets(&self) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    /// Launch shell mode until user exits.
+    pub async fn shell(&self) -> anyhow::Result<()> {
+        let executor = ShellRunner::new(&self.host, &self.database, &self.version);
+        executor.run().await?;
         Ok(())
     }
 

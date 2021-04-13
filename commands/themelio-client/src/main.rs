@@ -33,8 +33,7 @@ pub async fn run_command(opts: Opts, version: &str) -> anyhow::Result<()> {
             executor.show_wallets().await?
         }
         SubOpts::Shell => {
-            let executor = ShellRunner::new(&adapter.host, &adapter.database, version);
-            executor.run().await?
+
         }
     }
     Ok(())

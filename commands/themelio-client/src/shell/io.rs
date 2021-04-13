@@ -4,6 +4,12 @@ use crate::common::read_line;
 use colored::Colorize;
 use std::convert::TryFrom;
 use anyhow::Error;
+use tmelcrypt::Ed25519SK;
+use crate::wallet::data::WalletData;
+use tabwriter::TabWriter;
+
+use std::io::prelude::*;
+use std::collections::BTreeMap;
 
 pub struct ShellInput {}
 
@@ -45,6 +51,28 @@ impl ShellInput {
 pub struct ShellOutput {}
 
 impl ShellOutput {
+    /// Display name, secret key and covenant of the shell
+    pub(crate) async fn show_new_wallet(name: &str, sk: Ed25519SK, wallet_data: WalletData) -> anyhow::Result<()> {
+        // Display contents of keypair and address from covenant
+        let mut tw = TabWriter::new(vec![]);
+        writeln!(tw, ">> New data:\t{}", name.bold()).unwrap();
+        writeln!(tw, ">> Address:\t{}", wallet_data.my_script.hash().to_addr().yellow()).unwrap();
+        writeln!(tw, ">> Secret:\t{}", hex::encode(sk.0).dimmed()).unwrap();
+        eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
+        Ok(())
+    }
+
+    /// Display all stored wallet wallet addresses by name.
+    pub(crate) async fn show_all_wallets(wallets: BTreeMap<String, WalletData>) {
+        let mut tw = TabWriter::new(vec![]);
+        writeln!(tw, ">> [NAME]\t[ADDRESS]");
+        for (name, wallet) in wallets {
+            writeln!(tw, ">> {}\t{}", name, wallet.my_script.hash().to_addr());
+        }
+        tw.flush();
+        eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
+    }
+
     /// Output the error when dispatching command.
     pub(crate) async fn error(err: &Error, cmd: &ShellCommand) -> anyhow::Result<()> {
         eprintln!("ERROR: {} with shell command {:?}", err, cmd);
