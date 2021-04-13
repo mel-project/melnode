@@ -3,7 +3,7 @@ use crate::shell::runner::ShellRunner;
 use crate::shell::io::ShellOutput;
 use crate::shell::sub::io::SubShellOutput;
 use nodeprot::ValClient;
-use blkstructs::NetID;
+use blkstructs::{NetID, CoinID};
 
 /// Responsible for executing a single client CLI command non-interactively.
 pub struct CommandExecutor {
@@ -37,23 +37,27 @@ impl CommandExecutor {
         let manager = WalletManager::new(&self.host.clone(), &self.database.clone());
         let wallet = manager.load_wallet(wallet_name, secret).await?;
 
-        // create faucet tx
-        let tx = wallet.faucet_tx().await?;
-        // get hash to poll
+        // create faucet tx and create the coin id
+        let tx = wallet.faucet_transaction(amount, unit).await?;
+        let coin = CoinID {
+            txhash: tx.hash_nosigs(),
+            index: 0,
+        };
 
         // get client snapshot
         let network = NetID::Testnet;
         let remote = self.host;
         let client = ValClient::new(network, remote);
         let snapshot = client.snapshot_latest().await?;
+        snapshot.get_coin(coin);
 
-        // send send using raw
+        // send the transaction
         let res = snapshot.raw.send_tx(tx).await?;
 
-        // query output state
-        snapshot.get_coin(cid).await?;
-
-        SubShellOutput::faucet_tx(cid).await?;
+        // query output state using tx hash
+        // let tx_hash = tx.hash()
+        // snapshot.get_coin(cid).await?;
+        // SubShellOutput::faucet_tx(cid).await?;
         Ok(())
     }
 
