@@ -33,7 +33,7 @@ pub async fn run_command(opts: Opts, version: &str) -> anyhow::Result<()> {
             executor.show_wallets().await?
         }
         SubOpts::Shell => {
-
+            executor.shell().await?
         }
     }
     Ok(())
