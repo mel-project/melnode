@@ -24,13 +24,16 @@ impl CommandExecutor {
         let manager = WalletManager::new(&self.host.clone(), &self.database.clone());
         let (secret, wallet_data) = manager.create_wallet(wallet_name).await?;
         ClientOutput::show_new_wallet(wallet_name, secret, wallet_data).await?;
-        ClientOutput::show_new_wallet(wallet);
         Ok(())
     }
 
     /// Opens a wallet by name and secret and creates a faucet tx to wallet.
     /// The results of the faucet tx are shown to the user.
     pub async fn faucet(&self, wallet_name: &str, secret: &str, amount: &str, unit: &str) -> anyhow::Result<()> {
+        let manager = WalletManager::new(&self.host.clone(), &self.database.clone());
+        manager.load_wallet(wallet_name).await?;
+
+        manager.faucet(wallet_name, secret, amount, unit)
         let wallet = self.load_wallet()?;
         let wallet.
         wallet.faucet(&wallet, amount, unit).await?;
