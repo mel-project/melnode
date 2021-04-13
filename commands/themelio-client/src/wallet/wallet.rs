@@ -3,9 +3,9 @@ use tmelcrypt::Ed25519SK;
 
 /// Responsible for using an in memory wallet to send transactions.
 pub struct Wallet {
-    sk: Ed25519SK,
-    name: String,
-    data: WalletData
+    pub(crate) sk: Ed25519SK,
+    pub(crate) name: String,
+    pub(crate) data: WalletData
 }
 
 impl Wallet {

@@ -23,8 +23,8 @@ impl CommandExecutor {
     /// Creates a new wallet, stores it into db and outputs the name & secret.
     pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<()> {
         let manager = WalletManager::new(&self.host.clone(), &self.database.clone());
-        let (secret, wallet_data) = manager.create_wallet(wallet_name).await?;
-        ShellOutput::show_new_wallet(wallet_name, secret, wallet_data).await?;
+        let wallet = manager.create_wallet(wallet_name).await?;
+        ShellOutput::show_new_wallet(wallet).await?;
         Ok(())
     }
 

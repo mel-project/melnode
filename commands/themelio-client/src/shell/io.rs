@@ -10,6 +10,7 @@ use tabwriter::TabWriter;
 
 use std::io::prelude::*;
 use std::collections::BTreeMap;
+use crate::wallet::wallet::Wallet;
 
 pub struct ShellInput {}
 
@@ -51,13 +52,12 @@ impl ShellInput {
 pub struct ShellOutput {}
 
 impl ShellOutput {
-    /// Display name, secret key and covenant of the shell
-    pub(crate) async fn show_new_wallet(name: &str, sk: Ed25519SK, wallet_data: WalletData) -> anyhow::Result<()> {
-        // Display contents of keypair and address from covenant
+    /// Display name, secret key and covenant of the wallet.
+    pub(crate) async fn show_new_wallet(wallet: Wallet) -> anyhow::Result<()> {
         let mut tw = TabWriter::new(vec![]);
-        writeln!(tw, ">> New data:\t{}", name.bold()).unwrap();
-        writeln!(tw, ">> Address:\t{}", wallet_data.my_script.hash().to_addr().yellow()).unwrap();
-        writeln!(tw, ">> Secret:\t{}", hex::encode(sk.0).dimmed()).unwrap();
+        writeln!(tw, ">> New data:\t{}", wallet.name.bold()).unwrap();
+        writeln!(tw, ">> Address:\t{}", wallet.data.my_script.hash().to_addr().yellow()).unwrap();
+        writeln!(tw, ">> Secret:\t{}", hex::encode(wallet.sk.0).dimmed()).unwrap();
         eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
         Ok(())
     }
