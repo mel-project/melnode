@@ -20,7 +20,7 @@ impl SubShellRunner {
         let name = name.to_string();
         let secret = secret.to_string();
 
-        let _ = WalletManager::load(&host, &database, &name, &secret).await?;
+        let _ = WalletManager::load_wallet(&host, &database, &name, &secret).await?;
 
         Ok(Self { host, database, version, name, secret })
     }

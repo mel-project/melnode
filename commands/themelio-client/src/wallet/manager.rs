@@ -20,14 +20,14 @@ impl WalletManager {
     }
 
     /// Loads existing wallet iff wallet name exists and can be unlocked using secret.
-    pub async fn load(host: &smol::net::SocketAddr, database: &std::path::PathBuf, name: &str, secret: &str) -> anyhow::Result<WalletManager> {
+    pub async fn load_wallet(host: &smol::net::SocketAddr, database: &std::path::PathBuf, name: &str, secret: &str) -> anyhow::Result<WalletManager> {
         let wallet = WalletManager::new(host, database);
         let _wallet_data = wallet.open(name, secret).await?;
         Ok(wallet)
     }
 
     /// Create a wallet from wallet name iff name is valid and wallet doesn't already exist.
-    pub async fn create(&self, name: &str) -> anyhow::Result<(Ed25519SK, WalletData)> {
+    pub async fn create_wallet(&self, name: &str) -> anyhow::Result<(Ed25519SK, WalletData)> {
         // Check if shell has only alphanumerics
         if name.chars().all(char::is_alphanumeric) == false {
             anyhow::bail!(ClientError::WalletInvalidName(name.to_string()))
@@ -50,7 +50,7 @@ impl WalletManager {
     }
 
     /// Get all wallet data in storage by name.
-    pub async fn get_all(&self) -> anyhow::Result<BTreeMap<String, WalletData>> {
+    pub async fn get_all_wallets(&self) -> anyhow::Result<BTreeMap<String, WalletData>> {
         let storage = WalletStorage::new(&self.database);
         let wallet_data_by_name: BTreeMap<String, WalletData> = storage.get_all().await?;
         Ok(storage.get_all().await?)
