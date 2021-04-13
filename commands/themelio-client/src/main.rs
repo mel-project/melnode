@@ -12,27 +12,25 @@ fn main() {
     });
 }
 
-/// Run the command given the options input by the user
+/// Run the command given the command line options input from the user.
 pub async fn run_command(opts: Opts, version: &str) -> anyhow::Result<()> {
-    let adapter = executor::ClientExecutor::new(opts.host, opts.database, false);
+    let executor = executor::CommandExecutor::new(opts.host, opts.database, false);
     match opts.sub_opts {
-        SubOpts::CreateWallet { wallet_name } => {
-            adapter.create_wallet(&wallet_name).await?
-        }
+        SubOpts::CreateWallet { wallet_name } => { executor.create_wallet(&wallet_name).await? }
         SubOpts::Faucet { wallet_name, secret, amount, unit } => {
-            adapter.faucet(&wallet_name, &secret, &amount, &unit).await?
+            executor.faucet(&wallet_name, &secret, &amount, &unit).await?
         }
         SubOpts::SendCoins { wallet_name, secret, address, amount, unit } => {
-            adapter.send_coins(&wallet_name, &secret, &address, &amount, &unit).await?
+            executor.send_coins(&wallet_name, &secret, &address, &amount, &unit).await?
         }
         SubOpts::AddCoins { wallet_name, secret, coin_id } => {
-            adapter.add_coins(&wallet_name, &secret, &coin_id).await?
+            executor.add_coins(&wallet_name, &secret, &coin_id).await?
         }
         SubOpts::ShowBalance { wallet_name, secret } => {
-            adapter.show_balance(&wallet_name, &secret,).await?
+            executor.show_balance(&wallet_name, &secret).await?
         }
         SubOpts::ShowWallets => {
-            adapter.show_wallets().await?
+            executor.show_wallets().await?
         }
         SubOpts::Shell => {
             let executor = ShellExecutor::new(&adapter.host, &adapter.database, version);

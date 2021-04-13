@@ -2,14 +2,14 @@ use crate::wallet::wallet::Wallet;
 
 
 /// Responsible for executing a single client CLI command.
-pub struct ClientExecutor {
+pub struct CommandExecutor {
     pub host: smol::net::SocketAddr,
     pub database: std::path::PathBuf,
     interactive: bool,
 
 }
 
-impl ClientExecutor {
+impl CommandExecutor {
     pub fn new(host: smol::net::SocketAddr, database: std::path::PathBuf, interactive: bool) -> Self {
         Self {
             host,
