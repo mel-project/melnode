@@ -2,9 +2,11 @@ use std::{convert::TryInto, net::SocketAddr};
 
 use blkstructs::NetID;
 use nodeprot::ValClient;
+use std::fmt::Debug;
 use structopt::StructOpt;
+use tide::StatusCode;
 use tmelcrypt::HashVal;
-
+mod html;
 mod raw;
 
 fn main() -> anyhow::Result<()> {
@@ -40,6 +42,9 @@ async fn main_inner() -> anyhow::Result<()> {
         ),
     );
     let mut app = tide::with_state(client);
+    // Rendered paths
+    app.at("/").get(html::get_homepage);
+    // Raw paths
     app.at("/raw/latest").get(raw::get_latest);
     app.at("/raw/blocks/:height").get(raw::get_header);
     app.at("/raw/blocks/:height/full").get(raw::get_full_block);
@@ -52,4 +57,17 @@ async fn main_inner() -> anyhow::Result<()> {
     tracing::info!("Starting REST endpoint at {}", args.listen);
     app.listen(args.listen).await?;
     Ok(())
+}
+
+fn to_badreq<E: Into<anyhow::Error> + Send + 'static + Sync + Debug>(e: E) -> tide::Error {
+    tide::Error::new(StatusCode::BadRequest, e)
+}
+
+fn to_badgateway<E: Into<anyhow::Error> + Send + 'static + Sync + Debug>(e: E) -> tide::Error {
+    log::warn!("bad upstream: {:#?}", e);
+    tide::Error::new(StatusCode::BadGateway, e)
+}
+
+fn notfound() -> tide::Error {
+    tide::Error::new(StatusCode::NotFound, anyhow::anyhow!("not found"))
 }

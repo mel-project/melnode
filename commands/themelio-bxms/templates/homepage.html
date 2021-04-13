@@ -1,0 +1,94 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900" rel="stylesheet">
+  <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet" />
+  <style>
+    * {
+      font-family: 'Inter', sans-serif;
+      letter-spacing: -0.2px;
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <div class="container mx-auto max-w-screen-lg">
+    <div class="grid grid-cols-1 md:grid-cols-3 mt-8 mb-8">
+      <div class="col-span-3 mb-3">
+        <h3 class="text-2xl font-semibold">Melmint/Melswap</h3>
+      </div>
+
+      <div>
+        <span class="text-lg font-bold"><span class="text-black text-opacity-50">1 mel =</span> {{(10000.0 / pool.mel_per_dosc).round() / 10000.0}} rDOSC</span>
+        <br>
+        <small class="text-black text-opacity-50 font-bold"><span class="text-purple-600">{{((1.0 - pool.mel_per_dosc) * 100.0 * 100.0).round() / 100.0}}%</span> from peg</small>
+      </div>
+
+      <div>
+        <span class="text-lg font-bold"><span class="text-black text-opacity-50">1 mel =</span> {{(10000.0 / pool.mel_per_sym).round() / 10000.0}} sym</span>
+      </div>
+
+    </div>
+
+
+    <div class="grid grid-cols-1 md:grid-cols-2 mt-12 mb-12">
+      <div class="col-span-3 mb-3">
+        <h3 class="text-2xl font-semibold">Latest activity</h3>
+      </div>
+
+      <div>
+        <h3 class="text-xl font-semibold">Latest blocks</h3>
+        <small class="text-black text-opacity-50 font-bold">Most recently confirmed blocks</small>
+        <table class="table-auto w-full mt-3">
+          <thead class="text-left text-sm text-black text-opacity-50">
+            <tr>
+              <th>Height</th>
+              <th>Total weight</th>
+              <th>Proposer reward</th>
+            </tr>
+          </thead>
+          <tbody class="leading-loose font-medium text-sm">
+            {% for block in blocks %}
+            <tr>
+              <td><a href="/blocks/{{block.header.height}}" class="text-blue-600">{{block.header.height}}</a></td>
+              <td>{{block.total_weight}}</td>
+              <td>{{ block.reward_amount }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+      </div>
+
+      <div>
+        <h3 class="text-xl font-semibold">Latest transactions</h3>
+        <small class="text-black text-opacity-50 font-bold">Transactions in latest blocks</small>
+        <table class="table-auto w-full mt-3">
+          <thead class="text-left text-sm text-black text-opacity-50">
+            <tr>
+              <th>Hash</th>
+              <th>Height</th>
+              <th>Mel moved</th>
+            </tr>
+          </thead>
+          <tbody class="leading-loose font-medium text-sm">
+            {% for tx in transactions %}
+            <tr>
+              <td><a href="/blocks/{{tx.height}}/{{tx.hash}}" class="text-blue-600">{{tx.shorthash}}...</a></td>
+              <td>{{tx.height}}</td>
+              <td>{{ tx.mel_moved }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+      </div>
+
+
+    </div>
+  </div>
+</body>
+
+</html>

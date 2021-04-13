@@ -323,7 +323,7 @@ impl State {
             self.fee_pool -= base_fees;
             let tips = self.tips;
             self.tips = 0;
-            let pseudocoin_id = reward_coin_pseudoid(self.height);
+            let pseudocoin_id = CoinID::proposer_reward(self.height);
             let pseudocoin_data = CoinDataHeight {
                 coin_data: CoinData {
                     covhash: action.reward_dest,
@@ -356,14 +356,6 @@ impl State {
             pools: SmtMapping::new(empty_tree.clone()),
             stakes: SmtMapping::new(empty_tree),
         }
-    }
-}
-
-/// Returns the "fake" CoinID where the block reward for the given block is stored.
-pub fn reward_coin_pseudoid(height: u64) -> CoinID {
-    CoinID {
-        txhash: tmelcrypt::hash_keyed(b"reward_coin_pseudoid", &height.to_be_bytes()),
-        index: 0,
     }
 }
 
