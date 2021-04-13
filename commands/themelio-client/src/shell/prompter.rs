@@ -8,7 +8,7 @@ use anyhow::Error;
 pub struct ShellInput {}
 
 impl ShellInput {
-    /// Format the CLI prompt with the version of the binary
+    /// Format the CLI prompt with the version of the binary.
     pub(crate) async fn format_prompt(version: &str) -> anyhow::Result<String> {
         let prompt_stack: Vec<String> = vec![
             format!("themelio-client").cyan().bold().to_string(),
@@ -18,8 +18,8 @@ impl ShellInput {
         Ok(format!("{}", prompt_stack.join(" ")))
     }
 
-    /// Get user input and parse it into a shell command
-    pub(crate) async fn command(prompt: &str) -> anyhow::Result<(ShellCommand, Option<SubShellCommand>)> {
+    /// Get user input and parse it into a shell command.
+    pub(crate) async fn read_line(prompt: &str) -> anyhow::Result<(ShellCommand, Option<SubShellCommand>)> {
         let input = read_line(prompt.to_string()).await?;
 
         let wallet_use_mode: String = ShellCommand::UseWallet(String::default(), String::default())
@@ -45,13 +45,13 @@ impl ShellInput {
 pub struct ShellOutput {}
 
 impl ShellOutput {
-    /// Output the error when dispatching command
+    /// Output the error when dispatching command.
     pub(crate) async fn error(err: &Error, cmd: &ShellCommand) -> anyhow::Result<()> {
         eprintln!("ERROR: {} with shell command{:?}", err, cmd);
         Ok(())
     }
 
-    /// Show available input commands
+    /// Show available input commands.
     pub(crate) async fn help() -> anyhow::Result<()> {
         eprintln!("\nAvailable commands are: ");
         eprintln!(">> create <wallet-name>");
@@ -64,7 +64,7 @@ impl ShellOutput {
         Ok(())
     }
 
-    /// Show exit message
+    /// Show exit message.
     pub(crate) async fn exit() -> anyhow::Result<()> {
         eprintln!("\nExiting Themelio Client shell");
         Ok(())

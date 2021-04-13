@@ -25,7 +25,7 @@ impl ShellExecutor {
 
         loop {
             // Get command from user input.
-            let (cmd, open_cmd) = ShellInput::command(&prompt).await?;
+            let (cmd, open_cmd) = ShellInput::read_line(&prompt).await?;
 
             // Exit if the user chooses to exit.
             if cmd == ShellCommand::Exit {
