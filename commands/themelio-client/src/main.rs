@@ -1,8 +1,12 @@
-pub mod lib;
+pub mod options;
+pub mod shell;
+pub mod common;
+pub mod error;
+pub mod wallet;
+pub mod executor;
 
-use lib::options::{Opts, SubOpts};
-use lib::shell::runner::ShellRunner;
-use lib::executor::CommandExecutor;
+use options::{Opts, SubOpts};
+use executor::CommandExecutor;
 
 use structopt::StructOpt;
 
@@ -11,7 +15,7 @@ fn main() {
     smolscale::block_on(async move {
         let version = env!("CARGO_PKG_VERSION");
         let opts: Opts = Opts::from_args();
-        run_command(opts, version).await
+        let _ = run_command(opts, version).await;
     });
 }
 

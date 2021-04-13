@@ -1,7 +1,6 @@
 use crate::wallet::manager::WalletManager;
 use crate::shell::runner::ShellRunner;
 use crate::shell::io::ShellOutput;
-use crate::shell::sub::io::SubShellOutput;
 use nodeprot::ValClient;
 use blkstructs::{NetID, CoinID};
 

@@ -60,9 +60,9 @@ impl ShellRunner {
 
     /// Create a new shell and output it's information to user.
     async fn create(&self, name: &str) -> anyhow::Result<()> {
-        let wallet = WalletManager::new(&self.host, &self.database);
-        let (sk, wallet_data) = wallet.create_wallet(name).await?;
-        ShellOutput::(name, sk, &wallet_data);
+        // let wallet = WalletManager::new(&self.host, &self.database);
+        // let (sk, wallet_data) = wallet.create_wallet(name).await?;
+        // ShellOutput::(name, sk, &wallet_data);
         Ok(())
     }
 
@@ -73,9 +73,9 @@ impl ShellRunner {
 
     /// Shows all stored shell data.
     async fn show(&self) -> anyhow::Result<()> {
-        let wallet = WalletManager::new(&self.host, &self.database);
-        let wallets = wallet.get_all_wallets().await?;
-        ShellOutput::wallets(wallets).await;
+        // let wallet = WalletManager::new(&self.host, &self.database);
+        // let wallets = wallet.get_all_wallets().await?;
+        // ShellOutput::wallets(wallets).await;
         Ok(())
     }
 
