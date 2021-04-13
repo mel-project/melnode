@@ -54,34 +54,34 @@ impl SubShellOutput {
 
         Ok(())
     }
-
-    async fn confirm_faucet(&self, _coin_id: CoinID) -> anyhow::Result<()> {
-        // loop {
-        //
-        //     prompter::faucet_tx_confirming().await?;
-        // }
-        //                 eprintln!(
-//                     ">> Faucet transaction for {} mels broadcast!",
-//                     number.to_string().bold()
-//                 );
-//                 eprintln!(">> Waiting for confirmation...");
-//                 // loop until we get coin data height and proof from last header
-//                 loop {
-//                     let (coin_data_height, _hdr) = active_wallet.get_coin_data(coin).await?;
-//                     if let Some(cd_height) = coin_data_height {
-//                         eprintln!(
-//                             ">>> Coin is confirmed at current height {}",
-//                             cd_height.height
-//                         );
-
-//                         eprintln!(
-//                             ">> CID = {}",
-//                             hex::encode(stdcode::serialize(&coin).unwrap()).bold()
-//                         );
-//                         break;
-//                     }
-        Ok(())
-    }
+//
+//     async fn confirm_faucet(&self, _coin_id: CoinID) -> anyhow::Result<()> {
+//         // loop {
+//         //
+//         //     prompter::faucet_tx_confirming().await?;
+//         // }
+//         //                 eprintln!(
+// //                     ">> Faucet transaction for {} mels broadcast!",
+// //                     number.to_string().bold()
+// //                 );
+// //                 eprintln!(">> Waiting for confirmation...");
+// //                 // loop until we get coin data height and proof from last header
+// //                 loop {
+// //                     let (coin_data_height, _hdr) = active_wallet.get_coin_data(coin).await?;
+// //                     if let Some(cd_height) = coin_data_height {
+// //                         eprintln!(
+// //                             ">>> Coin is confirmed at current height {}",
+// //                             cd_height.height
+// //                         );
+//
+// //                         eprintln!(
+// //                             ">> CID = {}",
+// //                             hex::encode(stdcode::serialize(&coin).unwrap()).bold()
+// //                         );
+// //                         break;
+// //                     }
+//         Ok(())
+//     }
 
     /// Output the error when dispatching command
     pub(crate) async fn error(err: &Error, sub_shell_cmd: &SubShellCommand) -> anyhow::Result<()> {
