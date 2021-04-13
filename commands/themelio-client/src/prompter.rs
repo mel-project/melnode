@@ -12,7 +12,7 @@ pub struct ClientOutput {
 
 impl ClientOutput {
     /// Display name, secret key and covenant of the shell
-    pub(crate) async fn create_wallet(name: &str, sk: Ed25519SK, wallet_data: &WalletData) -> anyhow::Result<()> {
+    pub(crate) async fn show_new_wallet(name: &str, sk: Ed25519SK, wallet_data: &WalletData) -> anyhow::Result<()> {
         // Display contents of keypair and address from covenant
         let mut tw = TabWriter::new(vec![]);
         writeln!(tw, ">> New data:\t{}", name.bold()).unwrap();

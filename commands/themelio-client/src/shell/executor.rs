@@ -4,7 +4,7 @@ use crate::wallet::wallet::Wallet;
 use crate::shell::prompter::{ShellInput, ShellOutput};
 use crate::shell::sub::executor::SubShellExecutor;
 
-pub(crate) struct ShellExecutor {
+pub struct ShellExecutor {
     host: smol::net::SocketAddr,
     database: std::path::PathBuf,
     version: String

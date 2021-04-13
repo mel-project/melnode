@@ -1,7 +1,7 @@
 use blkstructs::melvm::Covenant;
 use crate::wallet::storage::WalletStorage;
 use crate::error::ClientError;
-use tmelcrypt::Ed25519SK;
+use tmelcrypt::{Ed25519SK, HashVal};
 use std::collections::BTreeMap;
 use std::convert::TryInto;
 use crate::wallet::data::WalletData;
@@ -72,12 +72,12 @@ impl Wallet {
     }
 
     /// Use faucet to mint mels.
-    pub async fn faucet(&self, wallet_data: &WalletData, ) -> anyhow::Result<CoinID> {
+    pub async fn faucet(&self, mut wallet_data: &WalletData, amt: u128, denom: &[u8] ) -> anyhow::Result<CoinID> {
         Ok(CoinID{ txhash: Default::default(), index: 0 })
     }
 
     /// Send coins to a recipient.
-    pub async fn send_coins(&self, wallet_data: &WalletData, ) -> anyhow::Result<CoinID> {
+    pub async fn send_coins(&self, mut wallet_data: &WalletData, dest: HashVal, amt: u128, denom: &[u8]) -> anyhow::Result<CoinID> {
         Ok(CoinID{ txhash: Default::default(), index: 0 })
     }
 

@@ -8,59 +8,74 @@ use structopt::StructOpt;
 /// End users can create, delete, import, and export wallets.
 /// Interacting with the blockchain is done by opening a shell
 /// and creating and sending various transactions.
-pub struct ClientOpts {
+pub struct Opts {
     /// IP Address with port used to establish a connection to host
     #[structopt(long, default_value="127.0.0.1:8000")]
-    pub(crate) host: smol::net::SocketAddr,
+    pub host: smol::net::SocketAddr,
 
     /// File path to database for client shell storage
     #[structopt(long, short, parse(from_os_str), default_value="/tmp/testclient")]
-    pub(crate) database: std::path::PathBuf,
+    pub database: std::path::PathBuf,
 
     #[structopt(subcommand)]
-    pub(crate) subcommand: ClientSubOpts,
+    pub sub_opts: SubOpts,
 }
 
 #[derive(StructOpt, Clone, Debug)]
 /// Represents the sub options to run a specific command.
 /// If Shell is specified it will enter into an interactive shell,
 /// otherwise it will execute a single command and exit.
-pub(crate) enum ClientSubOpts {
+pub enum SubOpts {
     CreateWallet {
         wallet_name: String
     },
     Faucet {
+        wallet_name: String,
+        secret: String,
         amount: String,
         unit: String
     },
     // TODO: add in optional field for handling fee input / agree
     // For now hard code it in and don't make it interactive
     SendCoins {
+        wallet_name: String,
+        secret: String,
         address: String,
         amount: String,
         unit: String
     },
     AddCoins {
+        wallet_name: String,
+        secret: String,
         coin_id: String
     },
     // TODO: Add in correct fields for deposit, withdraw and swap
     // DepositCoins {
+    //     wallet_name: String,
+    //     secret: String,
     //     covhash_a: String,
     //     amount_a: String,
     //     covhash_b: String,
     //     amount_b: String,
     // },
     // WithdrawCoins {
+    //     wallet_name: String,
+    //     secret: String,
     //     covhash_a: String,
     //     amount_a: String,
     //     covhash_b: String,
     //     amount_b: String,
     // },
     // SwapCoins {
+    //     wallet_name: String,
+    //     secret: String,
     //     covhash: String,
     //     amount: String,
     // },
-    ShowBalance,
+    ShowBalance {
+        wallet_name: String,
+        secret: String,
+    },
     ShowWallets,
     Shell
 }
