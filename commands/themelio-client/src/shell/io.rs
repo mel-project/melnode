@@ -28,7 +28,6 @@ impl ShellInput {
     /// Get user input and parse it into a shell command.
     pub(crate) async fn read_line(prompt: &str) -> anyhow::Result<(ShellCommand, Option<SubShellCommand>)> {
         let input = read_line(prompt.to_string()).await?;
-
         let wallet_use_mode: String = ShellCommand::UseWallet(String::default(), String::default())
             .to_string()
             .split(" ")
@@ -37,6 +36,7 @@ impl ShellInput {
             .unwrap();
 
         if input.starts_with(&wallet_use_mode) {
+            println!("{:?}", wallet_use_mode.clone());
             let args: Vec<String> = input.split(" ").map(|s| s.to_string()).collect();
             let (left, right): (&str, &str) = (&args[0..2].join(" "), &args[2..].join(" "));
             let wallet_cmd = ShellCommand::try_from(left.to_string())?;
@@ -79,7 +79,7 @@ impl ShellOutput {
         Ok(())
     }
 
-    /// Output the error when dispatching command.
+    /// Output the error when reading user input.
     pub(crate) async fn readline_error(_err: &Error) -> anyhow::Result<()> {
         eprintln!("ERROR: can't parse input command");
         Ok(())
@@ -88,9 +88,9 @@ impl ShellOutput {
     /// Show available input commands.
     pub(crate) async fn help() -> anyhow::Result<()> {
         eprintln!("\nAvailable commands are: ");
-        eprintln!(">> create <wallet-name>");
-        eprintln!(">> open <wallet-name> <secret>");
-        eprintln!(">> use <wallet-name> <secret> <args>");
+        eprintln!(">> create-wallet <wallet-name>");
+        eprintln!(">> open-wallet <wallet-name> <secret>");
+        eprintln!(">> use-wallet <wallet-name> <secret> <args>");
         eprintln!(">> show");
         eprintln!(">> help");
         eprintln!(">> exit");

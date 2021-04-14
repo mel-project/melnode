@@ -2,6 +2,7 @@ use crate::wallet::manager::WalletManager;
 use crate::shell::sub::io::{SubShellInput, SubShellOutput};
 use crate::shell::sub::command::SubShellCommand;
 use blkstructs::CoinID;
+use anyhow::Error;
 
 pub(crate) struct SubShellRunner {
     host: smol::net::SocketAddr,
@@ -33,22 +34,29 @@ impl SubShellRunner {
 
         loop {
             // Get command from user input.
-            let open_cmd = SubShellInput::command(&prompt).await?;
+            match SubShellInput::command(&prompt).await {
+                Ok(open_cmd) => {
+                    // Exit if the user chooses to exit.
+                    if open_cmd == SubShellCommand::Exit {
+                        SubShellOutput::exit().await?;
+                        return Ok(());
+                    }
 
-            // Exit if the user chooses to exit.
-            if open_cmd == SubShellCommand::Exit {
-                SubShellOutput::exit().await?;
-                return Ok(());
+                    // Dispatch the command.
+                    let dispatch_result = &self.dispatch(&open_cmd).await;
+
+                    // Output error, if any, and continue running.
+                    match dispatch_result {
+                        Err(err) => SubShellOutput::subshell_error(err, &open_cmd).await?,
+                        _ => {}
+                    }
+                }
+                Err(err) => {
+                    SubShellOutput::readline_error(&err).await?
+                }
             }
 
-            // Dispatch the command.
-            let dispatch_result = &self.dispatch(&open_cmd).await;
 
-            // Output error, if any, and continue running.
-            match dispatch_result {
-                Err(err) => SubShellOutput::error(err, &open_cmd).await?,
-                _ => {}
-            }
         }
     }
 

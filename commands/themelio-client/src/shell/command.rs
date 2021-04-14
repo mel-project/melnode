@@ -23,7 +23,7 @@ impl fmt::Display for ShellCommand {
             ShellCommand::UseWallet(a, b) => { vec![a.to_string(), b.to_string()]},
             _ => { vec![] }
         };
-        write!(f, "({:?}", params);
+        // write!(f, "({:?}", params);
         Ok(())
     }
 }

@@ -44,8 +44,14 @@ impl SubShellOutput {
     }
 
     /// Output the error when dispatching command
-    pub(crate) async fn error(err: &Error, sub_shell_cmd: &SubShellCommand) -> anyhow::Result<()> {
+    pub(crate) async fn subshell_error(err: &Error, sub_shell_cmd: &SubShellCommand) -> anyhow::Result<()> {
         eprintln!("ERROR: {} when dispatching {:?}", err, sub_shell_cmd);
+        Ok(())
+    }
+
+    /// Output the error when reading user input.
+    pub(crate) async fn readline_error(_err: &Error) -> anyhow::Result<()> {
+        eprintln!("ERROR: can't parse input command");
         Ok(())
     }
 
