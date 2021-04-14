@@ -3,6 +3,7 @@ use crate::shell::sub::command::SubShellCommand;
 use crate::wallet::manager::WalletManager;
 use crate::shell::io::{ShellInput, ShellOutput};
 use crate::shell::sub::runner::SubShellRunner;
+use anyhow::Error;
 
 pub struct ShellRunner {
     host: smol::net::SocketAddr,
@@ -25,21 +26,24 @@ impl ShellRunner {
 
         loop {
             // Get command from user input.
-            let (cmd, open_cmd) = ShellInput::read_line(&prompt).await?;
+            match ShellInput::read_line(&prompt).await {
+                Ok((cmd, open_cmd)) => {
+                    // Exit if the user chooses to exit.
+                    if cmd == ShellCommand::Exit {
+                        ShellOutput::exit().await?;
+                        return Ok(());
+                    }
 
-            // Exit if the user chooses to exit.
-            if cmd == ShellCommand::Exit {
-                ShellOutput::exit().await?;
-                return Ok(());
-            }
+                    // Dispatch the command (with an optional 'sub' command for 'use' single-line mode).
+                    let dispatch_result = &self.dispatch(&cmd, &open_cmd).await;
 
-            // Dispatch the command (with an optional 'sub' command for 'use' single-line mode).
-            let dispatch_result = &self.dispatch(&cmd, &open_cmd).await;
-
-            // Output error, if any, and continue running.
-            match dispatch_result {
-                Err(err) => ShellOutput::error(err, &cmd).await?,
-                _ => {}
+                    // Output error, if any, and continue running.
+                    match dispatch_result {
+                        Err(err) => ShellOutput::shell_error(err, &cmd).await?,
+                        _ => {}
+                    }
+                }
+                Err(err) => {ShellOutput::readline_error(&err).await? }
             }
         }
     }

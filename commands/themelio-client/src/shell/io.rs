@@ -74,8 +74,14 @@ impl ShellOutput {
     }
 
     /// Output the error when dispatching command.
-    pub(crate) async fn error(err: &Error, cmd: &ShellCommand) -> anyhow::Result<()> {
+    pub(crate) async fn shell_error(err: &Error, cmd: &ShellCommand) -> anyhow::Result<()> {
         eprintln!("ERROR: {} with shell command {:?}", err, cmd);
+        Ok(())
+    }
+
+    /// Output the error when dispatching command.
+    pub(crate) async fn readline_error(_err: &Error) -> anyhow::Result<()> {
+        eprintln!("ERROR: can't parse input command");
         Ok(())
     }
 
