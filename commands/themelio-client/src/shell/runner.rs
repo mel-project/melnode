@@ -49,16 +49,16 @@ impl ShellRunner {
     async fn dispatch(&self, cmd: &ShellCommand) -> anyhow::Result<()> {
         // Dispatch a command and return a command result.
         match &cmd {
-            ShellCommand::CreateWallet(name) => self.create(name).await,
-            ShellCommand::ShowWallets => self.show().await,
-            ShellCommand::OpenWallet(name, secret) => self.open(name, secret).await,
+            ShellCommand::CreateWallet(name) => self.create_wallet(name).await,
+            ShellCommand::ShowWallets => self.show_wallets().await,
+            ShellCommand::OpenWallet(name, secret) => self.open_wallet(name, secret).await,
             ShellCommand::Help => self.help().await,
             ShellCommand::Exit => { self.exit().await }
         }
     }
 
     /// Create a new wallet and output it's information to user.
-    async fn create(&self, name: &str) -> anyhow::Result<()> {
+    async fn create_wallet(&self, name: &str) -> anyhow::Result<()> {
         // let wallet = WalletManager::new(&self.host, &self.database);
         // let (sk, wallet_data) = wallet.create_wallet(name).await?;
         // ShellOutput::(name, sk, &wallet_data);
@@ -66,7 +66,7 @@ impl ShellRunner {
     }
 
     /// Shows all stored wallets.
-    async fn show(&self) -> anyhow::Result<()> {
+    async fn show_wallets(&self) -> anyhow::Result<()> {
         // let wallet = WalletManager::new(&self.host, &self.database);
         // let wallets = wallet.get_all_wallets().await?;
         // ShellOutput::wallets(wallets).await;
@@ -74,7 +74,7 @@ impl ShellRunner {
     }
 
     /// Open a sub-shell given the name and secret and run in sub shell mode until user exits.
-    async fn open(
+    async fn open_wallet(
         &self,
         name: &str,
         secret: &str,
