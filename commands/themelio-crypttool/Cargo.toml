@@ -10,3 +10,5 @@ edition = "2018"
 tmelcrypt={path="../../libs/tmelcrypt"}
 structopt="0.3.21"
 hex="0.4"
+blkstructs={path="../../libs/blkstructs"}
+serde_json="1"
