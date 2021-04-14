@@ -27,15 +27,15 @@ impl ShellRunner {
         loop {
             // Get command from user input.
             match ShellInput::read_line(&prompt).await {
-                Ok((cmd, open_cmd)) => {
+                Ok(cmd) => {
                     // Exit if the user chooses to exit.
                     if cmd == ShellCommand::Exit {
                         ShellOutput::exit().await?;
                         return Ok(());
                     }
 
-                    // Dispatch the command (with an optional 'sub' command for 'use' single-line mode).
-                    let dispatch_result = &self.dispatch(&cmd, &open_cmd).await;
+                    // Dispatch the command
+                    let dispatch_result = &self.dispatch(&cmd).await;
 
                     // Output error, if any, and continue running.
                     match dispatch_result {
@@ -49,13 +49,12 @@ impl ShellRunner {
     }
 
     /// Dispatch and process the command.
-    async fn dispatch(&self, cmd: &ShellCommand, open_cmd: &Option<SubShellCommand>) -> anyhow::Result<()> {
+    async fn dispatch(&self, cmd: &ShellCommand) -> anyhow::Result<()> {
         // Dispatch a command and return a command result.
         match &cmd {
             ShellCommand::CreateWallet(name) => self.create(name).await,
             ShellCommand::ShowWallets => self.show().await,
             ShellCommand::OpenWallet(name, secret) => self.open(name, secret).await,
-            ShellCommand::UseWallet(name, secret) => self.use_(name, secret, &open_cmd).await,
             // ShellCommand::DeleteWallet(name) => self.delete(name).await,
             ShellCommand::Help => self.help().await,
             ShellCommand::Exit => { self.exit().await }
