@@ -1,10 +1,8 @@
 use crate::shell::command::ShellCommand;
-use crate::shell::sub::command::SubShellCommand;
 use crate::common::read_line;
 use colored::Colorize;
 use std::convert::TryFrom;
 use anyhow::Error;
-use tmelcrypt::Ed25519SK;
 use crate::wallet::data::WalletData;
 use tabwriter::TabWriter;
 
