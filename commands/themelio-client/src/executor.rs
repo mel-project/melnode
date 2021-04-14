@@ -82,8 +82,8 @@ impl CommandExecutor {
 
     /// Launch shell mode until user exits.
     pub async fn shell(&self) -> anyhow::Result<()> {
-        let executor = ShellRunner::new(&self.host, &self.database, &self.version);
-        executor.run().await?;
+        let runner = ShellRunner::new(&self.host, &self.database, &self.version);
+        runner.run().await?;
         Ok(())
     }
 }

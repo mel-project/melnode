@@ -1,6 +1,7 @@
 use crate::shell::command::ShellCommand;
 use crate::shell::io::{ShellInput, ShellOutput};
 use crate::shell::sub::runner::SubShellRunner;
+use crate::executor::CommandExecutor;
 
 pub struct ShellRunner {
     host: smol::net::SocketAddr,
@@ -47,30 +48,15 @@ impl ShellRunner {
 
     /// Dispatch and process the command.
     async fn dispatch(&self, cmd: &ShellCommand) -> anyhow::Result<()> {
+        let ce = CommandExecutor::new(self.host, self.database.clone(), &self.version);
         // Dispatch a command and return a command result.
         match &cmd {
-            ShellCommand::CreateWallet(name) => self.create_wallet(name).await,
-            ShellCommand::ShowWallets => self.show_wallets().await,
+            ShellCommand::CreateWallet(name) => ce.create_wallet(name).await,
+            ShellCommand::ShowWallets => ce.show_wallets().await,
             ShellCommand::OpenWallet(name, secret) => self.open_wallet(name, secret).await,
             ShellCommand::Help => self.help().await,
             ShellCommand::Exit => { self.exit().await }
         }
-    }
-
-    /// Create a new wallet and output it's information to user.
-    async fn create_wallet(&self, name: &str) -> anyhow::Result<()> {
-        // let wallet = WalletManager::new(&self.host, &self.database);
-        // let (sk, wallet_data) = wallet.create_wallet(name).await?;
-        // ShellOutput::(name, sk, &wallet_data);
-        Ok(())
-    }
-
-    /// Shows all stored wallets.
-    async fn show_wallets(&self) -> anyhow::Result<()> {
-        // let wallet = WalletManager::new(&self.host, &self.database);
-        // let wallets = wallet.get_all_wallets().await?;
-        // ShellOutput::wallets(wallets).await;
-        Ok(())
     }
 
     /// Open a sub-shell given the name and secret and run in sub shell mode until user exits.
