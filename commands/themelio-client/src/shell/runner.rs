@@ -1,9 +1,6 @@
 use crate::shell::command::ShellCommand;
-use crate::shell::sub::command::SubShellCommand;
-use crate::wallet::manager::WalletManager;
 use crate::shell::io::{ShellInput, ShellOutput};
 use crate::shell::sub::runner::SubShellRunner;
-use anyhow::Error;
 
 pub struct ShellRunner {
     host: smol::net::SocketAddr,
@@ -19,7 +16,7 @@ impl ShellRunner {
         Self { host, database, version }
     }
 
-    /// Dispatch commands from user input and show output using shell io prompter until user exits.
+    /// Run shell commands from user input until user exits.
     pub async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
         let prompt = ShellInput::format_prompt(&self.version).await?;
@@ -55,13 +52,12 @@ impl ShellRunner {
             ShellCommand::CreateWallet(name) => self.create(name).await,
             ShellCommand::ShowWallets => self.show().await,
             ShellCommand::OpenWallet(name, secret) => self.open(name, secret).await,
-            // ShellCommand::DeleteWallet(name) => self.delete(name).await,
             ShellCommand::Help => self.help().await,
             ShellCommand::Exit => { self.exit().await }
         }
     }
 
-    /// Create a new shell and output it's information to user.
+    /// Create a new wallet and output it's information to user.
     async fn create(&self, name: &str) -> anyhow::Result<()> {
         // let wallet = WalletManager::new(&self.host, &self.database);
         // let (sk, wallet_data) = wallet.create_wallet(name).await?;
@@ -69,12 +65,7 @@ impl ShellRunner {
         Ok(())
     }
 
-    /// Delete an existing shell.
-    async fn delete(&self, _name: &str) -> anyhow::Result<()> {
-        todo!("Not implemented")
-    }
-
-    /// Shows all stored shell data.
+    /// Shows all stored wallets.
     async fn show(&self) -> anyhow::Result<()> {
         // let wallet = WalletManager::new(&self.host, &self.database);
         // let wallets = wallet.get_all_wallets().await?;
@@ -82,7 +73,7 @@ impl ShellRunner {
         Ok(())
     }
 
-    /// Open a shell given the name and secret and run in sub shell mode.
+    /// Open a sub-shell given the name and secret and run in sub shell mode until user exits.
     async fn open(
         &self,
         name: &str,
@@ -90,18 +81,6 @@ impl ShellRunner {
     ) -> anyhow::Result<()> {
         let runner = SubShellRunner::new(&self.host, &self.database, &self.version, name, secret).await?;
         runner.run().await?;
-        Ok(())
-    }
-
-    /// Use a particular shell to dispatch a single sub shell command.
-    async fn use_(
-        &self,
-        name: &str,
-        secret: &str,
-        open_wallet_command: &Option<SubShellCommand>,
-    ) -> anyhow::Result<()> {
-        let executor = SubShellRunner::new(&self.host, &self.database, &self.version, name, secret).await?;
-        executor.run_once(&open_wallet_command.clone().unwrap()).await?;
         Ok(())
     }
 
