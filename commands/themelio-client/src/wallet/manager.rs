@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use std::convert::TryInto;
 use crate::wallet::data::WalletData;
 use crate::wallet::wallet::Wallet;
+use std::str::FromStr;
 
 /// Responsible for managing storage and network related wallet operations.
 pub struct WalletManager {
@@ -50,16 +51,15 @@ impl WalletManager {
     pub async fn load_wallet(&self, name: &str, secret: &str) -> anyhow::Result<Wallet> {
         let storage = WalletStorage::new(&self.database);
         let wallet_data = storage.get(name).await?.unwrap();
+        let sk = Ed25519SK::from_str(secret.clone()).unwrap();
 
-        let secret = secret.clone();
-        let wallet_secret = hex::decode(secret)?;
-        let sk: Ed25519SK = Ed25519SK(wallet_secret.as_slice().try_into()?);
+        // TODO: add wallet data pk verification
+        // let wallet_secret = hex::decode(wallet_secret)?;
+        // let wallet_secret = tmelcrypt::Ed25519SK(wallet_secret.as_slice().try_into()?);
+        // if melvm::Covenant::std_ed25519_pk(wallet_secret.to_public()) != shell.my_script {
+        //      return Err(anyhow::anyhow!("unlocking failed, make sure you have the right secret!"));
+        // }
 
-        if wallet_data.my_script.0 != sk.0 {
-            anyhow::bail!(ClientError::InvalidWalletSecret(name.to_string()))
-        }
-
-        // Return created wallet
         let wallet = Wallet::new(sk, name, wallet_data);
         Ok(wallet)
     }
