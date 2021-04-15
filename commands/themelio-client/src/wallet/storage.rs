@@ -1,9 +1,9 @@
+use crate::wallet::data::WalletData;
 use anyhow;
 use sled;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use storage::SledMap;
-use crate::wallet::data::WalletData;
 
 const WALLET_NAMESPACE: &[u8; 5] = b"shell";
 
@@ -45,6 +45,6 @@ impl WalletStorage {
 
     /// Insert shell data by shell name.
     pub async fn remove(&self, name: &str) -> anyhow::Result<()> {
-       todo!("Not implemented")
+        todo!("Not implemented")
     }
 }

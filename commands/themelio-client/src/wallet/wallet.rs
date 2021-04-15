@@ -1,17 +1,19 @@
 use crate::wallet::data::WalletData;
+use blkstructs::{
+    CoinData, CoinDataHeight, CoinID, NetID, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
+};
 use tmelcrypt::Ed25519SK;
-use blkstructs::{CoinID, TxKind, Transaction, CoinData, DENOM_TMEL, MICRO_CONVERTER, NetID, CoinDataHeight};
 
 use nodeprot::{ValClient, ValClientSnapshot};
 
-use crate::common::{ExecutionContext, snapshot_sleep};
+use crate::common::{snapshot_sleep, ExecutionContext};
 
 /// Responsible for using an in memory wallet to send transactions.
 pub struct Wallet {
     pub sk: Ed25519SK,
     pub name: String,
     pub data: WalletData,
-    pub context: ExecutionContext
+    pub context: ExecutionContext,
 }
 impl Wallet {
     pub fn new(sk: Ed25519SK, name: &str, data: WalletData, context: ExecutionContext) -> Self {
@@ -25,7 +27,12 @@ impl Wallet {
     }
 
     /// Create a faucet transaction given the amount, unit and a value for fee.
-    pub async fn create_faucet_tx(&self, amount: &str, unit: &str, fee: u128) -> anyhow::Result<Transaction> {
+    pub async fn create_faucet_tx(
+        &self,
+        amount: &str,
+        unit: &str,
+        fee: u128,
+    ) -> anyhow::Result<Transaction> {
         let value: u128 = amount.parse()?;
         let tx = Transaction {
             kind: TxKind::Faucet,
@@ -48,7 +55,9 @@ impl Wallet {
         let snapshot = self.context.get_latest_snapshot().await?;
         let res = snapshot.raw.send_tx(tx.clone()).await;
         match res {
-            Ok(_) => { println!("sent faucet tx"); }
+            Ok(_) => {
+                println!("sent faucet tx");
+            }
             Err(ref err) => {
                 println!("{:?}", err.clone())
             }
@@ -66,19 +75,18 @@ impl Wallet {
         Ok(snapshot.get_coin(coin).await?)
     }
 
-//     /// Send coins to a recipient.
-//     pub async fn send_coins(&self, mut wallet_data: &WalletData, dest: HashVal, amt: u128, denom: &[u8]) -> anyhow::Result<CoinID> {
-//         Ok(CoinID{ txhash: Default::default(), index: 0 })
-//     }
-//
-//     /// Add coins to this wallet
-//     pub async fn add_coins(&self, wallet_data: &WalletData, ) -> anyhow::Result<CoinID> {
-//         Ok(CoinID{ txhash: Default::default(), index: 0 })
-//     }
-//
-//     /// Check the balance for this wallet.
-//     pub async fn balance(&self, wallet_data: &WalletData, ) -> anyhow::Result<CoinID> {
-//         Ok(CoinID{ txhash: Default::default(), index: 0 })
-//     }
-
+    //     /// Send coins to a recipient.
+    //     pub async fn send_coins(&self, mut wallet_data: &WalletData, dest: HashVal, amt: u128, denom: &[u8]) -> anyhow::Result<CoinID> {
+    //         Ok(CoinID{ txhash: Default::default(), index: 0 })
+    //     }
+    //
+    //     /// Add coins to this wallet
+    //     pub async fn add_coins(&self, wallet_data: &WalletData, ) -> anyhow::Result<CoinID> {
+    //         Ok(CoinID{ txhash: Default::default(), index: 0 })
+    //     }
+    //
+    //     /// Check the balance for this wallet.
+    //     pub async fn balance(&self, wallet_data: &WalletData, ) -> anyhow::Result<CoinID> {
+    //         Ok(CoinID{ txhash: Default::default(), index: 0 })
+    //     }
 }

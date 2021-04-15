@@ -1,15 +1,15 @@
-use blkstructs::melvm::Covenant;
-use crate::wallet::storage::WalletStorage;
-use tmelcrypt::Ed25519SK;
-use std::collections::BTreeMap;
+use crate::common::{ClientError, ExecutionContext};
 use crate::wallet::data::WalletData;
+use crate::wallet::storage::WalletStorage;
 use crate::wallet::wallet::Wallet;
+use blkstructs::melvm::Covenant;
+use std::collections::BTreeMap;
 use std::str::FromStr;
-use crate::common::{ExecutionContext, ClientError};
+use tmelcrypt::Ed25519SK;
 
 /// Responsible for managing storage and network related wallet operations.
 pub struct WalletManager {
-    context: ExecutionContext
+    context: ExecutionContext,
 }
 
 impl WalletManager {

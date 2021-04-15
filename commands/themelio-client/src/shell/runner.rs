@@ -1,14 +1,14 @@
+use crate::common::ExecutionContext;
+use crate::executor::CommandExecutor;
 use crate::shell::command::ShellCommand;
 use crate::shell::io::{ShellInput, ShellOutput};
 use crate::shell::sub::runner::SubShellRunner;
-use crate::executor::CommandExecutor;
-use crate::common::ExecutionContext;
 
 /// Run an interactive shell given an execution context
 /// This is for end users to create and show wallets
 /// as well as open up a particular wallet to transact with network.
 pub struct ShellRunner {
-    context: ExecutionContext
+    context: ExecutionContext,
 }
 
 impl ShellRunner {
@@ -40,7 +40,7 @@ impl ShellRunner {
                         _ => {}
                     }
                 }
-                Err(err) => {ShellOutput::readline_error(&err).await? }
+                Err(err) => ShellOutput::readline_error(&err).await?,
             }
         }
     }
@@ -54,16 +54,12 @@ impl ShellRunner {
             ShellCommand::ShowWallets => ce.show_wallets().await,
             ShellCommand::OpenWallet(name, secret) => self.open_wallet(name, secret).await,
             ShellCommand::Help => self.help().await,
-            ShellCommand::Exit => { self.exit().await }
+            ShellCommand::Exit => self.exit().await,
         }
     }
 
     /// Open a sub-shell given the name and secret and run in sub shell mode until user exits.
-    async fn open_wallet(
-        &self,
-        name: &str,
-        secret: &str,
-    ) -> anyhow::Result<()> {
+    async fn open_wallet(&self, name: &str, secret: &str) -> anyhow::Result<()> {
         let runner = SubShellRunner::new(self.context.clone(), name, secret).await?;
         runner.run().await?;
         Ok(())

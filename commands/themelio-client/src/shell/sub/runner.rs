@@ -1,8 +1,8 @@
-use crate::wallet::manager::WalletManager;
-use crate::shell::sub::io::{SubShellInput, SubShellOutput};
-use crate::shell::sub::command::SubShellCommand;
 use crate::common::ExecutionContext;
 use crate::executor::CommandExecutor;
+use crate::shell::sub::command::SubShellCommand;
+use crate::shell::sub::io::{SubShellInput, SubShellOutput};
+use crate::wallet::manager::WalletManager;
 
 /// A sub-shell runner executed within the higher-level shell.
 /// This shell unlocks a wallet, transacts with the network and shows balances.
@@ -14,15 +14,23 @@ pub(crate) struct SubShellRunner {
 
 impl SubShellRunner {
     /// Create a new sub shell runner if wallet exists and we can unlock & load with the provided secret.
-    pub(crate) async fn new(context: ExecutionContext, name: &str, secret: &str) -> anyhow::Result<Self> {
+    pub(crate) async fn new(
+        context: ExecutionContext,
+        name: &str,
+        secret: &str,
+    ) -> anyhow::Result<Self> {
         let name = name.to_string();
         let secret = secret.to_string();
         let context = context.clone();
 
         let manager = WalletManager::new(context.clone());
-        let _ = manager.load_wallet( &name, &secret).await?;
+        let _ = manager.load_wallet(&name, &secret).await?;
 
-        Ok(Self { context, name, secret })
+        Ok(Self {
+            context,
+            name,
+            secret,
+        })
     }
 
     /// Read and execute sub-shell commands from user until user exits.
@@ -50,9 +58,7 @@ impl SubShellRunner {
                         _ => {}
                     }
                 }
-                Err(err) => {
-                    SubShellOutput::readline_error(&err).await?
-                }
+                Err(err) => SubShellOutput::readline_error(&err).await?,
             }
         }
     }
@@ -61,10 +67,18 @@ impl SubShellRunner {
     async fn dispatch(&self, sub_shell_cmd: &SubShellCommand) -> anyhow::Result<()> {
         // Dispatch a command and return a command result
         match &sub_shell_cmd {
-            SubShellCommand::Faucet(amt, unit) => { self.faucet(amt, unit).await?; }
-            SubShellCommand::SendCoins(dest, amt, unit) => { self.send_coins(dest, amt, unit).await?; }
-            SubShellCommand::AddCoins(coin_id) => { self.add_coins(coin_id).await?; }
-            SubShellCommand::ShowBalance => { self.balance().await?; }
+            SubShellCommand::Faucet(amt, unit) => {
+                self.faucet(amt, unit).await?;
+            }
+            SubShellCommand::SendCoins(dest, amt, unit) => {
+                self.send_coins(dest, amt, unit).await?;
+            }
+            SubShellCommand::AddCoins(coin_id) => {
+                self.add_coins(coin_id).await?;
+            }
+            SubShellCommand::ShowBalance => {
+                self.balance().await?;
+            }
             SubShellCommand::Help => {}
             SubShellCommand::Exit => {}
         }
@@ -80,13 +94,15 @@ impl SubShellRunner {
     /// Calls send coins on the command executor with the inputs passed into the sub-shell.
     async fn send_coins(&self, dest: &str, amt: &str, unit: &str) -> anyhow::Result<()> {
         let executor = CommandExecutor::new(self.context.clone());
-        executor.send_coins(&self.name,&self.secret,dest, amt, unit).await
+        executor
+            .send_coins(&self.name, &self.secret, dest, amt, unit)
+            .await
     }
 
     /// Calls add coins on the command executor with the inputs passed into the sub-shell.
     async fn add_coins(&self, coin_id: &str) -> anyhow::Result<()> {
         let executor = CommandExecutor::new(self.context.clone());
-        executor.add_coins(&self.name,&self.secret,coin_id).await
+        executor.add_coins(&self.name, &self.secret, coin_id).await
     }
 
     /// Calls balance on the command executor with the inputs passed into the sub-shell.

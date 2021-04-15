@@ -31,7 +31,6 @@ impl SubShellInput {
 pub struct SubShellOutput {}
 
 impl SubShellOutput {
-
     /// Send coins to a recipient.
     pub(crate) async fn sent_coins() {}
 
@@ -44,7 +43,10 @@ impl SubShellOutput {
     }
 
     /// Output the error when dispatching command
-    pub(crate) async fn subshell_error(err: &Error, sub_shell_cmd: &SubShellCommand) -> anyhow::Result<()> {
+    pub(crate) async fn subshell_error(
+        err: &Error,
+        sub_shell_cmd: &SubShellCommand,
+    ) -> anyhow::Result<()> {
         eprintln!("ERROR: {} when dispatching {:?}", err, sub_shell_cmd);
         Ok(())
     }

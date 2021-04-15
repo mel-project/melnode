@@ -1,14 +1,14 @@
-use crate::shell::command::ShellCommand;
 use crate::common::read_line;
+use crate::shell::command::ShellCommand;
+use crate::wallet::data::WalletData;
+use anyhow::Error;
 use colored::Colorize;
 use std::convert::TryFrom;
-use anyhow::Error;
-use crate::wallet::data::WalletData;
 use tabwriter::TabWriter;
 
-use std::io::prelude::*;
-use std::collections::BTreeMap;
 use crate::wallet::wallet::Wallet;
+use std::collections::BTreeMap;
+use std::io::prelude::*;
 
 pub struct ShellInput {}
 
@@ -34,8 +34,6 @@ impl ShellInput {
 pub struct ShellOutput {}
 
 impl ShellOutput {
-
-
     /// Output the error when dispatching command.
     pub(crate) async fn shell_error(err: &Error, cmd: &ShellCommand) -> anyhow::Result<()> {
         eprintln!("ERROR: {} with shell command {:?}", err, cmd);

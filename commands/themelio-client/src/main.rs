@@ -1,11 +1,11 @@
 pub mod common;
 pub mod executor;
+pub mod io;
 pub mod shell;
 pub mod wallet;
-pub mod io;
 
-use structopt::StructOpt;
 use blkstructs::NetID;
+use structopt::StructOpt;
 
 #[derive(Debug, Clone, StructOpt)]
 #[structopt(name = "Themelio Client CLI")]
@@ -18,11 +18,11 @@ use blkstructs::NetID;
 /// and can execute a single command to completion given all the arguments.
 pub struct Opts {
     /// IP Address with port used to establish a connection to host
-    #[structopt(long, default_value="127.0.0.1:8000")]
+    #[structopt(long, default_value = "127.0.0.1:8000")]
     pub host: smol::net::SocketAddr,
 
     /// File path to database for client shell storage
-    #[structopt(long, short, parse(from_os_str), default_value="/tmp/testclient")]
+    #[structopt(long, short, parse(from_os_str), default_value = "/tmp/testclient")]
     pub database: std::path::PathBuf,
 
     /// Automation-centric commands to executed with the exception of the interactive 'shell' command.
@@ -38,13 +38,13 @@ pub struct Opts {
 /// TODO: add descriptions
 pub enum CommandOpts {
     CreateWallet {
-        wallet_name: String
+        wallet_name: String,
     },
     Faucet {
         wallet_name: String,
         secret: String,
         amount: String,
-        unit: String
+        unit: String,
     },
     // TODO: determine how to handle fee input for interactive and non-interactive case
     // ie... do we add in optional field for handling fee input?
@@ -53,12 +53,12 @@ pub enum CommandOpts {
         secret: String,
         address: String,
         amount: String,
-        unit: String
+        unit: String,
     },
     AddCoins {
         wallet_name: String,
         secret: String,
-        coin_id: String
+        coin_id: String,
     },
     // TODO: Add in correct fields for deposit, withdraw and swap
     // DepositCoins {
@@ -88,7 +88,7 @@ pub enum CommandOpts {
         secret: String,
     },
     ShowWallets,
-    Shell
+    Shell,
 }
 
 /// Parse options from input arguments and asynchronously dispatch them.
@@ -98,7 +98,6 @@ fn main() {
         dispatch(opts).await.expect("Failed to execute command");
     });
 }
-
 
 /// Convert options into an execution context
 /// then dispatch a single command to a command executor given the context.
@@ -111,21 +110,33 @@ async fn dispatch(opts: Opts) -> anyhow::Result<()> {
     };
     let executor = executor::CommandExecutor::new(context);
     match opts.cmd_opts {
-        CommandOpts::CreateWallet { wallet_name } => {
-            executor.create_wallet(&wallet_name).await
-        },
-        CommandOpts::Faucet { wallet_name, secret, amount, unit } => {
-            executor.faucet(&wallet_name, &secret, &amount, &unit).await
-        },
-        CommandOpts::SendCoins { wallet_name, secret, address, amount, unit } => {
-            executor.send_coins(&wallet_name, &secret, &address, &amount, &unit).await
-        },
-        CommandOpts::AddCoins { wallet_name, secret, coin_id } => {
-            executor.add_coins(&wallet_name, &secret, &coin_id).await
-        },
-        CommandOpts::ShowBalance { wallet_name, secret } => {
-            executor.show_balance(&wallet_name, &secret).await
-        },
+        CommandOpts::CreateWallet { wallet_name } => executor.create_wallet(&wallet_name).await,
+        CommandOpts::Faucet {
+            wallet_name,
+            secret,
+            amount,
+            unit,
+        } => executor.faucet(&wallet_name, &secret, &amount, &unit).await,
+        CommandOpts::SendCoins {
+            wallet_name,
+            secret,
+            address,
+            amount,
+            unit,
+        } => {
+            executor
+                .send_coins(&wallet_name, &secret, &address, &amount, &unit)
+                .await
+        }
+        CommandOpts::AddCoins {
+            wallet_name,
+            secret,
+            coin_id,
+        } => executor.add_coins(&wallet_name, &secret, &coin_id).await,
+        CommandOpts::ShowBalance {
+            wallet_name,
+            secret,
+        } => executor.show_balance(&wallet_name, &secret).await,
         CommandOpts::ShowWallets => executor.show_wallets().await,
         CommandOpts::Shell => executor.shell().await,
     }

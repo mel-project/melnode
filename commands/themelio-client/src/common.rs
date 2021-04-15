@@ -1,5 +1,5 @@
+use nodeprot::{ValClient, ValClientSnapshot};
 use thiserror::Error;
-use nodeprot::{ValClientSnapshot, ValClient};
 
 use smol::Timer;
 use std::time::Duration;
@@ -28,7 +28,7 @@ pub struct ExecutionContext {
 
 impl ExecutionContext {
     /// Get the latest snapshot from an execution context.
-    pub async fn get_latest_snapshot(&self) -> anyhow::Result<ValClientSnapshot>{
+    pub async fn get_latest_snapshot(&self) -> anyhow::Result<ValClientSnapshot> {
         let client = ValClient::new(self.network, self.host);
         let snapshot = client.snapshot_latest().await?;
         Ok(snapshot)
@@ -45,7 +45,7 @@ pub async fn read_line(prompt: String) -> anyhow::Result<String> {
 }
 
 /// Sleep on current async task for a duration set in seconds before updating client snapshot.
-pub async fn snapshot_sleep(sec: u64) -> anyhow::Result<()>{
+pub async fn snapshot_sleep(sec: u64) -> anyhow::Result<()> {
     let duration = Duration::from_secs(sec);
     Timer::after(duration).await;
     Ok(())
