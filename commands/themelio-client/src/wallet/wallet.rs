@@ -10,7 +10,7 @@ use crate::common::ExecutionContext;
 
 /// Responsible for using an in memory wallet to send transactions.
 pub struct Wallet {
-    sk: Ed25519SK,
+    pub sk: Ed25519SK,
     pub name: String,
     pub data: WalletData,
     pub context: ExecutionContext

@@ -45,7 +45,7 @@ impl WalletManager {
 
     /// Get existing wallet data by name given the corresponding secret.
     pub async fn load_wallet(&self, name: &str, secret: &str) -> anyhow::Result<Wallet> {
-        let storage = WalletStorage::new(&self.database);
+        let storage = WalletStorage::new(&self.context.database);
         let wallet_data = storage.get(name).await?.unwrap();
         let sk = Ed25519SK::from_str(secret.clone()).unwrap();
 

@@ -9,12 +9,13 @@ use blkstructs::NetID;
 
 #[derive(Debug, Clone, StructOpt)]
 #[structopt(name = "Themelio Client CLI")]
-/// A command line application to interact with a Themelio node.
+/// A command line application to interact with Themelio.
 ///
-/// An interactive shell mode can be used as a CLI wallet
-/// to store wallets locally and send and query a supported network.
+/// An interactive shell can be used as a CLI wallet allowing a user
+/// to store wallet state data locally as well as send and query data from the network.
 ///
-/// Non-shell is more suitable for automation and can execute a single commands given all the arguments.
+/// Other non-shell command options are suitable for automation
+/// and can execute a single command to completion given all the arguments.
 pub struct Opts {
     /// IP Address with port used to establish a connection to host
     #[structopt(long, default_value="127.0.0.1:8000")]
