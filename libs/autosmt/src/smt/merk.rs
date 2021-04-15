@@ -8,10 +8,6 @@ use std::{collections::HashMap, fmt::Debug};
 
 pub(crate) const MSB_SET: u8 = 0b1000_0000;
 
-// TODO: consider using https://github.com/bitvecto-rs/bitvec
-// TODO: would machine endianess effect this? ie if node runs on a diff. machine arch
-// woudln't we get diff hashval to path conversion? might make things like persistent storage difficult
-// Ie: perhaps we can use https://docs.rs/byteordered/0.1.0/byteordered/enum.Endianness.html if that is the case?
 pub fn key_to_path(key: tmelcrypt::HashVal) -> [bool; 256] {
     let mut toret = [false; 256];
     // enumerate each byte
@@ -47,7 +43,7 @@ pub fn data_hashes(key: tmelcrypt::HashVal, data: &[u8]) -> Vec<tmelcrypt::HashV
         hashes.reverse();
         hashes
     };
-    // Should we completely drop this caching mechanism?
+    // TODO: Should we completely drop this caching mechanism?
     let value = DATA_HASH_CACHE.read().get(&(key, data.into())).cloned();
     if let Some(val) = value {
         val

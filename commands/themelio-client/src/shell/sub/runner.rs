@@ -79,8 +79,12 @@ impl SubShellRunner {
             SubShellCommand::ShowBalance => {
                 self.balance().await?;
             }
-            SubShellCommand::Help => {}
-            SubShellCommand::Exit => {}
+            SubShellCommand::Help => {
+                self.help().await?;
+            }
+            SubShellCommand::Exit => {
+                self.exit().await?;
+            }
         }
         Ok(())
     }
@@ -111,8 +115,14 @@ impl SubShellRunner {
         executor.show_balance(&self.name, &self.secret).await
     }
 
-    /// Show available sub shell inputs to user
+    /// Show available sub shell command args & inputs to user
     async fn help(&self) -> anyhow::Result<()> {
+        // SubShellOutput::output_help().await?;
+        Ok(())
+    }
+
+    /// Show exit message
+    async fn exit(&self) -> anyhow::Result<()> {
         // SubShellOutput::output_help().await?;
         Ok(())
     }
