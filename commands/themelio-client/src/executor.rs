@@ -1,7 +1,9 @@
 use crate::wallet::manager::WalletManager;
 use crate::shell::runner::ShellRunner;
-use crate::common::ExecutionContext;
+use crate::common::{ExecutionContext, snapshot_sleep};
 use crate::io::CommandOutput;
+use blkstructs::{Transaction, CoinDataHeight};
+use crate::wallet::wallet::Wallet;
 
 /// Responsible for executing a single client CLI command non-interactively.
 pub struct CommandExecutor {
@@ -38,13 +40,26 @@ impl CommandExecutor {
         wallet.send_tx(&tx).await?;
 
         // Wait for tx confirmation.
-        let coin_data_height = wallet.confirm_tx(&tx).await?;
+        let coin_data_height = self.confirm_tx(&tx, &wallet).await?;
 
         // print confirmation results for faucet tx
-        println!("confirmed!");
+        println!("confirmed at height {:?}! ", coin_data_height);
         // CommandOutput::print_confirmed_faucet_tx(&coin_data_height).await?;
 
         Ok(())
+    }
+
+    /// Update snapshot until we can confirm the transaction is at a certain height.
+    // TODO: we need a timeout passed into this method or it should be called with a task race.
+    pub async fn confirm_tx(&self, tx: &Transaction, wallet: &Wallet) -> anyhow::Result<CoinDataHeight> {
+        loop {
+            let coin_data_height = wallet.check_tx(tx).await?;
+            if coin_data_height.is_some() {
+                println!("confirming");
+                return Ok(coin_data_height.unwrap());
+            }
+            snapshot_sleep(2).await?;
+        }
     }
 
     /// Opens a wallet by name and secret and sends coins from the wallet to a destination.

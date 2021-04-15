@@ -56,21 +56,14 @@ impl Wallet {
         Ok(())
     }
 
-    /// Update snapshot and confirm the transaction.
-    // TODO: we need a timeout passed into this method
-    pub async fn confirm_tx(&self, tx: &Transaction) -> anyhow::Result<CoinDataHeight> {
+    /// Update snapshot and check if we can get the coin from the transaction.
+    pub async fn check_tx(&self, tx: &Transaction) -> anyhow::Result<Option<CoinDataHeight>> {
         let coin = CoinID {
             txhash: tx.hash_nosigs(),
             index: 0,
         };
-        loop {
-            let snapshot = self.context.get_latest_snapshot().await?;
-            let coin_data_height = snapshot.get_coin(coin).await?;
-            if coin_data_height.is_some() {
-                return Ok(coin_data_height.unwrap());
-            }
-            snapshot_sleep(2).await?;
-        }
+        let snapshot = self.context.get_latest_snapshot().await?;
+        Ok(snapshot.get_coin(coin).await?)
     }
 
 //     /// Send coins to a recipient.
