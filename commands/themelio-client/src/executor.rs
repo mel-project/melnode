@@ -34,78 +34,53 @@ impl CommandExecutor {
     }
 
     /// Opens a wallet by name and secret and creates a faucet tx to fund the wallet.
-    /// The results of the faucet tx from pending to confirm are shown to the user.
+    /// It then sends the transaction and waits for a confirmation of the coins on the ledger.
     pub async fn faucet(&self, wallet_name: &str, secret: &str, amount: &str, unit: &str) -> anyhow::Result<()> {
         // Load wallet from wallet manager using name and secret
         let manager = WalletManager::new(&self.host.clone(), &self.database.clone());
         let wallet = manager.load_wallet(wallet_name, secret).await?;
 
-        // Create faucet tx
+        // Create faucet tx.
         let fee = 2050000000;
         let tx = wallet.create_faucet_tx(amount, unit, fee).await?;
 
-        // Get latest client snapshot
-        let client = ValClient::new(self.network, self.host);
-        let snapshot = client.snapshot_latest().await?;
+        // Send the faucet tx.
+        wallet.send_tx(&tx).await?;
 
-        // send the transaction
-        let res = snapshot.raw.send_tx(tx.clone()).await;
-        match res {
-            Ok(_) => { println!("sent faucet tx"); }
-            Err(ref err) => {
-                println!("{:?}", err.clone())
-            }
-        }
-
-        // Wait for confirmation
+        // Wait for confirmation of the coin.
         let coin = CoinID {
             txhash: tx.hash_nosigs(),
             index: 0,
         };
-        loop {
-            async fn sleep(dur: Duration) {
-                Timer::after(dur).await;
-            }
-            sleep(Duration::from_secs(1)).await;
-            let snapshot = client.snapshot_latest().await?;
-            match snapshot.get_coin(coin).await? {
-                None => {
-                    println!("nothing");
-                }
-                Some(_) => {
-                    println!("something");
-                    break;
-                }
-           }
-        }
-        println!("transaction confirmed");
-        println!("{:?}", res);
-        // query output state using tx hash
-        // let tx_hash = tx.hash()
-        // snapshot.get_coin(cid).await?;
-        // SubShellOutput::faucet_tx(cid).await?;
-        //                 eprintln!(">> Waiting for confirmation...");
-//                 // loop until we get coin data height and proof from last header
-//                 loop {
-//                     let (coin_data_height, _hdr) = active_wallet.get_coin_data(coin).await?;
-//                     if let Some(cd_height) = coin_data_height {
-//                         eprintln!(
-//                             ">>> Coin is confirmed at current height {}",
-//                             cd_height.height
-//                         );
+        wallet.confirm_faucet_coins(&coin).await?;
 
-//                         eprintln!(
-//                             ">> CID = {}",
-//                             hex::encode(stdcode::serialize(&coin).unwrap()).bold()
-//                         );
-//                         break;
-//                     }
-//                 }
+        // print results
+
         Ok(())
     }
 
     /// Opens a wallet by name and secret and sends coins from the wallet to a destination.
     pub async fn send_coins(&self, wallet_name: &str, secret: &str, address: &str, amount: &str, unit: &str) -> anyhow::Result<()> {
+        // // Load wallet from wallet manager using name and secret
+        // let manager = WalletManager::new(&self.host.clone(), &self.database.clone());
+        // let wallet = manager.load_wallet(wallet_name, secret).await?;
+        //
+        // // Create send coins tx.
+        // let fee = 2050000000;
+        // let tx = wallet.create_send_coins_tx(amount, unit, fee).await?;
+        //
+        // // Send the tx
+        // wallet.send_tx(&tx).await?;
+        //
+        // // Wait for confirmation of the coin
+        // let coin = CoinID {
+        //     txhash: tx.hash_nosigs(),
+        //     index: 0,
+        // };
+        // wallet.confirm_coins(&coin).await?;
+
+        // print results
+
         Ok(())
     }
 

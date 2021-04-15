@@ -37,6 +37,62 @@ impl Wallet {
         Ok(tx)
     }
 
+    pub async fn send_tx(&self, tx: &Transaction) -> anyhow::Result<()> {
+        let res = snapshot.raw.send_tx(tx.clone()).await;
+        match res {
+            Ok(_) => { println!("sent faucet tx"); }
+            Err(ref err) => {
+                println!("{:?}", err.clone())
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn confirm_faucet_coins(&self, coin_id: &CoinId) -> anyhow::Result<()> {
+        loop {
+            async fn sleep(dur: Duration) {
+                Timer::after(dur).await;
+            }
+            sleep(Duration::from_secs(1)).await;
+            let snapshot = client.snapshot_latest().await?;
+            match snapshot.get_coin(coin).await? {
+                None => {
+                    println!("nothing");
+                }
+                Some(_) => {
+                    println!("something");
+                    break;
+                }
+            }
+        }
+        println!("transaction confirmed");
+        println!("{:?}", res);
+        // query output state using tx hash
+        // let tx_hash = tx.hash()
+        // snapshot.get_coin(cid).await?;
+        // SubShellOutput::faucet_tx(cid).await?;
+        //                 eprintln!(">> Waiting for confirmation...");
+//                 // loop until we get coin data height and proof from last header
+//                 loop {
+//                     let (coin_data_height, _hdr) = active_wallet.get_coin_data(coin).await?;
+//                     if let Some(cd_height) = coin_data_height {
+//                         eprintln!(
+//                             ">>> Coin is confirmed at current height {}",
+//                             cd_height.height
+//                         );
+
+//                         eprintln!(
+//                             ">> CID = {}",
+//                             hex::encode(stdcode::serialize(&coin).unwrap()).bold()
+//                         );
+//                         break;
+//                     }
+//                 }
+    }
+
+}
+
+
 //     /// Send coins to a recipient.
 //     pub async fn send_coins(&self, mut wallet_data: &WalletData, dest: HashVal, amt: u128, denom: &[u8]) -> anyhow::Result<CoinID> {
 //         Ok(CoinID{ txhash: Default::default(), index: 0 })
