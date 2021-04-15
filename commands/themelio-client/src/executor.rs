@@ -1,7 +1,6 @@
 use crate::wallet::manager::WalletManager;
 use crate::shell::runner::ShellRunner;
 use crate::shell::io::ShellOutput;
-use blkstructs::CoinID;
 use crate::common::ExecutionContext;
 
 /// Responsible for executing a single client CLI command non-interactively.
@@ -20,7 +19,7 @@ impl CommandExecutor {
     pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<()> {
         let manager = WalletManager::new(self.context.clone());
         let wallet = manager.create_wallet(wallet_name).await?;
-        ShellOutput::show_new_wallet(wallet).await?;
+        ShellOutput::print_created_wallet(wallet).await?;
         Ok(())
     }
 
@@ -42,7 +41,7 @@ impl CommandExecutor {
         wallet.confirm_tx(&tx).await?;
 
         // print confirmation results for faucet tx
-        
+
         Ok(())
     }
 

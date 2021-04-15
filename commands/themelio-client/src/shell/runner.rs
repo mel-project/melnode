@@ -19,11 +19,11 @@ impl ShellRunner {
     /// Run shell commands from user input until user exits.
     pub async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
-        let prompt = ShellInput::format_prompt(&self.context.version).await?;
+        let prompt = ShellInput::format_shell_prompt(&self.context.version).await?;
 
         loop {
             // Get command from user input.
-            match ShellInput::read_line(&prompt).await {
+            match ShellInput::read_shell_input(&prompt).await {
                 Ok(cmd) => {
                     // Exit if the user chooses to exit.
                     if cmd == ShellCommand::Exit {
@@ -71,7 +71,7 @@ impl ShellRunner {
 
     /// Output help message to user.
     async fn help(&self) -> anyhow::Result<()> {
-        ShellOutput::help().await?;
+        ShellOutput::shell_help().await?;
         Ok(())
     }
 
