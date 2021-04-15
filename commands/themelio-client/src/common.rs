@@ -1,6 +1,6 @@
 use blkstructs::NetID;
 
-pub struct Context {
+pub struct ExecutionContext {
     pub host: smol::net::SocketAddr,
     pub network: NetID,
     pub database: std::path::PathBuf,

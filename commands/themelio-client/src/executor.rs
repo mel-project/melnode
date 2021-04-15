@@ -1,24 +1,18 @@
 use crate::wallet::manager::WalletManager;
 use crate::shell::runner::ShellRunner;
 use crate::shell::io::ShellOutput;
-use blkstructs::{NetID, CoinID};
+use blkstructs::{CoinID};
+use crate::common::ExecutionContext;
 
 /// Responsible for executing a single client CLI command non-interactively.
 pub struct CommandExecutor {
-    pub host: smol::net::SocketAddr,
-    pub database: std::path::PathBuf,
-    pub version: String,
-    pub network: NetID,
+    pub context: ExecutionContext
 }
 
 impl CommandExecutor {
-    pub fn new(host: smol::net::SocketAddr, database: std::path::PathBuf, version: &str, network: NetID) -> Self {
-        let version = version.to_string();
+    pub fn new(context: ExecutionContext) -> Self {
         Self {
-            host,
-            database,
-            version,
-            network
+           context
         }
     }
 
