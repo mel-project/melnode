@@ -2,35 +2,31 @@ use crate::wallet::manager::WalletManager;
 use crate::shell::sub::io::{SubShellInput, SubShellOutput};
 use crate::shell::sub::command::SubShellCommand;
 use blkstructs::CoinID;
-use anyhow::Error;
+use crate::common::ExecutionContext;
 
 pub(crate) struct SubShellRunner {
-    host: smol::net::SocketAddr,
-    database: std::path::PathBuf,
-    version: String,
+    context: ExecutionContext,
     name: String,
     secret: String,
 }
 
 impl SubShellRunner {
     /// Create a new sub shell dispatcher if shell exists and we can load it with the secret.
-    pub(crate) async fn new(host: &smol::net::SocketAddr, database: &std::path::PathBuf, version: &str, name: &str, secret: &str) -> anyhow::Result<Self> {
-        let host = host.clone();
-        let database = database.clone();
-        let version = version.to_string();
+    pub(crate) async fn new(context: ExecutionContext, name: &str, secret: &str) -> anyhow::Result<Self> {
         let name = name.to_string();
         let secret = secret.to_string();
+        let context = context.clone();
 
-        let manager = WalletManager::new(&host, &database);
+        let manager = WalletManager::new(context.clone());
         let _ = manager.load_wallet( &name, &secret).await?;
 
-        Ok(Self { host, database, version, name, secret })
+        Ok(Self { context, name, secret })
     }
 
     /// Dispatch commands from user input and show output using prompt until user exits.
     pub(crate) async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
-        let prompt = SubShellInput::format_prompt(&self.version, &self.name).await?;
+        let prompt = SubShellInput::format_prompt(&self.context.version, &self.name).await?;
 
         loop {
             // Get command from user input.

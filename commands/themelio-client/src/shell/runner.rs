@@ -2,25 +2,21 @@ use crate::shell::command::ShellCommand;
 use crate::shell::io::{ShellInput, ShellOutput};
 use crate::shell::sub::runner::SubShellRunner;
 use crate::executor::CommandExecutor;
+use crate::common::ExecutionContext;
 
 pub struct ShellRunner {
-    host: smol::net::SocketAddr,
-    database: std::path::PathBuf,
-    version: String
+    context: ExecutionContext
 }
 
 impl ShellRunner {
-    pub fn new(host: &smol::net::SocketAddr, database: &std::path::PathBuf, version: &str) -> Self {
-        let host = host.clone();
-        let database = database.clone();
-        let version = version.to_string();
-        Self { host, database, version }
+    pub fn new(context: ExecutionContext) -> Self {
+        Self { context }
     }
 
     /// Run shell commands from user input until user exits.
     pub async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
-        let prompt = ShellInput::format_prompt(&self.version).await?;
+        let prompt = ShellInput::format_prompt(&self.context.version).await?;
 
         loop {
             // Get command from user input.
@@ -48,7 +44,7 @@ impl ShellRunner {
 
     /// Dispatch and process the command.
     async fn dispatch(&self, cmd: &ShellCommand) -> anyhow::Result<()> {
-        let ce = CommandExecutor::new(self.host, self.database.clone(), &self.version);
+        let ce = CommandExecutor::new(self.context.clone());
         // Dispatch a command and return a command result.
         match &cmd {
             ShellCommand::CreateWallet(name) => ce.create_wallet(name).await,
@@ -65,7 +61,7 @@ impl ShellRunner {
         name: &str,
         secret: &str,
     ) -> anyhow::Result<()> {
-        let runner = SubShellRunner::new(&self.host, &self.database, &self.version, name, secret).await?;
+        let runner = SubShellRunner::new(self.context.clone(), name, secret).await?;
         runner.run().await?;
         Ok(())
     }

@@ -1,7 +1,7 @@
 use crate::wallet::manager::WalletManager;
 use crate::shell::runner::ShellRunner;
 use crate::shell::io::ShellOutput;
-use blkstructs::{CoinID};
+use blkstructs::CoinID;
 use crate::common::ExecutionContext;
 
 /// Responsible for executing a single client CLI command non-interactively.
@@ -92,7 +92,7 @@ impl CommandExecutor {
 
     /// Launch shell mode until user exits.
     pub async fn shell(&self) -> anyhow::Result<()> {
-        let runner = ShellRunner::new(&self.host, &self.database, &self.version);
+        let runner = ShellRunner::new(self.context.clone());
         runner.run().await?;
         Ok(())
     }
