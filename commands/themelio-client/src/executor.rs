@@ -41,6 +41,7 @@ impl CommandExecutor {
         wallet.confirm_tx(&tx).await?;
 
         // print confirmation results for faucet tx
+        println!("confirmed!");
         // CommandOutput::print_confirmed_faucet_tx().await?;
 
         Ok(())

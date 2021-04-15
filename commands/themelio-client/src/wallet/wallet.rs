@@ -2,7 +2,7 @@ use crate::wallet::data::WalletData;
 use tmelcrypt::Ed25519SK;
 use blkstructs::{CoinID, TxKind, Transaction, CoinData, DENOM_TMEL, MICRO_CONVERTER, NetID};
 
-use nodeprot::ValClient;
+use nodeprot::{ValClient, ValClientSnapshot};
 
 use smol::Timer;
 use std::time::Duration;
@@ -47,8 +47,7 @@ impl Wallet {
 
     /// Update snapshot and send a transaction.
     pub async fn send_tx(&self, tx: &Transaction) -> anyhow::Result<()> {
-        let client = ValClient::new(self.network, self.host);
-        let snapshot = client.snapshot_latest().await?;
+        let snapshot = self.context.get_latest_snapshot().await?;
         let res = snapshot.raw.send_tx(tx.clone()).await;
         match res {
             Ok(_) => { println!("sent faucet tx"); }
@@ -70,7 +69,7 @@ impl Wallet {
                 Timer::after(dur).await;
             }
             sleep(Duration::from_secs(1)).await;
-            let snapshot = client.snapshot_latest().await?;
+            let snapshot = self.context.get_latest_snapshot().await?;
             match snapshot.get_coin(coin).await? {
                 None => {
                     println!("nothing");
@@ -82,7 +81,7 @@ impl Wallet {
             }
         }
         println!("transaction confirmed");
-        println!("{:?}", res);
+        // println!("{:?}", res);
         // query output state using tx hash
         // let tx_hash = tx.hash()
         // snapshot.get_coin(cid).await?;
@@ -106,8 +105,6 @@ impl Wallet {
 //                 }
         Ok(())
     }
-
-
 
 //     /// Send coins to a recipient.
 //     pub async fn send_coins(&self, mut wallet_data: &WalletData, dest: HashVal, amt: u128, denom: &[u8]) -> anyhow::Result<CoinID> {
