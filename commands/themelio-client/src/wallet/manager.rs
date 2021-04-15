@@ -1,13 +1,11 @@
 use blkstructs::melvm::Covenant;
 use crate::wallet::storage::WalletStorage;
-use crate::error::ClientError;
 use tmelcrypt::Ed25519SK;
 use std::collections::BTreeMap;
-use std::convert::TryInto;
 use crate::wallet::data::WalletData;
 use crate::wallet::wallet::Wallet;
 use std::str::FromStr;
-use crate::common::ExecutionContext;
+use crate::common::{ExecutionContext, ClientError};
 
 /// Responsible for managing storage and network related wallet operations.
 pub struct WalletManager {
@@ -26,7 +24,7 @@ impl WalletManager {
             anyhow::bail!(ClientError::InvalidWalletName(name.to_string()))
         }
 
-        let storage = WalletStorage::new(&self.database);
+        let storage = WalletStorage::new(&self.context.database);
         // Check if wallet with same name already exits.
         if let Some(_stored_wallet_data) = storage.get(name).await? {
             anyhow::bail!(ClientError::DuplicateWalletName(name.to_string()))
@@ -41,7 +39,7 @@ impl WalletManager {
         storage.insert(name, &wallet_data).await?;
 
         // Return created wallet
-        let wallet = Wallet::new(sk, name, wallet_data);
+        let wallet = Wallet::new(sk, name, wallet_data, self.context.clone());
         Ok(wallet)
     }
 
@@ -58,13 +56,13 @@ impl WalletManager {
         //      return Err(anyhow::anyhow!("unlocking failed, make sure you have the right secret!"));
         // }
 
-        let wallet = Wallet::new(sk, name, wallet_data);
+        let wallet = Wallet::new(sk, name, wallet_data, self.context.clone());
         Ok(wallet)
     }
 
     /// Get all wallet data in storage by name.
     pub async fn get_all_wallets(&self) -> anyhow::Result<BTreeMap<String, WalletData>> {
-        let storage = WalletStorage::new(&self.database);
+        let storage = WalletStorage::new(&self.context.database);
         let wallet_data_by_name: BTreeMap<String, WalletData> = storage.get_all().await?;
         Ok(wallet_data_by_name)
     }
