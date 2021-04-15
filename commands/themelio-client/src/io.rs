@@ -5,6 +5,7 @@ use tabwriter::TabWriter;
 use std::io::prelude::*;
 use std::collections::BTreeMap;
 use crate::wallet::wallet::Wallet;
+use blkstructs::CoinDataHeight;
 
 pub struct CommandOutput {}
 
@@ -29,4 +30,31 @@ impl CommandOutput {
         tw.flush();
         eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
     }
+    pub(crate) async fn print_confirmed_faucet_tx(coin_data_height: CoinDataHeight) {
+        println!("transaction confirmed");
+        // println!("{:?}", res);
+        // query output state using tx hash
+        // let tx_hash = tx.hash()
+        // snapshot.get_coin(cid).await?;
+        // SubShellOutput::faucet_tx(cid).await?;
+        //                 eprintln!(">> Waiting for confirmation...");
+//                 // loop until we get coin data height and proof from last header
+//                 loop {
+//                     let (coin_data_height, _hdr) = active_wallet.get_coin_data(coin).await?;
+//                     if let Some(cd_height) = coin_data_height {
+//                         eprintln!(
+//                             ">>> Coin is confirmed at current height {}",
+//                             cd_height.height
+//                         );
+
+//                         eprintln!(
+//                             ">> CID = {}",
+//                             hex::encode(stdcode::serialize(&coin).unwrap()).bold()
+//                         );
+//                         break;
+//                     }
+//                 }
+        Ok(())
+    }
+
 }

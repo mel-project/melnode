@@ -1,12 +1,10 @@
 use crate::wallet::data::WalletData;
 use tmelcrypt::Ed25519SK;
-use blkstructs::{CoinID, TxKind, Transaction, CoinData, DENOM_TMEL, MICRO_CONVERTER, NetID};
+use blkstructs::{CoinID, TxKind, Transaction, CoinData, DENOM_TMEL, MICRO_CONVERTER, NetID, CoinDataHeight};
 
 use nodeprot::{ValClient, ValClientSnapshot};
 
-use smol::Timer;
-use std::time::Duration;
-use crate::common::ExecutionContext;
+use crate::common::{ExecutionContext, snapshot_sleep};
 
 /// Responsible for using an in memory wallet to send transactions.
 pub struct Wallet {
@@ -59,51 +57,20 @@ impl Wallet {
     }
 
     /// Update snapshot and confirm the transaction.
-    pub async fn confirm_tx(&self, tx: &Transaction) -> anyhow::Result<()> {
+    // TODO: we need a timeout passed into this method
+    pub async fn confirm_tx(&self, tx: &Transaction) -> anyhow::Result<CoinDataHeight> {
         let coin = CoinID {
             txhash: tx.hash_nosigs(),
             index: 0,
         };
         loop {
-            async fn sleep(dur: Duration) {
-                Timer::after(dur).await;
-            }
-            sleep(Duration::from_secs(1)).await;
             let snapshot = self.context.get_latest_snapshot().await?;
-            match snapshot.get_coin(coin).await? {
-                None => {
-                    println!("nothing");
-                }
-                Some(_) => {
-                    println!("something");
-                    return Ok(())
-                }
+            let coin_data_height = snapshot.get_coin(coin).await?;
+            if coin_data_height.is_some() {
+                return Ok(coin_data_height.unwrap());
             }
+            snapshot_sleep(2).await?;
         }
-        println!("transaction confirmed");
-        // println!("{:?}", res);
-        // query output state using tx hash
-        // let tx_hash = tx.hash()
-        // snapshot.get_coin(cid).await?;
-        // SubShellOutput::faucet_tx(cid).await?;
-        //                 eprintln!(">> Waiting for confirmation...");
-//                 // loop until we get coin data height and proof from last header
-//                 loop {
-//                     let (coin_data_height, _hdr) = active_wallet.get_coin_data(coin).await?;
-//                     if let Some(cd_height) = coin_data_height {
-//                         eprintln!(
-//                             ">>> Coin is confirmed at current height {}",
-//                             cd_height.height
-//                         );
-
-//                         eprintln!(
-//                             ">> CID = {}",
-//                             hex::encode(stdcode::serialize(&coin).unwrap()).bold()
-//                         );
-//                         break;
-//                     }
-//                 }
-        Ok(())
     }
 
 //     /// Send coins to a recipient.

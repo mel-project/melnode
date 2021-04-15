@@ -1,6 +1,9 @@
 use thiserror::Error;
 use nodeprot::{ValClientSnapshot, ValClient};
 
+use smol::Timer;
+use std::time::Duration;
+
 #[derive(Error, Debug)]
 /// A error that happens on the client side.
 pub enum ClientError {
@@ -39,4 +42,11 @@ pub async fn read_line(prompt: String) -> anyhow::Result<String> {
         Ok(rl.readline(&prompt)?)
     })
     .await
+}
+
+/// Sleep on current async task for a duration set in seconds before updating client snapshot.
+pub async fn snapshot_sleep(sec: u64) -> anyhow::Result<()>{
+    let duration = Duration::from_secs(sec);
+    Timer::after(duration).await;
+    Ok(())
 }

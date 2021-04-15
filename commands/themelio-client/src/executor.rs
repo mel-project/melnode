@@ -38,11 +38,11 @@ impl CommandExecutor {
         wallet.send_tx(&tx).await?;
 
         // Wait for tx confirmation.
-        wallet.confirm_tx(&tx).await?;
+        let coin_data_height = wallet.confirm_tx(&tx).await?;
 
         // print confirmation results for faucet tx
         println!("confirmed!");
-        // CommandOutput::print_confirmed_faucet_tx().await?;
+        // CommandOutput::print_confirmed_faucet_tx(&coin_data_height).await?;
 
         Ok(())
     }
