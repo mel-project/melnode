@@ -55,6 +55,7 @@ impl CommandExecutor {
         loop {
             let coin_data_height = wallet.check_tx(tx).await?;
             if coin_data_height.is_some() {
+                // CommandOutput::print_check_faucet_tx(&coin_data_height).await?;
                 println!("confirming");
                 return Ok(coin_data_height.unwrap());
             }
