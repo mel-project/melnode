@@ -9,12 +9,12 @@ use blkstructs::NetID;
 
 #[derive(Debug, Clone, StructOpt)]
 #[structopt(name = "Themelio Client CLI")]
-/// A command line application to interact with a Themelio node
+/// A command line application to interact with a Themelio node.
 ///
-/// This binary supports all features for a Themelio client.
-/// End users can create, delete, import, and export wallets.
-/// Interacting with the blockchain is done by opening a shell
-/// and creating and sending various transactions.
+/// An interactive shell mode can be used as a CLI wallet
+/// to store wallets locally and send and query a supported network.
+///
+/// Non-shell is more suitable for automation and can execute a single commands given all the arguments.
 pub struct Opts {
     /// IP Address with port used to establish a connection to host
     #[structopt(long, default_value="127.0.0.1:8000")]
@@ -24,13 +24,14 @@ pub struct Opts {
     #[structopt(long, short, parse(from_os_str), default_value="/tmp/testclient")]
     pub database: std::path::PathBuf,
 
+    /// Automation-centric commands to executed with the exception of the interactive 'shell' command.
     #[structopt(subcommand)]
     pub sub_opts: SubOpts,
 }
 
 #[derive(StructOpt, Clone, Debug)]
 /// Represents the sub options to run a specific command.
-/// If Shell is specified it will enter into an interactive shell,
+/// If 'shell' is specified it will enter into an interactive shell,
 /// otherwise it will execute a single command and exit.
 pub enum SubOpts {
     CreateWallet {
