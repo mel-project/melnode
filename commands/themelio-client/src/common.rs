@@ -1,8 +1,7 @@
-use blkstructs::NetID;
-
+#[derive(Clone, Debug)]
 pub struct ExecutionContext {
     pub host: smol::net::SocketAddr,
-    pub network: NetID,
+    pub network: blkstructs::NetID,
     pub database: std::path::PathBuf,
     pub version: String,
 }

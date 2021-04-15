@@ -7,21 +7,16 @@ use std::convert::TryInto;
 use crate::wallet::data::WalletData;
 use crate::wallet::wallet::Wallet;
 use std::str::FromStr;
-use blkstructs::NetID;
+use crate::common::ExecutionContext;
 
 /// Responsible for managing storage and network related wallet operations.
 pub struct WalletManager {
-    host: smol::net::SocketAddr,
-    network: NetID,
-    database: std::path::PathBuf,
+    context: ExecutionContext
 }
 
 impl WalletManager {
-    pub fn new(host: &smol::net::SocketAddr, network: &NetID, database: &std::path::PathBuf) -> Self {
-        let host = host.clone();
-        let network = network.clone();
-        let database = database.clone();
-        Self { host, network, database }
+    pub fn new(context: ExecutionContext) -> Self {
+        Self { context }
     }
 
     /// Create a wallet from wallet name iff name is valid and wallet doesn't already exist.

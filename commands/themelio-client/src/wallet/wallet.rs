@@ -6,24 +6,23 @@ use nodeprot::ValClient;
 
 use smol::Timer;
 use std::time::Duration;
+use crate::common::ExecutionContext;
 
 /// Responsible for using an in memory wallet to send transactions.
 pub struct Wallet {
-    pub(crate) sk: Ed25519SK,
-    pub(crate) name: String,
-    pub(crate) data: WalletData,
-    pub(crate) network: NetID,
-    pub(crate) host: smol::net::SocketAddr
+    sk: Ed25519SK,
+    pub name: String,
+    pub data: WalletData,
+    pub context: ExecutionContext
 }
 impl Wallet {
-    pub fn new(sk: Ed25519SK, name: &str, data: WalletData, network: NetID, host: smol::net::SocketAddr) -> Self {
+    pub fn new(sk: Ed25519SK, name: &str, data: WalletData, context: ExecutionContext) -> Self {
         let name = name.to_string();
         Self {
             sk,
             name,
             data,
-            network,
-            host,
+            context,
         }
     }
 

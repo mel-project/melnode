@@ -18,7 +18,7 @@ impl CommandExecutor {
 
     /// Creates a new wallet, stores it into db and outputs the name & secret.
     pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<()> {
-        let manager = WalletManager::new(&self.host.clone(), &self.database.clone());
+        let manager = WalletManager::new(self.context.clone());
         let wallet = manager.create_wallet(wallet_name).await?;
         ShellOutput::show_new_wallet(wallet).await?;
         Ok(())
@@ -28,7 +28,7 @@ impl CommandExecutor {
     /// It then sends the transaction and waits for a confirmation of the coins on the ledger.
     pub async fn faucet(&self, wallet_name: &str, secret: &str, amount: &str, unit: &str) -> anyhow::Result<()> {
         // Load wallet from wallet manager using name and secret
-        let manager = WalletManager::new(&self.host.clone(), &self.network, &self.database.clone());
+        let manager = WalletManager::new(self.context.clone());
         let wallet = manager.load_wallet(wallet_name, secret).await?;
 
         // Create faucet tx.
