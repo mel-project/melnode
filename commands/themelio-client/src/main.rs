@@ -34,6 +34,8 @@ pub struct Opts {
 /// Represents the command options to run a specific command.
 /// If 'shell' is specified it will enter into an interactive shell,
 /// otherwise it will execute a single command and exit.
+///
+/// TODO: add descriptions
 pub enum CommandOpts {
     CreateWallet {
         wallet_name: String

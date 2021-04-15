@@ -76,7 +76,7 @@ impl Wallet {
                 }
                 Some(_) => {
                     println!("something");
-                    break;
+                    return Ok(())
                 }
             }
         }
