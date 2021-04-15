@@ -88,25 +88,32 @@ pub enum SubOpts {
     Shell
 }
 
-/// Run a single command given execution context from command line options.
+/// Parse options from input arguments and asynchronously dispatch them.
 fn main() {
     smolscale::block_on(async move {
         let opts: Opts = Opts::from_args();
-        let context = common::ExecutionContext {
-            version: env!("CARGO_PKG_VERSION").to_string(),
-            network: NetID::Testnet,
-            host: opts.host,
-            database: opts.database,
-        };
-        let ce = executor::CommandExecutor::new(context);
-        match opts.sub_opts {
-            SubOpts::CreateWallet { wallet_name } => ce.create_wallet(&wallet_name).await,
-            SubOpts::Faucet { wallet_name, secret, amount, unit } => ce.faucet(&wallet_name, &secret, &amount, &unit).await,
-            SubOpts::SendCoins { wallet_name, secret, address, amount, unit } => ce.send_coins(&wallet_name, &secret, &address, &amount, &unit).await,
-            SubOpts::AddCoins { wallet_name, secret, coin_id } => ce.add_coins(&wallet_name, &secret, &coin_id).await,
-            SubOpts::ShowBalance { wallet_name, secret } => ce.show_balance(&wallet_name, &secret).await,
-            SubOpts::ShowWallets => ce.show_wallets().await,
-            SubOpts::Shell => ce.shell().await,
-        }
+        dispatch(opts).await;
     });
+}
+
+
+/// Convert options into an execution context
+/// then dispatch a single command to a command executor given the context.
+async fn dispatch(opts: Opts) -> anyhow::Result<()> {
+    let context = common::ExecutionContext {
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        network: NetID::Testnet,
+        host: opts.host,
+        database: opts.database,
+    };
+    let ce = executor::CommandExecutor::new(context);
+    match opts.sub_opts {
+        SubOpts::CreateWallet { wallet_name } => ce.create_wallet(&wallet_name).await,
+        SubOpts::Faucet { wallet_name, secret, amount, unit } => ce.faucet(&wallet_name, &secret, &amount, &unit).await,
+        SubOpts::SendCoins { wallet_name, secret, address, amount, unit } => ce.send_coins(&wallet_name, &secret, &address, &amount, &unit).await,
+        SubOpts::AddCoins { wallet_name, secret, coin_id } => ce.add_coins(&wallet_name, &secret, &coin_id).await,
+        SubOpts::ShowBalance { wallet_name, secret } => ce.show_balance(&wallet_name, &secret).await,
+        SubOpts::ShowWallets => ce.show_wallets().await,
+        SubOpts::Shell => ce.shell().await,
+    }
 }
