@@ -95,6 +95,8 @@ impl Covenant {
             0x22 => output.push(OpCode::XOR),
             0x23 => output.push(OpCode::NOT),
             0x24 => output.push(OpCode::EQL),
+            0x25 => output.push(OpCode::LT),
+            0x26 => output.push(OpCode::GT),
             // cryptography
             0x30 => output.push(OpCode::HASH(u16arg(bcode)?)),
             //0x31 => output.push(OpCode::SIGE),
@@ -125,7 +127,9 @@ impl Covenant {
                     Covenant::disassemble_one(bcode, &mut rec_output, rec_depth + 1)?;
                 }
                 output.push(OpCode::LOOP(iterations, rec_output));
-            }
+            },
+            0xc0 => output.push(OpCode::ITOB),
+            0xc1 => output.push(OpCode::BTOI),
             // literals
             0xf0 => {
                 let strlen = bcode.pop()?;
@@ -176,6 +180,8 @@ impl Covenant {
             OpCode::XOR => output.push(0x22),
             OpCode::NOT => output.push(0x23),
             OpCode::EQL => output.push(0x24),
+            OpCode::LT => output.push(0x25),
+            OpCode::GT => output.push(0x26),
             // cryptography
             OpCode::HASH(n) => {
                 output.push(0x30);
@@ -229,6 +235,8 @@ impl Covenant {
                 }
             }
             // type conversions
+            OpCode::ITOB => output.push(0xc0),
+            OpCode::BTOI => output.push(0xc1),
 
             // literals
             OpCode::PUSHB(bts) => {
@@ -340,6 +348,24 @@ impl Executor {
                     }
                 },
                 _ => None,
+            })?,
+            OpCode::LT => self.do_binop(|x, y| {
+                let x = x.as_int()?;
+                let y = y.as_int()?;
+                if y.overflowing_sub(x).1 {
+                    Some(Value::Int(U256::one()))
+                } else {
+                    Some(Value::Int(U256::zero()))
+                }
+            })?,
+            OpCode::GT => self.do_binop(|x, y| {
+                let x = x.as_int()?;
+                let y = y.as_int()?;
+                if !y.overflowing_sub(x).1 {
+                    Some(Value::Int(U256::one()))
+                } else {
+                    Some(Value::Int(U256::zero()))
+                }
             })?,
             // cryptography
             OpCode::HASH(n) => self.do_monop(|to_hash| {
@@ -475,6 +501,20 @@ impl Executor {
                     self.run_bare(&ops)?
                 }
             }
+            // Conversions
+            OpCode::BTOI => self.do_monop(|x| {
+                let mut bytes = x.as_bytes()?;
+                Some(Value::Int( bytes.slice(..32).iter().fold(U256::zero(), |acc, b| (acc * 256) + *b) ))
+            })?,
+            OpCode::ITOB => self.do_monop(|x| {
+                let n = x.as_int()?;
+                let mut bytes = im::vector![];
+                for i in 0..32 {
+                    //bytes.push_back(n >> (i * 8) & 255 as u8);
+                    bytes.push_back(n.byte(i));
+                }
+                Some(Value::Bytes(bytes))
+            })?,
             // literals
             OpCode::PUSHB(bts) => {
                 let bts = Value::from_bytes(bts);
@@ -521,6 +561,8 @@ pub enum OpCode {
     XOR,
     NOT,
     EQL,
+    LT,
+    GT,
     // cryptographyy
     HASH(u16),
     //SIGE,
@@ -549,8 +591,8 @@ pub enum OpCode {
     LOOP(u16, Vec<OpCode>),
 
     // type conversions
-    // ITOB,
-    // BTOI,
+    ITOB,
+    BTOI,
     // SERIAL(u16),
 
     // literals
@@ -572,6 +614,8 @@ impl OpCode {
             OpCode::XOR => 4,
             OpCode::NOT => 4,
             OpCode::EQL => 4,
+            OpCode::LT => 4,
+            OpCode::GT => 4,
 
             OpCode::HASH(n) => 50 + *n as u128,
             OpCode::SIGEOK(n) => 100 + *n as u128,
@@ -589,6 +633,9 @@ impl OpCode {
             OpCode::VEMPTY => 4,
             OpCode::BEMPTY => 4,
             OpCode::VPUSH => 10,
+
+            OpCode::ITOB => 50,
+            OpCode::BTOI => 50,
 
             OpCode::BEZ(_) => 1,
             OpCode::BNZ(_) => 1,
