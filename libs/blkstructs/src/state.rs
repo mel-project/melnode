@@ -49,6 +49,8 @@ pub enum StateError {
     WrongHeader,
     #[error("tried to spend locked coin")]
     CoinLocked,
+    #[error("duplicate transaction")]
+    DuplicateTx,
 }
 
 /// Configuration of a genesis state. Serializable via serde.

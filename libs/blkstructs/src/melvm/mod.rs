@@ -322,14 +322,24 @@ impl Executor {
             OpCode::OR => self.do_binop(|x, y| Some(Value::Int(x.as_int()? | y.as_int()?)))?,
             OpCode::XOR => self.do_binop(|x, y| Some(Value::Int(x.as_int()? ^ y.as_int()?)))?,
             OpCode::NOT => self.do_monop(|x| Some(Value::Int(!x.as_int()?)))?,
-            OpCode::EQL => self.do_binop(|x, y| {
-                let x = x.as_int()?;
-                let y = y.as_int()?;
-                if x == y {
-                    Some(Value::Int(U256::one()))
-                } else {
-                    Some(Value::Int(U256::zero()))
-                }
+            OpCode::EQL => self.do_binop(|x, y| match (x,y) {
+                (Value::Int(x), Value::Int(y)) => {
+                    if x == y {
+                        Some(Value::Int(U256::one()))
+                    } else {
+                        Some(Value::Int(U256::zero()))
+                    }
+                },
+                (Value::Bytes(x), Value::Bytes(y)) => {
+                    if x.len() == y.len()
+                        && x.iter().zip(y).all(|(a, ref b)| a == b)
+                    {
+                        Some(Value::Int(U256::one()))
+                    } else {
+                        Some(Value::Int(U256::zero()))
+                    }
+                },
+                _ => None,
             })?,
             // cryptography
             OpCode::HASH(n) => self.do_monop(|to_hash| {
