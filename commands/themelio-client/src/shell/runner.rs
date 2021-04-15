@@ -4,6 +4,9 @@ use crate::shell::sub::runner::SubShellRunner;
 use crate::executor::CommandExecutor;
 use crate::common::ExecutionContext;
 
+/// Run an interactive shell given an execution context
+/// This is for end users to create and show wallets
+/// as well as open up a particular wallet to transact with network.
 pub struct ShellRunner {
     context: ExecutionContext
 }
@@ -42,7 +45,7 @@ impl ShellRunner {
         }
     }
 
-    /// Dispatch and process the command.
+    /// Dispatch and process the shell command.
     async fn dispatch(&self, cmd: &ShellCommand) -> anyhow::Result<()> {
         let ce = CommandExecutor::new(self.context.clone());
         // Dispatch a command and return a command result.

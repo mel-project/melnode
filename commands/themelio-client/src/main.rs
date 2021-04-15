@@ -26,14 +26,14 @@ pub struct Opts {
 
     /// Automation-centric commands to executed with the exception of the interactive 'shell' command.
     #[structopt(subcommand)]
-    pub sub_opts: SubOpts,
+    pub cmd_opts: CommandOpts,
 }
 
 #[derive(StructOpt, Clone, Debug)]
-/// Represents the sub options to run a specific command.
+/// Represents the command options to run a specific command.
 /// If 'shell' is specified it will enter into an interactive shell,
 /// otherwise it will execute a single command and exit.
-pub enum SubOpts {
+pub enum CommandOpts {
     CreateWallet {
         wallet_name: String
     },
@@ -106,14 +106,24 @@ async fn dispatch(opts: Opts) -> anyhow::Result<()> {
         host: opts.host,
         database: opts.database,
     };
-    let ce = executor::CommandExecutor::new(context);
-    match opts.sub_opts {
-        SubOpts::CreateWallet { wallet_name } => ce.create_wallet(&wallet_name).await,
-        SubOpts::Faucet { wallet_name, secret, amount, unit } => ce.faucet(&wallet_name, &secret, &amount, &unit).await,
-        SubOpts::SendCoins { wallet_name, secret, address, amount, unit } => ce.send_coins(&wallet_name, &secret, &address, &amount, &unit).await,
-        SubOpts::AddCoins { wallet_name, secret, coin_id } => ce.add_coins(&wallet_name, &secret, &coin_id).await,
-        SubOpts::ShowBalance { wallet_name, secret } => ce.show_balance(&wallet_name, &secret).await,
-        SubOpts::ShowWallets => ce.show_wallets().await,
-        SubOpts::Shell => ce.shell().await,
+    let executor = executor::CommandExecutor::new(context);
+    match opts.cmd_opts {
+        CommandOpts::CreateWallet { wallet_name } => {
+            executor.create_wallet(&wallet_name).await
+        },
+        CommandOpts::Faucet { wallet_name, secret, amount, unit } => {
+            executor.faucet(&wallet_name, &secret, &amount, &unit).await
+        },
+        CommandOpts::SendCoins { wallet_name, secret, address, amount, unit } => {
+            executor.send_coins(&wallet_name, &secret, &address, &amount, &unit).await
+        },
+        CommandOpts::AddCoins { wallet_name, secret, coin_id } => {
+            executor.add_coins(&wallet_name, &secret, &coin_id).await
+        },
+        CommandOpts::ShowBalance { wallet_name, secret } => {
+            executor.show_balance(&wallet_name, &secret).await
+        },
+        CommandOpts::ShowWallets => executor.show_wallets().await,
+        CommandOpts::Shell => executor.shell().await,
     }
 }

@@ -4,6 +4,8 @@ use crate::shell::sub::command::SubShellCommand;
 use blkstructs::CoinID;
 use crate::common::ExecutionContext;
 
+/// A sub-shell runner executed within the higher-level shell.
+/// This shell unlocks a wallet, transacts with the network and shows balances.
 pub(crate) struct SubShellRunner {
     context: ExecutionContext,
     name: String,
@@ -11,7 +13,7 @@ pub(crate) struct SubShellRunner {
 }
 
 impl SubShellRunner {
-    /// Create a new sub shell dispatcher if shell exists and we can load it with the secret.
+    /// Create a new sub shell runner if wallet exists and we can unlock & load with the provided secret.
     pub(crate) async fn new(context: ExecutionContext, name: &str, secret: &str) -> anyhow::Result<Self> {
         let name = name.to_string();
         let secret = secret.to_string();
@@ -23,7 +25,7 @@ impl SubShellRunner {
         Ok(Self { context, name, secret })
     }
 
-    /// Dispatch commands from user input and show output using prompt until user exits.
+    /// Read and execute sub-shell commands from user until user exits.
     pub(crate) async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
         let prompt = SubShellInput::format_prompt(&self.context.version, &self.name).await?;
@@ -56,15 +58,10 @@ impl SubShellRunner {
         }
     }
 
-    /// Call dispatch and return result.
-    pub async fn run_once(&self, open_cmd: &SubShellCommand) -> anyhow::Result<()> {
-        self.dispatch(&open_cmd).await
-    }
-
-    /// Dispatch and process the command.
-    async fn dispatch(&self, open_cmd: &SubShellCommand) -> anyhow::Result<()> {
+    /// Dispatch and process a single sub-shell command.
+    async fn dispatch(&self, sub_shell_cmd: &SubShellCommand) -> anyhow::Result<()> {
         // Dispatch a command and return a command result
-        match &open_cmd {
+        match &sub_shell_cmd {
             SubShellCommand::Faucet(amt, unit) => { self.faucet(amt, unit).await?; }
             SubShellCommand::SendCoins(dest, amt, unit) => { self.send_coins(dest, amt, unit).await?; }
             SubShellCommand::AddCoins(coin_id) => { self.add_coins(coin_id).await?; }
