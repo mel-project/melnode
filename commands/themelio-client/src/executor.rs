@@ -1,23 +1,27 @@
 use crate::wallet::manager::WalletManager;
 use crate::shell::runner::ShellRunner;
 use crate::shell::io::ShellOutput;
+use blkstructs::{NetID, CoinID};
 use nodeprot::ValClient;
-use blkstructs::{NetID, CoinID, CoinDataHeight};
+use smol::Timer;
+use std::time::Duration;
 
 /// Responsible for executing a single client CLI command non-interactively.
 pub struct CommandExecutor {
     pub host: smol::net::SocketAddr,
     pub database: std::path::PathBuf,
-    pub version: String
+    pub version: String,
+    pub network: NetID,
 }
 
 impl CommandExecutor {
-    pub fn new(host: smol::net::SocketAddr, database: std::path::PathBuf, version: &str) -> Self {
+    pub fn new(host: smol::net::SocketAddr, database: std::path::PathBuf, version: &str, network: NetID) -> Self {
         let version = version.to_string();
         Self {
             host,
             database,
             version,
+            network
         }
     }
 
@@ -32,28 +36,20 @@ impl CommandExecutor {
     /// Opens a wallet by name and secret and creates a faucet tx to fund the wallet.
     /// The results of the faucet tx from pending to confirm are shown to the user.
     pub async fn faucet(&self, wallet_name: &str, secret: &str, amount: &str, unit: &str) -> anyhow::Result<()> {
-        // Unlock & open wallet
+        // Load wallet from wallet manager using name and secret
         let manager = WalletManager::new(&self.host.clone(), &self.database.clone());
         let wallet = manager.load_wallet(wallet_name, secret).await?;
-        println!("opened wallet");
 
         // Create faucet tx
-        let tx = wallet.faucet_transaction(amount, unit).await?;
-        let coin = CoinID {
-            txhash: tx.hash_nosigs(),
-            index: 0,
-        };
-        println!("faucet tx created ");
+        let fee = 2050000000;
+        let tx = wallet.create_faucet_tx(amount, unit, fee).await?;
 
         // Get latest client snapshot
-        let network = NetID::Testnet;
-        let remote = self.host;
-        let client = ValClient::new(network, remote);
+        let client = ValClient::new(self.network, self.host);
         let snapshot = client.snapshot_latest().await?;
-        println!("got snapshot");
 
         // send the transaction
-        let res = snapshot.raw.send_tx(tx).await;
+        let res = snapshot.raw.send_tx(tx.clone()).await;
         match res {
             Ok(_) => { println!("sent faucet tx"); }
             Err(ref err) => {
@@ -62,14 +58,14 @@ impl CommandExecutor {
         }
 
         // Wait for confirmation
+        let coin = CoinID {
+            txhash: tx.hash_nosigs(),
+            index: 0,
+        };
         loop {
-            use smol::Timer;
-            use std::time::Duration;
-
             async fn sleep(dur: Duration) {
                 Timer::after(dur).await;
             }
-
             sleep(Duration::from_secs(1)).await;
             let snapshot = client.snapshot_latest().await?;
             match snapshot.get_coin(coin).await? {

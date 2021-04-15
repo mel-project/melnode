@@ -19,8 +19,7 @@ impl Wallet {
         }
     }
 
-    pub async fn faucet_transaction(&self, amount: &str, unit: &str) -> anyhow::Result<Transaction> {
-        let fee = 2050000000;
+    pub async fn create_faucet_tx(&self, amount: &str, unit: &str, fee: u128) -> anyhow::Result<Transaction> {
         let value: u128 = amount.parse()?;
         let tx = Transaction {
             kind: TxKind::Faucet,

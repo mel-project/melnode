@@ -7,6 +7,7 @@ pub mod wallet;
 use executor::CommandExecutor;
 
 use structopt::StructOpt;
+use blkstructs::NetID;
 
 #[derive(Debug, Clone, StructOpt)]
 #[structopt(name = "Themelio Client CLI")]
@@ -92,14 +93,15 @@ pub enum SubOpts {
 fn main() {
     smolscale::block_on(async move {
         let version = env!("CARGO_PKG_VERSION");
+        let network = NetID::Testnet;
         let opts: Opts = Opts::from_args();
-        let _ = run_command(opts, version).await;
+        let _ = run_command(opts, version, network).await;
     });
 }
 
 /// Run the command given the command line options input from the user.
-pub async fn run_command(opts: Opts, version: &str) -> anyhow::Result<()> {
-    let ce = CommandExecutor::new(opts.host, opts.database, version);
+pub async fn run_command(opts: Opts, version: &str, network: NetID) -> anyhow::Result<()> {
+    let ce = CommandExecutor::new(opts.host, opts.database, version, network);
     match opts.sub_opts {
         SubOpts::CreateWallet { wallet_name } => ce.create_wallet(&wallet_name).await?,
         SubOpts::Faucet { wallet_name, secret, amount, unit } => ce.faucet(&wallet_name, &secret, &amount, &unit).await?,
