@@ -5,6 +5,7 @@ use blkstructs::{
     ConsensusProof, GenesisConfig, ProposerAction, SealedState, State, StateError, Transaction,
 };
 use dashmap::DashMap;
+use lru::LruCache;
 use parking_lot::RwLock;
 pub use sled_tree::*;
 mod sled_map;
@@ -63,6 +64,7 @@ impl NodeStorage {
         Self {
             mempool: Mempool {
                 provisional_state: mempool_state,
+                seen: LruCache::new(10000),
             },
             highest_height,
             history,
@@ -154,7 +156,7 @@ impl NodeStorage {
 /// Mempool encapsulates a "mempool" --- a provisional state that is used to form new blocks by stakers, or provisionally validate transactions by auditors.
 pub struct Mempool {
     provisional_state: State,
-    // TODO: caches if benchmarks prove them helpful
+    seen: LruCache<HashVal, ()>, // TODO: caches if benchmarks prove them helpful
 }
 
 impl neosymph::TxLookup for Mempool {
@@ -171,6 +173,9 @@ impl Mempool {
 
     /// Tries to add a transaction to the mempool.
     pub fn apply_transaction(&mut self, tx: &Transaction) -> Result<(), StateError> {
+        if self.seen.put(tx.hash_nosigs(), ()).is_some() {
+            return Err(StateError::DuplicateTx);
+        }
         self.provisional_state.apply_tx(tx)
     }
 
