@@ -95,7 +95,7 @@ pub enum CommandOpts {
 fn main() {
     smolscale::block_on(async move {
         let opts: Opts = Opts::from_args();
-        dispatch(opts).await;
+        dispatch(opts).await.expect("Failed to execute command");
     });
 }
 

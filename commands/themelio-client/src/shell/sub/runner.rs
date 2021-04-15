@@ -1,7 +1,6 @@
 use crate::wallet::manager::WalletManager;
 use crate::shell::sub::io::{SubShellInput, SubShellOutput};
 use crate::shell::sub::command::SubShellCommand;
-use blkstructs::CoinID;
 use crate::common::ExecutionContext;
 use crate::executor::CommandExecutor;
 
