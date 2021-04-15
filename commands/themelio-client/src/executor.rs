@@ -2,9 +2,6 @@ use crate::wallet::manager::WalletManager;
 use crate::shell::runner::ShellRunner;
 use crate::shell::io::ShellOutput;
 use blkstructs::{NetID, CoinID};
-use nodeprot::ValClient;
-use smol::Timer;
-use std::time::Duration;
 
 /// Responsible for executing a single client CLI command non-interactively.
 pub struct CommandExecutor {
@@ -37,7 +34,7 @@ impl CommandExecutor {
     /// It then sends the transaction and waits for a confirmation of the coins on the ledger.
     pub async fn faucet(&self, wallet_name: &str, secret: &str, amount: &str, unit: &str) -> anyhow::Result<()> {
         // Load wallet from wallet manager using name and secret
-        let manager = WalletManager::new(&self.host.clone(), &self.database.clone());
+        let manager = WalletManager::new(&self.host.clone(), &self.network, &self.database.clone());
         let wallet = manager.load_wallet(wallet_name, secret).await?;
 
         // Create faucet tx.

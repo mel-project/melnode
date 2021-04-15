@@ -1,24 +1,33 @@
 use crate::wallet::data::WalletData;
 use tmelcrypt::Ed25519SK;
-use blkstructs::{CoinID, TxKind, Transaction, CoinData, DENOM_TMEL, MICRO_CONVERTER};
+use blkstructs::{CoinID, TxKind, Transaction, CoinData, DENOM_TMEL, MICRO_CONVERTER, NetID};
+
+use nodeprot::ValClient;
+
+use smol::Timer;
+use std::time::Duration;
 
 /// Responsible for using an in memory wallet to send transactions.
 pub struct Wallet {
     pub(crate) sk: Ed25519SK,
     pub(crate) name: String,
-    pub(crate) data: WalletData
+    pub(crate) data: WalletData,
+    pub(crate) network: NetID,
+    pub(crate) host: smol::net::SocketAddr
 }
-
 impl Wallet {
-    pub fn new(sk: Ed25519SK, name: &str, data: WalletData) -> Self {
+    pub fn new(sk: Ed25519SK, name: &str, data: WalletData, network: NetID, host: smol::net::SocketAddr) -> Self {
         let name = name.to_string();
         Self {
             sk,
             name,
-            data
+            data,
+            network,
+            host,
         }
     }
 
+    /// Create a faucet transaction given the amount, unit and a value for fee.
     pub async fn create_faucet_tx(&self, amount: &str, unit: &str, fee: u128) -> anyhow::Result<Transaction> {
         let value: u128 = amount.parse()?;
         let tx = Transaction {
@@ -37,7 +46,10 @@ impl Wallet {
         Ok(tx)
     }
 
+    /// Get the latest snapshot and send a transaction.
     pub async fn send_tx(&self, tx: &Transaction) -> anyhow::Result<()> {
+        let client = ValClient::new(self.network, self.host);
+        let snapshot = client.snapshot_latest().await?;
         let res = snapshot.raw.send_tx(tx.clone()).await;
         match res {
             Ok(_) => { println!("sent faucet tx"); }
@@ -88,9 +100,9 @@ impl Wallet {
 //                         break;
 //                     }
 //                 }
+        Ok(())
     }
 
-}
 
 
 //     /// Send coins to a recipient.
@@ -107,4 +119,5 @@ impl Wallet {
 //     pub async fn balance(&self, wallet_data: &WalletData, ) -> anyhow::Result<CoinID> {
 //         Ok(CoinID{ txhash: Default::default(), index: 0 })
 //     }
+
 }
