@@ -50,6 +50,31 @@ impl Wallet {
         Ok(tx)
     }
 
+    pub async fn create_send_mel_tx(
+        &self,
+        addr: &str,
+        amount: &str,
+        unit: &str,
+        fee: u128,
+    ) -> anyhow::Result<Transaction> {
+        unimplemented!()
+        // let value: u128 = amount.parse()?;
+        // let tx = Transaction {
+        //     kind: TxKind::Faucet,
+        //     inputs: vec![],
+        //     outputs: vec![CoinData {
+        //         denom: DENOM_TMEL.to_owned(),
+        //         covhash: self.data.my_script.hash(),
+        //         value: value * MICRO_CONVERTER,
+        //     }],
+        //     fee,
+        //     scripts: vec![],
+        //     sigs: vec![],
+        //     data: vec![],
+        // };
+        // Ok(tx)
+    }
+
     /// Update snapshot and send a transaction.
     pub async fn send_tx(&self, tx: &Transaction) -> anyhow::Result<()> {
         let snapshot = self.context.get_latest_snapshot().await?;
