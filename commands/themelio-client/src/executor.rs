@@ -38,15 +38,11 @@ impl CommandExecutor {
         // Send the faucet tx.
         wallet.send_tx(&tx).await?;
 
-        // Wait for confirmation of the coin.
-        let coin = CoinID {
-            txhash: tx.hash_nosigs(),
-            index: 0,
-        };
-        wallet.confirm_faucet_coins(&coin).await?;
+        // Wait for tx confirmation.
+        wallet.confirm_tx(&tx).await?;
 
-        // print results
-
+        // print confirmation results for faucet tx
+        
         Ok(())
     }
 

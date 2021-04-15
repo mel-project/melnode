@@ -45,7 +45,7 @@ impl Wallet {
         Ok(tx)
     }
 
-    /// Get the latest snapshot and send a transaction.
+    /// Update snapshot and send a transaction.
     pub async fn send_tx(&self, tx: &Transaction) -> anyhow::Result<()> {
         let client = ValClient::new(self.network, self.host);
         let snapshot = client.snapshot_latest().await?;
@@ -59,7 +59,12 @@ impl Wallet {
         Ok(())
     }
 
-    pub async fn confirm_faucet_coins(&self, coin_id: &CoinId) -> anyhow::Result<()> {
+    /// Update snapshot and confirm the transaction.
+    pub async fn confirm_tx(&self, tx: &Transaction) -> anyhow::Result<()> {
+        let coin = CoinID {
+            txhash: tx.hash_nosigs(),
+            index: 0,
+        };
         loop {
             async fn sleep(dur: Duration) {
                 Timer::after(dur).await;

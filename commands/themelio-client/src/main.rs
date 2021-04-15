@@ -1,8 +1,8 @@
 pub mod common;
-pub mod error;
 pub mod executor;
 pub mod shell;
 pub mod wallet;
+pub mod io;
 
 use structopt::StructOpt;
 use blkstructs::NetID;
