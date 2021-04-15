@@ -3207,7 +3207,9 @@ dependencies = [
 name = "themelio-crypttool"
 version = "0.1.0"
 dependencies = [
+ "blkstructs",
  "hex",
+ "serde_json",
  "structopt",
  "tmelcrypt",
 ]
