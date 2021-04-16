@@ -27,7 +27,7 @@ pub struct ExecutionContext {
 }
 
 impl ExecutionContext {
-    /// Get the latest snapshot from an execution context.
+    /// Sync the client by getting the latest snapshot from an execution context.
     pub async fn get_latest_snapshot(&self) -> anyhow::Result<ValClientSnapshot> {
         let client = ValClient::new(self.network, self.host);
         let snapshot = client.snapshot_latest().await?;
