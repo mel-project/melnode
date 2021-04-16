@@ -1,4 +1,3 @@
-
 /// Handle raw user input using a prompt.
 pub async fn read_line(prompt: String) -> anyhow::Result<String> {
     smol::unblock(move || {

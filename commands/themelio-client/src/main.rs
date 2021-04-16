@@ -1,11 +1,11 @@
 pub mod common;
+pub mod executor;
 pub mod interactive;
 pub mod noninteractive;
 pub mod wallet;
-pub mod executor;
 
-use structopt::StructOpt;
 use crate::executor::NonInteractiveCommandExecutor;
+use structopt::StructOpt;
 
 #[derive(Debug, Clone, StructOpt)]
 #[structopt(name = "Themelio Client CLI")]
@@ -107,7 +107,7 @@ async fn dispatch(opts: Opts) -> anyhow::Result<()> {
         host: opts.host,
         database: opts.database,
         default_sleep_sec: 5, // TODO: maybe make this come in from opts?
-        default_fee: 2050000000
+        default_fee: 2050000000,
     };
     let executor = NonInteractiveCommandExecutor::new(context);
     match opts.cmd_opts {

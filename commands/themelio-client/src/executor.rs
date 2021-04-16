@@ -1,11 +1,11 @@
+use crate::common::context::ExecutionContext;
+use crate::common::executor::CommonCommandExecutor;
 use crate::common::{snapshot_sleep, ExecutionContext};
-use crate::io::CommandOutput;
 use crate::interactive::runner::InteractiveCommandRunner;
+use crate::io::CommandOutput;
 use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::Wallet;
 use blkstructs::{CoinDataHeight, Transaction};
-use crate::common::context::ExecutionContext;
-use crate::common::executor::CommonCommandExecutor;
 
 /// Responsible for executing a single client CLI command non-interactively.
 pub struct NonInteractiveCommandExecutor {

@@ -4,7 +4,7 @@ use blkstructs::{
 };
 use tmelcrypt::Ed25519SK;
 
-use nodeprot::{ValClientSnapshot};
+use nodeprot::ValClientSnapshot;
 
 use crate::common::context::ExecutionContext;
 
