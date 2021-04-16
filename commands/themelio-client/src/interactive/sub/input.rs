@@ -1,7 +1,5 @@
 use crate::common::input::read_line as common_read_line;
-use crate::common::read_line;
 use crate::interactive::sub::command::InteractiveSubCommand;
-use anyhow::Error;
 use colored::Colorize;
 use std::convert::TryFrom;
 
