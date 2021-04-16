@@ -1,9 +1,9 @@
-use crate::interactive::command::InteractiveCommand;
-use crate::interactive::sub::runner::SubShellRunner;
 use crate::common::context::ExecutionContext;
-use crate::interactive::input::{format_prompt, read_line};
-use crate::interactive::output::{exit, command_error, readline_error, help};
 use crate::common::executor::CommonCommandExecutor;
+use crate::interactive::command::InteractiveCommand;
+use crate::interactive::input::{format_prompt, read_line};
+use crate::interactive::output::{command_error, exit, help, readline_error};
+use crate::interactive::sub::runner::SubShellRunner;
 
 /// Run an interactive command given an execution context
 /// This is for end users to create and show wallets

@@ -1,7 +1,7 @@
-use crate::interactive::sub::command::InteractiveSubCommand;
-use crate::wallet::manager::WalletManager;
 use crate::common::context::ExecutionContext;
 use crate::common::executor::CommonCommandExecutor;
+use crate::interactive::sub::command::InteractiveSubCommand;
+use crate::wallet::manager::WalletManager;
 
 /// A sub-interactive runner executed within the higher-level interactive.
 /// This interactive unlocks a wallet, transacts with the network and shows balances.

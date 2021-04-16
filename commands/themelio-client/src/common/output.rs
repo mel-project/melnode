@@ -16,7 +16,7 @@ pub(crate) async fn wallet(wallet: Wallet) -> anyhow::Result<()> {
         ">> Address:\t{}",
         wallet.data.my_script.hash().to_addr().yellow()
     )
-        .unwrap();
+    .unwrap();
     writeln!(tw, ">> Secret:\t{}", hex::encode(wallet.sk.0).dimmed()).unwrap();
     eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
     Ok(())
@@ -35,8 +35,14 @@ pub(crate) async fn wallet_addresses_by_name(wallets: BTreeMap<String, WalletDat
 
 /// Display message showing height and coin id information upon a coin being confimed.
 pub(crate) async fn coin_confirmed(coin_data_height: &CoinDataHeight, coin: &CoinID) {
-    eprintln!(">>> Coin is confirmed at current height {}", coin_data_height.height);
-    eprintln!(">> CID = {}", hex::encode(stdcode::serialize(&coin).unwrap()).bold());
+    eprintln!(
+        ">>> Coin is confirmed at current height {}",
+        coin_data_height.height
+    );
+    eprintln!(
+        ">> CID = {}",
+        hex::encode(stdcode::serialize(&coin).unwrap()).bold()
+    );
 }
 
 /// Display message that coin is not yet confirmed.
@@ -49,8 +55,6 @@ pub(crate) async fn coin_pending() {
 pub(crate) async fn check_coin(coin_data_height: &Option<CoinDataHeight>, coin_id: &CoinID) {
     match coin_data_height {
         None => coin_pending().await,
-        Some(coin_data_height) => {
-            coin_confirmed(&coin_data_height, &coin_id).await
-        }
+        Some(coin_data_height) => coin_confirmed(&coin_data_height, &coin_id).await,
     }
 }

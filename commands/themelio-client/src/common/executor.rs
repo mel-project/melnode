@@ -1,8 +1,8 @@
 use crate::common::context::ExecutionContext;
 use crate::common::output;
 use crate::wallet::manager::WalletManager;
-use blkstructs::{Transaction, CoinDataHeight};
 use crate::wallet::wallet::Wallet;
+use blkstructs::{CoinDataHeight, Transaction};
 
 /// Responsible for common exeuction between interactive and non-interactive modes.
 pub struct CommonCommandExecutor {
