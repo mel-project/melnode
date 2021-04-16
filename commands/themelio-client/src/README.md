@@ -32,9 +32,9 @@ examples:
 
 ## Interactive command mode 
 
-The interactive, or shell, mode allows users to open up a shell and sub-shell to do basic operations such as store wallets and send transactions. 
+The interactive mode allows users to open up a shell and sub-shell to do basic operations such as store wallets and send transactions. 
 
-### Start shell mode
+### Start interactive shell mode
 > cargo run -- --host "94.237.109.44:11814" interactive 
 
 ### Open sub-shell for a specific wallet 
@@ -61,11 +61,11 @@ themelio-client (v0.1.0) ➜  (alice) ➜ <you are in sub-shell>
 > themelio-client (v0.1.0) ➜  (alice) ➜ exit
 
 ```
-Exiting Themelio Client sub-shell
+Exiting Themelio Client wallet interactive mode
 ```
 
 > themelio-client (v0.1.0) ➜ exit
 
 ```
-Exiting Themelio Client shell
+Exiting Themelio Client interactive mode 
 ```

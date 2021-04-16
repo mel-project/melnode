@@ -14,11 +14,11 @@ async fn faucet_tx(amt: &str, denom: &str) -> anyhow::Result<()> {
 }
 
 /// Output the error when dispatching command
-pub(crate) async fn subshell_error(
+pub(crate) async fn dispatch_error(
     err: &Error,
-    sub_shell_cmd: &InteractiveSubCommand,
+    interactive_sub_cmd: &InteractiveSubCommand,
 ) -> anyhow::Result<()> {
-    eprintln!("ERROR: {} when dispatching {:?}", err, sub_shell_cmd);
+    eprintln!("ERROR: {} when dispatching {:?}", err, interactive_sub_cmd);
     Ok(())
 }
 

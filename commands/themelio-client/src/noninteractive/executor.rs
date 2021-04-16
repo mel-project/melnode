@@ -107,7 +107,7 @@ impl NonInteractiveCommandExecutor {
     }
 
     /// Launch interactive mode until user exits.
-    pub async fn shell(&self) -> anyhow::Result<()> {
+    pub async fn interactive(&self) -> anyhow::Result<()> {
         let runner = InteractiveCommandRunner::new(self.context.clone());
         runner.run().await?;
         Ok(())

@@ -1,10 +1,10 @@
 use crate::common::context::ExecutionContext;
 use crate::common::executor::CommonCommandExecutor;
+use crate::interactive::executor::InteractiveCommandExecutor;
 use crate::interactive::sub::command::InteractiveSubCommand;
 use crate::interactive::sub::input::{format_sub_prompt, read_line};
-use crate::interactive::sub::output::{exit, readline_error, subshell_error, help};
+use crate::interactive::sub::output::{dispatch_error, exit, help, readline_error};
 use crate::wallet::manager::WalletManager;
-use crate::interactive::executor::InteractiveCommandExecutor;
 
 /// A sub-interactive runner executed within the higher-level interactive.
 /// This interactive unlocks a wallet, transacts with the network and shows balances.
@@ -56,7 +56,7 @@ impl InteractiveSubCommandRunner {
 
                     // Output error, if any, and continue running.
                     match dispatch_result {
-                        Err(err) => subshell_error(err, &open_cmd).await?,
+                        Err(err) => dispatch_error(err, &open_cmd).await?,
                         _ => {}
                     }
                 }
@@ -66,9 +66,9 @@ impl InteractiveSubCommandRunner {
     }
 
     /// Dispatch and process a single sub-interactive command.
-    async fn dispatch(&self, sub_shell_cmd: &InteractiveSubCommand) -> anyhow::Result<()> {
+    async fn dispatch(&self, interactive_cmd: &InteractiveSubCommand) -> anyhow::Result<()> {
         // Dispatch a command and return a command result
-        match &sub_shell_cmd {
+        match &interactive_cmd {
             InteractiveSubCommand::Faucet(amt, unit) => {
                 self.faucet(amt, unit).await?;
             }

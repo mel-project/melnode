@@ -21,8 +21,7 @@ impl InteractiveCommandExecutor {
         executor.create_wallet(wallet_name).await
     }
 
-    /// Opens a wallet by name and secret and creates a faucet tx to fund the wallet.
-    /// It then sends the transaction and waits for a confirmation of the coins on the ledger.
+    /// Create and sent a faucet tx in interactive mode.
     pub async fn faucet(
         &self,
         wallet_name: &str,
@@ -63,7 +62,7 @@ impl InteractiveCommandExecutor {
         let manager = WalletManager::new(self.context.clone());
         let wallet = manager.load_wallet(wallet_name, secret).await?;
 
-        // TODO: while we don't ask for fee prompt in command mode we should do so in interactive mode
+        // TODO: input prompt
         // and an option type should be used somewhere here.
 
         // // Create send mel tx.
@@ -84,7 +83,7 @@ impl InteractiveCommandExecutor {
         Ok(())
     }
 
-    /// Adds coins by coin id to wallet.
+    /// Add coins to your wallet to store state.
     pub async fn add_coins(
         &self,
         wallet_name: &str,
@@ -108,7 +107,7 @@ impl InteractiveCommandExecutor {
     }
 
     /// Launch interactive mode until user exits.
-    pub async fn shell(&self) -> anyhow::Result<()> {
+    pub async fn interactive(&self) -> anyhow::Result<()> {
         let runner = InteractiveCommandRunner::new(self.context.clone());
         runner.run().await?;
         Ok(())

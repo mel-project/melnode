@@ -88,7 +88,7 @@ pub enum CommandOpts {
         secret: String,
     },
     ShowWallets,
-    Shell,
+    Interactive,
 }
 
 /// Parse options from input arguments and asynchronously dispatch them.
@@ -139,6 +139,6 @@ async fn dispatch(opts: Opts) -> anyhow::Result<()> {
             secret,
         } => executor.show_balance(&wallet_name, &secret).await,
         CommandOpts::ShowWallets => executor.show_wallets().await,
-        CommandOpts::Shell => executor.shell().await,
+        CommandOpts::Interactive => executor.interactive().await,
     }
 }
