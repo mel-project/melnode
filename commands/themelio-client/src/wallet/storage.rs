@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use storage::SledMap;
 
-const WALLET_NAMESPACE: &[u8; 5] = b"interactive";
+const WALLET_NAMESPACE: &[u8; 14] = b"wallet_storage";
 
 /// Uses sled map(s) to persist client-side data.
 pub struct WalletStorage {

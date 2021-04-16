@@ -46,7 +46,7 @@ pub(crate) async fn coin_pending() {
 
 /// Display function which displays pending message until a coin is confirmed
 /// at which a confirmed message will be displayed.
-pub(crate) async fn check_coin(coin_data_height: Option<CoinDataHeight>, coin_id: CoinID) {
+pub(crate) async fn check_coin(coin_data_height: &Option<CoinDataHeight>, coin_id: &CoinID) {
     match coin_data_height {
         None => coin_pending().await,
         Some(coin_data_height) => {

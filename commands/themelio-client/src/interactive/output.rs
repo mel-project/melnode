@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 use std::io::prelude::*;
 
 /// Output the error when dispatching command.
-pub(crate) async fn shell_error(err: &Error, cmd: &InteractiveCommand) -> anyhow::Result<()> {
+pub(crate) async fn command_error(err: &Error, cmd: &InteractiveCommand) -> anyhow::Result<()> {
     eprintln!("ERROR: {} with interactive command {:?}", err, cmd);
     Ok(())
 }
@@ -23,7 +23,7 @@ pub(crate) async fn readline_error(_err: &Error) -> anyhow::Result<()> {
 }
 
 /// Show available input commands.
-pub(crate) async fn shell_help() -> anyhow::Result<()> {
+pub(crate) async fn help() -> anyhow::Result<()> {
     eprintln!("\nAvailable commands are: ");
     eprintln!(">> create-wallet <wallet-name>");
     eprintln!(">> open-wallet <wallet-name> <secret>");

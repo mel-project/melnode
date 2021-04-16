@@ -7,6 +7,7 @@ use tmelcrypt::Ed25519SK;
 use nodeprot::{ValClient, ValClientSnapshot};
 
 use crate::common::{snapshot_sleep, ExecutionContext};
+use crate::common::context::ExecutionContext;
 
 /// Responsible for using an in memory wallet to send transactions.
 pub struct Wallet {
@@ -91,13 +92,13 @@ impl Wallet {
     }
 
     /// Update snapshot and check if we can get the coin from the transaction.
-    pub async fn check_tx(&self, tx: &Transaction) -> anyhow::Result<Option<CoinDataHeight>> {
+    pub async fn check_tx(&self, tx: &Transaction) -> anyhow::Result<(Option<CoinDataHeight>, CoinID)> {
         let coin = CoinID {
             txhash: tx.hash_nosigs(),
             index: 0,
         };
         let snapshot = self.context.get_latest_snapshot().await?;
-        Ok(snapshot.get_coin(coin).await?)
+        Ok((snapshot.get_coin(coin).await?, coin))
     }
 
     //     /// Send coins to a recipient.

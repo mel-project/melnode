@@ -6,6 +6,7 @@ use blkstructs::melvm::Covenant;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use tmelcrypt::Ed25519SK;
+use crate::common::context::ExecutionContext;
 
 /// Responsible for managing storage and network related wallet operations.
 pub struct WalletManager {

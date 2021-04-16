@@ -43,40 +43,24 @@ impl CommonExecutor {
         wallet.send_tx(&tx).await?;
 
         // Wait for tx confirmation
-        self.confirm_tx().await?;
-
+        let sleep_sec = 5;
+        self.confirm_tx(&tx, &wallet, sleep_sec).await?;
 
         Ok(())
     }
 
     /// Check transaction until it is confirmed.
-    /// TODO: we may need a timeout to set upper bound on tx polling.
+    /// TODO: we may need a max timeout to set upper bound on tx polling.
     pub async fn confirm_tx(
         &self,
         tx: &Transaction,
         wallet: &Wallet,
         sleep_sec: u64,
     ) -> anyhow::Result<CoinDataHeight> {
-        let sleep_time = 5;
         loop {
-            let coin_data_height = wallet.check_tx(tx).await?;
-            match coin_data_height {
-                None => {
-                    output::coin_pending().await;
-                }
-                Some(cdh) => {
-                    output::coin_confirmed(&cdh).await;
-                    return Ok(cdh)
-                }
-            }
-            output::check_coin(coin_data_height).await?;
-            if coin_data_height.is_some() {
-                output::check_coin()
-                // CommandOutput::print_check_tx(&coin_data_height).await?;
-                println!("confirming");
-                return Ok(coin_data_height.unwrap());
-            }
-            self.context.sleep(sleep_time).await?;
+            let (coin_data_height, coin_id) = wallet.check_tx(tx).await?;
+            output::check_coin(&coin_data_height, &coin_id).await?;
+            self.context.sleep(sleep_sec).await?;
         }
     }
 
@@ -96,16 +80,16 @@ impl CommonExecutor {
         // TODO: while we don't ask for fee prompt in command mode we should do so in interactive mode
         // and an option type should be used somewhere here.
 
-        // Create send mel tx.
-        let fee = 2050000000;
-        let tx = wallet.create_send_mel_tx(address, amount, unit, fee).await?;
-
-        // Send the mel payment tx.
-        wallet.send_tx(&tx).await?;
-
-        // Wait for tx confirmation with a sleep time in seconds between polling.
-        let sleep_sec = 2;
-        let coin_data_height = self.confirm_tx(&tx, &wallet, sleep_sec).await?;
+        // // Create send mel tx.
+        // let fee = 2050000000;
+        // let tx = wallet.create_send_mel_tx(address, amount, unit, fee).await?;
+        //
+        // // Send the mel payment tx.
+        // wallet.send_tx(&tx).await?;
+        //
+        // // Wait for tx confirmation with a sleep time in seconds between polling.
+        // let sleep_sec = 2;
+        // let coin_data_height = self.confirm_tx(&tx, &wallet, sleep_sec).await?;
 
         // print confirmation results for send mel tx
         // println!("confirmed at height {:?}! ", coin_data_height);
