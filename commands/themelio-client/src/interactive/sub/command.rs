@@ -4,7 +4,7 @@ use std::convert::TryFrom;
 
 #[derive(Eq, PartialEq, Clone, Serialize, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub enum SubShellCommand {
+pub enum InteractiveSubCommand {
     Faucet(String, String),
     // Deposit(String, String, String, String),
     // Withdraw(String, String, String, String),
@@ -16,12 +16,12 @@ pub enum SubShellCommand {
     Exit,
 }
 
-impl TryFrom<String> for SubShellCommand {
+impl TryFrom<String> for InteractiveSubCommand {
     type Error = ScanError;
 
     /// Uses serde scan internally to parse a whitespace delimited string into a command
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        let cmd: Result<SubShellCommand, _> = serde_scan::from_str(&value);
+        let cmd: Result<InteractiveSubCommand, _> = serde_scan::from_str(&value);
         cmd
     }
 }

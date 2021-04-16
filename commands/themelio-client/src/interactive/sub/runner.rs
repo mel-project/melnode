@@ -1,6 +1,6 @@
 use crate::common::ExecutionContext;
 use crate::executor::CommandExecutor;
-use crate::interactive::sub::command::SubShellCommand;
+use crate::interactive::sub::command::InteractiveSubCommand;
 use crate::interactive::sub::io::{SubShellInput, SubShellOutput};
 use crate::wallet::manager::WalletManager;
 
@@ -43,7 +43,7 @@ impl SubShellRunner {
             match SubShellInput::command(&prompt).await {
                 Ok(open_cmd) => {
                     // Exit if the user chooses to exit.
-                    if open_cmd == SubShellCommand::Exit {
+                    if open_cmd == InteractiveSubCommand::Exit {
                         SubShellOutput::exit().await?;
                         return Ok(());
                     }
@@ -64,25 +64,25 @@ impl SubShellRunner {
     }
 
     /// Dispatch and process a single sub-interactive command.
-    async fn dispatch(&self, sub_shell_cmd: &SubShellCommand) -> anyhow::Result<()> {
+    async fn dispatch(&self, sub_shell_cmd: &InteractiveSubCommand) -> anyhow::Result<()> {
         // Dispatch a command and return a command result
         match &sub_shell_cmd {
-            SubShellCommand::Faucet(amt, unit) => {
+            InteractiveSubCommand::Faucet(amt, unit) => {
                 self.faucet(amt, unit).await?;
             }
-            SubShellCommand::SendCoins(dest, amt, unit) => {
+            InteractiveSubCommand::SendCoins(dest, amt, unit) => {
                 self.send_coins(dest, amt, unit).await?;
             }
-            SubShellCommand::AddCoins(coin_id) => {
+            InteractiveSubCommand::AddCoins(coin_id) => {
                 self.add_coins(coin_id).await?;
             }
-            SubShellCommand::ShowBalance => {
+            InteractiveSubCommand::ShowBalance => {
                 self.balance().await?;
             }
-            SubShellCommand::Help => {
+            InteractiveSubCommand::Help => {
                 self.help().await?;
             }
-            SubShellCommand::Exit => {
+            InteractiveSubCommand::Exit => {
                 self.exit().await?;
             }
         }

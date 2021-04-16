@@ -1,17 +1,18 @@
 use crate::common::ExecutionContext;
 use crate::executor::CommandExecutor;
-use crate::interactive::command::ShellCommand;
-use crate::interactive::io::{ShellInput, ShellOutput};
+use crate::interactive::command::InteractiveCommand;
+use crate::interactive::io::{InteractiveInput, InteractiveOutput};
 use crate::interactive::sub::runner::SubShellRunner;
+use crate::common::context::ExecutionContext;
 
-/// Run an interactive interactive given an execution context
+/// Run an interactive command given an execution context
 /// This is for end users to create and show wallets
 /// as well as open up a particular wallet to transact with network.
-pub struct ShellRunner {
+pub struct InteractiveCommandRunner {
     context: ExecutionContext,
 }
 
-impl ShellRunner {
+impl InteractiveCommandRunner {
     pub fn new(context: ExecutionContext) -> Self {
         Self { context }
     }
@@ -19,15 +20,15 @@ impl ShellRunner {
     /// Run interactive commands from user input until user exits.
     pub async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
-        let prompt = ShellInput::format_shell_prompt(&self.context.version).await?;
+        let prompt = InteractiveInput::format_interactive_prompt(&self.context.version).await?;
 
         loop {
             // Get command from user input.
-            match ShellInput::read_shell_input(&prompt).await {
+            match InteractiveInput::read_shell_input(&prompt).await {
                 Ok(cmd) => {
                     // Exit if the user chooses to exit.
-                    if cmd == ShellCommand::Exit {
-                        ShellOutput::exit().await?;
+                    if cmd == InteractiveCommand::Exit {
+                        InteractiveOutput::exit().await?;
                         return Ok(());
                     }
 
@@ -36,25 +37,25 @@ impl ShellRunner {
 
                     // Output error, if any, and continue running.
                     match dispatch_result {
-                        Err(err) => ShellOutput::shell_error(err, &cmd).await?,
+                        Err(err) => InteractiveOutput::shell_error(err, &cmd).await?,
                         _ => {}
                     }
                 }
-                Err(err) => ShellOutput::readline_error(&err).await?,
+                Err(err) => InteractiveOutput::readline_error(&err).await?,
             }
         }
     }
 
     /// Dispatch and process the interactive command.
-    async fn dispatch(&self, cmd: &ShellCommand) -> anyhow::Result<()> {
+    async fn dispatch(&self, cmd: &InteractiveCommand) -> anyhow::Result<()> {
         let ce = CommandExecutor::new(self.context.clone());
         // Dispatch a command and return a command result.
         match &cmd {
-            ShellCommand::CreateWallet(name) => ce.create_wallet(name).await,
-            ShellCommand::ShowWallets => ce.show_wallets().await,
-            ShellCommand::OpenWallet(name, secret) => self.open_wallet(name, secret).await,
-            ShellCommand::Help => self.help().await,
-            ShellCommand::Exit => self.exit().await,
+            InteractiveCommand::CreateWallet(name) => ce.create_wallet(name).await,
+            InteractiveCommand::ShowWallets => ce.show_wallets().await,
+            InteractiveCommand::OpenWallet(name, secret) => self.open_wallet(name, secret).await,
+            InteractiveCommand::Help => self.help().await,
+            InteractiveCommand::Exit => self.exit().await,
         }
     }
 
@@ -67,13 +68,13 @@ impl ShellRunner {
 
     /// Output help message to user.
     async fn help(&self) -> anyhow::Result<()> {
-        ShellOutput::shell_help().await?;
+        InteractiveOutput::shell_help().await?;
         Ok(())
     }
 
     /// Output exit message to user.
     async fn exit(&self) -> anyhow::Result<()> {
-        ShellOutput::exit().await?;
+        InteractiveOutput::exit().await?;
         Ok(())
     }
 }

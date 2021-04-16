@@ -1,6 +1,6 @@
 use crate::common::{snapshot_sleep, ExecutionContext};
 use crate::io::CommandOutput;
-use crate::interactive::runner::ShellRunner;
+use crate::interactive::runner::InteractiveCommandRunner;
 use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::Wallet;
 use blkstructs::{CoinDataHeight, Transaction};
@@ -132,7 +132,7 @@ impl CommandExecutor {
 
     /// Launch interactive mode until user exits.
     pub async fn shell(&self) -> anyhow::Result<()> {
-        let runner = ShellRunner::new(self.context.clone());
+        let runner = InteractiveCommandRunner::new(self.context.clone());
         runner.run().await?;
         Ok(())
     }
