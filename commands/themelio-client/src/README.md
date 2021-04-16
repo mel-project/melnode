@@ -1,10 +1,12 @@
 # Themelio Client CLI Tool
 
-The code is structured to support an interactive and non-interactive mode. 
+The code is structured to support an interactive mode and a non-interactive mode. 
 
-The common crate contains modules used by interactive and non-interactive modes. It depends on the wallet crate.
+The common crate contains modules used by both non-interactive and interactive modules. The common module also depends on the wallet crate.
 
-Executors execute commands, runners run commands in a loop until an exit command is invoked using a dispatch method.
+Executors execute a commands using wallets, wallet managers and io modules
+
+Runners run commands in a loop until an exit command is invoked.  They invoke input, output and a dispatch method.
 
 Interactive mode uses serde_scan to parse and match inputs.
 
