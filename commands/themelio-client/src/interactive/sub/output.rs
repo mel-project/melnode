@@ -1,8 +1,5 @@
-use crate::common::read_line;
 use crate::interactive::sub::command::InteractiveSubCommand;
 use anyhow::Error;
-use colored::Colorize;
-use std::convert::TryFrom;
 
 /// Send coins to a recipient.
 pub(crate) async fn sent_coins() {}
@@ -11,7 +8,7 @@ pub(crate) async fn sent_coins() {}
 pub(crate) async fn added_coins() {}
 
 /// Transfer coins from faucet to your wallet.
-async fn faucet_tx(&self, amt: &str, denom: &str) -> anyhow::Result<()> {
+async fn faucet_tx(amt: &str, denom: &str) -> anyhow::Result<()> {
     Ok(())
 }
 

@@ -1,5 +1,4 @@
 pub mod common;
-pub mod executor;
 pub mod interactive;
 pub mod noninteractive;
 pub mod wallet;
