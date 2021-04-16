@@ -1,15 +1,8 @@
-use crate::common::read_line;
 use crate::interactive::command::InteractiveCommand;
-use crate::wallet::data::WalletData;
-use anyhow::Error;
 use colored::Colorize;
 use std::convert::TryFrom;
-use tabwriter::TabWriter;
 
 use crate::common::input::read_line as common_read_line;
-use crate::wallet::wallet::Wallet;
-use std::collections::BTreeMap;
-use std::io::prelude::*;
 
 /// Format the interactive prompt with the version of the binary.
 pub(crate) async fn format_prompt(version: &str) -> anyhow::Result<String> {
