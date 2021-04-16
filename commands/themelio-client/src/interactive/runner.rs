@@ -3,7 +3,7 @@ use crate::common::executor::CommonCommandExecutor;
 use crate::interactive::command::InteractiveCommand;
 use crate::interactive::input::{format_prompt, read_line};
 use crate::interactive::output::{command_error, exit, help, readline_error};
-use crate::interactive::sub::runner::SubShellRunner;
+use crate::interactive::sub::runner::InteractiveSubCommandRunner;
 
 /// Run an interactive command given an execution context
 /// This is for end users to create and show wallets
@@ -61,7 +61,7 @@ impl InteractiveCommandRunner {
 
     /// Open a sub-interactive given the name and secret and run in sub interactive mode until user exits.
     async fn open_wallet(&self, name: &str, secret: &str) -> anyhow::Result<()> {
-        let runner = SubShellRunner::new(self.context.clone(), name, secret).await?;
+        let runner = InteractiveSubCommandRunner::new(self.context.clone(), name, secret).await?;
         runner.run().await?;
         Ok(())
     }

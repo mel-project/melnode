@@ -1,11 +1,11 @@
+use structopt::StructOpt;
+
+use noninteractive::executor::NonInteractiveCommandExecutor;
+
 pub mod common;
-pub mod executor;
 pub mod interactive;
 pub mod noninteractive;
 pub mod wallet;
-
-use crate::executor::NonInteractiveCommandExecutor;
-use structopt::StructOpt;
 
 #[derive(Debug, Clone, StructOpt)]
 #[structopt(name = "Themelio Client CLI")]

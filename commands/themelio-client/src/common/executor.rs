@@ -1,6 +1,5 @@
 use crate::common::context::ExecutionContext;
 use crate::common::output;
-use crate::interactive::runner::InteractiveCommandRunner;
 use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::Wallet;
 use blkstructs::{CoinDataHeight, Transaction};
@@ -38,40 +37,6 @@ impl CommonCommandExecutor {
         }
     }
 
-    /// Opens a wallet by name and secret and sends coins from the wallet to a destination.
-    pub async fn send_coins(
-        &self,
-        wallet_name: &str,
-        secret: &str,
-        address: &str,
-        amount: &str,
-        unit: &str,
-    ) -> anyhow::Result<()> {
-        // Load wallet from wallet manager using name and secret
-        let manager = WalletManager::new(self.context.clone());
-        let wallet = manager.load_wallet(wallet_name, secret).await?;
-
-        // TODO: while we don't ask for fee prompt in command mode we should do so in interactive mode
-        // and an option type should be used somewhere here.
-
-        // // Create send mel tx.
-        // let fee = 2050000000;
-        // let tx = wallet.create_send_mel_tx(address, amount, unit, fee).await?;
-        //
-        // // Send the mel payment tx.
-        // wallet.send_tx(&tx).await?;
-        //
-        // // Wait for tx confirmation with a sleep time in seconds between polling.
-        // let sleep_sec = 2;
-        // let coin_data_height = self.confirm_tx(&tx, &wallet, sleep_sec).await?;
-
-        // print confirmation results for send mel tx
-        // println!("confirmed at height {:?}! ", coin_data_height);
-        // CommandOutput::print_confirmed_send_mel_tx(&coin_data_height).await?;
-
-        Ok(())
-    }
-
     /// Adds coins by coin id to wallet.
     pub async fn add_coins(
         &self,
@@ -95,10 +60,4 @@ impl CommonCommandExecutor {
         // Ok(())
     }
 
-    /// Launch interactive mode until user exits.
-    pub async fn shell(&self) -> anyhow::Result<()> {
-        let runner = InteractiveCommandRunner::new(self.context.clone());
-        runner.run().await?;
-        Ok(())
-    }
 }

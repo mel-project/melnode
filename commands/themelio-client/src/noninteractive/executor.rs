@@ -1,10 +1,7 @@
 use crate::common::context::ExecutionContext;
 use crate::common::executor::CommonCommandExecutor;
-use crate::common::{snapshot_sleep, ExecutionContext};
 use crate::interactive::runner::InteractiveCommandRunner;
-use crate::io::CommandOutput;
 use crate::wallet::manager::WalletManager;
-use crate::wallet::wallet::Wallet;
 use blkstructs::{CoinDataHeight, Transaction};
 
 /// Responsible for executing a single client CLI command non-interactively.
@@ -23,7 +20,7 @@ impl NonInteractiveCommandExecutor {
         executor.create_wallet(wallet_name).await
     }
 
-    /// Opens a wallet by name and secret and creates a faucet tx to fund the wallet.
+    /// Creates a faucet tx to fund the wallet.
     /// It then sends the transaction and waits for a confirmation of the coins on the ledger.
     pub async fn faucet(
         &self,
@@ -51,7 +48,7 @@ impl NonInteractiveCommandExecutor {
         Ok(())
     }
 
-    /// Opens a wallet by name and secret and sends coins from the wallet to a destination.
+    /// Sends coins from the wallet to a destination.
     pub async fn send_coins(
         &self,
         wallet_name: &str,
