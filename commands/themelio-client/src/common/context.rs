@@ -10,6 +10,8 @@ pub struct ExecutionContext {
     pub network: blkstructs::NetID,
     pub database: std::path::PathBuf,
     pub version: String,
+    pub default_sleep_sec: u64,
+    pub default_fee: u128,
 }
 
 impl ExecutionContext {
@@ -23,6 +25,13 @@ impl ExecutionContext {
     /// Sleep on current async task for a duration set in seconds.
     pub async fn sleep(&self, sec: u64) -> anyhow::Result<()> {
         let duration = Duration::from_secs(sec);
+        Timer::after(duration).await;
+        Ok(())
+    }
+
+    /// Sleep on current async task for a default duration set in seconds.
+    pub async fn sleep_default(&self) -> anyhow::Result<()> {
+        let duration = Duration::from_secs(self.default_sleep_sec);
         Timer::after(duration).await;
         Ok(())
     }

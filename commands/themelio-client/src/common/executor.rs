@@ -37,7 +37,7 @@ impl CommonCommandExecutor {
         let wallet = manager.load_wallet(wallet_name, secret).await?;
 
         // Create faucet tx.
-        let fee = 2050000000;
+        let fee = self.context.default_fee;
         let tx = wallet.create_faucet_tx(amount, unit, fee).await?;
 
         // Send the faucet tx.

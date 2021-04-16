@@ -2,15 +2,20 @@ use serde::{Deserialize, Serialize};
 use serde_scan::ScanError;
 use std::convert::TryFrom;
 
+type Amount = String;
+type Denom = String;
+type Dest = String;
+type CoinIdentifier = String;
+
 #[derive(Eq, PartialEq, Clone, Serialize, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum InteractiveSubCommand {
-    Faucet(String, String),
+    Faucet(Amount, Denom),
     // Deposit(String, String, String, String),
     // Withdraw(String, String, String, String),
     // Swap(String, String),
-    SendCoins(String, String, String),
-    AddCoins(String),
+    SendCoins(Dest, Amount, Denom),
+    AddCoins(CoinIdentifier),
     ShowBalance,
     Help,
     Exit,

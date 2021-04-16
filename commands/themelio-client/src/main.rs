@@ -105,6 +105,8 @@ async fn dispatch(opts: Opts) -> anyhow::Result<()> {
         network: blkstructs::NetID::Testnet,
         host: opts.host,
         database: opts.database,
+        default_sleep_sec: 5, // TODO: maybe make this come in from opts?
+        default_fee: 2050000000
     };
     let executor = CommonCommandExecutor::new(context);
     match opts.cmd_opts {
