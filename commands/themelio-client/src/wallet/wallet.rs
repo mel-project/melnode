@@ -4,10 +4,9 @@ use blkstructs::{
 };
 use tmelcrypt::Ed25519SK;
 
-use nodeprot::{ValClient, ValClientSnapshot};
+use nodeprot::{ValClientSnapshot};
 
 use crate::common::context::ExecutionContext;
-use crate::common::{ExecutionContext};
 
 /// Responsible for using an in memory wallet to send transactions.
 pub struct Wallet {

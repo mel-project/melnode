@@ -3,6 +3,7 @@ use crate::common::output;
 use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::Wallet;
 use blkstructs::{CoinDataHeight, Transaction};
+use crate::interactive::runner::InteractiveCommandRunner;
 
 /// Responsible for common exeuction between interactive and non-interactive modes.
 pub struct CommonCommandExecutor {
@@ -59,7 +60,7 @@ impl CommonCommandExecutor {
     ) -> anyhow::Result<CoinDataHeight> {
         loop {
             let (coin_data_height, coin_id) = wallet.check_tx(tx).await?;
-            output::check_coin(&coin_data_height, &coin_id).await?;
+            output::check_coin(&coin_data_height, &coin_id).await;
             self.context.sleep(sleep_sec).await?;
         }
     }
@@ -123,7 +124,7 @@ impl CommonCommandExecutor {
 
     /// Launch interactive mode until user exits.
     pub async fn shell(&self) -> anyhow::Result<()> {
-        let runner = ShellRunner::new(self.context.clone());
+        let runner = InteractiveCommandRunner::new(self.context.clone());
         runner.run().await?;
         Ok(())
     }
