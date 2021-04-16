@@ -2,8 +2,9 @@ use crate::common::context::ExecutionContext;
 use crate::common::executor::CommonCommandExecutor;
 use crate::interactive::sub::command::InteractiveSubCommand;
 use crate::interactive::sub::input::{format_sub_prompt, read_line};
-use crate::interactive::sub::output::{exit, readline_error, subshell_error};
+use crate::interactive::sub::output::{exit, readline_error, subshell_error, help};
 use crate::wallet::manager::WalletManager;
+use crate::interactive::executor::InteractiveCommandExecutor;
 
 /// A sub-interactive runner executed within the higher-level interactive.
 /// This interactive unlocks a wallet, transacts with the network and shows balances.
@@ -118,13 +119,13 @@ impl InteractiveSubCommandRunner {
 
     /// Show available sub interactive command args & inputs to user
     async fn help(&self) -> anyhow::Result<()> {
-        // SubShellOutput::output_help().await?;
+        help().await?;
         Ok(())
     }
 
     /// Show exit message
     async fn exit(&self) -> anyhow::Result<()> {
-        // SubShellOutput::output_help().await?;
+        exit().await?;
         Ok(())
     }
 }
