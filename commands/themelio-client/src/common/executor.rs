@@ -5,11 +5,11 @@ use blkstructs::{Transaction, CoinDataHeight};
 use crate::wallet::wallet::Wallet;
 
 /// Responsible for common exeuction between interactive and non-interactive modes.
-pub struct CommonExecutor {
+pub struct CommonCommandExecutor {
     pub context: ExecutionContext,
 }
 
-impl CommonExecutor {
+impl CommonCommandExecutor {
     pub fn new(context: ExecutionContext) -> Self {
         Self { context }
     }

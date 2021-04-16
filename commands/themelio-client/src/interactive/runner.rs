@@ -3,7 +3,7 @@ use crate::interactive::sub::runner::SubShellRunner;
 use crate::common::context::ExecutionContext;
 use crate::interactive::input::{format_prompt, read_line};
 use crate::interactive::output::{exit, command_error, readline_error, help};
-use crate::common::executor::CommonExecutor;
+use crate::common::executor::CommonCommandExecutor;
 
 /// Run an interactive command given an execution context
 /// This is for end users to create and show wallets
@@ -48,7 +48,7 @@ impl InteractiveCommandRunner {
 
     /// Dispatch and process the interactive command.
     async fn dispatch(&self, cmd: &InteractiveCommand) -> anyhow::Result<()> {
-        let ce = CommonExecutor::new(self.context.clone());
+        let ce = CommonCommandExecutor::new(self.context.clone());
         // Dispatch a command and return a command result.
         match &cmd {
             InteractiveCommand::CreateWallet(name) => ce.create_wallet(name).await,

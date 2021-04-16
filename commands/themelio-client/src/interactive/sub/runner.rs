@@ -1,9 +1,7 @@
-use crate::common::ExecutionContext;
-use crate::executor::CommandExecutor;
 use crate::interactive::sub::command::InteractiveSubCommand;
-use crate::interactive::sub::io::{SubShellInput, SubShellOutput};
 use crate::wallet::manager::WalletManager;
 use crate::common::context::ExecutionContext;
+use crate::common::executor::CommonCommandExecutor;
 
 /// A sub-interactive runner executed within the higher-level interactive.
 /// This interactive unlocks a wallet, transacts with the network and shows balances.
@@ -92,13 +90,13 @@ impl SubShellRunner {
 
     /// Calls faucet on the command executor with the inputs passed into sub-interactive.
     async fn faucet(&self, amt: &str, denom: &str) -> anyhow::Result<()> {
-        let executor = CommandExecutor::new(self.context.clone());
+        let executor = CommonCommandExecutor::new(self.context.clone());
         executor.faucet(&self.name, &self.secret, amt, denom).await
     }
 
     /// Calls send coins on the command executor with the inputs passed into the sub-interactive.
     async fn send_coins(&self, dest: &str, amt: &str, unit: &str) -> anyhow::Result<()> {
-        let executor = CommandExecutor::new(self.context.clone());
+        let executor = CommonCommandExecutor::new(self.context.clone());
         executor
             .send_coins(&self.name, &self.secret, dest, amt, unit)
             .await
@@ -106,13 +104,13 @@ impl SubShellRunner {
 
     /// Calls add coins on the command executor with the inputs passed into the sub-interactive.
     async fn add_coins(&self, coin_id: &str) -> anyhow::Result<()> {
-        let executor = CommandExecutor::new(self.context.clone());
+        let executor = CommonCommandExecutor::new(self.context.clone());
         executor.add_coins(&self.name, &self.secret, coin_id).await
     }
 
     /// Calls balance on the command executor with the inputs passed into the sub-interactive.
     async fn balance(&self) -> anyhow::Result<()> {
-        let executor = CommandExecutor::new(self.context.clone());
+        let executor = CommonCommandExecutor::new(self.context.clone());
         executor.show_balance(&self.name, &self.secret).await
     }
 
