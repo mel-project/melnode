@@ -23,33 +23,6 @@ impl CommonCommandExecutor {
         Ok(())
     }
 
-    /// Opens a wallet by name and secret and creates a faucet tx to fund the wallet.
-    /// It then sends the transaction and waits for a confirmation of the coins on the ledger.
-    pub async fn faucet(
-        &self,
-        wallet_name: &str,
-        secret: &str,
-        amount: &str,
-        unit: &str,
-    ) -> anyhow::Result<()> {
-        // Load wallet from wallet manager using name and secret
-        let manager = WalletManager::new(self.context.clone());
-        let wallet = manager.load_wallet(wallet_name, secret).await?;
-
-        // Create faucet tx.
-        let fee = self.context.default_fee;
-        let tx = wallet.create_faucet_tx(amount, unit, fee).await?;
-
-        // Send the faucet tx.
-        wallet.send_tx(&tx).await?;
-
-        // Wait for tx confirmation
-        let sleep_sec = 5;
-        self.confirm_tx(&tx, &wallet, sleep_sec).await?;
-
-        Ok(())
-    }
-
     /// Check transaction until it is confirmed.
     /// TODO: we may need a max timeout to set upper bound on tx polling.
     pub async fn confirm_tx(
