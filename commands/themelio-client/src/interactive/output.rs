@@ -1,5 +1,6 @@
-use crate::interactive::command::InteractiveCommand;
 use anyhow::Error;
+
+use crate::interactive::command::InteractiveCommand;
 
 /// Output the error when dispatching command.
 pub(crate) async fn command_error(err: &Error, cmd: &InteractiveCommand) -> anyhow::Result<()> {

@@ -1,6 +1,7 @@
+use std::convert::TryFrom;
+
 use serde::{Deserialize, Serialize};
 use serde_scan::ScanError;
-use std::convert::TryFrom;
 
 type Amount = String;
 type Denom = String;

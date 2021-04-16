@@ -1,7 +1,9 @@
+use std::convert::TryFrom;
+
+use colored::Colorize;
+
 use crate::common::input::read_line as common_read_line;
 use crate::interactive::sub::command::InteractiveSubCommand;
-use colored::Colorize;
-use std::convert::TryFrom;
 
 /// Format the CLI prompt with the version of the binary
 pub(crate) async fn format_sub_prompt(version: &str, name: &str) -> anyhow::Result<String> {

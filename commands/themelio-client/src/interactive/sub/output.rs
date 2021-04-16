@@ -1,5 +1,6 @@
-use crate::interactive::sub::command::InteractiveSubCommand;
 use anyhow::Error;
+
+use crate::interactive::sub::command::InteractiveSubCommand;
 
 /// Send coins to a recipient.
 pub(crate) async fn sent_coins() {}

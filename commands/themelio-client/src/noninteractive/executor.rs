@@ -1,8 +1,9 @@
+use blkstructs::{CoinDataHeight, Transaction};
+
 use crate::common::context::ExecutionContext;
 use crate::common::executor::CommonCommandExecutor;
 use crate::interactive::runner::InteractiveCommandRunner;
 use crate::wallet::manager::WalletManager;
-use blkstructs::{CoinDataHeight, Transaction};
 
 /// Responsible for executing a single client CLI command non-interactively.
 pub struct NonInteractiveCommandExecutor {

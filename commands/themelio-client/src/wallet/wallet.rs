@@ -1,12 +1,11 @@
-use crate::wallet::data::WalletData;
 use blkstructs::{
     CoinData, CoinDataHeight, CoinID, NetID, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
 };
+use nodeprot::ValClientSnapshot;
 use tmelcrypt::Ed25519SK;
 
-use nodeprot::ValClientSnapshot;
-
 use crate::common::context::ExecutionContext;
+use crate::wallet::data::WalletData;
 
 /// Responsible for using an in memory wallet to send transactions.
 pub struct Wallet {

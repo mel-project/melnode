@@ -1,9 +1,12 @@
-use crate::wallet::data::WalletData;
-use anyhow;
-use sled;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+
+use anyhow;
+use sled;
+
 use storage::SledMap;
+
+use crate::wallet::data::WalletData;
 
 const WALLET_NAMESPACE: &[u8; 14] = b"wallet_storage";
 

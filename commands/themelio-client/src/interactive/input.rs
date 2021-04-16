@@ -1,8 +1,9 @@
-use crate::interactive::command::InteractiveCommand;
-use colored::Colorize;
 use std::convert::TryFrom;
 
+use colored::Colorize;
+
 use crate::common::input::read_line as common_read_line;
+use crate::interactive::command::InteractiveCommand;
 
 /// Format the interactive prompt with the version of the binary.
 pub(crate) async fn format_prompt(version: &str) -> anyhow::Result<String> {

@@ -1,7 +1,8 @@
-use nodeprot::{ValClient, ValClientSnapshot};
+use std::time::Duration;
 
 use smol::Timer;
-use std::time::Duration;
+
+use nodeprot::{ValClient, ValClientSnapshot};
 
 /// Contains data for the entire life-cycle of a command being executed.
 #[derive(Clone, Debug)]

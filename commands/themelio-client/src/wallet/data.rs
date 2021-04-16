@@ -1,6 +1,8 @@
-use blkstructs::{melvm, CoinData, CoinDataHeight, CoinID, Transaction, TxKind};
-use serde::{Deserialize, Serialize};
 use std::collections;
+
+use serde::{Deserialize, Serialize};
+
+use blkstructs::{melvm, CoinData, CoinDataHeight, CoinID, Transaction, TxKind};
 use tmelcrypt::HashVal;
 
 /// Immutable & cloneable in-memory data that can be persisted.

@@ -1,11 +1,13 @@
-use crate::wallet::data::WalletData;
+use std::collections::BTreeMap;
+use std::io::prelude::*;
+
 use colored::Colorize;
 use tabwriter::TabWriter;
 
-use crate::wallet::wallet::Wallet;
 use blkstructs::{CoinDataHeight, CoinID};
-use std::collections::BTreeMap;
-use std::io::prelude::*;
+
+use crate::wallet::data::WalletData;
+use crate::wallet::wallet::Wallet;
 
 /// Display name, secret key and covenant of the wallet.
 pub(crate) async fn wallet(wallet: Wallet) -> anyhow::Result<()> {
