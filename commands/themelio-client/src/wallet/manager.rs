@@ -1,6 +1,6 @@
 use crate::common::context::ExecutionContext;
-use crate::common::{ClientError, ExecutionContext};
 use crate::wallet::data::WalletData;
+use crate::wallet::error::ClientError;
 use crate::wallet::storage::WalletStorage;
 use crate::wallet::wallet::Wallet;
 use blkstructs::melvm::Covenant;
