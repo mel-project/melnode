@@ -1,5 +1,5 @@
 use crate::common::read_line;
-use crate::shell::sub::command::SubShellCommand;
+use crate::interactive::sub::command::SubShellCommand;
 use anyhow::Error;
 use colored::Colorize;
 use std::convert::TryFrom;
@@ -19,7 +19,7 @@ impl SubShellInput {
         Ok(format!("{}", prompt_stack.join(" ")))
     }
 
-    /// Get user input and parse it into a shell command
+    /// Get user input and parse it into a interactive command
     pub(crate) async fn command(prompt: &str) -> anyhow::Result<SubShellCommand> {
         let input = read_line(prompt.to_string()).await?;
 
@@ -75,7 +75,7 @@ impl SubShellOutput {
 
     /// Show exit message
     pub(crate) async fn exit() -> anyhow::Result<()> {
-        eprintln!("\nExiting Themelio Client sub-shell");
+        eprintln!("\nExiting Themelio Client sub-interactive");
         Ok(())
     }
 }

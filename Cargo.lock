@@ -3196,6 +3196,7 @@ dependencies = [
  "smol",
  "smol-timeout",
  "smolscale",
+ "stdcode",
  "storage",
  "structopt",
  "tabwriter",

@@ -1,38 +1,37 @@
 pub mod common;
 pub mod executor;
-pub mod io;
-pub mod shell;
+pub mod interactive;
+pub mod noninteractive;
 pub mod wallet;
 
-use blkstructs::NetID;
 use structopt::StructOpt;
 
 #[derive(Debug, Clone, StructOpt)]
 #[structopt(name = "Themelio Client CLI")]
 /// A command line application to interact with Themelio.
 ///
-/// An interactive shell can be used as a CLI wallet allowing a user
+/// An interactive interactive can be used as a CLI wallet allowing a user
 /// to store wallet state data locally as well as send and query data from the network.
 ///
-/// Other non-shell command options are suitable for automation
+/// Other non-interactive command options are suitable for automation
 /// and can execute a single command to completion given all the arguments.
 pub struct Opts {
     /// IP Address with port used to establish a connection to host
     #[structopt(long, default_value = "127.0.0.1:8000")]
     pub host: smol::net::SocketAddr,
 
-    /// File path to database for client shell storage
+    /// File path to database for client interactive storage
     #[structopt(long, short, parse(from_os_str), default_value = "/tmp/testclient")]
     pub database: std::path::PathBuf,
 
-    /// Automation-centric commands to executed with the exception of the interactive 'shell' command.
+    /// Automation-centric commands to executed with the exception of the interactive 'interactive' command.
     #[structopt(subcommand)]
     pub cmd_opts: CommandOpts,
 }
 
 #[derive(StructOpt, Clone, Debug)]
 /// Represents the command options to run a specific command.
-/// If 'shell' is specified it will enter into an interactive shell,
+/// If 'interactive' is specified it will enter into an interactive interactive,
 /// otherwise it will execute a single command and exit.
 ///
 /// TODO: add descriptions
@@ -99,12 +98,11 @@ fn main() {
     });
 }
 
-/// Convert options into an execution context
-/// then dispatch a single command to a command executor given the context.
+/// Convert options into an execution context and then dispatch a command.
 async fn dispatch(opts: Opts) -> anyhow::Result<()> {
-    let context = common::ExecutionContext {
+    let context = common::context::ExecutionContext {
         version: env!("CARGO_PKG_VERSION").to_string(),
-        network: NetID::Testnet,
+        network: blkstructs::NetID::Testnet,
         host: opts.host,
         database: opts.database,
     };

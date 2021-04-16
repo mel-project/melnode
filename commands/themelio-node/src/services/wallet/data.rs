@@ -33,7 +33,7 @@
 //         self.spent_coins.clone()
 //     }
 // 
-//     /// Generates shell data from script based on keypair
+//     /// Generates interactive data from script based on keypair
 //     pub fn generate() -> (Ed25519SK, Ed25519PK, Self) {
 //         let (pk, sk) = tmelcrypt::ed25519_keygen();
 //         let script = melvm::Covenant::std_ed25519_pk(pk);

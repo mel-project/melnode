@@ -1,10 +1,10 @@
 use crate::common::ExecutionContext;
 use crate::executor::CommandExecutor;
-use crate::shell::command::ShellCommand;
-use crate::shell::io::{ShellInput, ShellOutput};
-use crate::shell::sub::runner::SubShellRunner;
+use crate::interactive::command::ShellCommand;
+use crate::interactive::io::{ShellInput, ShellOutput};
+use crate::interactive::sub::runner::SubShellRunner;
 
-/// Run an interactive shell given an execution context
+/// Run an interactive interactive given an execution context
 /// This is for end users to create and show wallets
 /// as well as open up a particular wallet to transact with network.
 pub struct ShellRunner {
@@ -16,7 +16,7 @@ impl ShellRunner {
         Self { context }
     }
 
-    /// Run shell commands from user input until user exits.
+    /// Run interactive commands from user input until user exits.
     pub async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
         let prompt = ShellInput::format_shell_prompt(&self.context.version).await?;
@@ -45,7 +45,7 @@ impl ShellRunner {
         }
     }
 
-    /// Dispatch and process the shell command.
+    /// Dispatch and process the interactive command.
     async fn dispatch(&self, cmd: &ShellCommand) -> anyhow::Result<()> {
         let ce = CommandExecutor::new(self.context.clone());
         // Dispatch a command and return a command result.
@@ -58,7 +58,7 @@ impl ShellRunner {
         }
     }
 
-    /// Open a sub-shell given the name and secret and run in sub shell mode until user exits.
+    /// Open a sub-interactive given the name and secret and run in sub interactive mode until user exits.
     async fn open_wallet(&self, name: &str, secret: &str) -> anyhow::Result<()> {
         let runner = SubShellRunner::new(self.context.clone(), name, secret).await?;
         runner.run().await?;

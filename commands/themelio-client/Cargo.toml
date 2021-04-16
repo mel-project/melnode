@@ -24,3 +24,4 @@ blkstructs={path="../../libs/blkstructs"}
 storage={path="../../libs/storage"}
 tmelcrypt={path="../../libs/tmelcrypt"}
 nodeprot={path="../../libs/nodeprot"}
+stdcode={path="../../libs/stdcode"}

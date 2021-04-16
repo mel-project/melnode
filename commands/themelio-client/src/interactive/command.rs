@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_scan::ScanError;
 use std::convert::TryFrom;
 
-/// Available shell commands with their string arguments.
+/// Available interactive commands with their string arguments.
 /// Note that serde scan is used here to convert inline string input arguments for matching.
 #[derive(Eq, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]

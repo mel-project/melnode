@@ -1,16 +1,15 @@
-use crate::common::{snapshot_sleep, ExecutionContext};
-use crate::io::CommandOutput;
-use crate::interactive::runner::ShellRunner;
+use crate::common::context::ExecutionContext;
+use crate::common::output;
 use crate::wallet::manager::WalletManager;
+use blkstructs::{Transaction, CoinDataHeight};
 use crate::wallet::wallet::Wallet;
-use blkstructs::{CoinDataHeight, Transaction};
 
-/// Responsible for executing a single client CLI command non-interactively.
-pub struct CommandExecutor {
+/// Responsible for common exeuction between interactive and non-interactive modes.
+pub struct CommonExecutor {
     pub context: ExecutionContext,
 }
 
-impl CommandExecutor {
+impl CommonExecutor {
     pub fn new(context: ExecutionContext) -> Self {
         Self { context }
     }
@@ -19,7 +18,7 @@ impl CommandExecutor {
     pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<()> {
         let manager = WalletManager::new(self.context.clone());
         let wallet = manager.create_wallet(wallet_name).await?;
-        CommandOutput::print_created_wallet(wallet).await?;
+        output::wallet(wallet).await?;
         Ok(())
     }
 
@@ -43,33 +42,41 @@ impl CommandExecutor {
         // Send the faucet tx.
         wallet.send_tx(&tx).await?;
 
-        // Wait for tx confirmation with a sleep time in seconds between polling.
-        let sleep_sec = 2;
-        let coin_data_height = self.confirm_tx(&tx, &wallet, sleep_sec).await?;
+        // Wait for tx confirmation
+        self.confirm_tx().await?;
 
-        // print confirmation results for faucet tx
-        println!("confirmed at height {:?}! ", coin_data_height);
-        // CommandOutput::print_confirmed_faucet_tx(&coin_data_height).await?;
 
         Ok(())
     }
 
-    /// Update snapshot until we can confirm the transaction is at a certain height.
-    // TODO: we need a timeout passed into this method or it should be called with a task race.
+    /// Check transaction until it is confirmed.
+    /// TODO: we may need a timeout to set upper bound on tx polling.
     pub async fn confirm_tx(
         &self,
         tx: &Transaction,
         wallet: &Wallet,
         sleep_sec: u64,
     ) -> anyhow::Result<CoinDataHeight> {
+        let sleep_time = 5;
         loop {
             let coin_data_height = wallet.check_tx(tx).await?;
+            match coin_data_height {
+                None => {
+                    output::coin_pending().await;
+                }
+                Some(cdh) => {
+                    output::coin_confirmed(&cdh).await;
+                    return Ok(cdh)
+                }
+            }
+            output::check_coin(coin_data_height).await?;
             if coin_data_height.is_some() {
+                output::check_coin()
                 // CommandOutput::print_check_tx(&coin_data_height).await?;
                 println!("confirming");
                 return Ok(coin_data_height.unwrap());
             }
-            snapshot_sleep(sleep_sec).await?;
+            self.context.sleep(sleep_time).await?;
         }
     }
 

@@ -1,11 +1,11 @@
 use crate::common::ExecutionContext;
 use crate::executor::CommandExecutor;
-use crate::shell::sub::command::SubShellCommand;
-use crate::shell::sub::io::{SubShellInput, SubShellOutput};
+use crate::interactive::sub::command::SubShellCommand;
+use crate::interactive::sub::io::{SubShellInput, SubShellOutput};
 use crate::wallet::manager::WalletManager;
 
-/// A sub-shell runner executed within the higher-level shell.
-/// This shell unlocks a wallet, transacts with the network and shows balances.
+/// A sub-interactive runner executed within the higher-level interactive.
+/// This interactive unlocks a wallet, transacts with the network and shows balances.
 pub(crate) struct SubShellRunner {
     context: ExecutionContext,
     name: String,
@@ -13,7 +13,7 @@ pub(crate) struct SubShellRunner {
 }
 
 impl SubShellRunner {
-    /// Create a new sub shell runner if wallet exists and we can unlock & load with the provided secret.
+    /// Create a new sub interactive runner if wallet exists and we can unlock & load with the provided secret.
     pub(crate) async fn new(
         context: ExecutionContext,
         name: &str,
@@ -33,7 +33,7 @@ impl SubShellRunner {
         })
     }
 
-    /// Read and execute sub-shell commands from user until user exits.
+    /// Read and execute sub-interactive commands from user until user exits.
     pub(crate) async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
         let prompt = SubShellInput::format_prompt(&self.context.version, &self.name).await?;
@@ -63,7 +63,7 @@ impl SubShellRunner {
         }
     }
 
-    /// Dispatch and process a single sub-shell command.
+    /// Dispatch and process a single sub-interactive command.
     async fn dispatch(&self, sub_shell_cmd: &SubShellCommand) -> anyhow::Result<()> {
         // Dispatch a command and return a command result
         match &sub_shell_cmd {
@@ -89,13 +89,13 @@ impl SubShellRunner {
         Ok(())
     }
 
-    /// Calls faucet on the command executor with the inputs passed into sub-shell.
+    /// Calls faucet on the command executor with the inputs passed into sub-interactive.
     async fn faucet(&self, amt: &str, denom: &str) -> anyhow::Result<()> {
         let executor = CommandExecutor::new(self.context.clone());
         executor.faucet(&self.name, &self.secret, amt, denom).await
     }
 
-    /// Calls send coins on the command executor with the inputs passed into the sub-shell.
+    /// Calls send coins on the command executor with the inputs passed into the sub-interactive.
     async fn send_coins(&self, dest: &str, amt: &str, unit: &str) -> anyhow::Result<()> {
         let executor = CommandExecutor::new(self.context.clone());
         executor
@@ -103,19 +103,19 @@ impl SubShellRunner {
             .await
     }
 
-    /// Calls add coins on the command executor with the inputs passed into the sub-shell.
+    /// Calls add coins on the command executor with the inputs passed into the sub-interactive.
     async fn add_coins(&self, coin_id: &str) -> anyhow::Result<()> {
         let executor = CommandExecutor::new(self.context.clone());
         executor.add_coins(&self.name, &self.secret, coin_id).await
     }
 
-    /// Calls balance on the command executor with the inputs passed into the sub-shell.
+    /// Calls balance on the command executor with the inputs passed into the sub-interactive.
     async fn balance(&self) -> anyhow::Result<()> {
         let executor = CommandExecutor::new(self.context.clone());
         executor.show_balance(&self.name, &self.secret).await
     }
 
-    /// Show available sub shell command args & inputs to user
+    /// Show available sub interactive command args & inputs to user
     async fn help(&self) -> anyhow::Result<()> {
         // SubShellOutput::output_help().await?;
         Ok(())
