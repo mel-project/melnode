@@ -2,6 +2,8 @@ use crate::common::context::ExecutionContext;
 use crate::common::executor::CommonCommandExecutor;
 use crate::interactive::sub::command::InteractiveSubCommand;
 use crate::wallet::manager::WalletManager;
+use crate::interactive::sub::input::{format_sub_prompt, read_line};
+use crate::interactive::sub::output::{exit, subshell_error, readline_error};
 
 /// A sub-interactive runner executed within the higher-level interactive.
 /// This interactive unlocks a wallet, transacts with the network and shows balances.
@@ -35,15 +37,15 @@ impl SubShellRunner {
     /// Read and execute sub-interactive commands from user until user exits.
     pub(crate) async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
-        let prompt = SubShellInput::format_prompt(&self.context.version, &self.name).await?;
+        let prompt = format_sub_prompt(&self.context.version, &self.name).await?;
 
         loop {
             // Get command from user input.
-            match SubShellInput::command(&prompt).await {
+            match read_line(&prompt).await {
                 Ok(open_cmd) => {
                     // Exit if the user chooses to exit.
                     if open_cmd == InteractiveSubCommand::Exit {
-                        SubShellOutput::exit().await?;
+                        exit().await?;
                         return Ok(());
                     }
 
@@ -53,11 +55,11 @@ impl SubShellRunner {
 
                     // Output error, if any, and continue running.
                     match dispatch_result {
-                        Err(err) => SubShellOutput::subshell_error(err, &open_cmd).await?,
+                        Err(err) => subshell_error(err, &open_cmd).await?,
                         _ => {}
                     }
                 }
-                Err(err) => SubShellOutput::readline_error(&err).await?,
+                Err(err) => readline_error(&err).await?,
             }
         }
     }
