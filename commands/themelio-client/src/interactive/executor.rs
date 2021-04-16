@@ -2,7 +2,7 @@ use crate::common::context::ExecutionContext;
 use crate::common::executor::CommonCommandExecutor;
 use crate::interactive::runner::InteractiveCommandRunner;
 use crate::wallet::manager::WalletManager;
-use blkstructs::{Transaction};
+use blkstructs::Transaction;
 
 /// Responsible for executing a single client CLI command non-interactively.
 pub struct InteractiveCommandExecutor {
