@@ -352,7 +352,7 @@ impl Executor {
             OpCode::LT => self.do_binop(|x, y| {
                 let x = x.as_int()?;
                 let y = y.as_int()?;
-                if y.overflowing_sub(x).1 {
+                if x.overflowing_sub(y).1 {
                     Some(Value::Int(U256::one()))
                 } else {
                     Some(Value::Int(U256::zero()))
@@ -361,7 +361,7 @@ impl Executor {
             OpCode::GT => self.do_binop(|x, y| {
                 let x = x.as_int()?;
                 let y = y.as_int()?;
-                if !y.overflowing_sub(x).1 {
+                if !x.overflowing_sub(y).1 {
                     Some(Value::Int(U256::one()))
                 } else {
                     Some(Value::Int(U256::zero()))
