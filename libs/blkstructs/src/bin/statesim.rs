@@ -27,6 +27,7 @@ fn random_valid_txx(
                 covhash: cons.hash(),
                 value: to_spend_data.value,
                 denom: DENOM_TMEL.to_owned(),
+                additional_data: vec![],
             }],
             fee: 0,
             scripts: vec![cons.clone()],
@@ -62,6 +63,7 @@ fn main() {
         covhash: cov.hash(),
         value: MICRO_CONVERTER * 1000,
         denom: DENOM_TMEL.to_owned(),
+        additional_data: vec![],
     };
     let mut start_coin = CoinID::zero_zero();
     for count in 0..1000 {

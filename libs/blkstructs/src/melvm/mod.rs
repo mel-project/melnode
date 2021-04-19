@@ -11,8 +11,8 @@ mod lexer;
 pub struct Covenant(pub Vec<u8>);
 
 impl Covenant {
-    pub fn check(&self, tx: &Transaction) -> bool {
-        self.check_opt(tx).is_some()
+    pub fn check(&self, tx: &Transaction, additional_input: &[u8]) -> bool {
+        self.check_opt(tx, additional_input).is_some()
     }
 
     pub fn check_raw(&self, args: &[Value]) -> bool {
@@ -31,13 +31,14 @@ impl Covenant {
         tmelcrypt::hash_single(&self.0)
     }
 
-    fn check_opt(&self, tx: &Transaction) -> Option<()> {
+    fn check_opt(&self, tx: &Transaction, additional_input: &[u8]) -> Option<()> {
         let tx_val = Value::from(tx.clone());
         let ops = self.to_ops()?;
         let mut hm = HashMap::new();
         hm.insert(0, tx_val);
         hm.insert(1, Value::from_bytes(&tx.hash_nosigs().0));
         hm.insert(2, Value::from_bytes(&tmelcrypt::hash_single(&self.0)));
+        hm.insert(3, Value::from_bytes(additional_input));
         Executor::new(hm).run_return(&ops)
     }
 
@@ -826,8 +827,8 @@ mod tests {
             None => true,
             Some(ops) => {
                 let orig_script = Covenant::from_ops(&ops).unwrap();
-                let first = orig_script.check(&tx);
-                let second = orig_script.check(&tx);
+                let first = orig_script.check(&tx, &[]);
+                let second = orig_script.check(&tx, &[]);
                 first == second
             }
         }

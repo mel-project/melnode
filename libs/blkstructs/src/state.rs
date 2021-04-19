@@ -178,6 +178,7 @@ impl State {
                     denom: DENOM_TMEL.into(),
                     value: cfg.init_micromels,
                     covhash: cfg.init_covhash,
+                    additional_data: vec![],
                 },
             },
         );
@@ -258,6 +259,7 @@ impl State {
             covhash: start_cov_hash,
             value: start_micro_mels,
             denom: DENOM_TMEL.to_vec(),
+            additional_data: vec![],
         };
         empty.coins.insert(
             txn::CoinID {
@@ -331,6 +333,7 @@ impl State {
                     covhash: action.reward_dest,
                     value: base_fees + tips,
                     denom: DENOM_TMEL.into(),
+                    additional_data: vec![],
                 },
                 height: self.height,
             };
