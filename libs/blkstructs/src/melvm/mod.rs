@@ -128,7 +128,7 @@ impl Covenant {
                     Covenant::disassemble_one(bcode, &mut rec_output, rec_depth + 1)?;
                 }
                 output.push(OpCode::LOOP(iterations, rec_output));
-            },
+            }
             0xc0 => output.push(OpCode::ITOB),
             0xc1 => output.push(OpCode::BTOI),
             // literals
@@ -331,23 +331,21 @@ impl Executor {
             OpCode::OR => self.do_binop(|x, y| Some(Value::Int(x.as_int()? | y.as_int()?)))?,
             OpCode::XOR => self.do_binop(|x, y| Some(Value::Int(x.as_int()? ^ y.as_int()?)))?,
             OpCode::NOT => self.do_monop(|x| Some(Value::Int(!x.as_int()?)))?,
-            OpCode::EQL => self.do_binop(|x, y| match (x,y) {
+            OpCode::EQL => self.do_binop(|x, y| match (x, y) {
                 (Value::Int(x), Value::Int(y)) => {
                     if x == y {
                         Some(Value::Int(U256::one()))
                     } else {
                         Some(Value::Int(U256::zero()))
                     }
-                },
+                }
                 (Value::Bytes(x), Value::Bytes(y)) => {
-                    if x.len() == y.len()
-                        && x.iter().zip(y).all(|(a, ref b)| a == b)
-                    {
+                    if x.len() == y.len() && x.iter().zip(y).all(|(a, ref b)| a == b) {
                         Some(Value::Int(U256::one()))
                     } else {
                         Some(Value::Int(U256::zero()))
                     }
-                },
+                }
                 _ => None,
             })?,
             OpCode::LT => self.do_binop(|x, y| {
@@ -505,7 +503,12 @@ impl Executor {
             // Conversions
             OpCode::BTOI => self.do_monop(|x| {
                 let mut bytes = x.as_bytes()?;
-                Some(Value::Int( bytes.slice(..32).iter().fold(U256::zero(), |acc, b| (acc * 256) + *b) ))
+                Some(Value::Int(
+                    bytes
+                        .slice(..32)
+                        .iter()
+                        .fold(U256::zero(), |acc, b| (acc * 256) + *b),
+                ))
             })?,
             OpCode::ITOB => self.do_monop(|x| {
                 let n = x.as_int()?;
