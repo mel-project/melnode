@@ -7,6 +7,56 @@ pub mod interactive;
 pub mod noninteractive;
 pub mod wallet;
 
+///
+/// themelio-client json
+///
+///
+
+#[derive(Debug, Clone, StructOpt)]
+#[structopt(name = "Themelio Client CLI")]
+/// A command line application to interact with Themelio.
+///
+/// An interactive interactive can be used as a CLI wallet allowing a user
+/// to store wallet state data locally as well as send and query data from the network.
+///
+/// Other non-interactive command options are suitable for automation
+/// and can execute a single command to completion given all the arguments.
+pub struct ClientOpts {
+    /// IP Address with port used to establish a connection to host
+    #[structopt(long, default_value = "127.0.0.1:8000")]
+    pub host: smol::net::SocketAddr,
+
+    /// File path to database for client interactive storage
+    #[structopt(long, short, parse(from_os_str), default_value = "/tmp/testclient")]
+    pub database: std::path::PathBuf,
+
+    /// Automation-centric commands to executed with the exception of the interactive 'interactive' command.
+    #[structopt(subcommand)]
+    pub sub_opts: ClientSubOpts
+}
+
+#[derive(StructOpt, Clone, Debug)]
+/// Represents the command options to run a specific command.
+///
+pub enum ClientSubOpts {
+    WalletShell,
+    SystemShell(SystemShellOpts)
+}
+
+#[derive(StructOpt, Clone, Debug)]
+pub struct SystemShellOpts {
+
+}
+
+pub enum OutputMode {
+    Console,
+    Json
+}
+
+/// interactive-mode
+/// system-shell-mode <json?> <args>
+
+
 #[derive(Debug, Clone, StructOpt)]
 #[structopt(name = "Themelio Client CLI")]
 /// A command line application to interact with Themelio.
