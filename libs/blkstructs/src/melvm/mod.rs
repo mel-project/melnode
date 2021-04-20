@@ -1,3 +1,4 @@
+use crate::CoinDataHeight;
 pub use crate::{CoinData, CoinID, Transaction};
 use arbitrary::Arbitrary;
 use primitive_types::U256;
@@ -11,8 +12,13 @@ mod lexer;
 pub struct Covenant(pub Vec<u8>);
 
 impl Covenant {
-    pub fn check(&self, tx: &Transaction, additional_input: &[u8]) -> bool {
-        self.check_opt(tx, additional_input).is_some()
+    pub fn check(
+        &self,
+        tx: &Transaction,
+        spending_coinid: &CoinID,
+        spending_cdh: &CoinDataHeight,
+    ) -> bool {
+        self.check_opt(tx, spending_coinid, spending_cdh).is_some()
     }
 
     pub fn check_raw(&self, args: &[Value]) -> bool {
@@ -31,14 +37,20 @@ impl Covenant {
         tmelcrypt::hash_single(&self.0)
     }
 
-    fn check_opt(&self, tx: &Transaction, additional_input: &[u8]) -> Option<()> {
+    fn check_opt(
+        &self,
+        tx: &Transaction,
+        spending_coinid: &CoinID,
+        spending_cdh: &CoinDataHeight,
+    ) -> Option<()> {
         let tx_val = Value::from(tx.clone());
         let ops = self.to_ops()?;
         let mut hm = HashMap::new();
         hm.insert(0, tx_val);
         hm.insert(1, Value::from_bytes(&tx.hash_nosigs().0));
         hm.insert(2, Value::from_bytes(&tmelcrypt::hash_single(&self.0)));
-        hm.insert(3, Value::from_bytes(additional_input));
+        hm.insert(3, Value::from(*spending_coinid));
+        hm.insert(4, Value::from(spending_cdh.clone()));
         Executor::new(hm).run_return(&ops)
     }
 
@@ -753,6 +765,12 @@ impl From<u128> for Value {
     }
 }
 
+impl From<u64> for Value {
+    fn from(n: u64) -> Self {
+        Value::Int(U256::from(n))
+    }
+}
+
 impl From<CoinData> for Value {
     fn from(cd: CoinData) -> Self {
         Value::Vector(im::vector![
@@ -761,6 +779,12 @@ impl From<CoinData> for Value {
             cd.denom.into(),
             cd.additional_data.into()
         ])
+    }
+}
+
+impl From<CoinDataHeight> for Value {
+    fn from(cd: CoinDataHeight) -> Self {
+        Value::Vector(im::vector![cd.coin_data.into(), cd.height.into()])
     }
 }
 
