@@ -758,7 +758,8 @@ impl From<CoinData> for Value {
         Value::Vector(im::vector![
             cd.covhash.0.into(),
             cd.value.into(),
-            cd.denom.into()
+            cd.denom.into(),
+            cd.additional_data.into()
         ])
     }
 }
