@@ -1,9 +1,8 @@
 use crate::common::context::ExecutionContext;
 use crate::common::executor::CommonCommandExecutor;
-use crate::interactive::command::InteractiveCommand;
-use crate::interactive::input::{format_prompt, read_line};
-use crate::interactive::output::{command_error, exit, help, readline_error};
-use crate::interactive::sub::runner::InteractiveSubCommandRunner;
+use crate::wallet_shell::input::{format_prompt, read_line};
+use crate::wallet_shell::command::ShellCommand;
+use crate::wallet_shell::output::exit;
 
 /// Run an wallet_shell command given an execution context
 /// This is for end users to create and show wallets
@@ -27,7 +26,7 @@ impl WalletShellRunner {
             match read_line(&prompt).await {
                 Ok(cmd) => {
                     // Exit if the user chooses to exit.
-                    if cmd == InteractiveCommand::Exit {
+                    if cmd == ShellCommand::Exit {
                         exit().await?;
                         return Ok(());
                     }

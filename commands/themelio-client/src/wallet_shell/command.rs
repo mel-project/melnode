@@ -3,11 +3,11 @@ use std::convert::TryFrom;
 use serde::{Deserialize, Serialize};
 use serde_scan::ScanError;
 
-/// Available wallet_shell commands with their string arguments.
+/// All interactive wallt shell commands and their params.
 /// Note that serde scan is used here to convert inline string input arguments for matching.
 #[derive(Eq, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub enum InteractiveCommand {
+pub enum ShellCommand {
     CreateWallet(String),
     ShowWallets,
     OpenWallet(String, String),
@@ -16,12 +16,12 @@ pub enum InteractiveCommand {
     Exit,
 }
 
-impl TryFrom<String> for InteractiveCommand {
+impl TryFrom<String> for ShellCommand {
     type Error = ScanError;
 
     /// Uses serde scan internally to parse a whitespace delimited string into a command
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        let cmd: Result<InteractiveCommand, _> = serde_scan::from_str(&value);
+        let cmd: Result<ShellCommand, _> = serde_scan::from_str(&value);
         cmd
     }
 }
