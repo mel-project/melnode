@@ -1,5 +1,5 @@
 use crate::common::context::ExecutionContext;
-use crate::wallet_shell::prompt::{format_prompt, read_line};
+use crate::wallet_shell::prompt::{format_prompt, read_line, ShellInputPrompt};
 use crate::wallet_shell::command::ShellCommand;
 use crate::wallet_shell::output::{exit, command_error, readline_error, help};
 use crate::wallet_shell::sub::runner::WalletSubShellRunner;
@@ -19,7 +19,8 @@ impl WalletShellRunner {
     /// Run wallet_shell commands from user input until user exits.
     pub async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
-        let prompt = format_prompt(&self.context.version).await?;
+        // let prompt = ShellInputPrompt::format_prompt(&self.context.version);
+        let prompt = ShellInputPrompt::format_prompt(&self.version);
 
         loop {
             // Get command from user input.

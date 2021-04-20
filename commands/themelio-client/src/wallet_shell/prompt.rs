@@ -3,9 +3,9 @@ use colored::Colorize;
 use crate::wallet_shell::command::ShellCommand;
 use crate::common::prompt::prompt::{InputPrompt, common_read_line};
 
-pub struct InputPlainPrompt {}
+pub struct ShellInputPrompt {}
 
-impl InputPrompt<ShellCommand> for InputPlainPrompt {
+impl InputPrompt<ShellCommand> for ShellInputPrompt {
     fn format_prompt(version: &str) -> anyhow::Result<String> {
         let prompt_stack: Vec<String> = vec![
         format!("themelio-client").cyan().bold().to_string(),

@@ -9,13 +9,15 @@ use blkstructs::{CoinDataHeight, CoinID};
 use crate::wallet::data::WalletData;
 use crate::wallet::wallet::Wallet;
 use crate::common::formatter::formatter::OutputFormatter;
+use async_trait::async_trait;
 
 pub struct PlainOutputFormatter {
 }
 
+#[async_trait]
 impl OutputFormatter for PlainOutputFormatter {
     /// Display name, secret key and covenant of the wallet.
-    fn wallet(&self, wallet: Wallet) -> anyhow::Result<()> {
+    async fn wallet(&self, wallet: Wallet) -> anyhow::Result<()> {
         let mut tw = TabWriter::new(vec![]);
         writeln!(tw, ">> New data:\t{}", wallet.name.bold()).unwrap();
         writeln!(
@@ -30,7 +32,7 @@ impl OutputFormatter for PlainOutputFormatter {
     }
 
     /// Display all stored wallet wallet addresses by name.
-    fn wallet_addresses_by_name(&self, wallets: BTreeMap<String, WalletData>) -> anyhow::Result<()> {
+    async fn wallet_addresses_by_name(&self, wallets: BTreeMap<String, WalletData>) -> anyhow::Result<()> {
         let mut tw = TabWriter::new(vec![]);
         writeln!(tw, ">> [NAME]\t[ADDRESS]");
         for (name, wallet) in wallets {
@@ -42,7 +44,7 @@ impl OutputFormatter for PlainOutputFormatter {
     }
 
     /// Display message showing height and coin id information upon a coin being confimed.
-    fn coin_confirmed(&self, coin_data_height: &CoinDataHeight, coin: &CoinID) -> anyhow::Result<()> {
+    async fn coin_confirmed(&self, coin_data_height: &CoinDataHeight, coin: &CoinID) -> anyhow::Result<()> {
         eprintln!(
             ">>> Coin is confirmed at current height {}",
             coin_data_height.height
@@ -55,17 +57,17 @@ impl OutputFormatter for PlainOutputFormatter {
     }
 
     /// Display message that coin is not yet confirmed.
-    fn coin_pending(&self) -> anyhow::Result<()> {
+    async fn coin_pending(&self) -> anyhow::Result<()> {
         eprintln!(">>> Coin is not yet confirmed");
         Ok(())
     }
 
     /// Display function which displays pending message until a coin is confirmed
     /// at which a confirmed message will be displayed.
-    fn check_coin(&self, coin_data_height: &Option<CoinDataHeight>, coin_id: &CoinID) -> anyhow::Result<()> {
+    async fn check_coin(&self, coin_data_height: &Option<CoinDataHeight>, coin_id: &CoinID) -> anyhow::Result<()> {
         match coin_data_height {
-            None => coin_pending().await,
-            Some(coin_data_height) => self.coin_confirmed(&coin_data_height, &coin_id).await,
+            None => self.coin_pending().await?,
+            Some(coin_data_height) => self.coin_confirmed(&coin_data_height, &coin_id).await?,
         }
         Ok(())
     }

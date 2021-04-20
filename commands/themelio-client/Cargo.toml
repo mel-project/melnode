@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 anyhow="1"
+async-trait = "0.1.50"
 im="15"
 hex="0.4"
 rustyline = "7.1.0"
