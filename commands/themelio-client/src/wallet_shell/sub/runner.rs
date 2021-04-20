@@ -1,5 +1,5 @@
 use crate::common::context::ExecutionContext;
-use crate::common::executor::CommonCommandExecutor;
+use crate::common::executor::CommonExecutor;
 use crate::interactive::executor::InteractiveCommandExecutor;
 use crate::interactive::sub::command::InteractiveSubCommand;
 use crate::interactive::sub::input::{format_sub_prompt, read_line};

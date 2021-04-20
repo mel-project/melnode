@@ -6,11 +6,11 @@ use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::Wallet;
 
 /// Responsible for common exeuction between wallet_shell and non-wallet_shell modes.
-pub struct CommonCommandExecutor {
+pub struct CommonExecutor {
     pub context: ExecutionContext,
 }
 
-impl CommonCommandExecutor {
+impl CommonExecutor {
     pub fn new(context: ExecutionContext) -> Self {
         Self { context }
     }

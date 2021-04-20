@@ -1,7 +1,7 @@
 use blkstructs::Transaction;
 
 use crate::common::context::ExecutionContext;
-use crate::common::executor::CommonCommandExecutor;
+use crate::common::executor::CommonExecutor;
 use crate::wallet::manager::WalletManager;
 
 /// Responsible for executing a single client CLI command non-interactively.
@@ -16,7 +16,7 @@ impl InteractiveCommandExecutor {
 
     /// Creates a new wallet, stores it into db and outputs the name & secret.
     pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<()> {
-        let executor = CommonCommandExecutor::new(self.context.clone());
+        let executor = CommonExecutor::new(self.context.clone());
         executor.create_wallet(wallet_name).await
     }
 
@@ -42,7 +42,7 @@ impl InteractiveCommandExecutor {
 
         // Wait for tx confirmation
         let sleep_sec = self.context.sleep_sec;
-        let executor = CommonCommandExecutor::new(self.context.clone());
+        let executor = CommonExecutor::new(self.context.clone());
         executor.confirm_tx(&tx, &wallet, sleep_sec).await?;
 
         Ok(())

@@ -11,7 +11,6 @@ use crate::wallet::wallet::Wallet;
 use crate::common::formatter::formatter::OutputFormatter;
 
 pub struct PlainOutputFormatter {
-
 }
 
 impl OutputFormatter for PlainOutputFormatter {
