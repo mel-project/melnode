@@ -49,14 +49,14 @@
 //     let mut tw = TabWriter::new(vec![]);
 
 //     match input.split(' ').collect::<Vec<_>>().as_slice() {
-//         &["interactive-new", wallet_name] => {
+//         &["wallet_shell-new", wallet_name] => {
 //             if available_wallets.get(wallet_name).is_some() {
 //                 eprintln!(">> {}: data already exists", "ERROR".red().bold());
 //                 return Ok(false);
 //             }
 //             let (sk, _pk, wallet_data) = WalletData::generate();
-//             let interactive = available_wallets.insert(wallet_name, &wallet_data);
-//             assert!(!interactive, "Internal error: DB state inconsistent");
+//             let wallet_shell = available_wallets.insert(wallet_name, &wallet_data);
+//             assert!(!wallet_shell, "Internal error: DB state inconsistent");
 //             writeln!(tw, ">> New data:\t{}", wallet_name.bold()).unwrap();
 //             writeln!(
 //                 tw,
@@ -67,11 +67,11 @@
 //             writeln!(tw, ">> Secret:\t{}", hex::encode(sk.0).dimmed()).unwrap();
 //             tw.flush().unwrap();
 //         }
-//         &["interactive-unlock", wallet_name, wallet_secret] => {
-//             if let Some(interactive) = available_wallets.get(&wallet_name) {
+//         &["wallet_shell-unlock", wallet_name, wallet_secret] => {
+//             if let Some(wallet_shell) = available_wallets.get(&wallet_name) {
 //                 let wallet_secret = hex::decode(wallet_secret)?;
 //                 let wallet_secret = tmelcrypt::Ed25519SK(wallet_secret.as_slice().try_into()?);
-//                 if melvm::Covenant::std_ed25519_pk(wallet_secret.to_public()) != interactive.my_script {
+//                 if melvm::Covenant::std_ed25519_pk(wallet_secret.to_public()) != wallet_shell.my_script {
 //                     return Err(anyhow::anyhow!(
 //                         "unlocking failed, make sure you have the right secret!"
 //                     ));
@@ -81,7 +81,7 @@
 //                 loop {
 //                     let mut active_wallet = ActiveWallet::new(
 //                         wallet_secret,
-//                         interactive.clone(),
+//                         wallet_shell.clone(),
 //                         cfg.bootstrap,
 //                         &storage_path,
 //                     );
@@ -91,7 +91,7 @@
 //                             break;
 //                         }
 //                         Err(err) => {
-//                             eprintln!("Error encountered when running sub interactive {}", err);
+//                             eprintln!("Error encountered when running sub wallet_shell {}", err);
 //                             continue;
 //                         }
 //                     }
@@ -99,11 +99,11 @@
 //                 prompt_stack.pop();
 //             }
 //         }
-//         &["interactive-list"] => {
+//         &["wallet_shell-list"] => {
 //             let wallets = available_wallets.get_all();
 //             writeln!(tw, ">> [NAME]\t[ADDRESS]")?;
-//             for (name, interactive) in wallets.iter() {
-//                 writeln!(tw, ">> {}\t{}", name, interactive.my_script.hash().to_addr())?;
+//             for (name, wallet_shell) in wallets.iter() {
+//                 writeln!(tw, ">> {}\t{}", name, wallet_shell.my_script.hash().to_addr())?;
 //             }
 //         }
 //         &["exit"] => {
@@ -111,9 +111,9 @@
 //         }
 //         _other => {
 //             eprintln!("\nAvailable commands are: ");
-//             eprintln!(">> interactive-new <interactive-name>");
-//             eprintln!(">> interactive-unlock <interactive-name> <secret>");
-//             eprintln!(">> interactive-list");
+//             eprintln!(">> wallet_shell-new <wallet_shell-name>");
+//             eprintln!(">> wallet_shell-unlock <wallet_shell-name> <secret>");
+//             eprintln!(">> wallet_shell-list");
 //             eprintln!(">> exit");
 //             return Ok(false);
 //         }
@@ -131,7 +131,7 @@
 //     .await
 // }
 
-// /// Handle command line inputs for sub interactive mode
+// /// Handle command line inputs for sub wallet_shell mode
 // async fn run_active_wallet(
 //     wallet_name: &str,
 //     active_wallet: &mut ActiveWallet,
@@ -183,7 +183,7 @@
 //                             }
 //                         );
 //                         active_wallet.add_coin(&coin_id, &coin_data_height).await?;
-//                         eprintln!("Added coin to interactive");
+//                         eprintln!("Added coin to wallet_shell");
 //                     }
 //                 }
 //             }

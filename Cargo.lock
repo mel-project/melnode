@@ -3191,6 +3191,7 @@ dependencies = [
  "nodeprot",
  "rustyline",
  "serde",
+ "serde_json",
  "serde_scan",
  "sled",
  "smol",
