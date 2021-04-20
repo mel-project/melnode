@@ -34,8 +34,8 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()>{
             runner.run().await
         }
         ClientSubOpts::WalletUtils(util_opts) => {
-            let formatter = util_opts.output_format.make();
-            let executor = WalletUtilsExecutor::new(context, formatter);
+            let output_formatter = util_opts.output_format.make();
+            let executor = WalletUtilsExecutor::new(context, output_formatter);
             match util_opts.cmd {
                 WalletUtilsCommand::CreateWallet { wallet_name } => {
                     executor.create_wallet(&wallet_name).await

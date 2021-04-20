@@ -8,13 +8,13 @@ use crate::wallet::manager::WalletManager;
 
 /// A sub-wallet_shell runner executed within the higher-level wallet_shell.
 /// This wallet_shell unlocks a wallet, transacts with the network and shows balances.
-pub(crate) struct InteractiveSubCommandRunner {
+pub(crate) struct WalletSubShellRunner {
     context: ExecutionContext,
     name: String,
     secret: String,
 }
 
-impl InteractiveSubCommandRunner {
+impl WalletSubShellRunner {
     /// Create a new sub wallet_shell runner if wallet exists and we can unlock & load with the provided secret.
     pub(crate) async fn new(
         context: ExecutionContext,

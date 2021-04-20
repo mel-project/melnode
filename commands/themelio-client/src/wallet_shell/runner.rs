@@ -2,7 +2,8 @@ use crate::common::context::ExecutionContext;
 use crate::common::executor::CommonCommandExecutor;
 use crate::wallet_shell::input::{format_prompt, read_line};
 use crate::wallet_shell::command::ShellCommand;
-use crate::wallet_shell::output::{exit, command_error, readline_error};
+use crate::wallet_shell::output::{exit, command_error, readline_error, help};
+use crate::wallet_shell::sub::runner::WalletSubShellRunner;
 
 /// Run an wallet_shell command given an execution context
 /// This is for end users to create and show wallets
@@ -60,7 +61,7 @@ impl WalletShellRunner {
 
     /// Open a sub-wallet_shell given the name and secret and run in sub wallet_shell mode until user exits.
     async fn open_wallet(&self, name: &str, secret: &str) -> anyhow::Result<()> {
-        let runner = InteractiveSubCommandRunner::new(self.context.clone(), name, secret).await?;
+        let runner = WalletSubShellRunner::new(self.context.clone(), name, secret).await?;
         runner.run().await?;
         Ok(())
     }
