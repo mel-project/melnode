@@ -57,7 +57,7 @@ impl Covenant {
 
     pub fn from_ops(ops: &[OpCode]) -> Option<Self> {
         let mut output: Vec<u8> = Vec::new();
-        // go through output
+        // go through formatter
         for op in ops {
             Covenant::assemble_one(op, &mut output)?
         }
@@ -99,7 +99,7 @@ impl Covenant {
             0x26 => output.push(OpCode::GT),
             // cryptography
             0x30 => output.push(OpCode::HASH(u16arg(bcode)?)),
-            //0x31 => output.push(OpCode::SIGE),
+            //0x31 => formatter.push(OpCode::SIGE),
             0x32 => output.push(OpCode::SIGEOK(u16arg(bcode)?)),
             // storage
             0x40 => output.push(OpCode::LOAD),
@@ -187,7 +187,7 @@ impl Covenant {
                 output.push(0x30);
                 output.extend(&n.to_be_bytes());
             }
-            //OpCode::SIGE => output.push(0x31),
+            //OpCode::SIGE => formatter.push(0x31),
             OpCode::SIGEOK(n) => {
                 output.push(0x32);
                 output.extend(&n.to_be_bytes())

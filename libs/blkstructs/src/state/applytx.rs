@@ -200,7 +200,7 @@ impl<'a> StateHandle<'a> {
         let my_speed = 2u128.pow(difficulty);
         let reward_real = melmint::calculate_reward(my_speed, self.state.dosc_speed, difficulty);
         let reward_nom = melmint::dosc_inflate_r2n(self.state.height, reward_real);
-        // ensure that the total output of DOSCs is correct
+        // ensure that the total formatter of DOSCs is correct
         let total_dosc_output = tx
             .total_outputs()
             .get(DENOM_DOSC)

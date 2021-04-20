@@ -2,9 +2,9 @@ use structopt::StructOpt;
 use serde::{Deserialize, Serialize};
 use serde_scan::ScanError;
 use std::str::FromStr;
-use crate::common::formatter::OutputFormatter;
-use crate::common::output::plain::PlainOutputFormatter;
-use crate::common::output::json::JsonOutputFormatter;
+use crate::common::formatter::formatter::OutputFormatter;
+use crate::common::formatter::plain::PlainOutputFormatter;
+use crate::common::formatter::json::JsonOutputFormatter;
 
 #[derive(Debug, Clone, StructOpt)]
 #[structopt(name = "Themelio Client CLI")]
@@ -13,7 +13,7 @@ use crate::common::output::json::JsonOutputFormatter;
 /// The wallet-shell mode is suitable for human interaction to manage wallets and transact with the network.
 ///
 /// The wallet_utils mode is more suitable automation and
-/// executes one-line commands with custom output formats like JSON.
+/// executes one-line commands with custom formatter formats like JSON.
 pub struct ClientOpts {
     /// IP Address with port used to establish a connection to host
     #[structopt(long, short, default_value = "127.0.0.1:8000")]
@@ -43,7 +43,7 @@ pub enum ClientSubOpts {
     WalletUtils(WalletUtilsOpts)
 }
 
-/// Represents how to format output.
+/// Represents how to format formatter.
 #[derive(StructOpt, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum OutputFormat {
@@ -64,7 +64,7 @@ impl OutputFormat {
     }
 }
 
-/// Uses serde scan to parse a string into an output format enum.
+/// Uses serde scan to parse a string into an formatter format enum.
 impl FromStr for OutputFormat {
     type Err = ScanError;
 
@@ -75,9 +75,9 @@ impl FromStr for OutputFormat {
 }
 
 #[derive(StructOpt, Clone, Debug)]
-/// Allows end user to select an output format on a specific util command.
+/// Allows end user to select an formatter format on a specific util command.
 pub struct WalletUtilsOpts {
-    /// Select how to format the output of a utility command.
+    /// Select how to format the formatter of a utility command.
     #[structopt(long, short)]
     pub output_format: OutputFormat,
 

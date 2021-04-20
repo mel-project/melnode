@@ -73,7 +73,7 @@ impl NetState {
                         match to_wait {
                             Ok(output) => {
                                 trace!(
-                                    "addrspam sent {:?} to {:?}, output {:?}",
+                                    "addrspam sent {:?} to {:?}, formatter {:?}",
                                     rand_route,
                                     rand_neigh,
                                     output

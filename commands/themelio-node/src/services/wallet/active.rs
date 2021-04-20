@@ -105,12 +105,12 @@
 //         assert_eq!(unit, "TML");
 //         let dest_addr = tmelcrypt::HashVal::from_addr(dest_addr)
 //             .ok_or_else(|| anyhow::anyhow!("can't decode as address"))?;
-//         let output = CoinData {
+//         let formatter = CoinData {
 //             denom: DENOM_TMEL.to_vec(),
 //             value: number * MICRO_CONVERTER,
 //             covhash: dest_addr,
 //         };
-//         let outputs = vec![output.clone()];
+//         let outputs = vec![formatter.clone()];
 //         let (header, _instant) = self.client.last_header().await?;
 //         let fee_multiplier = header.fee_multiplier;
 //
