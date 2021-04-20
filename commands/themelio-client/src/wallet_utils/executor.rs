@@ -2,17 +2,18 @@ use blkstructs::{CoinDataHeight, Transaction};
 
 use crate::common::context::ExecutionContext;
 use crate::common::executor::CommonCommandExecutor;
-use crate::interactive::runner::InteractiveCommandRunner;
 use crate::wallet::manager::WalletManager;
+use crate::common::formatter::OutputFormatter;
 
 /// Responsible for executing a single client CLI command non-interactively.
-pub struct NonInteractiveCommandExecutor {
-    pub context: ExecutionContext,
+pub struct WalletUtilsExecutor {
+    context: ExecutionContext,
+    formatter: Box<dyn OutputFormatter + Send + Sync + 'static>
 }
 
-impl NonInteractiveCommandExecutor {
-    pub fn new(context: ExecutionContext) -> Self {
-        Self { context }
+impl WalletUtilsExecutor {
+    pub fn new(context: ExecutionContext, formatter:Box<dyn OutputFormatter + Send + Sync + 'static>) -> Self {
+        Self { context, formatter }
     }
 
     /// Creates a new wallet, stores it into db and outputs the name & secret.
@@ -35,14 +36,14 @@ impl NonInteractiveCommandExecutor {
         let wallet = manager.load_wallet(wallet_name, secret).await?;
 
         // Create faucet tx.
-        let fee = self.context.default_fee;
+        let fee = self.context.fee;
         let tx = wallet.create_faucet_tx(amount, unit, fee).await?;
 
         // Send the faucet tx.
         wallet.send_tx(&tx).await?;
 
         // Wait for tx confirmation
-        let sleep_sec = self.context.default_sleep_sec;
+        let sleep_sec = self.context.sleep_sec;
         let executor = CommonCommandExecutor::new(self.context.clone());
         executor.confirm_tx(&tx, &wallet, sleep_sec).await?;
 

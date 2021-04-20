@@ -8,7 +8,7 @@ use blkstructs::{CoinDataHeight, CoinID};
 
 use crate::wallet::data::WalletData;
 use crate::wallet::wallet::Wallet;
-use crate::common::output::formatter::OutputFormatter;
+use crate::common::formatter::OutputFormatter;
 
 pub struct PlainOutputFormatter {
 

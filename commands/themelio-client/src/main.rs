@@ -2,6 +2,7 @@ use crate::common::context::ExecutionContext;
 use crate::opts::{ClientOpts, ClientSubOpts, WalletUtilsCommand};
 use structopt::StructOpt;
 use crate::wallet_shell::runner::WalletShellRunner;
+use crate::wallet_utils::executor::WalletUtilsExecutor;
 
 mod common;
 mod wallet;
@@ -18,13 +19,14 @@ fn main() {
 }
 
 /// Convert options into an execution context and then dispatch a command.
-async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
+async fn dispatch(opts: ClientOpts) -> anyhow::Result<()>{
     let context = ExecutionContext {
         version: env!("CARGO_PKG_VERSION").to_string(),
         network: blkstructs::NetID::Testnet,
         host: opts.host,
         database: opts.database,
-        default_sleep_sec: opts.sleep_sec,
+        sleep_sec: opts.sleep_sec,
+        fee: opts.fee
     };
     match opts.sub_opts {
         ClientSubOpts::WalletShell => {
@@ -32,8 +34,8 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
             runner.run().await
         }
         ClientSubOpts::WalletUtils(util_opts) => {
-            let formater = OutputFormater::make(util_opts.output_format);
-            let executor = WalletUtilsExecutor::new(&context, &formatter);
+            let formatter = util_opts.output_format.make();
+            let executor = WalletUtilsExecutor::new(context, formatter);
             match util_opts.cmd {
                 WalletUtilsCommand::CreateWallet { wallet_name } => {
                     executor.create_wallet(&wallet_name).await

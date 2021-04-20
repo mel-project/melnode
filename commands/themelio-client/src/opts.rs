@@ -2,6 +2,9 @@ use structopt::StructOpt;
 use serde::{Deserialize, Serialize};
 use serde_scan::ScanError;
 use std::str::FromStr;
+use crate::common::formatter::OutputFormatter;
+use crate::common::output::plain::PlainOutputFormatter;
+use crate::common::output::json::JsonOutputFormatter;
 
 #[derive(Debug, Clone, StructOpt)]
 #[structopt(name = "Themelio Client CLI")]
@@ -24,6 +27,10 @@ pub struct ClientOpts {
     #[structopt(long, short, default_value = "5")]
     pub sleep_sec: u64,
 
+    /// Time to sleep in seconds while polling for transaction confirmation data from node.
+    #[structopt(long, short, default_value = "500000")]
+    pub fee: u128,
+
     /// Contains all the sub-command options for a client
     #[structopt(subcommand)]
     pub sub_opts: ClientSubOpts
@@ -45,13 +52,15 @@ pub enum OutputFormat {
 }
 
 impl OutputFormat {
-    pub async fn make(&self) -> OutputFormatter {
-        match self {
+    pub fn make(&self) -> Box<dyn OutputFormatter + Sync + Send + 'static> {
+        return match self {
             OutputFormat::Plain => {
-                return 
+                Box::new(PlainOutputFormatter {})
             }
-            OutputFormat::Json => {}
-        }
+            OutputFormat::Json => {
+                Box::new(JsonOutputFormatter {})
+            }
+        };
     }
 }
 

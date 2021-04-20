@@ -35,14 +35,14 @@ impl InteractiveCommandExecutor {
 
         // Create faucet tx.
         // TODO: add input prompt here !
-        let fee = self.context.default_fee;
+        let fee = self.context.fee;
         let tx = wallet.create_faucet_tx(amount, unit, fee).await?;
 
         // Send the faucet tx.
         wallet.send_tx(&tx).await?;
 
         // Wait for tx confirmation
-        let sleep_sec = self.context.default_sleep_sec;
+        let sleep_sec = self.context.sleep_sec;
         let executor = CommonCommandExecutor::new(self.context.clone());
         executor.confirm_tx(&tx, &wallet, sleep_sec).await?;
 
