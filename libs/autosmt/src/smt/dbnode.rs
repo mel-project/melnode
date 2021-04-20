@@ -225,6 +225,7 @@ impl InternalNode {
         Internal(newself)
     }
 
+    #[allow(clippy::vec_init_then_push)]
     fn proof_frag(&self, path: &[bool]) -> Vec<tmelcrypt::HashVal> {
         let idx = path_to_idx(path);
         let mut vec = Vec::new();

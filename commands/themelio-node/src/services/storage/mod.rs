@@ -1,9 +1,9 @@
+#![allow(clippy::upper_case_acronyms)]
+
 mod sled_tree;
 use std::sync::Arc;
 
-use blkstructs::{
-    ConsensusProof, GenesisConfig, ProposerAction, SealedState, State, StateError, Transaction,
-};
+use blkstructs::{ConsensusProof, GenesisConfig, SealedState, State, StateError, Transaction};
 use dashmap::DashMap;
 use lru::LruCache;
 use parking_lot::RwLock;

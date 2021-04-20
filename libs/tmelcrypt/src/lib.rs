@@ -1,3 +1,5 @@
+#![allow(clippy::upper_case_acronyms)]
+
 use arbitrary::Arbitrary;
 use ed25519_dalek::{Signer, Verifier};
 use fmt::Display;

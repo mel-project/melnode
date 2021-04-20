@@ -2,7 +2,6 @@ use std::{
     collections::BTreeMap,
     net::SocketAddr,
     sync::{Arc, Mutex},
-    time::Instant,
 };
 
 use autosmt::{CompressedProof, FullProof};

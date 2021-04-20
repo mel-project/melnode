@@ -1,3 +1,5 @@
+#![allow(clippy::upper_case_acronyms)]
+
 pub mod database;
 mod dbnode;
 pub mod hash;

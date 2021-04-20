@@ -31,8 +31,8 @@ pub fn data_hashes(key: tmelcrypt::HashVal, data: &[u8]) -> Vec<tmelcrypt::HashV
     let compute = || {
         let path = merk::key_to_path(key);
         let mut ptr = hash::datablock(data);
-        let mut hashes = Vec::new();
-        hashes.push(ptr);
+        let mut hashes = vec![ptr];
+
         for data_on_right in path.iter().rev() {
             if *data_on_right {
                 // add the opposite hash
