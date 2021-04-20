@@ -43,15 +43,8 @@ impl Covenant {
         spending_coinid: &CoinID,
         spending_cdh: &CoinDataHeight,
     ) -> Option<()> {
-        let tx_val = Value::from(tx.clone());
         let ops = self.to_ops()?;
-        let mut hm = HashMap::new();
-        hm.insert(0, tx_val);
-        hm.insert(1, Value::from_bytes(&tx.hash_nosigs().0));
-        hm.insert(2, Value::from_bytes(&tmelcrypt::hash_single(&self.0)));
-        hm.insert(3, Value::from(*spending_coinid));
-        hm.insert(4, Value::from(spending_cdh.clone()));
-        Executor::new(hm).run_return(&ops)
+        Executor::from(tx.clone(), *spending_coinid, spending_cdh.clone()).run_return(&ops)
     }
 
     pub fn std_ed25519_pk(pk: tmelcrypt::Ed25519PK) -> Self {
@@ -282,6 +275,42 @@ impl Executor {
             stack: Vec::new(),
             heap: heap_init,
         }
+    }
+    pub fn from(
+        tx: Transaction,
+        spending_coinid: CoinID,
+        spending_cdh: CoinDataHeight,
+    ) -> Self {
+        let mut hm = HashMap::new();
+        hm.insert(1, Value::from_bytes(&tx.hash_nosigs().0));
+        let tx_val = Value::from(tx);
+        hm.insert(0, tx_val);
+
+        let CoinID {
+            txhash,
+            index,
+        } = spending_coinid;
+
+        hm.insert(2, txhash.0.into());
+        hm.insert(3, Value::Int(U256::from(index)));
+
+        let CoinDataHeight {
+            coin_data: CoinData {
+                covhash,
+                value,
+                denom,
+                additional_data,
+            },
+            height
+        } = spending_cdh;
+
+        hm.insert(4, covhash.0.into());
+        hm.insert(5, value.into());
+        hm.insert(6, denom.into());
+        hm.insert(7, additional_data.into());
+        hm.insert(8, height.into());
+
+        Executor::new(hm)
     }
     fn do_triop(&mut self, op: impl Fn(Value, Value, Value) -> Option<Value>) -> Option<()> {
         let stack = &mut self.stack;
