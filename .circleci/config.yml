@@ -3,10 +3,9 @@ version: 2.1
 description: Build, test and deploy Themelio.
 
 jobs:
-
   build:
     docker:
-      - image: cimg/rust:1.45.0
+      - image: cimg/rust:1.49.0
         auth:
           username: themeliolabs
           password: $DOCKERHUB_PASSWORD
@@ -34,7 +33,8 @@ jobs:
               cargo build --verbose
             fi
       - save_cache:
-          key: cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock"
+          key:
+            cargo-cache-v1-{{ arch }}-{{ checksum "<<parameters.path>>/Cargo.lock"
             }}
           paths:
             - <<parameters.path>>/target

@@ -3206,6 +3206,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "themelio-spammer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "blkstructs",
+ "nodeprot",
+ "rand 0.8.3",
+ "smol",
+ "structopt",
+]
+
+[[package]]
 name = "thiserror"
 version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
