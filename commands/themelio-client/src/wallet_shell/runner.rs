@@ -2,7 +2,7 @@ use crate::common::context::ExecutionContext;
 use crate::common::executor::CommonCommandExecutor;
 use crate::wallet_shell::input::{format_prompt, read_line};
 use crate::wallet_shell::command::ShellCommand;
-use crate::wallet_shell::output::exit;
+use crate::wallet_shell::output::{exit, command_error, readline_error};
 
 /// Run an wallet_shell command given an execution context
 /// This is for end users to create and show wallets
@@ -46,15 +46,15 @@ impl WalletShellRunner {
     }
 
     /// Dispatch and process the wallet_shell command.
-    async fn dispatch(&self, cmd: &InteractiveCommand) -> anyhow::Result<()> {
-        let ce = CommonCommandExecutor::new(self.context.clone());
+    async fn dispatch(&self, cmd: &ShellCommand) -> anyhow::Result<()> {
+        let ce = ShellCommand::new(self.context.clone());
         // Dispatch a command and return a command result.
         match &cmd {
-            InteractiveCommand::CreateWallet(name) => ce.create_wallet(name).await,
-            InteractiveCommand::ShowWallets => ce.show_wallets().await,
-            InteractiveCommand::OpenWallet(name, secret) => self.open_wallet(name, secret).await,
-            InteractiveCommand::Help => self.help().await,
-            InteractiveCommand::Exit => self.exit().await,
+            ShellCommand::CreateWallet(name) => ce.create_wallet(name).await,
+            ShellCommand::ShowWallets => ce.show_wallets().await,
+            ShellCommand::OpenWallet(name, secret) => self.open_wallet(name, secret).await,
+            ShellCommand::Help => self.help().await,
+            ShellCommand::Exit => self.exit().await,
         }
     }
 
