@@ -503,6 +503,10 @@ impl Executor {
             // Conversions
             OpCode::BTOI => self.do_monop(|x| {
                 let mut bytes = x.as_bytes()?;
+                if bytes.len() < 32 {
+                    return None;
+                }
+
                 Some(Value::Int(
                     bytes
                         .slice(..32)
@@ -514,7 +518,6 @@ impl Executor {
                 let n = x.as_int()?;
                 let mut bytes = im::vector![];
                 for i in 0..32 {
-                    //bytes.push_back(n >> (i * 8) & 255 as u8);
                     bytes.push_back(n.byte(i));
                 }
                 Some(Value::Bytes(bytes))
@@ -755,7 +758,8 @@ impl From<CoinData> for Value {
         Value::Vector(im::vector![
             cd.covhash.0.into(),
             cd.value.into(),
-            cd.denom.into()
+            cd.denom.into(),
+            cd.additional_data.into()
         ])
     }
 }
