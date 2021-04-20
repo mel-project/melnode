@@ -1,11 +1,11 @@
 use blkstructs::{CoinDataHeight, Transaction};
 
 use crate::common::context::ExecutionContext;
-use crate::common::output;
+use crate::common::output2;
 use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::Wallet;
 
-/// Responsible for common exeuction between interactive and non-interactive modes.
+/// Responsible for common exeuction between wallet_shell and non-wallet_shell modes.
 pub struct CommonCommandExecutor {
     pub context: ExecutionContext,
 }
@@ -19,7 +19,7 @@ impl CommonCommandExecutor {
     pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<()> {
         let manager = WalletManager::new(self.context.clone());
         let wallet = manager.create_wallet(wallet_name).await?;
-        output::wallet(wallet).await?;
+        output2::wallet(wallet).await?;
         Ok(())
     }
 
@@ -33,7 +33,7 @@ impl CommonCommandExecutor {
     ) -> anyhow::Result<CoinDataHeight> {
         loop {
             let (coin_data_height, coin_id) = wallet.check_tx(tx).await?;
-            output::check_coin(&coin_data_height, &coin_id).await;
+            output2::check_coin(&coin_data_height, &coin_id).await;
             self.context.sleep(sleep_sec).await?;
         }
     }

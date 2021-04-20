@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 use serde::{Deserialize, Serialize};
 use serde_scan::ScanError;
 
-/// Available interactive commands with their string arguments.
+/// Available wallet_shell commands with their string arguments.
 /// Note that serde scan is used here to convert inline string input arguments for matching.
 #[derive(Eq, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]

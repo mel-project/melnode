@@ -55,7 +55,7 @@ impl WalletManager {
         // TODO: add wallet data pk verification
         // let wallet_secret = hex::decode(wallet_secret)?;
         // let wallet_secret = tmelcrypt::Ed25519SK(wallet_secret.as_slice().try_into()?);
-        // if melvm::Covenant::std_ed25519_pk(wallet_secret.to_public()) != interactive.my_script {
+        // if melvm::Covenant::std_ed25519_pk(wallet_secret.to_public()) != wallet_shell.my_script {
         //      return Err(anyhow::anyhow!("unlocking failed, make sure you have the right secret!"));
         // }
 

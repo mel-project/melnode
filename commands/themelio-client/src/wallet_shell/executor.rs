@@ -21,7 +21,7 @@ impl InteractiveCommandExecutor {
         executor.create_wallet(wallet_name).await
     }
 
-    /// Create and sent a faucet tx in interactive mode.
+    /// Create and sent a faucet tx in wallet_shell mode.
     pub async fn faucet(
         &self,
         wallet_name: &str,
@@ -106,7 +106,7 @@ impl InteractiveCommandExecutor {
         // Ok(())
     }
 
-    /// Launch interactive mode until user exits.
+    /// Launch wallet_shell mode until user exits.
     pub async fn interactive(&self) -> anyhow::Result<()> {
         let runner = InteractiveCommandRunner::new(self.context.clone());
         runner.run().await?;

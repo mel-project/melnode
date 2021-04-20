@@ -17,7 +17,7 @@ pub(crate) async fn format_sub_prompt(version: &str, name: &str) -> anyhow::Resu
     Ok(format!("{}", prompt_stack.join(" ")))
 }
 
-/// Get user input and parse it into a interactive command
+/// Get user input and parse it into a wallet_shell command
 pub(crate) async fn read_line(prompt: &str) -> anyhow::Result<InteractiveSubCommand> {
     let input = common_read_line(prompt.to_string()).await?;
 

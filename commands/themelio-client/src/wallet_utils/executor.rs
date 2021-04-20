@@ -62,7 +62,7 @@ impl NonInteractiveCommandExecutor {
         let manager = WalletManager::new(self.context.clone());
         let wallet = manager.load_wallet(wallet_name, secret).await?;
 
-        // TODO: while we don't ask for fee prompt in command mode we should do so in interactive mode
+        // TODO: while we don't ask for fee prompt in command mode we should do so in wallet_shell mode
         // and an option type should be used somewhere here.
 
         // // Create send mel tx.
@@ -106,7 +106,7 @@ impl NonInteractiveCommandExecutor {
         // Ok(())
     }
 
-    /// Launch interactive mode until user exits.
+    /// Launch wallet_shell mode until user exits.
     pub async fn interactive(&self) -> anyhow::Result<()> {
         let runner = InteractiveCommandRunner::new(self.context.clone());
         runner.run().await?;

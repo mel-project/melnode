@@ -1,19 +1,21 @@
 use blkstructs::{
-    CoinData, CoinDataHeight, CoinID, NetID, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
+    CoinData, CoinDataHeight, CoinID, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
 };
-use nodeprot::ValClientSnapshot;
 use tmelcrypt::Ed25519SK;
-
+use serde::Serialize;
 use crate::common::context::ExecutionContext;
 use crate::wallet::data::WalletData;
 
 /// Responsible for using an in memory wallet to send transactions.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Wallet {
     pub sk: Ed25519SK,
     pub name: String,
     pub data: WalletData,
     pub context: ExecutionContext,
 }
+
 impl Wallet {
     pub fn new(sk: Ed25519SK, name: &str, data: WalletData, context: ExecutionContext) -> Self {
         let name = name.to_string();

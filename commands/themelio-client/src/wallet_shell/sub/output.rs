@@ -46,6 +46,6 @@ pub(crate) async fn help() -> anyhow::Result<()> {
 
 /// Show exit message
 pub(crate) async fn exit() -> anyhow::Result<()> {
-    eprintln!("\nExiting Themelio Client sub-interactive");
+    eprintln!("\nExiting Themelio Client sub-wallet_shell");
     Ok(())
 }

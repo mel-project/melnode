@@ -4,7 +4,7 @@ use crate::interactive::command::InteractiveCommand;
 
 /// Output the error when dispatching command.
 pub(crate) async fn command_error(err: &Error, cmd: &InteractiveCommand) -> anyhow::Result<()> {
-    eprintln!("ERROR: {} with interactive command {:?}", err, cmd);
+    eprintln!("ERROR: {} with wallet_shell command {:?}", err, cmd);
     Ok(())
 }
 
@@ -28,6 +28,6 @@ pub(crate) async fn help() -> anyhow::Result<()> {
 
 /// Show exit message.
 pub(crate) async fn exit() -> anyhow::Result<()> {
-    eprintln!("\nExiting Themelio Client interactive");
+    eprintln!("\nExiting Themelio Client wallet_shell");
     Ok(())
 }

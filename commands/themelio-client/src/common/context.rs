@@ -12,7 +12,7 @@ pub struct ExecutionContext {
     pub database: std::path::PathBuf,
     pub version: String,
     pub default_sleep_sec: u64,
-    pub default_fee: u128,
+    // pub default_fee: u128,
 }
 
 impl ExecutionContext {
