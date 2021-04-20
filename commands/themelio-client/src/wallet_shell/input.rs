@@ -1,9 +1,6 @@
 use std::convert::TryFrom;
-
 use colored::Colorize;
-
-use crate::common::input::read_line as common_read_line;
-use crate::interactive::command::InteractiveCommand;
+use crate::wallet_shell::command::ShellCommand;
 
 /// Format the wallet_shell prompt with the version of the binary.
 pub(crate) async fn format_prompt(version: &str) -> anyhow::Result<String> {
@@ -16,14 +13,14 @@ pub(crate) async fn format_prompt(version: &str) -> anyhow::Result<String> {
 }
 
 /// Get user input and parse it into a wallet_shell command.
-pub(crate) async fn read_line(prompt: &str) -> anyhow::Result<InteractiveCommand> {
-    let input = read_line_inner(prompt.to_string()).await?;
-    let wallet_cmd = InteractiveCommand::try_from(input.to_string())?;
+pub(crate) async fn read_line(prompt: &str) -> anyhow::Result<ShellCommand> {
+    let input = common_read_line(prompt.to_string()).await?;
+    let wallet_cmd = ShellCommand::try_from(input.to_string())?;
     Ok(wallet_cmd)
 }
 
 /// Handle raw user input using a prompt.
-async fn read_line_inner(prompt: String) -> anyhow::Result<String> {
+pub async fn common_read_line(prompt: String) -> anyhow::Result<String> {
     smol::unblock(move || {
         let mut rl = rustyline::Editor::<()>::new();
         Ok(rl.readline(&prompt)?)

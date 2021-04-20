@@ -10,7 +10,7 @@ type CoinIdentifier = String;
 
 #[derive(Eq, PartialEq, Clone, Serialize, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub enum InteractiveSubCommand {
+pub enum SubShellCommand {
     Faucet(Amount, Denom),
     // Deposit(String, String, String, String),
     // Withdraw(String, String, String, String),
@@ -22,12 +22,12 @@ pub enum InteractiveSubCommand {
     Exit,
 }
 
-impl TryFrom<String> for InteractiveSubCommand {
+impl TryFrom<String> for SubShellCommand {
     type Error = ScanError;
 
     /// Uses serde scan internally to parse a whitespace delimited string into a command
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        let cmd: Result<InteractiveSubCommand, _> = serde_scan::from_str(&value);
+        let cmd: Result<SubShellCommand, _> = serde_scan::from_str(&value);
         cmd
     }
 }

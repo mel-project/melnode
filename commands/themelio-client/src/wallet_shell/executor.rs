@@ -2,7 +2,6 @@ use blkstructs::Transaction;
 
 use crate::common::context::ExecutionContext;
 use crate::common::executor::CommonCommandExecutor;
-use crate::interactive::runner::InteractiveCommandRunner;
 use crate::wallet::manager::WalletManager;
 
 /// Responsible for executing a single client CLI command non-interactively.
@@ -107,7 +106,7 @@ impl InteractiveCommandExecutor {
     }
 
     /// Launch wallet_shell mode until user exits.
-    pub async fn interactive(&self) -> anyhow::Result<()> {
+    pub async fn open_wallet(&self) -> anyhow::Result<()> {
         let runner = InteractiveCommandRunner::new(self.context.clone());
         runner.run().await?;
         Ok(())

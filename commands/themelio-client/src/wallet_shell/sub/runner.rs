@@ -5,6 +5,7 @@ use crate::interactive::sub::command::InteractiveSubCommand;
 use crate::interactive::sub::input::{format_sub_prompt, read_line};
 use crate::interactive::sub::output::{dispatch_error, exit, help, readline_error};
 use crate::wallet::manager::WalletManager;
+use crate::wallet_shell::sub::input::format_sub_prompt;
 
 /// A sub-wallet_shell runner executed within the higher-level wallet_shell.
 /// This wallet_shell unlocks a wallet, transacts with the network and shows balances.

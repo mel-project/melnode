@@ -1,5 +1,4 @@
 use crate::common::context::ExecutionContext;
-use crate::common::executor::CommonCommandExecutor;
 use crate::wallet_shell::input::{format_prompt, read_line};
 use crate::wallet_shell::command::ShellCommand;
 use crate::wallet_shell::output::{exit, command_error, readline_error, help};
