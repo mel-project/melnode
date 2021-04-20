@@ -2,11 +2,19 @@ use std::convert::TryFrom;
 use colored::Colorize;
 use crate::wallet_shell::command::ShellCommand;
 use crate::common::prompt::prompt::{InputPrompt, common_read_line};
+use async_trait::async_trait;
 
 pub struct ShellInputPrompt {}
 
+impl ShellInputPrompt {
+    pub fn new() -> Self {
+        return ShellInputPrompt{}
+    }
+}
+
+#[async_trait]
 impl InputPrompt<ShellCommand> for ShellInputPrompt {
-    fn format_prompt(version: &str) -> anyhow::Result<String> {
+    async fn format_prompt(&self, version: &str) -> anyhow::Result<String> {
         let prompt_stack: Vec<String> = vec![
         format!("themelio-client").cyan().bold().to_string(),
         format!("(v{})", version).magenta().to_string(),
@@ -15,12 +23,12 @@ impl InputPrompt<ShellCommand> for ShellInputPrompt {
         Ok(format!("{}", prompt_stack.join(" ")))
     }
 
-    fn format_named_prompt(version: &str, name: &str) -> anyhow::Result<String> {
+    async fn format_named_prompt(&self, version: &str, name: &str) -> anyhow::Result<String> {
         todo!()
     }
 
-    fn read_line(prompt: &str) -> anyhow::Result<ShellCommand> {
-        let input = common_read_line(prompt.to_string())?;
+    async fn read_line(&self, prompt: &str) -> anyhow::Result<ShellCommand> {
+        let input = common_read_line(prompt.to_string()).await?;
         let wallet_cmd = ShellCommand::try_from(input)?;
         Ok(wallet_cmd)
     }

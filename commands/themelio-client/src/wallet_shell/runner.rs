@@ -20,7 +20,8 @@ impl WalletShellRunner {
     pub async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
         // let prompt = ShellInputPrompt::format_prompt(&self.context.version);
-        let prompt = ShellInputPrompt::format_prompt(&self.version);
+        let prompt = ShellInputPrompt::new();
+        let prompt = ShellInputPrompt::format_prompt(&self.version).await?;
 
         loop {
             // Get command from user input.
