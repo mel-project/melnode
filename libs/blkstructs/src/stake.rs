@@ -82,6 +82,7 @@ mod tests {
                     covhash: start_conshash,
                     value: start_micromels,
                     denom: DENOM_TMEL.to_vec(),
+                    additional_data: vec![],
                 },
                 height: 0,
             },

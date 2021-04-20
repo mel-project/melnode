@@ -859,9 +859,9 @@ mod tests {
         .unwrap();
         println!("script length is {}", check_sig_script.0.len());
         let mut tx = Transaction::empty_test().sign_ed25519(sk);
-        assert!(check_sig_script.check(&tx));
+        assert!(check_sig_script.check(&tx, &[]));
         tx.sigs[0][0] ^= 123;
-        assert!(!check_sig_script.check(&tx));
+        assert!(!check_sig_script.check(&tx, &[]));
     }
 
     #[quickcheck]
@@ -874,7 +874,7 @@ mod tests {
                 let loop_ops = vec![OpCode::LOOP(1, ops.clone())];
                 let loop_script = Covenant::from_ops(&loop_ops).unwrap();
                 let orig_script = Covenant::from_ops(&ops).unwrap();
-                loop_script.check(&tx) == orig_script.check(&tx)
+                loop_script.check(&tx, &[]) == orig_script.check(&tx, &[])
             }
         }
     }

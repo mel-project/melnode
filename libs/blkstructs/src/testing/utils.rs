@@ -39,6 +39,7 @@ pub fn random_valid_txx_count(
                 covhash: covenant.hash(),
                 value: to_spend_data.value - fee,
                 denom: DENOM_TMEL.to_owned(),
+                additional_data: vec![],
             }],
             fee,
             scripts: vec![covenant.clone()],
@@ -136,11 +137,13 @@ pub fn tx_deposit(
                 covhash: cov_hash,
                 value: mel_amount - fee_estimate(),
                 denom: DENOM_TMEL.into(),
+                additional_data: vec![],
             },
             CoinData {
                 covhash: cov_hash,
                 value: token_amount,
                 denom: token_create_tx.hash_nosigs().to_vec(),
+                additional_data: vec![],
             },
         ];
         tx.scripts = vec![melvm::Covenant::std_ed25519_pk(pk.clone())];
