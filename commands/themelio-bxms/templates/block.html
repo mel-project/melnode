@@ -1,0 +1,53 @@
+{% extends "skeleton.html" %}
+
+{% block title %} Melscan {% endblock %}
+
+{% block body %}
+
+<div class="container mx-auto max-w-screen-lg">
+  <div class="grid grid-cols-1 md:grid-cols-3 mt-8 mb-8">
+    <div class="col-span-3 mb-3">
+      <h3 class="text-2xl font-semibold">Block {{ header.height }}</h3>
+    </div>
+
+    <div class="col-span-3">
+      <table class="table-auto w-full">
+        <tbody>
+          <tr>
+            <td>Hash</td>
+            <td class="font-mono">{{ header.hash() }}</td>
+          </tr>
+          <tr>
+            <td>Height</td>
+            <td>{{ header.height }}</td>
+          </tr>
+          <tr>
+            <td>Number of transactions</td>
+            <td>{{ txcount }}</td>
+          </tr>
+          <tr>
+            <td>Total transaction weight</td>
+            <td>{{ txweight }}</td>
+          </tr>
+          <tr>
+            <td>Coins merkle root</td>
+            <td class="font-mono">{{ header.coins_hash }}</td>
+          </tr>
+          <tr>
+            <td>Pools merkle root</td>
+            <td class="font-mono">{{ header.pools_hash }}</td>
+          </tr>
+          <tr>
+            <td>Transactions merkle root</td>
+            <td class="font-mono">{{ header.transactions_hash }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+
+</div>
+</div>
+{% endblock %}

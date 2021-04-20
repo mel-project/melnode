@@ -34,9 +34,9 @@ async fn main_inner() -> anyhow::Result<()> {
     let client = ValClient::new(NetID::Testnet, args.connect);
     // TODO read this from an argument
     client.trust(
-        1890,
+        35852,
         HashVal(
-            hex::decode("c3463cef489bef71cb70c6db1a593170f745bb9e0a8ca05a24425392c8864806")?
+            hex::decode("bf24ee8dacc5d16fae2e8bf8a8102ae8cf913225ab3df16c85f490806a053d42")?
                 .try_into()
                 .unwrap(),
         ),
@@ -44,6 +44,7 @@ async fn main_inner() -> anyhow::Result<()> {
     let mut app = tide::with_state(client);
     // Rendered paths
     app.at("/").get(html::get_homepage);
+    app.at("/blocks/:height").get(html::get_blockpage);
     // Raw paths
     app.at("/raw/latest").get(raw::get_latest);
     app.at("/raw/blocks/:height").get(raw::get_header);
