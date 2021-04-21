@@ -7,6 +7,12 @@ use async_trait::async_trait;
 
 pub struct SubShellInputPrompt {}
 
+impl SubShellInputPrompt {
+    pub fn new() -> Self {
+        return SubShellInputPrompt{}
+    }
+}
+
 #[async_trait]
 impl InputPrompt<SubShellCommand> for SubShellInputPrompt {
     async fn format_prompt(&self, _version: &str) -> anyhow::Result<String> {

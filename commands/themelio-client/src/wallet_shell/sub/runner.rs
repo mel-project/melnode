@@ -1,9 +1,10 @@
 use crate::common::context::ExecutionContext;
 use crate::wallet_shell::sub::command::SubShellCommand;
-use crate::wallet_shell::sub::prompt::{read_line};
+use crate::wallet_shell::sub::prompt::SubShellInputPrompt;
 use crate::wallet_shell::sub::output::{dispatch_error, exit, help, readline_error};
 use crate::wallet::manager::WalletManager;
 use crate::common::executor::CommandExecutor;
+use crate::common::prompt::prompt::InputPrompt;
 
 /// A sub-wallet_shell runner executed within the higher-level wallet_shell.
 /// This wallet_shell unlocks a wallet, transacts with the network and shows balances.
@@ -37,11 +38,14 @@ impl WalletSubShellRunner {
     /// Read and execute sub-wallet_shell commands from user until user exits.
     pub(crate) async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
-        let prompt = format_sub_prompt(&self.context.version, &self.name).await?;
+        let prompt = SubShellInputPrompt::new();
+        let formatted_prompt = prompt.format_named_prompt(&self.context.version, &self.name).await?;
 
         loop {
             // Get command from user input.
-            match read_line(&prompt).await {
+
+            let prompt_input = prompt.read_line(&formatted_prompt).await;
+            match prompt_input {
                 Ok(open_cmd) => {
                     // Exit if the user chooses to exit.
                     if open_cmd == SubShellCommand::Exit {
