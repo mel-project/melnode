@@ -2,7 +2,7 @@ use crate::common::context::ExecutionContext;
 use crate::opts::{ClientOpts, ClientSubOpts, WalletUtilsCommand, OutputFormat};
 use structopt::StructOpt;
 use crate::wallet_shell::runner::WalletShellRunner;
-use common::executor::;
+use common::executor::CommandExecutor;
 use std::sync::Arc;
 
 mod common;
