@@ -1,11 +1,11 @@
-use std::fmt::Display;
-
 use crate::to_badgateway;
 use askama::Template;
-use blkstructs::{CoinID, Header, DENOM_DOSC, DENOM_TMEL, DENOM_TSYM, MICRO_CONVERTER};
+use blkstructs::{CoinID, Header, DENOM_DOSC, DENOM_TMEL, DENOM_TSYM};
 use nodeprot::ValClient;
 use num_traits::ToPrimitive;
 use tide::Body;
+
+use super::MicroUnit;
 
 #[derive(Template)]
 #[template(path = "homepage.html")]
@@ -27,7 +27,7 @@ struct TransactionSummary {
     hash: String,
     shorthash: String,
     height: u64,
-    weight: u128,
+    _weight: u128,
     mel_moved: MicroUnit,
 }
 
@@ -62,7 +62,7 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
                     hash: hex::encode(&transaction.hash_nosigs()),
                     shorthash: hex::encode(&transaction.hash_nosigs()[0..5]),
                     height,
-                    weight: transaction.weight(0),
+                    _weight: transaction.weight(0),
                     mel_moved: MicroUnit(
                         transaction
                             .outputs
@@ -108,19 +108,4 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
     .into();
     body.set_mime("text/html");
     Ok(body)
-}
-
-// A wrapper for microunit-denominated values
-struct MicroUnit(u128, String);
-
-impl Display for MicroUnit {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}.{} {}",
-            self.0 / MICRO_CONVERTER,
-            self.0 % MICRO_CONVERTER,
-            self.1
-        )
-    }
 }

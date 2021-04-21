@@ -1,7 +1,7 @@
 use blkstructs::{AbbrBlock, Block};
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, sync::atomic::AtomicU64, time::SystemTime};
+use std::{sync::atomic::AtomicU64, time::SystemTime};
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
 /// A message signer

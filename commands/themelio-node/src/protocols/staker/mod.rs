@@ -187,7 +187,6 @@ async fn staker_loop(
                     let provis_state = storage.read().mempool().to_state();
                     let out_of_bounds = height / blkstructs::STAKE_EPOCH != epoch;
                     let action = if !out_of_bounds {
-                        log::info!("bad/missing provisional state. proposing a quasiempty block for height {} because our provis height is {:?}.", height, provis_state.height);
                         Some(ProposerAction {
                             fee_multiplier_delta: 0,
                             reward_dest: my_script.hash(),
@@ -209,6 +208,9 @@ async fn staker_loop(
                         prop_send.send(prop_msg).unwrap();
                         continue;
                     }
+
+                    log::info!("bad/missing provisional state. proposing a quasiempty block for height {} because our provis height is {:?}.", height, provis_state.height);
+
                     let mut basis = last_state.clone();
                     let mut last_nonempty = None;
                     while basis.header().height + 1 < height {
@@ -223,7 +225,7 @@ async fn staker_loop(
                         .send(ProposalMsg {
                             proposal: AbbrBlock {
                                 header: next.header(),
-                                txhashes: im::HashSet::new(),
+                                txhashes: im::OrdSet::new(),
                                 proposer_action: action,
                             },
                             last_nonempty,

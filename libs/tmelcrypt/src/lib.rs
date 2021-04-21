@@ -1,13 +1,16 @@
+#![allow(clippy::upper_case_acronyms)]
+
 use arbitrary::Arbitrary;
 use ed25519_dalek::{Signer, Verifier};
+use fmt::Display;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_big_array::big_array;
-use std::convert::TryInto;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::{convert::TryFrom, str::FromStr};
+use std::{convert::TryInto, fmt::Formatter};
 
 big_array! { BigArray; }
 
@@ -17,6 +20,12 @@ big_array! { BigArray; }
 /// Represents an 256-byte hash value.
 #[serde(transparent)]
 pub struct HashVal(#[serde(with = "stdcode::hex32")] pub [u8; 32]);
+
+impl Display for HashVal {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        hex::encode(&self.0).fmt(f)
+    }
+}
 
 impl HashVal {
     /// Randomly generates a HashVal. This will almost certainly not collide with the actual hash of anything.

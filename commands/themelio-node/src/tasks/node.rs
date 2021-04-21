@@ -1,12 +1,12 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::path::PathBuf;
 
 use crate::protocols::{NodeProtocol, StakerProtocol};
 use crate::{config::VERSION, services::NodeStorage};
 use anyhow::Context;
-use blkstructs::{melvm, GenesisConfig, StakeDoc};
+use blkstructs::GenesisConfig;
 use smol::net::SocketAddr;
 use structopt::StructOpt;
-use tmelcrypt::{Ed25519SK, HashVal};
+use tmelcrypt::Ed25519SK;
 use tracing::instrument;
 #[derive(Debug, StructOpt)]
 pub struct NodeConfig {

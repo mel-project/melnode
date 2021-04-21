@@ -11,7 +11,7 @@ impl SledTreeDB {
     pub fn new(disk_tree: sled::Tree) -> Self {
         Self { disk_tree }
     }
-}
+} 
 
 const GC_ROOTS_KEY: &[u8] = b"GC_ROOTS";
 

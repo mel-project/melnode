@@ -109,7 +109,7 @@ impl<'a> StateHandle<'a> {
                     let script = scripts
                         .get(&coin_data.coin_data.covhash)
                         .ok_or(StateError::NonexistentScript(coin_data.coin_data.covhash))?;
-                    if !script.check(tx) {
+                    if !script.check(tx, coin_id, &coin_data) {
                         return Err(StateError::ViolatesScript(coin_data.coin_data.covhash));
                     }
                     self.del_coin(*coin_id);

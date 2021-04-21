@@ -27,8 +27,6 @@ mod tests {
                 );
                 let (value, proof) = tree.get(key);
                 assert_eq!(value, val);
-                assert!(proof.verify(tree.root_hash(), key, &value));
-                assert_eq!(proof.verify(tree.root_hash(), key, &[]), false);
             }
         }
     }

@@ -84,6 +84,8 @@ impl<N: Network, L: TxLookup> Streamlet<N, L> {
                         height,
                         proposal_content.proposal.txhashes.len()
                     );
+                    // HACK: wait 5 seconds to give the constituent transactions of the block a chance to propagate to ALL stakers
+                    smol::Timer::after(Duration::from_secs(5)).await;
                     let msg = self.signer.sign(Message::Proposal(proposal_content));
                     self.cfg.network.broadcast(msg).await;
                 } else {
@@ -92,16 +94,17 @@ impl<N: Network, L: TxLookup> Streamlet<N, L> {
             }
 
             // process received messages "simultaneously" with processing partial proposals.
-            for _ in 0..BLOCK_INTERVAL_SECS * 10 / 2 {
+            for _ in 0..BLOCK_INTERVAL_SECS / 2 {
                 // give the partial proposals a chance at least every second
                 self.promote_partials().await;
                 let msg = self
                     .cfg
                     .network
                     .receive()
-                    .timeout(Duration::from_millis(100))
+                    .timeout(Duration::from_millis(1000))
                     .await;
                 if let Some(msg) = msg {
+                    log::warn!("truly received {:?}", msg);
                     let sender = msg.sender;
                     let msg_body = msg.body().cloned();
                     if let Some(msg_body) = msg_body {
@@ -118,7 +121,7 @@ impl<N: Network, L: TxLookup> Streamlet<N, L> {
     fn process_msg(&mut self, sender: Ed25519PK, msg: Message) -> anyhow::Result<()> {
         match msg {
             Message::Proposal(prop) => {
-                log::warn!("STUPIDLY putting in proposal");
+                log::warn!("STUPIDLY putting in proposal: {:#?}", prop);
                 self.partial_props.insert(prop.proposal.header.hash(), prop);
             }
             Message::Vote(vmsg) => self

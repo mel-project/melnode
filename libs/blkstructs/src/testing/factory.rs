@@ -21,6 +21,7 @@ beaver::define! {
         covhash -> |_| tmelcrypt::HashVal::random(),
         value -> |n| n as u128,
         denom -> |_| DENOM_TMEL.to_vec(),
+        additional_data -> |_| vec![],
     }
 }
 

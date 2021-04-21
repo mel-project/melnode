@@ -169,6 +169,7 @@ pub fn valid_txx(keypair: (Ed25519PK, Ed25519SK)) -> Vec<Transaction> {
             covhash: scr.hash(),
             value: MICRO_CONVERTER * 1000,
             denom: DENOM_TMEL.to_owned(),
+            additional_data: vec![],
         },
         sk,
         &scr,

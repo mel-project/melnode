@@ -1,3 +1,5 @@
+#![allow(clippy::upper_case_acronyms)]
+
 //! This crate contains the data structures and core algorithms that comprise Themelio's core state machine.
 //! Any piece of software needing to parse Themelio data, validate Themelio transactions, or answer questions like
 //! "what happens to the Themelio state if transactions A, B, and C happen" can use this minimal-depedency crate.

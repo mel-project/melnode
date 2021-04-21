@@ -172,6 +172,8 @@ pub struct CoinData {
     pub value: u128,
     #[serde(with = "stdcode::hex")]
     pub denom: Vec<u8>,
+    #[serde(with = "stdcode::hex")]
+    pub additional_data: Vec<u8>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Arbitrary, Debug)]
@@ -353,11 +355,13 @@ pub(crate) mod tests {
                 covhash: scr.hash(),
                 value: val1,
                 denom: vec![],
+                additional_data: vec![],
             },
             CoinData {
                 covhash: scr.hash(),
                 value: val2,
                 denom: vec![],
+                additional_data: vec![],
             },
         ];
 

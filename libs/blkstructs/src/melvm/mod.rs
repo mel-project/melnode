@@ -1,3 +1,4 @@
+use crate::CoinDataHeight;
 pub use crate::{CoinData, CoinID, Transaction};
 use arbitrary::Arbitrary;
 use primitive_types::U256;
@@ -11,8 +12,13 @@ mod lexer;
 pub struct Covenant(pub Vec<u8>);
 
 impl Covenant {
-    pub fn check(&self, tx: &Transaction) -> bool {
-        self.check_opt(tx).is_some()
+    pub fn check(
+        &self,
+        tx: &Transaction,
+        spending_coinid: &CoinID,
+        spending_cdh: &CoinDataHeight,
+    ) -> bool {
+        self.check_opt(tx, spending_coinid, spending_cdh).is_some()
     }
 
     pub fn check_raw(&self, args: &[Value]) -> bool {
@@ -31,33 +37,33 @@ impl Covenant {
         tmelcrypt::hash_single(&self.0)
     }
 
-    fn check_opt(&self, tx: &Transaction) -> Option<()> {
-        let tx_val = Value::from(tx.clone());
+    fn check_opt(
+        &self,
+        tx: &Transaction,
+        spending_coinid: &CoinID,
+        spending_cdh: &CoinDataHeight,
+    ) -> Option<()> {
         let ops = self.to_ops()?;
-        let mut hm = HashMap::new();
-        hm.insert(0, tx_val);
-        hm.insert(1, Value::from_bytes(&tx.hash_nosigs().0));
-        hm.insert(2, Value::from_bytes(&tmelcrypt::hash_single(&self.0)));
-        Executor::new(hm).run_return(&ops)
+        Executor::from(tx.clone(), *spending_coinid, spending_cdh.clone()).run_return(&ops)
     }
 
     pub fn std_ed25519_pk(pk: tmelcrypt::Ed25519PK) -> Self {
         Covenant::from_ops(&[
-            OpCode::PUSHI(0.into()),
-            OpCode::PUSHI(6.into()),
-            OpCode::LOADIMM(0),
-            OpCode::VREF,
-            OpCode::VREF,
-            OpCode::PUSHB(pk.0.to_vec()),
-            OpCode::LOADIMM(1),
-            OpCode::SIGEOK(32),
+            OpCode::PushI(0.into()),
+            OpCode::PushI(6.into()),
+            OpCode::LoadImm(0),
+            OpCode::VRef,
+            OpCode::VRef,
+            OpCode::PushB(pk.0.to_vec()),
+            OpCode::LoadImm(1),
+            OpCode::SigEOk(32),
         ])
         .unwrap()
     }
 
     pub fn from_ops(ops: &[OpCode]) -> Option<Self> {
         let mut output: Vec<u8> = Vec::new();
-        // go through formatter
+        // go through output
         for op in ops {
             Covenant::assemble_one(op, &mut output)?
         }
@@ -65,7 +71,7 @@ impl Covenant {
     }
 
     pub fn always_true() -> Self {
-        Covenant::from_ops(&[OpCode::PUSHI(1.into())]).unwrap()
+        Covenant::from_ops(&[OpCode::PushI(1.into())]).unwrap()
     }
 
     fn disassemble_one(
@@ -84,41 +90,41 @@ impl Covenant {
         };
         match bcode.pop()? {
             // arithmetic
-            0x10 => output.push(OpCode::ADD),
-            0x11 => output.push(OpCode::SUB),
-            0x12 => output.push(OpCode::MUL),
-            0x13 => output.push(OpCode::DIV),
-            0x14 => output.push(OpCode::REM),
+            0x10 => output.push(OpCode::Add),
+            0x11 => output.push(OpCode::Sub),
+            0x12 => output.push(OpCode::Mul),
+            0x13 => output.push(OpCode::Div),
+            0x14 => output.push(OpCode::Rem),
             // logic
-            0x20 => output.push(OpCode::AND),
-            0x21 => output.push(OpCode::OR),
-            0x22 => output.push(OpCode::XOR),
-            0x23 => output.push(OpCode::NOT),
-            0x24 => output.push(OpCode::EQL),
-            0x25 => output.push(OpCode::LT),
-            0x26 => output.push(OpCode::GT),
+            0x20 => output.push(OpCode::And),
+            0x21 => output.push(OpCode::Or),
+            0x22 => output.push(OpCode::Xor),
+            0x23 => output.push(OpCode::Not),
+            0x24 => output.push(OpCode::Eql),
+            0x25 => output.push(OpCode::Lt),
+            0x26 => output.push(OpCode::Gt),
             // cryptography
-            0x30 => output.push(OpCode::HASH(u16arg(bcode)?)),
-            //0x31 => formatter.push(OpCode::SIGE),
-            0x32 => output.push(OpCode::SIGEOK(u16arg(bcode)?)),
+            0x30 => output.push(OpCode::Hash(u16arg(bcode)?)),
+            //0x31 => output.push(OpCode::SIGE),
+            0x32 => output.push(OpCode::SigEOk(u16arg(bcode)?)),
             // storage
-            0x40 => output.push(OpCode::LOAD),
-            0x41 => output.push(OpCode::STORE),
-            0x42 => output.push(OpCode::LOADIMM(u16arg(bcode)?)),
-            0x43 => output.push(OpCode::STOREIMM(u16arg(bcode)?)),
+            0x40 => output.push(OpCode::Load),
+            0x41 => output.push(OpCode::Store),
+            0x42 => output.push(OpCode::LoadImm(u16arg(bcode)?)),
+            0x43 => output.push(OpCode::StoreImm(u16arg(bcode)?)),
             // vectors
-            0x50 => output.push(OpCode::VREF),
-            0x51 => output.push(OpCode::VAPPEND),
-            0x52 => output.push(OpCode::VEMPTY),
-            0x53 => output.push(OpCode::VLENGTH),
-            0x54 => output.push(OpCode::VPUSH),
-            0x55 => output.push(OpCode::VSLICE),
-            0x56 => output.push(OpCode::BEMPTY),
-            0x57 => output.push(OpCode::VSET),
+            0x50 => output.push(OpCode::VRef),
+            0x51 => output.push(OpCode::VAppend),
+            0x52 => output.push(OpCode::VEmpty),
+            0x53 => output.push(OpCode::VLength),
+            0x54 => output.push(OpCode::BPush),
+            0x55 => output.push(OpCode::VSlice),
+            0x56 => output.push(OpCode::BEmpty),
+            0x57 => output.push(OpCode::VSet),
             // control flow
-            0xa0 => output.push(OpCode::JMP(u16arg(bcode)?)),
-            0xa1 => output.push(OpCode::BEZ(u16arg(bcode)?)),
-            0xa2 => output.push(OpCode::BNZ(u16arg(bcode)?)),
+            0xa0 => output.push(OpCode::Jmp(u16arg(bcode)?)),
+            0xa1 => output.push(OpCode::Bez(u16arg(bcode)?)),
+            0xa2 => output.push(OpCode::Bnz(u16arg(bcode)?)),
             0xb0 => {
                 let iterations = u16arg(bcode)?;
                 let count = u16arg(bcode)?;
@@ -126,10 +132,10 @@ impl Covenant {
                 for _ in 0..count {
                     Covenant::disassemble_one(bcode, &mut rec_output, rec_depth + 1)?;
                 }
-                output.push(OpCode::LOOP(iterations, rec_output));
+                output.push(OpCode::Loop(iterations, rec_output));
             }
-            0xc0 => output.push(OpCode::ITOB),
-            0xc1 => output.push(OpCode::BTOI),
+            0xc0 => output.push(OpCode::ItoB),
+            0xc1 => output.push(OpCode::BtoI),
             // literals
             0xf0 => {
                 let strlen = bcode.pop()?;
@@ -137,14 +143,14 @@ impl Covenant {
                 for _ in 0..strlen {
                     blit.push(bcode.pop()?);
                 }
-                output.push(OpCode::PUSHB(blit))
+                output.push(OpCode::PushB(blit))
             }
             0xf1 => {
                 let mut buf = [0; 32];
                 for r in buf.iter_mut() {
                     *r = bcode.pop()?
                 }
-                output.push(OpCode::PUSHI(U256::from_big_endian(&buf)))
+                output.push(OpCode::PushI(U256::from_big_endian(&buf)))
             }
             _ => return None,
         }
@@ -169,63 +175,63 @@ impl Covenant {
     fn assemble_one(op: &OpCode, output: &mut Vec<u8>) -> Option<()> {
         match op {
             // arithmetic
-            OpCode::ADD => output.push(0x10),
-            OpCode::SUB => output.push(0x11),
-            OpCode::MUL => output.push(0x12),
-            OpCode::DIV => output.push(0x13),
-            OpCode::REM => output.push(0x14),
+            OpCode::Add => output.push(0x10),
+            OpCode::Sub => output.push(0x11),
+            OpCode::Mul => output.push(0x12),
+            OpCode::Div => output.push(0x13),
+            OpCode::Rem => output.push(0x14),
             // logic
-            OpCode::AND => output.push(0x20),
-            OpCode::OR => output.push(0x21),
-            OpCode::XOR => output.push(0x22),
-            OpCode::NOT => output.push(0x23),
-            OpCode::EQL => output.push(0x24),
-            OpCode::LT => output.push(0x25),
-            OpCode::GT => output.push(0x26),
+            OpCode::And => output.push(0x20),
+            OpCode::Or => output.push(0x21),
+            OpCode::Xor => output.push(0x22),
+            OpCode::Not => output.push(0x23),
+            OpCode::Eql => output.push(0x24),
+            OpCode::Lt => output.push(0x25),
+            OpCode::Gt => output.push(0x26),
             // cryptography
-            OpCode::HASH(n) => {
+            OpCode::Hash(n) => {
                 output.push(0x30);
                 output.extend(&n.to_be_bytes());
             }
-            //OpCode::SIGE => formatter.push(0x31),
-            OpCode::SIGEOK(n) => {
+            //OpCode::SIGE => output.push(0x31),
+            OpCode::SigEOk(n) => {
                 output.push(0x32);
                 output.extend(&n.to_be_bytes())
             }
             // storage
-            OpCode::LOAD => output.push(0x40),
-            OpCode::STORE => output.push(0x41),
-            OpCode::LOADIMM(idx) => {
+            OpCode::Load => output.push(0x40),
+            OpCode::Store => output.push(0x41),
+            OpCode::LoadImm(idx) => {
                 output.push(0x42);
                 output.extend(&idx.to_be_bytes());
             }
-            OpCode::STOREIMM(idx) => {
+            OpCode::StoreImm(idx) => {
                 output.push(0x43);
                 output.extend(&idx.to_be_bytes());
             }
             // vectors
-            OpCode::VREF => output.push(0x50),
-            OpCode::VAPPEND => output.push(0x51),
-            OpCode::VEMPTY => output.push(0x52),
-            OpCode::VLENGTH => output.push(0x53),
-            OpCode::VPUSH => output.push(0x54),
-            OpCode::VSLICE => output.push(0x55),
-            OpCode::BEMPTY => output.push(0x56),
-            OpCode::VSET => output.push(0x57),
+            OpCode::VRef => output.push(0x50),
+            OpCode::VAppend => output.push(0x51),
+            OpCode::VEmpty => output.push(0x52),
+            OpCode::VLength => output.push(0x53),
+            OpCode::BPush => output.push(0x54),
+            OpCode::VSlice => output.push(0x55),
+            OpCode::BEmpty => output.push(0x56),
+            OpCode::VSet => output.push(0x57),
             // control flow
-            OpCode::JMP(val) => {
+            OpCode::Jmp(val) => {
                 output.push(0xa0);
                 output.extend_from_slice(&val.to_be_bytes());
             }
-            OpCode::BEZ(val) => {
+            OpCode::Bez(val) => {
                 output.push(0xa1);
                 output.extend_from_slice(&val.to_be_bytes());
             }
-            OpCode::BNZ(val) => {
+            OpCode::Bnz(val) => {
                 output.push(0xa2);
                 output.extend_from_slice(&val.to_be_bytes());
             }
-            OpCode::LOOP(iterations, ops) => {
+            OpCode::Loop(iterations, ops) => {
                 output.push(0xb0);
                 output.extend_from_slice(&iterations.to_be_bytes());
                 let op_cnt: u16 = ops.len().try_into().ok()?;
@@ -235,11 +241,11 @@ impl Covenant {
                 }
             }
             // type conversions
-            OpCode::ITOB => output.push(0xc0),
-            OpCode::BTOI => output.push(0xc1),
+            OpCode::ItoB => output.push(0xc0),
+            OpCode::BtoI => output.push(0xc1),
 
             // literals
-            OpCode::PUSHB(bts) => {
+            OpCode::PushB(bts) => {
                 output.push(0xf0);
                 if bts.len() > 255 {
                     return None;
@@ -247,7 +253,7 @@ impl Covenant {
                 output.push(bts.len() as u8);
                 output.extend_from_slice(bts);
             }
-            OpCode::PUSHI(num) => {
+            OpCode::PushI(num) => {
                 output.push(0xf1);
                 let mut out = [0; 32];
                 num.to_big_endian(&mut out);
@@ -269,6 +275,42 @@ impl Executor {
             stack: Vec::new(),
             heap: heap_init,
         }
+    }
+    pub fn from(
+        tx: Transaction,
+        spending_coinid: CoinID,
+        spending_cdh: CoinDataHeight,
+    ) -> Self {
+        let mut hm = HashMap::new();
+        hm.insert(1, Value::from_bytes(&tx.hash_nosigs().0));
+        let tx_val = Value::from(tx);
+        hm.insert(0, tx_val);
+
+        let CoinID {
+            txhash,
+            index,
+        } = spending_coinid;
+
+        hm.insert(2, txhash.0.into());
+        hm.insert(3, Value::Int(U256::from(index)));
+
+        let CoinDataHeight {
+            coin_data: CoinData {
+                covhash,
+                value,
+                denom,
+                additional_data,
+            },
+            height
+        } = spending_cdh;
+
+        hm.insert(4, covhash.0.into());
+        hm.insert(5, value.into());
+        hm.insert(6, denom.into());
+        hm.insert(7, additional_data.into());
+        hm.insert(8, height.into());
+
+        Executor::new(hm)
     }
     fn do_triop(&mut self, op: impl Fn(Value, Value, Value) -> Option<Value>) -> Option<()> {
         let stack = &mut self.stack;
@@ -294,16 +336,16 @@ impl Executor {
     pub fn do_op(&mut self, op: &OpCode, pc: u32) -> Option<u32> {
         match op {
             // arithmetic
-            OpCode::ADD => {
+            OpCode::Add => {
                 self.do_binop(|x, y| Some(Value::Int(x.as_int()?.overflowing_add(y.as_int()?).0)))?
             }
-            OpCode::SUB => {
+            OpCode::Sub => {
                 self.do_binop(|x, y| Some(Value::Int(x.as_int()?.overflowing_sub(y.as_int()?).0)))?
             }
-            OpCode::MUL => {
+            OpCode::Mul => {
                 self.do_binop(|x, y| Some(Value::Int(x.as_int()?.overflowing_mul(y.as_int()?).0)))?
             }
-            OpCode::DIV => self.do_binop(|x, y| {
+            OpCode::Div => self.do_binop(|x, y| {
                 if y.as_int()? == U256::zero() {
                     None
                 } else {
@@ -314,7 +356,7 @@ impl Executor {
                     ))
                 }
             })?,
-            OpCode::REM => self.do_binop(|x, y| {
+            OpCode::Rem => self.do_binop(|x, y| {
                 if y.as_int()? == U256::zero() {
                     None
                 } else {
@@ -326,11 +368,11 @@ impl Executor {
                 }
             })?,
             // logic
-            OpCode::AND => self.do_binop(|x, y| Some(Value::Int(x.as_int()? & y.as_int()?)))?,
-            OpCode::OR => self.do_binop(|x, y| Some(Value::Int(x.as_int()? | y.as_int()?)))?,
-            OpCode::XOR => self.do_binop(|x, y| Some(Value::Int(x.as_int()? ^ y.as_int()?)))?,
-            OpCode::NOT => self.do_monop(|x| Some(Value::Int(!x.as_int()?)))?,
-            OpCode::EQL => self.do_binop(|x, y| match (x, y) {
+            OpCode::And => self.do_binop(|x, y| Some(Value::Int(x.as_int()? & y.as_int()?)))?,
+            OpCode::Or => self.do_binop(|x, y| Some(Value::Int(x.as_int()? | y.as_int()?)))?,
+            OpCode::Xor => self.do_binop(|x, y| Some(Value::Int(x.as_int()? ^ y.as_int()?)))?,
+            OpCode::Not => self.do_monop(|x| Some(Value::Int(!x.as_int()?)))?,
+            OpCode::Eql => self.do_binop(|x, y| match (x, y) {
                 (Value::Int(x), Value::Int(y)) => {
                     if x == y {
                         Some(Value::Int(U256::one()))
@@ -347,26 +389,26 @@ impl Executor {
                 }
                 _ => None,
             })?,
-            OpCode::LT => self.do_binop(|x, y| {
+            OpCode::Lt => self.do_binop(|x, y| {
                 let x = x.as_int()?;
                 let y = y.as_int()?;
-                if y.overflowing_sub(x).1 {
+                if x.overflowing_sub(y).1 {
                     Some(Value::Int(U256::one()))
                 } else {
                     Some(Value::Int(U256::zero()))
                 }
             })?,
-            OpCode::GT => self.do_binop(|x, y| {
+            OpCode::Gt => self.do_binop(|x, y| {
                 let x = x.as_int()?;
                 let y = y.as_int()?;
-                if !y.overflowing_sub(x).1 {
+                if !x.overflowing_sub(y).1 {
                     Some(Value::Int(U256::one()))
                 } else {
                     Some(Value::Int(U256::zero()))
                 }
             })?,
             // cryptography
-            OpCode::HASH(n) => self.do_monop(|to_hash| {
+            OpCode::Hash(n) => self.do_monop(|to_hash| {
                 let to_hash = to_hash.as_bytes()?;
                 if to_hash.len() > *n as usize {
                     return None;
@@ -374,7 +416,7 @@ impl Executor {
                 let hash = tmelcrypt::hash_single(&to_hash.iter().cloned().collect::<Vec<_>>());
                 Some(Value::from_bytes(&hash.0))
             })?,
-            OpCode::SIGEOK(n) => self.do_triop(|message, public_key, signature| {
+            OpCode::SigEOk(n) => self.do_triop(|message, public_key, signature| {
                 //println!("SIGEOK({:?}, {:?}, {:?})", message, public_key, signature);
                 let pk = public_key.as_bytes()?;
                 if pk.len() > 32 {
@@ -395,26 +437,26 @@ impl Executor {
                 Some(Value::from_bool(public_key.verify(&message, &signature)))
             })?,
             // storage access
-            OpCode::STORE => {
+            OpCode::Store => {
                 let addr = self.stack.pop()?.as_u16()?;
                 let val = self.stack.pop()?;
                 self.heap.insert(addr, val);
             }
-            OpCode::LOAD => {
+            OpCode::Load => {
                 let addr = self.stack.pop()?.as_u16()?;
                 let res = self.heap.get(&addr)?.clone();
                 self.stack.push(res)
             }
-            OpCode::STOREIMM(idx) => {
+            OpCode::StoreImm(idx) => {
                 let val = self.stack.pop()?;
                 self.heap.insert(*idx, val);
             }
-            OpCode::LOADIMM(idx) => {
+            OpCode::LoadImm(idx) => {
                 let res = self.heap.get(idx)?.clone();
                 self.stack.push(res)
             }
             // vector operations
-            OpCode::VREF => self.do_binop(|vec, idx| {
+            OpCode::VRef => self.do_binop(|vec, idx| {
                 let idx = idx.as_u16()? as usize;
                 match vec {
                     Value::Bytes(bts) => Some(Value::Int(U256::from(*bts.get(idx)?))),
@@ -422,7 +464,7 @@ impl Executor {
                     _ => None,
                 }
             })?,
-            OpCode::VSET => self.do_triop(|vec, idx, value| {
+            OpCode::VSet => self.do_triop(|vec, idx, value| {
                 let idx = idx.as_u16()? as usize;
                 match vec {
                     Value::Bytes(mut bts) => {
@@ -437,7 +479,7 @@ impl Executor {
                     _ => None,
                 }
             })?,
-            OpCode::VAPPEND => self.do_binop(|v1, v2| match (v1, v2) {
+            OpCode::VAppend => self.do_binop(|v1, v2| match (v1, v2) {
                 (Value::Bytes(mut v1), Value::Bytes(v2)) => {
                     v1.append(v2);
                     Some(Value::Bytes(v1))
@@ -448,7 +490,7 @@ impl Executor {
                 }
                 _ => None,
             })?,
-            OpCode::VSLICE => self.do_triop(|vec, i, j| {
+            OpCode::VSlice => self.do_triop(|vec, i, j| {
                 let i = i.as_u16()? as usize;
                 let j = j.as_u16()? as usize;
                 match vec {
@@ -457,14 +499,14 @@ impl Executor {
                     _ => None,
                 }
             })?,
-            OpCode::VLENGTH => self.do_monop(|vec| match vec {
+            OpCode::VLength => self.do_monop(|vec| match vec {
                 Value::Vector(vec) => Some(Value::Int(U256::from(vec.len()))),
                 Value::Bytes(vec) => Some(Value::Int(U256::from(vec.len()))),
                 _ => None,
             })?,
-            OpCode::VEMPTY => self.stack.push(Value::Vector(im::Vector::new())),
-            OpCode::BEMPTY => self.stack.push(Value::Bytes(im::Vector::new())),
-            OpCode::VPUSH => self.do_binop(|vec, val| match vec {
+            OpCode::VEmpty => self.stack.push(Value::Vector(im::Vector::new())),
+            OpCode::BEmpty => self.stack.push(Value::Bytes(im::Vector::new())),
+            OpCode::BPush => self.do_binop(|vec, val| match vec {
                 Value::Vector(mut vec) => {
                     vec.push_back(val);
                     Some(Value::Vector(vec))
@@ -481,27 +523,31 @@ impl Executor {
                 _ => None,
             })?,
             // control flow
-            OpCode::BEZ(jgap) => {
+            OpCode::Bez(jgap) => {
                 let top = self.stack.pop()?;
                 if top == Value::Int(U256::zero()) {
                     return Some(pc + 1 + *jgap as u32);
                 }
             }
-            OpCode::BNZ(jgap) => {
+            OpCode::Bnz(jgap) => {
                 let top = self.stack.pop()?;
                 if top != Value::Int(U256::zero()) {
                     return Some(pc + 1 + *jgap as u32);
                 }
             }
-            OpCode::JMP(jgap) => return Some(pc + 1 + *jgap as u32),
-            OpCode::LOOP(iterations, ops) => {
+            OpCode::Jmp(jgap) => return Some(pc + 1 + *jgap as u32),
+            OpCode::Loop(iterations, ops) => {
                 for _ in 0..*iterations {
                     self.run_bare(&ops)?
                 }
             }
             // Conversions
-            OpCode::BTOI => self.do_monop(|x| {
+            OpCode::BtoI => self.do_monop(|x| {
                 let mut bytes = x.as_bytes()?;
+                if bytes.len() < 32 {
+                    return None;
+                }
+
                 Some(Value::Int(
                     bytes
                         .slice(..32)
@@ -509,21 +555,20 @@ impl Executor {
                         .fold(U256::zero(), |acc, b| (acc * 256) + *b),
                 ))
             })?,
-            OpCode::ITOB => self.do_monop(|x| {
+            OpCode::ItoB => self.do_monop(|x| {
                 let n = x.as_int()?;
                 let mut bytes = im::vector![];
                 for i in 0..32 {
-                    //bytes.push_back(n >> (i * 8) & 255 as u8);
                     bytes.push_back(n.byte(i));
                 }
                 Some(Value::Bytes(bytes))
             })?,
             // literals
-            OpCode::PUSHB(bts) => {
+            OpCode::PushB(bts) => {
                 let bts = Value::from_bytes(bts);
                 self.stack.push(bts);
             }
-            OpCode::PUSHI(num) => self.stack.push(Value::Int(*num)),
+            OpCode::PushI(num) => self.stack.push(Value::Int(*num)),
         }
         Some(pc + 1)
     }
@@ -553,103 +598,103 @@ impl Executor {
 #[derive(Clone, Debug, PartialEq)]
 pub enum OpCode {
     // arithmetic
-    ADD,
-    SUB,
-    MUL,
-    DIV,
-    REM,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Rem,
     // logic
-    AND,
-    OR,
-    XOR,
-    NOT,
-    EQL,
-    LT,
-    GT,
+    And,
+    Or,
+    Xor,
+    Not,
+    Eql,
+    Lt,
+    Gt,
     // cryptographyy
-    HASH(u16),
+    Hash(u16),
     //SIGE,
     //SIGQ,
-    SIGEOK(u16),
+    SigEOk(u16),
     //SIGQOK,
     // "heap" access
-    STORE,
-    LOAD,
-    STOREIMM(u16),
-    LOADIMM(u16),
+    Store,
+    Load,
+    StoreImm(u16),
+    LoadImm(u16),
     // vector operations
-    VREF,
-    VSET,
-    VAPPEND,
-    VSLICE,
-    VLENGTH,
-    VEMPTY,
-    BEMPTY,
-    VPUSH,
+    VRef,
+    VSet,
+    VAppend,
+    VSlice,
+    VLength,
+    VEmpty,
+    BEmpty,
+    BPush,
 
     // control flow
-    BEZ(u16),
-    BNZ(u16),
-    JMP(u16),
-    LOOP(u16, Vec<OpCode>),
+    Bez(u16),
+    Bnz(u16),
+    Jmp(u16),
+    Loop(u16, Vec<OpCode>),
 
     // type conversions
-    ITOB,
-    BTOI,
+    ItoB,
+    BtoI,
     // SERIAL(u16),
 
     // literals
-    PUSHB(Vec<u8>),
-    PUSHI(U256),
+    PushB(Vec<u8>),
+    PushI(U256),
 }
 
 impl OpCode {
     pub fn weight(&self) -> u128 {
         match self {
-            OpCode::ADD => 4,
-            OpCode::SUB => 4,
-            OpCode::MUL => 6,
-            OpCode::DIV => 6,
-            OpCode::REM => 6,
+            OpCode::Add => 4,
+            OpCode::Sub => 4,
+            OpCode::Mul => 6,
+            OpCode::Div => 6,
+            OpCode::Rem => 6,
 
-            OpCode::AND => 4,
-            OpCode::OR => 4,
-            OpCode::XOR => 4,
-            OpCode::NOT => 4,
-            OpCode::EQL => 4,
-            OpCode::LT => 4,
-            OpCode::GT => 4,
+            OpCode::And => 4,
+            OpCode::Or => 4,
+            OpCode::Xor => 4,
+            OpCode::Not => 4,
+            OpCode::Eql => 4,
+            OpCode::Lt => 4,
+            OpCode::Gt => 4,
 
-            OpCode::HASH(n) => 50 + *n as u128,
-            OpCode::SIGEOK(n) => 100 + *n as u128,
+            OpCode::Hash(n) => 50 + *n as u128,
+            OpCode::SigEOk(n) => 100 + *n as u128,
 
-            OpCode::STORE => 50,
-            OpCode::LOAD => 50,
-            OpCode::STOREIMM(_) => 50,
-            OpCode::LOADIMM(_) => 50,
+            OpCode::Store => 50,
+            OpCode::Load => 50,
+            OpCode::StoreImm(_) => 50,
+            OpCode::LoadImm(_) => 50,
 
-            OpCode::VREF => 10,
-            OpCode::VSET => 50,
-            OpCode::VAPPEND => 50,
-            OpCode::VSLICE => 50,
-            OpCode::VLENGTH => 10,
-            OpCode::VEMPTY => 4,
-            OpCode::BEMPTY => 4,
-            OpCode::VPUSH => 10,
+            OpCode::VRef => 10,
+            OpCode::VSet => 50,
+            OpCode::VAppend => 50,
+            OpCode::VSlice => 50,
+            OpCode::VLength => 10,
+            OpCode::VEmpty => 4,
+            OpCode::BEmpty => 4,
+            OpCode::BPush => 10,
 
-            OpCode::ITOB => 50,
-            OpCode::BTOI => 50,
+            OpCode::ItoB => 50,
+            OpCode::BtoI => 50,
 
-            OpCode::BEZ(_) => 1,
-            OpCode::BNZ(_) => 1,
-            OpCode::JMP(_) => 1,
-            OpCode::LOOP(loops, contents) => {
+            OpCode::Bez(_) => 1,
+            OpCode::Bnz(_) => 1,
+            OpCode::Jmp(_) => 1,
+            OpCode::Loop(loops, contents) => {
                 let one_iteration: u128 = contents.iter().map(|o| o.weight()).sum();
                 one_iteration.saturating_mul(*loops as _)
             }
 
-            OpCode::PUSHB(_) => 1,
-            OpCode::PUSHI(_) => 1,
+            OpCode::PushB(_) => 1,
+            OpCode::PushI(_) => 1,
         }
     }
 }
@@ -697,54 +742,16 @@ impl Value {
             _ => None,
         }
     }
-
-    fn from_serde(ss: &impl Serialize) -> Option<Self> {
-        let ss = serde_json::to_string(ss).ok()?;
-        let ss: serde_json::Value = serde_json::from_str(&ss).ok()?;
-        Self::from_serde_json(ss)
-    }
-
-    fn from_serde_json(j_value: serde_json::Value) -> Option<Self> {
-        match j_value {
-            serde_json::Value::Null => None,
-            serde_json::Value::String(_) => None,
-            serde_json::Value::Number(num) => {
-                Some(Self::Int(num.to_string().parse::<u128>().ok()?.into()))
-            }
-            serde_json::Value::Bool(v) => {
-                Some(Self::Int(if v { 1u64.into() } else { 0u64.into() }))
-            }
-            serde_json::Value::Array(vec) => {
-                // if all the subelements are bytes, then we encode as a byte array
-                if vec.iter().find(|v| !v.is_number()).is_none() {
-                    let mut bb: im::Vector<u8> = im::Vector::new();
-                    for elem in vec {
-                        if let serde_json::Value::Number(num) = elem {
-                            let num = num.as_u64()?;
-                            bb.push_back(num as u8);
-                        }
-                    }
-                    Some(Self::Bytes(bb))
-                } else {
-                    let vec: Option<im::Vector<Self>> =
-                        vec.into_iter().map(Self::from_serde_json).collect();
-                    Some(Self::Vector(vec.unwrap().iter().cloned().collect()))
-                    // Some(Self::Vector(vec.unwrap().clone()))
-                }
-            }
-            serde_json::Value::Object(obj) => {
-                let mut vec: im::Vector<Self> = im::Vector::new();
-                for (_, v) in obj {
-                    vec.push_back(Self::from_serde_json(v)?)
-                }
-                Some(Self::Vector(vec.iter().cloned().collect()))
-            }
-        }
-    }
 }
 
 impl From<u128> for Value {
     fn from(n: u128) -> Self {
+        Value::Int(U256::from(n))
+    }
+}
+
+impl From<u64> for Value {
+    fn from(n: u64) -> Self {
         Value::Int(U256::from(n))
     }
 }
@@ -754,8 +761,15 @@ impl From<CoinData> for Value {
         Value::Vector(im::vector![
             cd.covhash.0.into(),
             cd.value.into(),
-            cd.denom.into()
+            cd.denom.into(),
+            cd.additional_data.into()
         ])
+    }
+}
+
+impl From<CoinDataHeight> for Value {
+    fn from(cd: CoinDataHeight) -> Self {
+        Value::Vector(im::vector![cd.coin_data.into(), cd.height.into()])
     }
 }
 
@@ -842,25 +856,25 @@ mod tests {
     fn check_sig() {
         let (pk, sk) = tmelcrypt::ed25519_keygen();
         // (SIGEOK (LOAD 1) (PUSH pk) (VREF (VREF (LOAD 0) 6) 0))
-        let check_sig_script = Covenant::from_ops(&[OpCode::LOOP(
+        let check_sig_script = Covenant::from_ops(&[OpCode::Loop(
             5,
             vec![
-                OpCode::PUSHI(0.into()),
-                OpCode::PUSHI(6.into()),
-                OpCode::LOADIMM(0),
-                OpCode::VREF,
-                OpCode::VREF,
-                OpCode::PUSHB(pk.0.to_vec()),
-                OpCode::LOADIMM(1),
-                OpCode::SIGEOK(32),
+                OpCode::PushI(0.into()),
+                OpCode::PushI(6.into()),
+                OpCode::LoadImm(0),
+                OpCode::VRef,
+                OpCode::VRef,
+                OpCode::PushB(pk.0.to_vec()),
+                OpCode::LoadImm(1),
+                OpCode::SigEOk(32),
             ],
         )])
         .unwrap();
         println!("script length is {}", check_sig_script.0.len());
         let mut tx = Transaction::empty_test().sign_ed25519(sk);
-        assert!(check_sig_script.check(&tx));
+        assert!(check_sig_script.check(&tx, &[]));
         tx.sigs[0][0] ^= 123;
-        assert!(!check_sig_script.check(&tx));
+        assert!(!check_sig_script.check(&tx, &[]));
     }
 
     #[quickcheck]
@@ -870,10 +884,10 @@ mod tests {
         match ops {
             None => true,
             Some(ops) => {
-                let loop_ops = vec![OpCode::LOOP(1, ops.clone())];
+                let loop_ops = vec![OpCode::Loop(1, ops.clone())];
                 let loop_script = Covenant::from_ops(&loop_ops).unwrap();
                 let orig_script = Covenant::from_ops(&ops).unwrap();
-                loop_script.check(&tx) == orig_script.check(&tx)
+                loop_script.check(&tx, &[]) == orig_script.check(&tx, &[])
             }
         }
     }
@@ -886,8 +900,8 @@ mod tests {
             None => true,
             Some(ops) => {
                 let orig_script = Covenant::from_ops(&ops).unwrap();
-                let first = orig_script.check(&tx);
-                let second = orig_script.check(&tx);
+                let first = orig_script.check(&tx, &[]);
+                let second = orig_script.check(&tx, &[]);
                 first == second
             }
         }

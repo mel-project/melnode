@@ -266,6 +266,7 @@ fn process_withdrawals(mut state: State) -> State {
                 denom: pool.clone(),
                 value: multiply_frac(total_tok, Ratio::new(my_liqs, total_liqs)),
                 covhash: deposit.outputs[0].covhash,
+                additional_data: deposit.outputs[0].additional_data.clone(),
             };
 
             state.coins.insert(
@@ -374,6 +375,7 @@ mod tests {
                     value: 1 << 64,
                     denom: DENOM_TMEL.to_vec(),
                     covhash: my_covhash,
+                    additional_data: vec![],
                 },
                 height: 100,
             },
@@ -390,11 +392,13 @@ mod tests {
                     covhash: my_covhash,
                     value: (1 << 64) - 2000000,
                     denom: DENOM_TMEL.into(),
+                    additional_data: vec![],
                 },
                 CoinData {
                     covhash: my_covhash,
                     value: 1 << 64,
                     denom: DENOM_NEWCOIN.into(),
+                    additional_data: vec![],
                 },
             ],
             fee: 2000000,
@@ -412,11 +416,13 @@ mod tests {
                     covhash: my_covhash,
                     value: (1 << 64) - 2000000 - 2000000,
                     denom: DENOM_TMEL.into(),
+                    additional_data: vec![],
                 },
                 CoinData {
                     covhash: my_covhash,
                     value: 1 << 64,
                     denom: newcoin_tx.hash_nosigs().to_vec(),
+                    additional_data: vec![],
                 },
             ],
             fee: 2000000,
