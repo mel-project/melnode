@@ -89,7 +89,7 @@ impl WalletData {
                         covhash: self.my_script.hash(),
                         value: difference,
                         denom: cointype.clone(),
-                        additional_data: vec![] // TODO: what this? 
+                        additional_data: vec![], // TODO: what this?
                     })
                 }
             }

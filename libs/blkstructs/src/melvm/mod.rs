@@ -276,32 +276,26 @@ impl Executor {
             heap: heap_init,
         }
     }
-    pub fn from(
-        tx: Transaction,
-        spending_coinid: CoinID,
-        spending_cdh: CoinDataHeight,
-    ) -> Self {
+    pub fn from(tx: Transaction, spending_coinid: CoinID, spending_cdh: CoinDataHeight) -> Self {
         let mut hm = HashMap::new();
         hm.insert(1, Value::from_bytes(&tx.hash_nosigs().0));
         let tx_val = Value::from(tx);
         hm.insert(0, tx_val);
 
-        let CoinID {
-            txhash,
-            index,
-        } = spending_coinid;
+        let CoinID { txhash, index } = spending_coinid;
 
         hm.insert(2, txhash.0.into());
         hm.insert(3, Value::Int(U256::from(index)));
 
         let CoinDataHeight {
-            coin_data: CoinData {
-                covhash,
-                value,
-                denom,
-                additional_data,
-            },
-            height
+            coin_data:
+                CoinData {
+                    covhash,
+                    value,
+                    denom,
+                    additional_data,
+                },
+            height,
         } = spending_cdh;
 
         hm.insert(4, covhash.0.into());

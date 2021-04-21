@@ -42,7 +42,7 @@ impl Wallet {
                 denom: DENOM_TMEL.to_owned(),
                 covhash: self.data.my_script.hash(),
                 value: value * MICRO_CONVERTER,
-                additional_data: vec![]
+                additional_data: vec![],
             }],
             fee,
             scripts: vec![],
