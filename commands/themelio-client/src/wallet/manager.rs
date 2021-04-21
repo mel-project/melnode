@@ -6,7 +6,7 @@ use tmelcrypt::Ed25519SK;
 
 use crate::common::context::ExecutionContext;
 use crate::wallet::data::WalletData;
-use crate::wallet::error::ClientError;
+use crate::wallet::error::WalletError;
 use crate::wallet::storage::WalletStorage;
 use crate::wallet::wallet::Wallet;
 
@@ -24,13 +24,13 @@ impl WalletManager {
     pub async fn create_wallet(&self, name: &str) -> anyhow::Result<Wallet> {
         // Check if wallet has only alphanumerics.
         if name.chars().all(char::is_alphanumeric) == false {
-            anyhow::bail!(ClientError::InvalidWalletName(name.to_string()))
+            anyhow::bail!(WalletError::InvalidWalletName(name.to_string()))
         }
 
         let storage = WalletStorage::new(&self.context.database);
         // Check if wallet with same name already exits.
         if let Some(_stored_wallet_data) = storage.get(name).await? {
-            anyhow::bail!(ClientError::DuplicateWalletName(name.to_string()))
+            anyhow::bail!(WalletError::DuplicateWalletName(name.to_string()))
         }
 
         // Generate wallet data and store it.
