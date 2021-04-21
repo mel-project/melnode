@@ -86,7 +86,7 @@ impl Wallet {
                 println!("sent faucet tx");
             }
             Err(ref err) => {
-                println!("{:?}", err.clone())
+                println!("{:?}", *err)
             }
         }
         Ok(())

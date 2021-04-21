@@ -50,7 +50,7 @@ impl WalletManager {
     pub async fn load_wallet(&self, name: &str, secret: &str) -> anyhow::Result<Wallet> {
         let storage = WalletStorage::new(&self.context.database);
         let wallet_data = storage.get(name).await?.unwrap();
-        let sk = Ed25519SK::from_str(secret.clone()).unwrap();
+        let sk = Ed25519SK::from_str(secret).unwrap();
 
         // TODO: add wallet data pk verification
         // let wallet_secret = hex::decode(wallet_secret)?;
