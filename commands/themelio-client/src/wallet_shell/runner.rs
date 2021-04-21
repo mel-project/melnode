@@ -3,6 +3,8 @@ use crate::wallet_shell::prompt::{format_prompt, read_line, ShellInputPrompt};
 use crate::wallet_shell::command::ShellCommand;
 use crate::wallet_shell::output::{exit, command_error, readline_error, help};
 use crate::wallet_shell::sub::runner::WalletSubShellRunner;
+use crate::common::prompt::prompt::InputPrompt;
+use crate::wallet_shell::executor::ShellExecutor;
 
 /// Run an wallet_shell command given an execution context
 /// This is for end users to create and show wallets
@@ -19,13 +21,14 @@ impl WalletShellRunner {
     /// Run wallet_shell commands from user input until user exits.
     pub async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
-        // let prompt = ShellInputPrompt::format_prompt(&self.context.version);
         let prompt = ShellInputPrompt::new();
-        let prompt = ShellInputPrompt::format_prompt(&self.version).await?;
+        let formatted_prompt = prompt.format_prompt(&self.context.version).await?;
 
         loop {
+            let prompt_input = prompt.read_line(&formatted_prompt).await;
+
             // Get command from user input.
-            match read_line(&prompt).await {
+            match prompt_input {
                 Ok(cmd) => {
                     // Exit if the user chooses to exit.
                     if cmd == ShellCommand::Exit {
@@ -49,7 +52,7 @@ impl WalletShellRunner {
 
     /// Dispatch and process the wallet_shell command.
     async fn dispatch(&self, cmd: &ShellCommand) -> anyhow::Result<()> {
-        let ce = ShellCommand::new(self.context.clone());
+        let ce = ShellExecutor::new(self.context.clone());
         // Dispatch a command and return a command result.
         match &cmd {
             ShellCommand::CreateWallet(name) => ce.create_wallet(name).await,

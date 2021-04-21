@@ -1,7 +1,6 @@
-use blkstructs::{CoinDataHeight, Transaction};
+use blkstructs::{Transaction};
 
 use crate::common::context::ExecutionContext;
-use crate::common::output2;
 use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::Wallet;
 
@@ -16,27 +15,26 @@ impl CommonExecutor {
     }
 
     /// Creates a new wallet, stores it into db and outputs the name & secret.
-    pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<()> {
+    pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<Wallet> {
         let manager = WalletManager::new(self.context.clone());
         let wallet = manager.create_wallet(wallet_name).await?;
-        output2::wallet(wallet).await?;
-        Ok(())
+        Ok(wallet)
     }
 
-    /// Check transaction until it is confirmed.
-    /// TODO: we may need a max timeout to set upper bound on tx polling.
-    pub async fn confirm_tx(
-        &self,
-        tx: &Transaction,
-        wallet: &Wallet,
-        sleep_sec: u64,
-    ) -> anyhow::Result<CoinDataHeight> {
-        loop {
-            let (coin_data_height, coin_id) = wallet.check_tx(tx).await?;
-            output2::check_coin(&coin_data_height, &coin_id).await;
-            self.context.sleep(sleep_sec).await?;
-        }
-    }
+    // /// Check transaction until it is confirmed.
+    // /// TODO: we may need a max timeout to set upper bound on tx polling.
+    // pub async fn confirm_tx(
+    //     &self,
+    //     tx: &Transaction,
+    //     wallet: &Wallet,
+    //     sleep_sec: u64,
+    // ) -> anyhow::Result<CoinDataHeight> {
+    //     loop {
+    //         let (coin_data_height, coin_id) = wallet.check_tx(tx).await?;
+    //         output2::check_coin(&coin_data_height, &coin_id).await;
+    //         self.context.sleep(sleep_sec).await?;
+    //     }
+    // }
 
     /// Adds coins by coin id to wallet.
     pub async fn add_coins(
