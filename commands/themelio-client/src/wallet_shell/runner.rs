@@ -57,28 +57,9 @@ impl WalletShellRunner {
         match &cmd {
             ShellCommand::CreateWallet(name) => ce.create_wallet(name).await,
             ShellCommand::ShowWallets => ce.show_wallets().await,
-            ShellCommand::OpenWallet(name, secret) => self.open_wallet(name, secret).await,
-            ShellCommand::Help => self.help().await,
-            ShellCommand::Exit => self.exit().await,
+            ShellCommand::OpenWallet(name, secret) => ce.open_wallet(name, secret).await,
+            ShellCommand::Help => ce.help().await,
+            ShellCommand::Exit => ce.exit().await,
         }
-    }
-
-    /// Open a sub-wallet_shell given the name and secret and run in sub wallet_shell mode until user exits.
-    async fn open_wallet(&self, name: &str, secret: &str) -> anyhow::Result<()> {
-        let runner = WalletSubShellRunner::new(self.context.clone(), name, secret).await?;
-        runner.run().await?;
-        Ok(())
-    }
-
-    /// Output help message to user.
-    async fn help(&self) -> anyhow::Result<()> {
-        help().await?;
-        Ok(())
-    }
-
-    /// Output exit message to user.
-    async fn exit(&self) -> anyhow::Result<()> {
-        exit().await?;
-        Ok(())
     }
 }

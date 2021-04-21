@@ -109,4 +109,15 @@ impl ShellExecutor {
         let runner = WalletSubShellRunner::new(self.context.clone(), wallet_name, secret).await?;
         runner.run().await
     }
+
+
+    /// Output help message to user.
+    pub async fn help(&self) -> anyhow::Result<()> {
+        help().await
+    }
+
+    /// Output exit message to user.
+    pub async fn exit(&self) -> anyhow::Result<()> {
+        exit().await
+    }
 }
