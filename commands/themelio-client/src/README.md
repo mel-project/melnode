@@ -6,13 +6,14 @@ The themelio client CLI tool has two sub commands which provide:
 
 ## Wallet Shell 
 
-The wallet shell uses a shell runner that shows a prompt which takes in input, executes the command and shows the results.
+The wallet shell uses a shell runner which runs the following in a loop:
+* Shows a prompt which takes in input
+* Executes a command 
+* Formats & outputs the results.
 
-The shell and it's sub-shell allow for operations such as creating & storing wallet data and sending transactions.
+The shell has a sub-shell which uses the same structure. Together they allow for operations such as creating & storing wallet data and sending transactions.
 
-It's contents are implemented in the wallet_shell module. 
-
-It also contains a sub-shell module that is activated by unlocking a wallet with it's secret. This mode allows you to send transactions to Themelio.
+It's contents are implemented in the shell folder. It is dependent on the utils and wallet folders.  
 
 ### Start interactive shell mode
 
@@ -53,9 +54,11 @@ Exiting Themelio Client wallet-shell mode
 
 ## wallet-utils  
 
-The wallet utils allow one-time command calls that can be formatted with different outputs such as JSON.
+The wallet utils executes a command which can be formatted with different outputs such as JSON.
 
-The non-interactive mode allows a user to execute a single command and exit the binary. This is suited better for automation and testing.
+The util executor allows a user to execute a single command and exit the binary. 
+
+This is suited better for automation and testing.
 
 examples:
 
