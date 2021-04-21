@@ -55,13 +55,13 @@ impl CommandExecutor {
         &self,
         wallet_name: &str,
         secret: &str,
-        address: &str,
-        amount: &str,
-        unit: &str,
+        _address: &str,
+        _amount: &str,
+        _unit: &str,
     ) -> anyhow::Result<()> {
         // Load wallet from wallet manager using name and secret
         let manager = WalletManager::new(self.context.clone());
-        let wallet = manager.load_wallet(wallet_name, secret).await?;
+        let _wallet = manager.load_wallet(wallet_name, secret).await?;
 
         // TODO: while we don't ask for fee prompt in command mode we should do so in wallet_shell mode
         // and an option type should be used somewhere here.
@@ -87,16 +87,16 @@ impl CommandExecutor {
     /// Adds coins by coin id to wallet.
     pub async fn add_coins(
         &self,
-        wallet_name: &str,
-        secret: &str,
-        coin_id: &str,
+        _wallet_name: &str,
+        _secret: &str,
+        _coin_id: &str,
     ) -> anyhow::Result<()> {
         unimplemented!();
         // Ok(())
     }
 
     /// Shows the total known wallet balance.
-    pub async fn show_balance(&self, wallet_name: &str, secret: &str) -> anyhow::Result<()> {
+    pub async fn show_balance(&self, _wallet_name: &str, _secret: &str) -> anyhow::Result<()> {
         unimplemented!();
         // Ok(())
     }
@@ -120,7 +120,7 @@ impl CommandExecutor {
             self.context
                 .formatter
                 .check_coin(&coin_data_height, &coin_id)
-                .await;
+                .await?;
             self.context.sleep(sleep_sec).await?;
         }
     }

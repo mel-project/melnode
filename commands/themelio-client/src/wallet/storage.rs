@@ -45,9 +45,4 @@ impl WalletStorage {
         let map = SledMap::<String, WalletData>::new(tree);
         Ok(map.get_all().collect())
     }
-
-    /// Insert wallet_shell data by wallet_shell name.
-    pub async fn remove(&self, name: &str) -> anyhow::Result<()> {
-        todo!("Not implemented")
-    }
 }

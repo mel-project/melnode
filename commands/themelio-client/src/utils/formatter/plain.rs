@@ -36,11 +36,11 @@ impl OutputFormatter for PlainOutputFormatter {
         wallets: BTreeMap<String, WalletData>,
     ) -> anyhow::Result<()> {
         let mut tw = TabWriter::new(vec![]);
-        writeln!(tw, ">> [NAME]\t[ADDRESS]");
+        writeln!(tw, ">> [NAME]\t[ADDRESS]").unwrap();
         for (name, wallet) in wallets {
-            writeln!(tw, ">> {}\t{}", name, wallet.my_script.hash().to_addr());
+            writeln!(tw, ">> {}\t{}", name, wallet.my_script.hash().to_addr()).unwrap();
         }
-        tw.flush();
+        tw.flush().unwrap();
         eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
         Ok(())
     }
