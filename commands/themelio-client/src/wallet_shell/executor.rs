@@ -2,6 +2,7 @@ use crate::common::context::ExecutionContext;
 use crate::common::executor::CommonExecutor;
 use crate::wallet::manager::WalletManager;
 use crate::wallet_shell::sub::runner::WalletSubShellRunner;
+use crate::wallet_shell::output::{help, exit};
 
 /// Responsible for executing a single client CLI command non-interactively.
 pub struct ShellExecutor {
