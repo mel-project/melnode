@@ -1,7 +1,6 @@
 use std::marker::PhantomData;
 
 use serde::{de::DeserializeOwned, Serialize};
-use std::collections::HashMap;
 
 /// A sled-backed mapping.
 pub struct SledMap<K: DeserializeOwned + Serialize, V: DeserializeOwned + Serialize> {
