@@ -62,7 +62,7 @@ examples:
 ### Create wallet
 > cargo run -- --host "94.237.109.44:11814" wallet-utils create-wallet alice
 ```asm
->> New data:  tigran
+>> New data:  alice 
 >> Address:   t9yey-zvk27-9vr9x-774ce-qckxk-b7gx3-74egz-05xkf-p99ka-f4t06-742g
 >> Secret:    e2926ba128937218e12ffa81109fc152d6626f30dddc92641d353a3cc2099b3f0492314a06191bae7eb4d5e4a9d645f23d3cabf8babfd9f698c98f36236d04b9
 ```
