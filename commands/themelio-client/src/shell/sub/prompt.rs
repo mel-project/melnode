@@ -1,5 +1,5 @@
-use crate::common::prompt::{common_read_line, InputPrompt};
-use crate::wallet_shell::sub::command::SubShellCommand;
+use crate::utils::prompt::{common_read_line, InputPrompt};
+use crate::shell::sub::command::SubShellCommand;
 use colored::Colorize;
 use std::convert::TryFrom;
 

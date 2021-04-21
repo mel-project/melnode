@@ -4,7 +4,7 @@ use std::str::FromStr;
 use blkstructs::melvm::Covenant;
 use tmelcrypt::Ed25519SK;
 
-use crate::common::context::ExecutionContext;
+use crate::utils::context::ExecutionContext;
 use crate::wallet::data::WalletData;
 use crate::wallet::error::WalletError;
 use crate::wallet::storage::WalletStorage;

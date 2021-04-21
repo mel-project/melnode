@@ -1,6 +1,6 @@
-use crate::common::formatter::formatter::OutputFormatter;
-use crate::common::formatter::json::JsonOutputFormatter;
-use crate::common::formatter::plain::PlainOutputFormatter;
+use crate::utils::formatter::formatter::OutputFormatter;
+use crate::utils::formatter::json::JsonOutputFormatter;
+use crate::utils::formatter::plain::PlainOutputFormatter;
 use serde::{Deserialize, Serialize};
 use serde_scan::ScanError;
 use std::str::FromStr;

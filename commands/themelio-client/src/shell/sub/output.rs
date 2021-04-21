@@ -1,6 +1,6 @@
 use anyhow::Error;
 
-use crate::wallet_shell::sub::command::SubShellCommand;
+use crate::shell::sub::command::SubShellCommand;
 
 /// Send coins to a recipient.
 pub(crate) async fn sent_coins() {}

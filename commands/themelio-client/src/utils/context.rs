@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use smol::Timer;
 
-use crate::common::formatter::formatter::OutputFormatter;
+use crate::utils::formatter::formatter::OutputFormatter;
 use nodeprot::{ValClient, ValClientSnapshot};
 use std::sync::Arc;
 

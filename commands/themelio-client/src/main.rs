@@ -1,14 +1,14 @@
-use crate::common::context::ExecutionContext;
+use crate::utils::context::ExecutionContext;
 use crate::opts::{ClientOpts, ClientSubOpts, OutputFormat, WalletUtilsCommand};
-use crate::wallet_shell::runner::WalletShellRunner;
-use common::executor::CommandExecutor;
+use crate::shell::runner::WalletShellRunner;
+use utils::executor::CommandExecutor;
 use std::sync::Arc;
 use structopt::StructOpt;
 
-mod common;
+mod utils;
 mod opts;
 mod wallet;
-mod wallet_shell;
+mod shell;
 
 /// Parse options from input arguments and asynchronously dispatch them.
 fn main() {

@@ -1,10 +1,10 @@
-use crate::common::context::ExecutionContext;
-use crate::common::executor::CommandExecutor;
-use crate::common::prompt::InputPrompt;
+use crate::utils::context::ExecutionContext;
+use crate::utils::executor::CommandExecutor;
+use crate::utils::prompt::InputPrompt;
 use crate::wallet::manager::WalletManager;
-use crate::wallet_shell::sub::command::SubShellCommand;
-use crate::wallet_shell::sub::output::{dispatch_error, exit, help, readline_error};
-use crate::wallet_shell::sub::prompt::SubShellInputPrompt;
+use crate::shell::sub::command::SubShellCommand;
+use crate::shell::sub::output::{dispatch_error, exit, help, readline_error};
+use crate::shell::sub::prompt::SubShellInputPrompt;
 
 /// A sub-wallet_shell runner executed within the higher-level wallet_shell.
 /// This wallet_shell unlocks a wallet, transacts with the network and shows balances.

@@ -1,6 +1,6 @@
 use blkstructs::{CoinDataHeight, Transaction};
 
-use crate::common::context::ExecutionContext;
+use crate::utils::context::ExecutionContext;
 use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::Wallet;
 

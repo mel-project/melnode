@@ -1,10 +1,10 @@
-use crate::common::context::ExecutionContext;
-use crate::common::executor::CommandExecutor;
-use crate::common::prompt::InputPrompt;
-use crate::wallet_shell::command::ShellCommand;
-use crate::wallet_shell::output::{command_error, exit, readline_error};
-use crate::wallet_shell::prompt::ShellInputPrompt;
-use crate::wallet_shell::sub::runner::WalletSubShellRunner;
+use crate::utils::context::ExecutionContext;
+use crate::utils::executor::CommandExecutor;
+use crate::utils::prompt::InputPrompt;
+use crate::shell::command::ShellCommand;
+use crate::shell::output::{command_error, exit, readline_error};
+use crate::shell::prompt::ShellInputPrompt;
+use crate::shell::sub::runner::WalletSubShellRunner;
 
 /// Run an wallet_shell command given an execution context
 /// This is for end users to create and show wallets

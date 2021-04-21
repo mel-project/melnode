@@ -6,7 +6,7 @@ use tabwriter::TabWriter;
 
 use blkstructs::{CoinDataHeight, CoinID};
 
-use crate::common::formatter::formatter::OutputFormatter;
+use crate::utils::formatter::formatter::OutputFormatter;
 use crate::wallet::data::WalletData;
 use crate::wallet::wallet::Wallet;
 use async_trait::async_trait;

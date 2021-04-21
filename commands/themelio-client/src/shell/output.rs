@@ -1,6 +1,6 @@
 use anyhow::Error;
 
-use crate::wallet_shell::command::ShellCommand;
+use crate::shell::command::ShellCommand;
 
 /// Output the error when dispatching command.
 pub(crate) async fn command_error(err: &Error, cmd: &ShellCommand) -> anyhow::Result<()> {
