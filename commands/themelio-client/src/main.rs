@@ -1,14 +1,14 @@
 use crate::common::context::ExecutionContext;
-use crate::opts::{ClientOpts, ClientSubOpts, WalletUtilsCommand, OutputFormat};
-use structopt::StructOpt;
+use crate::opts::{ClientOpts, ClientSubOpts, OutputFormat, WalletUtilsCommand};
 use crate::wallet_shell::runner::WalletShellRunner;
 use common::executor::CommandExecutor;
 use std::sync::Arc;
+use structopt::StructOpt;
 
 mod common;
+mod opts;
 mod wallet;
 mod wallet_shell;
-mod opts;
 
 /// Parse options from input arguments and asynchronously dispatch them.
 fn main() {
@@ -19,7 +19,7 @@ fn main() {
 }
 
 /// Either start the wallet shell runner or invoke a utils command using an executor.
-async fn dispatch(opts: ClientOpts) -> anyhow::Result<()>{
+async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
     let version = env!("CARGO_PKG_VERSION").to_string();
     let network = blkstructs::NetID::Testnet;
     let host = opts.host;
@@ -31,7 +31,13 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()>{
         ClientSubOpts::WalletShell => {
             let formatter = Arc::new(OutputFormat::default());
             let context = ExecutionContext {
-                version, network, host, database, sleep_sec, fee, formatter
+                version,
+                network,
+                host,
+                database,
+                sleep_sec,
+                fee,
+                formatter,
             };
             let runner = WalletShellRunner::new(context);
             runner.run().await
@@ -39,13 +45,19 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()>{
         ClientSubOpts::WalletUtils(util_opts) => {
             let formatter = Arc::new(util_opts.output_format.make());
             let context = ExecutionContext {
-                version, network, host, database, sleep_sec, fee, formatter
+                version,
+                network,
+                host,
+                database,
+                sleep_sec,
+                fee,
+                formatter,
             };
             let executor = CommandExecutor::new(context);
             match util_opts.cmd {
                 WalletUtilsCommand::CreateWallet { wallet_name } => {
                     executor.create_wallet(&wallet_name).await
-                },
+                }
                 WalletUtilsCommand::Faucet {
                     wallet_name,
                     secret,

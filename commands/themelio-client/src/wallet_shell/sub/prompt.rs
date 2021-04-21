@@ -1,7 +1,7 @@
-use std::convert::TryFrom;
-use colored::Colorize;
-use crate::common::prompt::prompt::{InputPrompt, common_read_line};
+use crate::common::prompt::prompt::{common_read_line, InputPrompt};
 use crate::wallet_shell::sub::command::SubShellCommand;
+use colored::Colorize;
+use std::convert::TryFrom;
 
 use async_trait::async_trait;
 
@@ -9,7 +9,7 @@ pub struct SubShellInputPrompt {}
 
 impl SubShellInputPrompt {
     pub fn new() -> Self {
-        return SubShellInputPrompt{}
+        return SubShellInputPrompt {};
     }
 }
 

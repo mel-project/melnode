@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use smol::Timer;
 
-use nodeprot::{ValClient, ValClientSnapshot};
 use crate::common::formatter::formatter::OutputFormatter;
+use nodeprot::{ValClient, ValClientSnapshot};
 use std::sync::Arc;
 
 use serde::Serialize;
@@ -20,7 +20,7 @@ pub struct ExecutionContext {
     pub fee: u128,
 
     #[serde(skip_serializing)]
-    pub formatter: Arc<Box<dyn OutputFormatter + Sync + Send + 'static>>
+    pub formatter: Arc<Box<dyn OutputFormatter + Sync + Send + 'static>>,
 }
 
 impl ExecutionContext {

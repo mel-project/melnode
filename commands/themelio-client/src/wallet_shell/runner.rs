@@ -1,9 +1,9 @@
 use crate::common::context::ExecutionContext;
-use crate::wallet_shell::command::ShellCommand;
-use crate::wallet_shell::output::{exit, command_error, readline_error};
-use crate::common::prompt::prompt::InputPrompt;
-use crate::wallet_shell::prompt::ShellInputPrompt;
 use crate::common::executor::CommandExecutor;
+use crate::common::prompt::prompt::InputPrompt;
+use crate::wallet_shell::command::ShellCommand;
+use crate::wallet_shell::output::{command_error, exit, readline_error};
+use crate::wallet_shell::prompt::ShellInputPrompt;
 use crate::wallet_shell::sub::runner::WalletSubShellRunner;
 
 /// Run an wallet_shell command given an execution context

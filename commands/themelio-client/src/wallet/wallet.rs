@@ -1,10 +1,10 @@
+use crate::common::context::ExecutionContext;
+use crate::wallet::data::WalletData;
 use blkstructs::{
     CoinData, CoinDataHeight, CoinID, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
 };
-use tmelcrypt::Ed25519SK;
 use serde::Serialize;
-use crate::common::context::ExecutionContext;
-use crate::wallet::data::WalletData;
+use tmelcrypt::Ed25519SK;
 
 /// Responsible for using an in memory wallet to send transactions.
 #[derive(Serialize)]

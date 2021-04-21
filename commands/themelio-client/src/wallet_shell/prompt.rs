@@ -1,14 +1,14 @@
-use std::convert::TryFrom;
-use colored::Colorize;
+use crate::common::prompt::prompt::{common_read_line, InputPrompt};
 use crate::wallet_shell::command::ShellCommand;
-use crate::common::prompt::prompt::{InputPrompt, common_read_line};
 use async_trait::async_trait;
+use colored::Colorize;
+use std::convert::TryFrom;
 
 pub struct ShellInputPrompt {}
 
 impl ShellInputPrompt {
     pub fn new() -> Self {
-        return ShellInputPrompt{}
+        return ShellInputPrompt {};
     }
 }
 
@@ -16,9 +16,9 @@ impl ShellInputPrompt {
 impl InputPrompt<ShellCommand> for ShellInputPrompt {
     async fn format_prompt(&self, version: &str) -> anyhow::Result<String> {
         let prompt_stack: Vec<String> = vec![
-        format!("themelio-client").cyan().bold().to_string(),
-        format!("(v{})", version).magenta().to_string(),
-        format!("➜ ").cyan().bold().to_string(),
+            format!("themelio-client").cyan().bold().to_string(),
+            format!("(v{})", version).magenta().to_string(),
+            format!("➜ ").cyan().bold().to_string(),
         ];
         Ok(format!("{}", prompt_stack.join(" ")))
     }

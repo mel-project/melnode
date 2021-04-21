@@ -1,10 +1,10 @@
-use structopt::StructOpt;
+use crate::common::formatter::formatter::OutputFormatter;
+use crate::common::formatter::json::JsonOutputFormatter;
+use crate::common::formatter::plain::PlainOutputFormatter;
 use serde::{Deserialize, Serialize};
 use serde_scan::ScanError;
 use std::str::FromStr;
-use crate::common::formatter::formatter::OutputFormatter;
-use crate::common::formatter::plain::PlainOutputFormatter;
-use crate::common::formatter::json::JsonOutputFormatter;
+use structopt::StructOpt;
 
 #[derive(Debug, Clone, StructOpt)]
 #[structopt(name = "Themelio Client CLI")]
@@ -33,14 +33,14 @@ pub struct ClientOpts {
 
     /// Contains all the sub-command options for a client
     #[structopt(subcommand)]
-    pub sub_opts: ClientSubOpts
+    pub sub_opts: ClientSubOpts,
 }
 
 #[derive(StructOpt, Clone, Debug)]
 /// Contains the wallet-shell and wallet_utils mode.
 pub enum ClientSubOpts {
     WalletShell,
-    WalletUtils(WalletUtilsOpts)
+    WalletUtils(WalletUtilsOpts),
 }
 
 /// Represents how to format formatter.
@@ -58,12 +58,8 @@ impl OutputFormat {
 
     pub fn make(&self) -> Box<dyn OutputFormatter + Sync + Send + 'static> {
         return match self {
-            OutputFormat::Plain => {
-                Box::new(PlainOutputFormatter {})
-            }
-            OutputFormat::Json => {
-                Box::new(JsonOutputFormatter {})
-            }
+            OutputFormat::Plain => Box::new(PlainOutputFormatter {}),
+            OutputFormat::Json => Box::new(JsonOutputFormatter {}),
         };
     }
 }
@@ -87,7 +83,7 @@ pub struct WalletUtilsOpts {
 
     /// Automation-centric commands to executed with the exception of the wallet_shell 'wallet_shell' command.
     #[structopt(subcommand)]
-    pub cmd: WalletUtilsCommand
+    pub cmd: WalletUtilsCommand,
 }
 
 #[derive(StructOpt, Clone, Debug)]

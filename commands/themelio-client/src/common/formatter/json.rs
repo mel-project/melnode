@@ -2,13 +2,13 @@ use std::collections::BTreeMap;
 
 use blkstructs::{CoinDataHeight, CoinID};
 
-use serde::Serialize;
+use crate::common::formatter::formatter::OutputFormatter;
 use crate::wallet::data::WalletData;
 use crate::wallet::wallet::Wallet;
-use crate::common::formatter::formatter::OutputFormatter;
 use async_trait::async_trait;
+use serde::Serialize;
 
-pub struct JsonOutputFormatter { }
+pub struct JsonOutputFormatter {}
 
 #[async_trait]
 impl OutputFormatter for JsonOutputFormatter {
@@ -20,14 +20,21 @@ impl OutputFormatter for JsonOutputFormatter {
     }
 
     /// Display json of all stored wallet wallet addresses by name.
-    async fn wallet_addresses_by_name(&self, wallets: BTreeMap<String, WalletData>) -> anyhow::Result<()> {
+    async fn wallet_addresses_by_name(
+        &self,
+        wallets: BTreeMap<String, WalletData>,
+    ) -> anyhow::Result<()> {
         let json = serde_json::to_string_pretty(&wallets).unwrap();
         eprintln!("{}", json);
         Ok(())
     }
 
     /// Display json showing height and coin id information upon a coin being confimed.
-    async fn coin_confirmed(&self, coin_data_height: &CoinDataHeight, coin: &CoinID) -> anyhow::Result<()> {
+    async fn coin_confirmed(
+        &self,
+        coin_data_height: &CoinDataHeight,
+        coin: &CoinID,
+    ) -> anyhow::Result<()> {
         let coin_data_height = coin_data_height.clone();
         let coin = coin.clone();
 
@@ -35,7 +42,7 @@ impl OutputFormatter for JsonOutputFormatter {
         #[serde(rename_all = "camelCase")]
         struct Confirmed {
             coin_data_height: CoinDataHeight,
-            coin: CoinID
+            coin: CoinID,
         }
 
         let confirmed = Confirmed {
@@ -56,9 +63,9 @@ impl OutputFormatter for JsonOutputFormatter {
         #[derive(Serialize)]
         #[serde(rename_all = "camelCase")]
         struct Pending {
-            pending_message: String
+            pending_message: String,
         }
-        let pending = Pending { pending_message};
+        let pending = Pending { pending_message };
         let json = serde_json::to_string_pretty(&pending).unwrap();
 
         eprintln!("{}", json);
@@ -67,7 +74,11 @@ impl OutputFormatter for JsonOutputFormatter {
 
     /// Display function which displays pending message until a coin is confirmed
     /// at which a confirmed message will be displayed.
-    async fn check_coin(&self, coin_data_height: &Option<CoinDataHeight>, coin_id: &CoinID) -> anyhow::Result<()> {
+    async fn check_coin(
+        &self,
+        coin_data_height: &Option<CoinDataHeight>,
+        coin_id: &CoinID,
+    ) -> anyhow::Result<()> {
         match coin_data_height {
             None => self.coin_pending().await?,
             Some(coin_data_height) => self.coin_confirmed(&coin_data_height, &coin_id).await?,
