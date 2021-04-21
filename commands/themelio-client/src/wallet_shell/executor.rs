@@ -1,6 +1,7 @@
 use crate::common::context::ExecutionContext;
 use crate::common::executor::CommonExecutor;
 use crate::wallet::manager::WalletManager;
+use crate::wallet_shell::sub::runner::WalletSubShellRunner;
 
 /// Responsible for executing a single client CLI command non-interactively.
 pub struct ShellExecutor {
@@ -15,7 +16,7 @@ impl ShellExecutor {
     /// Creates a new wallet, stores it into db and outputs the name & secret.
     pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<()> {
         let executor = CommonExecutor::new(self.context.clone());
-        executor.create_wallet(wallet_name).await?
+        executor.create_wallet(wallet_name).await
     }
 
     /// Create and sent a faucet tx in wallet_shell mode.
@@ -104,9 +105,8 @@ impl ShellExecutor {
     }
 
     /// Launch wallet_shell mode until user exits.
-    pub async fn open_wallet(&self) -> anyhow::Result<()> {
-        let runner = InteractiveCommandRunner::new(self.context.clone());
-        runner.run().await?;
-        Ok(())
+    pub async fn open_wallet(&self, wallet_name: &str, secret: &str) -> anyhow::Result<()> {
+        let runner = WalletSubShellRunner::new(self.context.clone(), wallet_name, secret).await?;
+        runner.run().await
     }
 }
