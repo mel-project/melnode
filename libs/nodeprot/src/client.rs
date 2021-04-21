@@ -121,6 +121,7 @@ impl ValClient {
 }
 
 /// A "snapshot" of the state at a given state. It essentially encapsulates a NodeClient and a trusted header.
+#[derive(Clone)]
 pub struct ValClientSnapshot {
     height: u64,
     header: Header,
@@ -133,6 +134,9 @@ impl ValClientSnapshot {
         if old_height > self.height {
             return Err(MelnetError::Custom("cannot travel into the future".into()));
         }
+        if old_height == self.height {
+            return Ok(self.clone());
+        }
         // Get an SMT branch
         let val = self
             .get_smt_value(
@@ -141,7 +145,7 @@ impl ValClientSnapshot {
             )
             .await?;
         let old_elem: Header = stdcode::deserialize(&val)
-            .map_err(|_| MelnetError::Custom("could not deserialize old header".into()))?;
+            .map_err(|e| MelnetError::Custom(format!("could not deserialize old header: {}", e)))?;
         // this can never possibly be bad unless everything is horribly untrustworthy
         assert_eq!(old_elem.height, old_height);
         Ok(Self {
@@ -224,7 +228,10 @@ impl ValClientSnapshot {
         };
         let (val, branch) = self.raw.get_smt_branch(self.height, substate, key).await?;
         if !branch.verify(verify_against, key, &val) {
-            return Err(MelnetError::Custom("unable to verify merkle proof".into()));
+            return Err(MelnetError::Custom(format!(
+                "unable to verify merkle proof for height {:?}, substate {:?}, key {:?}, value {:?}, branch {:?}",
+                self.height, substate, key, val, branch
+            )));
         }
         Ok(val)
     }

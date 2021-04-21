@@ -159,6 +159,15 @@ impl NodeServer for AuditorResponder {
             Substate::Transactions => &state.inner_ref().transactions.mapping,
         };
         let (v, proof) = tree.get(key);
+        if !proof.verify(tree.root_hash(), key, &v) {
+            panic!(
+                "get_smt_branch({}, {:?}, {:?}) => {} failed",
+                height,
+                elem,
+                key,
+                hex::encode(&v)
+            )
+        }
         Ok((v, proof.compress()))
     }
 

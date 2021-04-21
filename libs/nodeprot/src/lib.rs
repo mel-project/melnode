@@ -40,7 +40,7 @@ pub struct StateSummary {
     pub proof: ConsensusProof,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, Hash, PartialEq, PartialOrd, Ord)]
 pub enum Substate {
     History,
     Coins,

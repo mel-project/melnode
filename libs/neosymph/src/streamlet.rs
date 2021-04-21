@@ -52,7 +52,7 @@ impl<N: Network, L: TxLookup> Streamlet<N, L> {
     /// Starts the streamlet pacemaker, returning a handle with which to interact with the pacemaker.
     pub fn start(mut self) -> StreamletHandle {
         let (send_event, recv_event) = smol::channel::unbounded();
-        let (send_force_finalize, recv_force_finalize) = smol::channel::unbounded();
+        let (send_force_finalize, recv_force_finalize) = smol::channel::unbounded::<SealedState>();
         self.send_event = Some(send_event);
         let exec: smol::Executor<'static> = smol::Executor::new();
         exec.spawn(async move {
@@ -82,7 +82,8 @@ impl<N: Network, L: TxLookup> Streamlet<N, L> {
                             }
                         }
                         if let Ok(val) = recv_force_finalize.try_recv() {
-                            self.partial_props.clear();
+                            self.partial_props
+                                .retain(|_, v| v.proposal.header.height > val.inner_ref().height);
                             self.chain.force_finalize(val);
                         }
                     }

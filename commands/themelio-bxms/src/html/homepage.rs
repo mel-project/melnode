@@ -42,7 +42,7 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
     let last_snap = req.state().snapshot().await.map_err(to_badgateway)?;
     let mut blocks = Vec::new();
     let mut transactions = Vec::new();
-    for height in (0u64..last_snap.current_header().height).rev().take(10) {
+    for height in (0u64..=last_snap.current_header().height).rev().take(100) {
         let old_snap = last_snap.get_older(height).await.map_err(to_badgateway)?;
         let reward_coin = old_snap
             .get_coin(CoinID::proposer_reward(height))

@@ -20,42 +20,22 @@ pub fn key_to_path(key: tmelcrypt::HashVal) -> [bool; 256] {
     toret
 }
 
-type HVV = (tmelcrypt::HashVal, Vec<u8>);
-
-static DATA_HASH_CACHE: Lazy<RwLock<HashMap<HVV, Vec<tmelcrypt::HashVal>>>> =
-    Lazy::new(|| RwLock::new(HashMap::new()));
-
 pub fn data_hashes(key: tmelcrypt::HashVal, data: &[u8]) -> Vec<tmelcrypt::HashVal> {
-    let compute = || {
-        let path = merk::key_to_path(key);
-        let mut ptr = hash::datablock(data);
-        let mut hashes = vec![ptr];
+    let path = merk::key_to_path(key);
+    let mut ptr = hash::datablock(data);
+    let mut hashes = vec![ptr];
 
-        for data_on_right in path.iter().rev() {
-            if *data_on_right {
-                // add the opposite hash
-                ptr = hash::node(tmelcrypt::HashVal::default(), ptr);
-            } else {
-                ptr = hash::node(ptr, tmelcrypt::HashVal::default());
-            }
-            hashes.push(ptr)
+    for data_on_right in path.iter().rev() {
+        if *data_on_right {
+            // add the opposite hash
+            ptr = hash::node(tmelcrypt::HashVal::default(), ptr);
+        } else {
+            ptr = hash::node(ptr, tmelcrypt::HashVal::default());
         }
-        hashes.reverse();
-        hashes
-    };
-    // TODO: Should we completely drop this caching mechanism?
-    let value = DATA_HASH_CACHE.read().get(&(key, data.into())).cloned();
-    if let Some(val) = value {
-        val
-    } else {
-        let res = compute();
-        let mut cache = DATA_HASH_CACHE.write();
-        cache.insert((key, data.into()), res.clone());
-        if cache.len() > 10000 {
-            cache.clear();
-        }
-        res
+        hashes.push(ptr)
     }
+    hashes.reverse();
+    hashes
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]

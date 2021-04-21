@@ -175,11 +175,11 @@ async fn staker_loop(
 
     loop {
         let evt = streamlet.next_event().await;
+        let last_confirmed_state = storage.read().highest_state();
+        streamlet.force_finalize(last_confirmed_state.clone());
         match evt {
             StreamletEvt::SolicitProp(last_state, height, prop_send) => {
                 // If we already have a higher state, this means that we were offline and need to reboot symphonia.
-                let last_confirmed_state = storage.read().highest_state();
-                streamlet.force_finalize(last_confirmed_state.clone());
                 if last_confirmed_state.inner_ref().height > last_state.inner_ref().height {
                     log::warn!("LCS has bigger height than we have! Skip this round to be safe.");
                     continue;

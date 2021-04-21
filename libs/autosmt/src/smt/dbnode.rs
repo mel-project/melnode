@@ -94,6 +94,9 @@ impl DBNode {
         data: &[u8],
         db: &Forest,
     ) -> Self {
+        if data.is_empty() {
+            eprintln!("SET BY PATH EMPTY AT {:#?}", self);
+        }
         match self {
             Internal(int) => int.set_by_path(path, key, data, db),
             Data(dat) => dat.set_by_path(path, key, data, db),
@@ -272,23 +275,33 @@ impl DataNode {
     }
 
     fn calc_hash(&self) -> tmelcrypt::HashVal {
-        merk::data_hashes(self.key, &self.data)[256 - self.level as usize]
+        let res = merk::data_hashes(self.key, &self.data)[256 - self.level as usize];
+        if self.data.is_empty() {
+            assert_eq!(res, tmelcrypt::HashVal::default());
+        }
+        res
     }
 
     fn get_by_path_rev(
         &self,
-        _: &[bool],
+        path: &[bool],
         key: tmelcrypt::HashVal,
         _: &Forest,
     ) -> (Vec<u8>, Vec<tmelcrypt::HashVal>) {
-        (
-            if self.key == key {
-                self.data.clone()
-            } else {
-                vec![]
-            },
-            self.proof_frag(),
-        )
+        if self.key == key {
+            (self.data.clone(), self.proof_frag())
+        } else {
+            // HACK: make an internal node, insert, and stuff
+            let forest = Forest::load(MemDB::default());
+            let internal = InternalNode::default();
+            let internal = internal.set_by_path(
+                &merk::key_to_path(self.key)[256 - self.level as usize..],
+                self.key,
+                &self.data,
+                &forest,
+            );
+            internal.get_by_path_rev(path, key, &forest)
+        }
     }
 
     fn set_by_path(

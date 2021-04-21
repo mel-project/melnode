@@ -2,9 +2,9 @@ use crate::smt::dbnode::*;
 use crate::smt::*;
 use genawaiter::sync::Gen;
 use parking_lot::RwLock;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::fmt::Write;
 use std::sync::Arc;
-
 /// Wraps around a raw key-value store and produces trees. The main interface to the library.
 #[derive(Clone)]
 pub struct Forest {
@@ -41,75 +41,6 @@ impl Forest {
     pub(crate) fn write(&self, hash: tmelcrypt::HashVal, value: DBNode) {
         self.raw.write().set_batch(vec![(hash, value)])
     }
-
-    // /// Draws a debug GraphViz representation of the tree.
-    // pub fn debug_graphviz(&self) -> String {
-    //     let mut formatter = String::new();
-    //     log::debug!("traversal_stack init..");
-    //     let mut traversal_stack: Vec<_> = self
-    //         .trees
-    //         .read()
-    //         .iter()
-    //         .filter_map(|(k, v)| {
-    //             if Arc::strong_count(&v.hack_ctr) != 1 {
-    //                 Some(k)
-    //             } else {
-    //                 None
-    //             }
-    //         })
-    //         .cloned()
-    //         .collect();
-    //     formatter.push_str("digraph G {\n");
-    //     let mut draw_dbn = |dbn: &DBNode, color: &str| {
-    //         let kind = match dbn {
-    //             DBNode::Internal(_) => String::from("I"),
-    //             DBNode::Data(DataNode {
-    //                 level: l, key: k, ..
-    //             }) => format!("D-({}, {:?})", l, k),
-    //             DBNode::Zero => String::from("Z"),
-    //         };
-    //         let ptrs = dbn.out_ptrs();
-    //         let curr_hash = dbn.hash();
-    //         formatter.push_str(&format!(
-    //             "\"{:?}\" [style=filled label=\"{}-{:?}\" fillcolor={} shape=rectangle]\n",
-    //             curr_hash, kind, curr_hash, color
-    //         ));
-    //         for (i, p) in ptrs.into_iter().enumerate() {
-    //             if p != tmelcrypt::HashVal::default() {
-    //                 formatter.push_str(&format!(
-    //                     "\"{:?}\" -> \"{:?}\" [label={}]\n",
-    //                     curr_hash, p, i
-    //                 ));
-    //             }
-    //         }
-    //     };
-    //     traversal_stack.dedup();
-    //     let mut seen = HashSet::new();
-    //     while !traversal_stack.is_empty() {
-    //         let curr = traversal_stack.pop().unwrap();
-    //         log::debug!("traversal_stack {} @ {:?}", traversal_stack.len(), curr);
-    //         if curr == tmelcrypt::HashVal::default() {
-    //             continue;
-    //         }
-    //         if !seen.insert(curr) {
-    //             log::warn!("cycle detected in SMT on {:?}", curr);
-    //             continue;
-    //         }
-    //         match self.cache.read().get(&curr) {
-    //             Some(dbn) => {
-    //                 draw_dbn(dbn, "azure");
-    //                 traversal_stack.extend_from_slice(&dbn.out_ptrs_nonnull());
-    //             }
-    //             None => {
-    //                 let dbn = self.raw.read().get(curr);
-    //                 draw_dbn(&dbn, "white");
-    //                 traversal_stack.extend_from_slice(&dbn.out_ptrs_nonnull());
-    //             }
-    //         }
-    //     }
-    //     formatter.push_str("}\n");
-    //     formatter
-    // }
 }
 
 #[derive(Clone)]
@@ -174,6 +105,30 @@ impl Tree {
             }
         });
         gen.into_iter()
+    }
+
+    /// Returns a string that's a graphviz representation of this tree.
+    pub fn graphviz(&self) -> String {
+        let mut outbuff = String::new();
+        outbuff.push_str("digraph G {\n");
+        let mut queue = VecDeque::new();
+        queue.push_front(self.clone());
+        while let Some(elem) = queue.pop_back() {
+            writeln!(
+                &mut outbuff,
+                "\"{}\" [label = \"{}\"];",
+                elem.hash,
+                hex::encode(&elem.hash[..5])
+            )
+            .unwrap();
+            for child in elem.to_dbnode().out_ptrs() {
+                writeln!(&mut outbuff, "\"{}\" -> \"{}\";", elem.hash, child).unwrap();
+                queue.push_front(self.dbm.get_tree(child))
+            }
+        }
+
+        outbuff.push_str("}\n");
+        outbuff
     }
 }
 
