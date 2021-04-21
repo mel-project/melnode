@@ -1,6 +1,6 @@
 use anyhow::Error;
 
-use crate::interactive::sub::command::InteractiveSubCommand;
+use crate::wallet_shell::sub::command::SubShellCommand;
 
 /// Send coins to a recipient.
 pub(crate) async fn sent_coins() {}
@@ -16,9 +16,9 @@ async fn faucet_tx(amt: &str, denom: &str) -> anyhow::Result<()> {
 /// Output the error when dispatching command
 pub(crate) async fn dispatch_error(
     err: &Error,
-    interactive_sub_cmd: &InteractiveSubCommand,
+    sub_cmd: &SubShellCommand,
 ) -> anyhow::Result<()> {
-    eprintln!("ERROR: {} when dispatching {:?}", err, interactive_sub_cmd);
+    eprintln!("ERROR: {} when dispatching {:?}", err, sub_cmd);
     Ok(())
 }
 
