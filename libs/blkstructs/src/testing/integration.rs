@@ -1,19 +1,12 @@
 // use rand::prelude::SliceRandom;
 
-use crate::testing::factory::*;
+// use crate::testing::factory::*;
 use crate::testing::fixtures::{genesis_state, tx_send_mel_from_seed_coin, SEND_MEL_AMOUNT};
 use crate::testing::utils::{
-    create_mel_buy_tx, create_mel_sell_tx, fee_estimate, filter_tx_outputs_by_pk, random_valid_txx,
-    tx_create_token, tx_deposit, tx_send_mels_to,
+    filter_tx_outputs_by_pk, random_valid_txx, tx_create_token, tx_deposit, tx_send_mels_to,
 };
-use crate::{
-    melvm, Block, CoinData, CoinDataHeight, CoinID, SmtMapping, State, Transaction, TxKind,
-    DENOM_NEWCOIN, DENOM_TMEL, MICRO_CONVERTER,
-};
+use crate::{melvm, CoinData, CoinID, SmtMapping, State, Transaction, DENOM_TMEL, MICRO_CONVERTER};
 use rstest::*;
-use std::hash::Hash;
-use std::mem::swap;
-use std::ops::Mul;
 use tmelcrypt::{Ed25519PK, Ed25519SK};
 
 // Add fuzz params ranges for rstest (range of num swaps, diff liquidity, etc...)
@@ -97,7 +90,7 @@ fn test_melswap_v2_simple(
         SEND_MEL_AMOUNT,
     );
 
-    let num_swapping_blocks = 1;
+    let _num_swapping_blocks = 1;
 
     // // Go to next state
     // let mut pre_swap_state = sealed_state.next_state();
@@ -168,7 +161,7 @@ fn state_simple_order_independence() {
     genesis.fee_multiplier = 0;
     let first_block = genesis.seal(None);
     let mut trng = rand::thread_rng();
-    let mut txx = random_valid_txx(
+    let txx = random_valid_txx(
         &mut trng,
         CoinID {
             txhash: tmelcrypt::HashVal([0; 32]),
@@ -185,7 +178,7 @@ fn state_simple_order_independence() {
         1577000,
     );
     println!("transactions generated");
-    let seq_copy = {
+    let _seq_copy = {
         let mut state = first_block.next_state();
         for tx in txx.iter() {
             state.apply_tx(tx).expect("failed application");

@@ -53,15 +53,15 @@ beaver::define! {
     }
 }
 
-beaver::define! {
-    pub GenesisConfigFactory (GenesisConfig) {
-        network -> |_| NetID::Testnet,
-        init_micromels -> |n| n as u128,
-        init_covhash -> |_| tmelcrypt::HashVal::random(),
-        stakes -> |_| HashMap::new(),
-        init_fee_pool -> |n| n as u128,
-    }
-}
+// beaver::define! {
+//     pub GenesisConfigFactory (GenesisConfig) {
+//         network -> |_| NetID::Testnet,
+//         init_micromels -> |n| n as u128,
+//         init_covhash -> |_| tmelcrypt::HashVal::random(),
+//         stakes -> |_| HashMap::new(),
+//         init_fee_pool -> |n| n as u128,
+//     }
+// }
 
 beaver::define! {
     pub ProposerActionFactory (ProposerAction) {
@@ -70,26 +70,26 @@ beaver::define! {
     }
 }
 
-beaver::define! {
-    pub HeaderFactory (Header) {
-        network -> |_| NetID::Testnet,
-        previous -> |_| tmelcrypt::HashVal::random(),
-        height -> |n| n as u64,
-        history_hash -> |_| tmelcrypt::HashVal::random(),
-        coins_hash -> |_| tmelcrypt::HashVal::random(),
-        transactions_hash -> |_| tmelcrypt::HashVal::random(),
-        fee_pool -> |n| n as u128,
-        fee_multiplier -> |n| n as u128,
-        dosc_speed ->  |n| n as u128,
-        pools_hash -> |_| tmelcrypt::HashVal::random(),
-        stakes_hash -> |_| tmelcrypt::HashVal::random(),
-    }
-}
+// beaver::define! {
+//     pub HeaderFactory (Header) {
+//         network -> |_| NetID::Testnet,
+//         previous -> |_| tmelcrypt::HashVal::random(),
+//         height -> |n| n as u64,
+//         history_hash -> |_| tmelcrypt::HashVal::random(),
+//         coins_hash -> |_| tmelcrypt::HashVal::random(),
+//         transactions_hash -> |_| tmelcrypt::HashVal::random(),
+//         fee_pool -> |n| n as u128,
+//         fee_multiplier -> |n| n as u128,
+//         dosc_speed ->  |n| n as u128,
+//         pools_hash -> |_| tmelcrypt::HashVal::random(),
+//         stake_hash -> |_| tmelcrypt::HashVal::random(),
+//     }
+// }
 
-beaver::define! {
-    pub BlockFactory (Block) {
-        header -> |n| HeaderFactory::build(n),
-        transactions -> |n| TransactionFactory::build_list(3, n).iter().cloned().collect(),
-        proposer_action -> |_| None,
-    }
-}
+// beaver::define! {
+//     pub BlockFactory (Block) {
+//         header -> |n| HeaderFactory::build(n),
+//         transactions -> |n| TransactionFactory::build_list(3, n).iter().cloned().collect(),
+//         proposer_action -> |_| None,
+//     }
+// }

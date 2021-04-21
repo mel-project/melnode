@@ -5,13 +5,11 @@ use rstest::*;
 use tmelcrypt::{Ed25519PK, Ed25519SK};
 
 use crate::melvm::Covenant;
-use crate::testing::factory::{
-    CoinDataFactory, CoinDataHeightFactory, CoinIDFactory, GenesisConfigFactory, TransactionFactory,
-};
+use crate::testing::factory::{CoinDataFactory, CoinDataHeightFactory, TransactionFactory};
 use crate::testing::utils::*;
 use crate::{
-    melvm, CoinData, CoinDataHeight, CoinID, GenesisConfig, StakeDoc, State, Transaction,
-    DENOM_TMEL, MAX_COINVAL, MICRO_CONVERTER,
+    melvm, CoinData, CoinDataHeight, CoinID, StakeDoc, State, Transaction, DENOM_TMEL, MAX_COINVAL,
+    MICRO_CONVERTER,
 };
 
 const GENESIS_MEL_SUPPLY: u128 = 21_000_000;

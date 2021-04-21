@@ -46,6 +46,18 @@ impl ValClient {
     }
 
     /// Obtains the latest validated snapshot. Use this method first to get something to validate info against.
+    pub async fn snapshot_latest(&self) -> melnet::Result<ValClientSnapshot> {
+        self.trust_latest().await;
+        self.snapshot().await
+    }
+
+    // trust latest height
+    async fn trust_latest(&self) {
+        let summary = self.raw.get_summary().await.unwrap(); // Add error handling
+        self.trust(summary.height, summary.header.hash());
+    }
+
+    /// Obtains a validated snapshot based on what height was trusted.
     pub async fn snapshot(&self) -> melnet::Result<ValClientSnapshot> {
         let summary = self.raw.get_summary().await?;
         let (height, stakers) = self.get_trusted_stakers().await?;
@@ -112,7 +124,7 @@ impl ValClient {
 pub struct ValClientSnapshot {
     height: u64,
     header: Header,
-    raw: NodeClient,
+    pub raw: NodeClient,
 }
 
 impl ValClientSnapshot {
@@ -131,7 +143,7 @@ impl ValClientSnapshot {
         let old_elem: Header = stdcode::deserialize(&val)
             .map_err(|_| MelnetError::Custom("could not deserialize old header".into()))?;
         // this can never possibly be bad unless everything is horribly untrustworthy
-        assert!(old_elem.height == old_height);
+        assert_eq!(old_elem.height, old_height);
         Ok(Self {
             height: old_height,
             header: old_elem,
