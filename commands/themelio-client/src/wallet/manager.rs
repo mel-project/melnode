@@ -10,7 +10,7 @@ use crate::wallet::error::WalletError;
 use crate::wallet::storage::WalletStorage;
 use crate::wallet::wallet::Wallet;
 
-/// Responsible for managing storage and network related wallet operations.
+/// Responsible for managing persisted wallets and providing a wallet instance for transacting.
 pub struct WalletManager {
     context: ExecutionContext,
 }
