@@ -1,9 +1,9 @@
 use crate::common::context::ExecutionContext;
-use crate::wallet_shell::executor::WalletUtilsExecutor;
 use crate::wallet_shell::sub::command::SubShellCommand;
-use crate::wallet_shell::sub::input::{format_sub_prompt, read_line};
+use crate::wallet_shell::sub::prompt::{read_line};
 use crate::wallet_shell::sub::output::{dispatch_error, exit, help, readline_error};
 use crate::wallet::manager::WalletManager;
+use crate::common::executor::CommandExecutor;
 
 /// A sub-wallet_shell runner executed within the higher-level wallet_shell.
 /// This wallet_shell unlocks a wallet, transacts with the network and shows balances.
@@ -92,13 +92,13 @@ impl WalletSubShellRunner {
 
     /// Calls faucet on the command executor with the inputs passed into sub-wallet_shell.
     async fn faucet(&self, amt: &str, denom: &str) -> anyhow::Result<()> {
-        let executor = WalletUtilsExecutor::new(self.context.clone());
+        let executor = CommandExecutor::new(self.context.clone());
         executor.faucet(&self.name, &self.secret, amt, denom).await
     }
 
     /// Calls send coins on the command executor with the inputs passed into the sub-wallet_shell.
     async fn send_coins(&self, dest: &str, amt: &str, unit: &str) -> anyhow::Result<()> {
-        let executor = InteractiveCommandExecutor::new(self.context.clone());
+        let executor = CommandExecutor::new(self.context.clone());
         executor
             .send_coins(&self.name, &self.secret, dest, amt, unit)
             .await
@@ -106,13 +106,13 @@ impl WalletSubShellRunner {
 
     /// Calls add coins on the command executor with the inputs passed into the sub-wallet_shell.
     async fn add_coins(&self, coin_id: &str) -> anyhow::Result<()> {
-        let executor = InteractiveCommandExecutor::new(self.context.clone());
+        let executor = CommandExecutor::new(self.context.clone());
         executor.add_coins(&self.name, &self.secret, coin_id).await
     }
 
     /// Calls balance on the command executor with the inputs passed into the sub-wallet_shell.
     async fn balance(&self) -> anyhow::Result<()> {
-        let executor = InteractiveCommandExecutor::new(self.context.clone());
+        let executor = CommandExecutor::new(self.context.clone());
         executor.show_balance(&self.name, &self.secret).await
     }
 
