@@ -1,5 +1,5 @@
 use crate::common::context::ExecutionContext;
-use crate::opts::{ClientOpts, ClientSubOpts, WalletUtilsCommand};
+use crate::opts::{ClientOpts, ClientSubOpts, WalletUtilsCommand, OutputFormat};
 use structopt::StructOpt;
 use crate::wallet_shell::runner::WalletShellRunner;
 use crate::wallet_utils::executor::WalletUtilsExecutor;
@@ -18,24 +18,30 @@ fn main() {
     });
 }
 
-/// Convert options into an execution context and then dispatch a command.
+/// Either start the wallet shell runner or invoke a utils command using an executor.
 async fn dispatch(opts: ClientOpts) -> anyhow::Result<()>{
-    let context = ExecutionContext {
-        version: env!("CARGO_PKG_VERSION").to_string(),
-        network: blkstructs::NetID::Testnet,
-        host: opts.host,
-        database: opts.database,
-        sleep_sec: opts.sleep_sec,
-        fee: opts.fee
-    };
+    let version = env!("CARGO_PKG_VERSION").to_string();
+    let network = blkstructs::NetID::Testnet;
+    let host = opts.host;
+    let database = opts.database;
+    let sleep_sec = opts.sleep_sec;
+    let fee = opts.fee;
+
     match opts.sub_opts {
         ClientSubOpts::WalletShell => {
+            let formatter = OutputFormat::default();
+            let context = ExecutionContext {
+                version, network, host, database, sleep_sec, fee, formatter
+            };
             let runner = WalletShellRunner::new(context);
             runner.run().await
         }
         ClientSubOpts::WalletUtils(util_opts) => {
-            let output_formatter = util_opts.output_format.make();
-            let executor = WalletUtilsExecutor::new(context, output_formatter);
+            let formatter = util_opts.output_format.make();
+            let context = ExecutionContext {
+                version, network, host, database, sleep_sec, fee, formatter
+            };
+            let executor = WalletUtilsExecutor::new(context);
             match util_opts.cmd {
                 WalletUtilsCommand::CreateWallet { wallet_name } => {
                     executor.create_wallet(&wallet_name).await

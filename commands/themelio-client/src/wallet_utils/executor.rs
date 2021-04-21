@@ -8,12 +8,11 @@ use crate::common::formatter::formatter::OutputFormatter;
 /// Responsible for executing a single client CLI command non-interactively.
 pub struct WalletUtilsExecutor {
     context: ExecutionContext,
-    formatter: Box<dyn OutputFormatter + Send + Sync + 'static>
 }
 
 impl WalletUtilsExecutor {
-    pub fn new(context: ExecutionContext, formatter:Box<dyn OutputFormatter + Send + Sync + 'static>) -> Self {
-        Self { context, formatter }
+    pub fn new(context: ExecutionContext) -> Self {
+        Self { context }
     }
 
     /// Creates a new wallet, stores it into db and outputs the name & secret.

@@ -3,7 +3,6 @@ use blkstructs::Transaction;
 use crate::common::context::ExecutionContext;
 use crate::common::executor::CommonExecutor;
 use crate::wallet::manager::WalletManager;
-use crate::wallet::wallet::Wallet;
 
 /// Responsible for executing a single client CLI command non-interactively.
 pub struct ShellExecutor {
@@ -16,10 +15,13 @@ impl ShellExecutor {
     }
 
     /// Creates a new wallet, stores it into db and outputs the name & secret.
-    pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<Wallet> {
+    pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<()> {
         let executor = CommonExecutor::new(self.context.clone());
         let wallet = executor.create_wallet(wallet_name).await?;
-        Ok(wallet)
+        let formatter = self.context.formatter.unwrap();
+        formatter.wallet(wallet).await?;
+
+        Ok(())
     }
 
     /// Create and sent a faucet tx in wallet_shell mode.

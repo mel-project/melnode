@@ -52,6 +52,10 @@ pub enum OutputFormat {
 }
 
 impl OutputFormat {
+    pub fn default() -> Box<dyn OutputFormatter + Sync + Send + 'static> {
+        Box::new(PlainOutputFormatter {})
+    }
+
     pub fn make(&self) -> Box<dyn OutputFormatter + Sync + Send + 'static> {
         return match self {
             OutputFormat::Plain => {
