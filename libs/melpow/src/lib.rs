@@ -1,4 +1,4 @@
-//! `melpow` is the crate that implements MelPoW, Themelio's version of non-wallet_shell proofs of sequential work, which are just "Interactive Proofs of Sequential Work" by Cohen and Pietrzak subjected to a Fiat-Shamir transformation. MelPoW is used as the core mechanism behind Melmint, the algorithmic monetary policy system that stabilizes the mel.
+//! `melpow` is the crate that implements MelPoW, Themelio's version of interactive proofs of sequential work, which are just "Interactive Proofs of Sequential Work" by Cohen and Pietrzak subjected to a Fiat-Shamir transformation. MelPoW is used as the core mechanism behind Melmint, the algorithmic monetary policy system that stabilizes the mel.
 //!
 //! `Proof` is the main interface to MelPoW. It represents a proof that a certain amount of sequential work, represented by a **difficulty**, has been done starting from a **puzzle**. The difficulty is exponential: a difficulty of N represents that `O(2^N)` work has been done.
 

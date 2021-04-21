@@ -118,7 +118,7 @@ impl Transaction {
         // so it's probably "safe-ish" to say that stored things are 10 times more expensive than temporary things.
         // econ efficiency/market stability wise it's probably okay to overprice storage, but probably not okay to underprice it.
         // blockchain-spamming-as-HDD arbitrage is going to be really bad for the blockchain.
-        // penalize 1000 for every formatter and boost 1000 for every input. "non-refundable" because the fee can't be subzero
+        // penalize 1000 for every output and boost 1000 for every input. "non-refundable" because the fee can't be subzero
         let output_penalty = self.outputs.len() as u128 * 1000;
         let input_boon = self.inputs.len() as u128 * 1000;
 
@@ -203,7 +203,7 @@ pub(crate) mod tests {
         let valid_outputs = valid_tx.outputs;
         let valid_output = valid_outputs.iter().next().unwrap().clone();
 
-        // Create an invalid tx by setting an invalid formatter value
+        // Create an invalid tx by setting an invalid output value
         let invalid_output_value = MAX_COINVAL + 1;
         let invalid_output = CoinData {
             value: invalid_output_value,
@@ -245,7 +245,7 @@ pub(crate) mod tests {
         let valid_outputs = valid_tx.outputs;
         let valid_output = valid_outputs.iter().next().unwrap().clone();
 
-        // Create an invalid tx by setting an invalid formatter value
+        // Create an invalid tx by setting an invalid output value
         let invalid_output_count = 255 + offset;
         let invalid_outputs = vec![valid_output; invalid_output_count];
         let invalid_tx = Transaction {
