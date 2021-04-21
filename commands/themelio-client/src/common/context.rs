@@ -6,9 +6,11 @@ use nodeprot::{ValClient, ValClientSnapshot};
 use crate::common::formatter::formatter::OutputFormatter;
 use std::sync::Arc;
 
+use serde::Serialize;
+
 /// Contains data for the entire life-cycle of a command being executed.
 ///
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct ExecutionContext {
     pub host: smol::net::SocketAddr,
     pub network: blkstructs::NetID,
@@ -16,6 +18,8 @@ pub struct ExecutionContext {
     pub version: String,
     pub sleep_sec: u64,
     pub fee: u128,
+
+    #[serde(skip_serializing)]
     pub formatter: Arc<Box<dyn OutputFormatter + Sync + Send + 'static>>
 }
 
