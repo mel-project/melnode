@@ -3,6 +3,7 @@ use crate::opts::{ClientOpts, ClientSubOpts, WalletUtilsCommand, OutputFormat};
 use structopt::StructOpt;
 use crate::wallet_shell::runner::WalletShellRunner;
 use crate::wallet_utils::executor::WalletUtilsExecutor;
+use std::sync::Arc;
 
 mod common;
 mod wallet;
@@ -29,7 +30,7 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()>{
 
     match opts.sub_opts {
         ClientSubOpts::WalletShell => {
-            let formatter = OutputFormat::default();
+            let formatter = Arc::new(OutputFormat::default());
             let context = ExecutionContext {
                 version, network, host, database, sleep_sec, fee, formatter
             };
@@ -37,7 +38,7 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()>{
             runner.run().await
         }
         ClientSubOpts::WalletUtils(util_opts) => {
-            let formatter = util_opts.output_format.make();
+            let formatter = Arc::new(util_opts.output_format.make());
             let context = ExecutionContext {
                 version, network, host, database, sleep_sec, fee, formatter
             };

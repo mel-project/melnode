@@ -4,8 +4,11 @@ use smol::Timer;
 
 use nodeprot::{ValClient, ValClientSnapshot};
 use crate::common::formatter::formatter::OutputFormatter;
+use std::sync::Arc;
 
 /// Contains data for the entire life-cycle of a command being executed.
+///
+#[derive(Clone)]
 pub struct ExecutionContext {
     pub host: smol::net::SocketAddr,
     pub network: blkstructs::NetID,
@@ -13,7 +16,7 @@ pub struct ExecutionContext {
     pub version: String,
     pub sleep_sec: u64,
     pub fee: u128,
-    pub formatter: Box<dyn OutputFormatter + Sync + Send + 'static>
+    pub formatter: Arc<Box<dyn OutputFormatter + Sync + Send + 'static>>
 }
 
 impl ExecutionContext {

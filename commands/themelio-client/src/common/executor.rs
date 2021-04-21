@@ -15,10 +15,12 @@ impl CommonExecutor {
     }
 
     /// Creates a new wallet, stores it into db and outputs the name & secret.
-    pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<Wallet> {
+    pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<()> {
         let manager = WalletManager::new(self.context.clone());
         let wallet = manager.create_wallet(wallet_name).await?;
-        Ok(wallet)
+        let formatter = self.context.formatter.clone();
+        formatter.wallet(wallet).await?;
+        Ok(())
     }
 
     /// Check transaction until it is confirmed.
@@ -31,11 +33,7 @@ impl CommonExecutor {
     ) -> anyhow::Result<CoinDataHeight> {
         loop {
             let (coin_data_height, coin_id) = wallet.check_tx(tx).await?;
-            if self.context.formatter.is_none() {}
-            if let Some(formatter) = self.context.formatter {
-
-            }
-            output2::check_coin(&coin_data_height, &coin_id).await;
+            self.context.formatter.check_coin(&coin_data_height, &coin_id).await;
             self.context.sleep(sleep_sec).await?;
         }
     }
