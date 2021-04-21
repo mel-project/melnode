@@ -585,7 +585,7 @@ impl Block {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AbbrBlock {
     pub header: Header,
-    pub txhashes: im::HashSet<HashVal>,
+    pub txhashes: im::OrdSet<HashVal>,
     pub proposer_action: Option<ProposerAction>,
 }
 

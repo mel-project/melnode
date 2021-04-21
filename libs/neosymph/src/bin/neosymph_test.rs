@@ -70,7 +70,7 @@ async fn run_instance(net: MockNet, idx: usize) {
                         .send(ProposalMsg {
                             proposal: AbbrBlock {
                                 header: next.header(),
-                                txhashes: im::HashSet::new(),
+                                txhashes: im::OrdSet::new(),
                                 proposer_action: action,
                             },
                             last_nonempty,

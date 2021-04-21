@@ -103,6 +103,7 @@ impl SymphGossip {
 impl Network for SymphGossip {
     async fn broadcast(&self, msg: SignedMessage) {
         let _ = self.stuff_incoming.try_send(msg.clone());
+        log::warn!("broadcasted {:?}", msg);
         self.messages.lock().insert(msg);
     }
 
@@ -114,7 +115,9 @@ impl Network for SymphGossip {
                 .recv()
                 .await
                 .expect("melnet task somehow died");
+            log::warn!("received {:?}", msg);
             if msg.body().is_none() {
+                log::warn!("*** BAILING!!!! ***");
                 continue;
             }
             return msg;
