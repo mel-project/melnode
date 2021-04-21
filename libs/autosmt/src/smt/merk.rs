@@ -6,23 +6,21 @@ use serde::{Deserialize, Serialize};
 use std::io::Read;
 use std::{collections::HashMap, fmt::Debug};
 
+pub(crate) const MSB_SET: u8 = 0b1000_0000;
+
 pub fn key_to_path(key: tmelcrypt::HashVal) -> [bool; 256] {
     let mut toret = [false; 256];
     // enumerate each byte
     for (i, k_i) in key.0.iter().enumerate() {
         // walk through the bits
         for j in 0..8 {
-            toret[i * 8 + j] = k_i & (0b1000_0000 >> j) != 0;
+            toret[i * 8 + j] = k_i & (MSB_SET >> j) != 0;
         }
     }
     toret
 }
 
 type HVV = (tmelcrypt::HashVal, Vec<u8>);
-
-// thread_local! {
-//     static DATA_HASH_CACHE: RefCell<HashMap<HVV, Vec<tmelcrypt::HashVal>>> = RefCell::new(HashMap::new());
-// }
 
 static DATA_HASH_CACHE: Lazy<RwLock<HashMap<HVV, Vec<tmelcrypt::HashVal>>>> =
     Lazy::new(|| RwLock::new(HashMap::new()));
@@ -45,6 +43,7 @@ pub fn data_hashes(key: tmelcrypt::HashVal, data: &[u8]) -> Vec<tmelcrypt::HashV
         hashes.reverse();
         hashes
     };
+    // TODO: Should we completely drop this caching mechanism?
     let value = DATA_HASH_CACHE.read().get(&(key, data.into())).cloned();
     if let Some(val) = value {
         val
@@ -57,34 +56,6 @@ pub fn data_hashes(key: tmelcrypt::HashVal, data: &[u8]) -> Vec<tmelcrypt::HashV
         }
         res
     }
-
-    // DATA_HASH_CACHE.with(|cache| {
-    //     let mut cache = cache.borrow_mut();
-    //     log::warn!("cache has {} entries", cache.len());
-    //     if cache.len() > 1000 {
-    //         *cache = HashMap::new();
-    //     }
-    //     cache
-    //         .entry((key, data.to_vec()))
-    //         .or_insert_with(|| {
-    //             let path = merk::key_to_path(key);
-    //             let mut ptr = hash::datablock(data);
-    //             let mut hashes = Vec::new();
-    //             hashes.push(ptr);
-    //             for data_on_right in path.iter().rev() {
-    //                 if *data_on_right {
-    //                     // add the opposite hash
-    //                     ptr = hash::node(tmelcrypt::HashVal::default(), ptr);
-    //                 } else {
-    //                     ptr = hash::node(ptr, tmelcrypt::HashVal::default());
-    //                 }
-    //                 hashes.push(ptr)
-    //             }
-    //             hashes.reverse();
-    //             hashes
-    //         })
-    //         .clone()
-    // })
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
@@ -176,5 +147,142 @@ impl CompressedProof {
             }
         }
         Some(FullProof(out))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::convert::TryFrom;
+    use tmelcrypt::HashVal;
+
+    #[test]
+    fn test_key_to_path_first() {
+        let first = tmelcrypt::HashVal::default();
+        let actual_first_path = key_to_path(first).to_vec();
+        let expected_first_path = vec![false; 256];
+        assert_eq!(actual_first_path, expected_first_path);
+    }
+
+    #[test]
+    fn test_key_to_path_last() {
+        let mut last = tmelcrypt::HashVal::default();
+        last.0 = <[u8; 32]>::try_from(vec![u8::max_value(); 32]).unwrap();
+        let actual_last_path = key_to_path(last).to_vec();
+        let expected_last_path = vec![true; 256];
+        assert_eq!(actual_last_path, expected_last_path);
+    }
+
+    // TODO: determine if we need endian support and
+    // either impl below tests or ensure happy path
+    // handle system endianess checks in some way
+    // #[test]
+    // fn test_key_to_path_first_byte_little_endian() {
+    //     // TODO
+    // }
+    //
+    // #[test]
+    // fn test_key_to_path_first_byte_big_endian() {
+    //     // TODO
+    // }
+
+    fn test_key_to_path_happy_path() {
+        let hv = HashVal::random();
+        let actual_path = key_to_path(hv.clone());
+        let mut expected_path = Vec::new();
+        for &byt in hv.0.iter() {
+            for j in 0..8 {
+                expected_path.push(MSB_SET & byt >> j != 0);
+            }
+        }
+
+        let actual_path = key_to_path(hv);
+        assert_eq!(expected_path, actual_path.to_vec());
+    }
+
+    #[test]
+    fn test_decompress_none_when_length_is_zero() {
+        // create empty vector
+
+        // run decompress
+
+        // expect none
+
+        // Note that a length of zero requires its own check anc impl should probably be modified
+        // ie instead of checking for l.t. expected size, jsut check length is non-zero and a multiple of
+        // expected size
+    }
+
+    #[test]
+    fn test_decompress_proof_none_when_length_not_multiple_of_expected_byte_size() {
+        // create vectors full of random data ranging from
+        // 1 to some upper bound greater than N * expected byte_size
+
+        // iterate through each and if we have length % expected size == 0 continue
+        // for all other values ensure we get None
+    }
+
+    #[test]
+    fn test_decompress_proof_exists_when_length_is_multiple_of_expected_byte_size() {
+        // create vectors full of random data ranging from
+        // expected_byte_size * 1 to expected_byte_size*N
+
+        // iterate through each and only ensure a proof exists
+    }
+
+    #[test]
+    fn test_decompress_proof_is_valid() {
+        // create vectors full of random data ranging from
+        // expected_byte_size * 1 to expected_byte_size*N
+
+        // iterate through each and only ensure a proof is valid and unique
+
+        // Note: its hard to understand how this is decompression...
+        // need better doc str on method...
+    }
+
+    #[test]
+    fn test_all_header_bits_set() {
+        // ...
+    }
+
+    #[test]
+    fn test_decompress_proof_panic_on_buffer_read_fail() {
+        // b.read_exact(&mut buf).ok()?;
+        // in case there is an external failure while processing the buffer
+        // (perhaps mock this somehow?) the method will panic / abort
+    }
+
+    #[test]
+    fn test_compress_decompress_expected() {
+        // create a compressed proof, from decompressing some arbitrary data...
+        // ensure it matches the data the proof was generated from
+        // keep doing that sequentially and ensure it matches
+        // do that for various inputs and sizes (fuzz)
+    }
+
+    #[test]
+    fn test_data_hashes() {
+        // Unorganized notes to break into test cases
+        // This may need higher-level fuzzing with the goal being with large enough values
+        // we hit both data on rihgt and not conditional branches multiple times
+        // Given random input they should be near 50/50 for high iterations
+        //
+        // TODO: consider moving compute out into a seperate function for test out notes outlined above
+        // TODO: we need memoization / caching tests on this method to ensure we reset cache when we go over limit
+        // This behavior seems somewhat strange.. shouldn't it be popping otu and removing oldest elements or
+        // least important from cache instead of reseting teh entire thing?
+
+        // Maybe its because teh cache code is commented out
+    }
+
+    #[test]
+    fn test_verify_pure() {
+        // TODO:
+    }
+
+    #[test]
+    fn test_verify_unhashed() {
+        // Is there a plan to use this in the future? It doesn't seem to be used anywhere in our code base
     }
 }

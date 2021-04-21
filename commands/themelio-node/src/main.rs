@@ -1,6 +1,5 @@
 use structopt::StructOpt;
 mod config;
-mod dal;
 mod protocols;
 mod services;
 mod tasks;

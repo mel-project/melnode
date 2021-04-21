@@ -14,6 +14,7 @@ members = [
     "libs/melpow",
     "libs/neosymph",
     "libs/stdcode",
+    "libs/storage",
     "libs/tmelcrypt"
 ]
 

@@ -44,7 +44,7 @@ impl Forest {
 
     // /// Draws a debug GraphViz representation of the tree.
     // pub fn debug_graphviz(&self) -> String {
-    //     let mut output = String::new();
+    //     let mut formatter = String::new();
     //     log::debug!("traversal_stack init..");
     //     let mut traversal_stack: Vec<_> = self
     //         .trees
@@ -59,7 +59,7 @@ impl Forest {
     //         })
     //         .cloned()
     //         .collect();
-    //     output.push_str("digraph G {\n");
+    //     formatter.push_str("digraph G {\n");
     //     let mut draw_dbn = |dbn: &DBNode, color: &str| {
     //         let kind = match dbn {
     //             DBNode::Internal(_) => String::from("I"),
@@ -70,13 +70,13 @@ impl Forest {
     //         };
     //         let ptrs = dbn.out_ptrs();
     //         let curr_hash = dbn.hash();
-    //         output.push_str(&format!(
+    //         formatter.push_str(&format!(
     //             "\"{:?}\" [style=filled label=\"{}-{:?}\" fillcolor={} shape=rectangle]\n",
     //             curr_hash, kind, curr_hash, color
     //         ));
     //         for (i, p) in ptrs.into_iter().enumerate() {
     //             if p != tmelcrypt::HashVal::default() {
-    //                 output.push_str(&format!(
+    //                 formatter.push_str(&format!(
     //                     "\"{:?}\" -> \"{:?}\" [label={}]\n",
     //                     curr_hash, p, i
     //                 ));
@@ -107,8 +107,8 @@ impl Forest {
     //             }
     //         }
     //     }
-    //     output.push_str("}\n");
-    //     output
+    //     formatter.push_str("}\n");
+    //     formatter
     // }
 }
 
@@ -257,4 +257,12 @@ impl MemDB {
             self.gc_mark = self.mapping.len() * 2
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    // use super::*;
+
+    #[test]
+    fn test_something() {}
 }
