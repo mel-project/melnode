@@ -1,6 +1,6 @@
 use crate::common::context::ExecutionContext;
 use crate::common::executor::CommandExecutor;
-use crate::common::prompt::prompt::InputPrompt;
+use crate::common::prompt::InputPrompt;
 use crate::wallet_shell::command::ShellCommand;
 use crate::wallet_shell::output::{command_error, exit, readline_error};
 use crate::wallet_shell::prompt::ShellInputPrompt;
