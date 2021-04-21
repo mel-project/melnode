@@ -1,11 +1,10 @@
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use blkstructs::{melvm, AbbrBlock, ProposerAction, Transaction, STAKE_EPOCH};
 use neosymph::{
     msg::ProposalMsg, MockNet, Streamlet, StreamletCfg, StreamletEvt, TxLookup, OOB_PROPOSER_ACTION,
 };
 use once_cell::sync::Lazy;
-use smol::prelude::*;
 use tmelcrypt::{Ed25519SK, HashVal};
 
 const COUNT: usize = 10;
@@ -27,67 +26,62 @@ fn main() {
 
 async fn run_instance(net: MockNet, idx: usize) {
     let config = gen_cfg(net, idx);
-    let mut streamlet = Streamlet::new(config);
-    let events = streamlet.subscribe();
-    let evts_loop = async {
-        let mut lnc_tip = None;
-        loop {
-            let (evt, chain) = events.recv().await.unwrap();
-            if idx == 0 {
-                eprintln!("{}", chain.graphviz());
+    let mut streamlet = Streamlet::new(config).start();
+    let mut lnc_tip = None;
+    loop {
+        let evt = streamlet.next_event().await;
+        // if idx == 0 {
+        //     eprintln!("{}", chain.graphviz());
+        // }
+        match evt {
+            StreamletEvt::LastNotarizedTip(tip) => {
+                lnc_tip = Some(tip);
             }
-            match evt {
-                StreamletEvt::LastNotarizedTip(tip) => {
-                    lnc_tip = Some(tip);
-                }
-                StreamletEvt::SolicitProp(ss, height, sender) => {
-                    eprintln!(
-                        "[{}] soliciting with {:?},{} while current is {:?}",
-                        idx,
-                        ss.header().hash(),
-                        height,
-                        lnc_tip.as_ref().map(|lnc_tip| lnc_tip.header().hash())
-                    );
+            StreamletEvt::SolicitProp(ss, height, sender) => {
+                eprintln!(
+                    "[{}] soliciting with {:?},{} while current is {:?}",
+                    idx,
+                    ss.header().hash(),
+                    height,
+                    lnc_tip.as_ref().map(|lnc_tip| lnc_tip.header().hash())
+                );
 
-                    let action = if height / STAKE_EPOCH == 0 {
-                        Some(ProposerAction {
-                            fee_multiplier_delta: 0,
-                            reward_dest: melvm::Covenant::std_ed25519_pk(TEST_SKK[idx].to_public())
-                                .hash(),
-                        })
-                    } else {
-                        Some(OOB_PROPOSER_ACTION)
-                    };
+                let action = if height / STAKE_EPOCH == 0 {
+                    Some(ProposerAction {
+                        fee_multiplier_delta: 0,
+                        reward_dest: melvm::Covenant::std_ed25519_pk(TEST_SKK[idx].to_public())
+                            .hash(),
+                    })
+                } else {
+                    Some(OOB_PROPOSER_ACTION)
+                };
 
-                    let mut basis = ss.clone();
-                    let mut last_nonempty = None;
-                    while basis.header().height + 1 < height {
-                        basis = basis.next_state().seal(None);
-                        last_nonempty = Some((ss.header().height, ss.header().hash()));
-                    }
-                    let next = basis.next_state().seal(action);
-                    sender
-                        .send(ProposalMsg {
-                            proposal: AbbrBlock {
-                                header: next.header(),
-                                txhashes: im::OrdSet::new(),
-                                proposer_action: action,
-                            },
-                            last_nonempty,
-                        })
-                        .unwrap();
+                let mut basis = ss.clone();
+                let mut last_nonempty = None;
+                while basis.header().height + 1 < height {
+                    basis = basis.next_state().seal(None);
+                    last_nonempty = Some((ss.header().height, ss.header().hash()));
                 }
-                StreamletEvt::Finalize(fin) => {
-                    eprintln!(
-                        "[{}] ***** FINALIZED ***** up to {}",
-                        idx,
-                        fin.last().unwrap().header().height
-                    );
+                let next = basis.next_state().seal(action);
+                sender
+                    .send(ProposalMsg {
+                        proposal: AbbrBlock {
+                            header: next.header(),
+                            txhashes: im::OrdSet::new(),
+                            proposer_action: action,
+                        },
+                        last_nonempty,
+                    })
+                    .unwrap();
+            }
+            StreamletEvt::Finalize(fin) => {
+                for fin in fin {
+                    eprintln!("[{}] ***** FINALIZED ***** {}", idx, fin.inner_ref().height);
+                    streamlet.force_finalize(fin);
                 }
             }
         }
-    };
-    evts_loop.race(streamlet.run()).await
+    }
 }
 
 fn gen_cfg(net: MockNet, idx: usize) -> StreamletCfg<MockNet, TrivialLookup> {
@@ -109,6 +103,7 @@ fn gen_cfg(net: MockNet, idx: usize) -> StreamletCfg<MockNet, TrivialLookup> {
         stakes,
         epoch: 0,
         start_time: SystemTime::now(),
+        interval: Duration::from_secs(1),
         my_sk: TEST_SKK[idx],
         get_proposer: Box::new(|height| TEST_SKK[height as usize % TEST_SKK.len()].to_public()),
     }

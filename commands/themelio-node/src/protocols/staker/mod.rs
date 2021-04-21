@@ -164,179 +164,166 @@ async fn staker_loop(
         epoch,
         start_time: std::time::UNIX_EPOCH + Duration::from_secs(1617854400), // Apr 8 2021
         my_sk,
+        interval: Duration::from_secs(30),
         get_proposer: Box::new(gen_get_proposer(genesis.clone(), stakes.clone())),
     };
-    let mut streamlet = neosymph::Streamlet::new(config);
-    let events = streamlet.subscribe();
+    let mut streamlet = neosymph::Streamlet::new(config).start();
 
     let mut last_confirmed = genesis.header().height;
 
     let my_script = melvm::Covenant::std_ed25519_pk(my_sk.to_public());
 
-    let main_loop = async {
-        loop {
-            let (evt, _) = events.recv().await.unwrap();
-            match evt {
-                StreamletEvt::SolicitProp(last_state, height, prop_send) => {
-                    // If we already have a higher state, this means that we were offline and need to reboot symphonia.
-                    let last_confirmed_state = storage.read().highest_state();
-                    if last_confirmed_state.inner_ref().height > last_state.inner_ref().height {
-                        log::warn!("LCS has bigger height than we have! Update chainstate and skip this round to be safe.");
-                        // cstate.force_finalize(last_state);
-                    }
-                    let provis_state = storage.read().mempool().to_state();
-                    let out_of_bounds = height / blkstructs::STAKE_EPOCH != epoch;
-                    let action = if !out_of_bounds {
-                        Some(ProposerAction {
-                            fee_multiplier_delta: 0,
-                            reward_dest: my_script.hash(),
-                        })
-                    } else {
-                        log::warn!("proposing a SPECIAL block due to out-of-bounds");
-                        Some(neosymph::OOB_PROPOSER_ACTION)
+    loop {
+        let evt = streamlet.next_event().await;
+        match evt {
+            StreamletEvt::SolicitProp(last_state, height, prop_send) => {
+                // If we already have a higher state, this means that we were offline and need to reboot symphonia.
+                let last_confirmed_state = storage.read().highest_state();
+                streamlet.force_finalize(last_confirmed_state.clone());
+                if last_confirmed_state.inner_ref().height > last_state.inner_ref().height {
+                    log::warn!("LCS has bigger height than we have! Skip this round to be safe.");
+                    continue;
+                }
+                let provis_state = storage.read().mempool().to_state();
+                let out_of_bounds = height / blkstructs::STAKE_EPOCH != epoch;
+                let action = if !out_of_bounds {
+                    Some(ProposerAction {
+                        fee_multiplier_delta: 0,
+                        reward_dest: my_script.hash(),
+                    })
+                } else {
+                    log::warn!("proposing a SPECIAL block due to out-of-bounds");
+                    Some(neosymph::OOB_PROPOSER_ACTION)
+                };
+                if height == provis_state.height
+                    && Some(last_state.header().hash())
+                        == provis_state.history.get(&(height - 1)).0.map(|v| v.hash())
+                {
+                    let proposal = provis_state.clone().seal(action).to_block().abbreviate();
+                    log::info!("responding normally to prop solicit with mempool-based proposal (height={}, hash={:?})", proposal.header.height, proposal.header.hash());
+                    let prop_msg = ProposalMsg {
+                        proposal,
+                        last_nonempty: None,
                     };
-                    if height == provis_state.height
-                        && Some(last_state.header().hash())
-                            == provis_state.history.get(&(height - 1)).0.map(|v| v.hash())
-                    {
-                        let proposal = provis_state.clone().seal(action).to_block().abbreviate();
-                        log::info!("responding normally to prop solicit with mempool-based proposal (height={}, hash={:?})", proposal.header.height, proposal.header.hash());
-                        let prop_msg = ProposalMsg {
-                            proposal,
-                            last_nonempty: None,
-                        };
-                        prop_send.send(prop_msg).unwrap();
+                    prop_send.send(prop_msg).unwrap();
+                    continue;
+                }
+
+                log::info!("bad/missing provisional state. proposing a quasiempty block for height {} because our provis height is {:?}.", height, provis_state.height);
+
+                let mut basis = last_state.clone();
+                let mut last_nonempty = None;
+                while basis.header().height + 1 < height {
+                    log::debug!("filling in empty block for {}", basis.header().height);
+                    smol::future::yield_now().await;
+                    basis = basis.next_state().seal(None);
+                    last_nonempty = Some((last_state.header().height, last_state.header().hash()));
+                }
+                let next = basis.next_state().seal(action);
+                prop_send
+                    .send(ProposalMsg {
+                        proposal: AbbrBlock {
+                            header: next.header(),
+                            txhashes: im::OrdSet::new(),
+                            proposer_action: action,
+                        },
+                        last_nonempty,
+                    })
+                    .unwrap();
+            }
+            StreamletEvt::LastNotarizedTip(state) => {
+                // we set the mempool state to the LNT's successor
+                log::info!(
+                    "setting mempool LNT to height={}, hash={:?}",
+                    state.header().height,
+                    state.header().hash()
+                );
+                storage.write().mempool_mut().rebase(state.next_state());
+            }
+            StreamletEvt::Finalize(states) => {
+                log::info!(
+                    "gonna finalize {} states: {:?}",
+                    states.len(),
+                    states.iter().map(|v| v.header().height).collect::<Vec<_>>()
+                );
+
+                // For every state we haven't already confirmed, we finalize it.
+                for state in states.iter() {
+                    unconfirmed_finalized.insert(state.inner_ref().height, state.header().hash());
+                }
+                let confirmation_semaphore = Semaphore::new(16);
+                let mut confirmation_tasks = FuturesUnordered::new();
+                for state in states {
+                    // If this state is beyond our epoch, then we do NOT confirm it.
+                    if state.header().height / STAKE_EPOCH > epoch {
+                        log::warn!(
+                            "block {} is BEYOND OUR EPOCH! This means we CANNOT confirm it!",
+                            state.header().height
+                        );
                         continue;
                     }
-
-                    log::info!("bad/missing provisional state. proposing a quasiempty block for height {} because our provis height is {:?}.", height, provis_state.height);
-
-                    let mut basis = last_state.clone();
-                    let mut last_nonempty = None;
-                    while basis.header().height + 1 < height {
-                        log::debug!("filling in empty block for {}", basis.header().height);
-                        smol::future::yield_now().await;
-                        basis = basis.next_state().seal(None);
-                        last_nonempty =
-                            Some((last_state.header().height, last_state.header().hash()));
-                    }
-                    let next = basis.next_state().seal(action);
-                    prop_send
-                        .send(ProposalMsg {
-                            proposal: AbbrBlock {
-                                header: next.header(),
-                                txhashes: im::OrdSet::new(),
-                                proposer_action: action,
-                            },
-                            last_nonempty,
-                        })
-                        .unwrap();
-                }
-                StreamletEvt::LastNotarizedTip(state) => {
-                    // we set the mempool state to the LNT's successor
-                    log::info!(
-                        "setting mempool LNT to height={}, hash={:?}",
-                        state.header().height,
-                        state.header().hash()
-                    );
-                    storage.write().mempool_mut().rebase(state.next_state());
-                }
-                StreamletEvt::Finalize(states) => {
-                    log::info!(
-                        "gonna finalize {} states: {:?}",
-                        states.len(),
-                        states.iter().map(|v| v.header().height).collect::<Vec<_>>()
-                    );
-
-                    // For every state we haven't already confirmed, we finalize it.
-                    for state in states.iter() {
-                        unconfirmed_finalized
-                            .insert(state.inner_ref().height, state.header().hash());
-                    }
-                    let confirmation_semaphore = Semaphore::new(16);
-                    let mut confirmation_tasks = FuturesUnordered::new();
-                    for state in states {
-                        // If this state is beyond our epoch, then we do NOT confirm it.
-                        if state.header().height / STAKE_EPOCH > epoch {
-                            log::warn!(
-                                "block {} is BEYOND OUR EPOCH! This means we CANNOT confirm it!",
-                                state.header().height
-                            );
-                            continue;
-                        }
-                        if state.header().height > last_confirmed {
-                            last_confirmed = state.header().height;
-                            confirmation_tasks.push(async {
-                                let _guard = confirmation_semaphore.acquire().await;
-                                let height = state.header().height;
-                                let mut consensus_proof = BTreeMap::new();
-                                // until we have full strength
-                                while consensus_proof
-                                    .keys()
-                                    .map(|v| stakes.vote_power(epoch, *v))
-                                    .sum::<f64>()
-                                    < 0.7
-                                {
-                                    match gossiper.solicit_confirmation(height).await {
-                                        Ok(Some((some_pk, signature))) => {
-                                            if !some_pk.verify(&state.header().hash(), &signature) {
-                                                log::warn!(
-                                                    "invalid confirmation for {} from {:?}",
-                                                    height,
-                                                    some_pk
-                                                );
-                                                continue;
-                                            }
-                                            // great! the signature was correct, so we stuff into the consensus proof
-                                            consensus_proof.insert(some_pk, signature);
-                                        }
-                                        other => {
+                    if state.header().height > last_confirmed {
+                        last_confirmed = state.header().height;
+                        confirmation_tasks.push(async {
+                            let _guard = confirmation_semaphore.acquire().await;
+                            let height = state.header().height;
+                            let mut consensus_proof = BTreeMap::new();
+                            // until we have full strength
+                            while consensus_proof
+                                .keys()
+                                .map(|v| stakes.vote_power(epoch, *v))
+                                .sum::<f64>()
+                                < 0.7
+                            {
+                                match gossiper.solicit_confirmation(height).await {
+                                    Ok(Some((some_pk, signature))) => {
+                                        if !some_pk.verify(&state.header().hash(), &signature) {
                                             log::warn!(
-                                                "cannot solicit confirmation for height {}: {:#?}",
+                                                "invalid confirmation for {} from {:?}",
                                                 height,
-                                                other
-                                            )
+                                                some_pk
+                                            );
+                                            continue;
                                         }
+                                        // great! the signature was correct, so we stuff into the consensus proof
+                                        consensus_proof.insert(some_pk, signature);
+                                    }
+                                    other => {
+                                        log::warn!(
+                                            "cannot solicit confirmation for height {}: {:#?}",
+                                            height,
+                                            other
+                                        )
                                     }
                                 }
-                                log::debug!("CONFIRMED HEIGHT {}", height);
-                                (state, consensus_proof)
-                            });
-                        }
+                            }
+                            log::debug!("CONFIRMED HEIGHT {}", height);
+                            (state, consensus_proof)
+                        });
                     }
+                }
 
-                    // we realize the unconfirmed states
-                    let mut confirmed_states = BTreeMap::new();
-                    while let Some((state, proof)) = confirmation_tasks.next().await {
-                        confirmed_states.insert(state.inner_ref().height, (state, proof));
+                // we realize the unconfirmed states
+                let mut confirmed_states = BTreeMap::new();
+                while let Some((state, proof)) = confirmation_tasks.next().await {
+                    confirmed_states.insert(state.inner_ref().height, (state, proof));
+                }
+                let mut storage = storage.write();
+                for (_, (state, proof)) in confirmed_states {
+                    let block = state.to_block();
+                    if let Err(err) = storage.apply_block(block, proof) {
+                        log::warn!(
+                            "can't apply finalized block {}: {:?}",
+                            state.inner_ref().height,
+                            err
+                        );
+                        // break
+                    } else {
+                        log::debug!("SUCCESSFULLY COMMITTED HEIGHT {}", state.inner_ref().height);
                     }
-                    let mut storage = storage.write();
-                    for (_, (state, proof)) in confirmed_states {
-                        let block = state.to_block();
-                        if let Err(err) = storage.apply_block(block, proof) {
-                            log::warn!(
-                                "can't apply finalized block {}: {:?}",
-                                state.inner_ref().height,
-                                err
-                            );
-                            // break
-                        } else {
-                            log::debug!(
-                                "SUCCESSFULLY COMMITTED HEIGHT {}",
-                                state.inner_ref().height
-                            );
-                        }
-                        unconfirmed_finalized.remove(&state.inner_ref().height);
-                    }
+                    unconfirmed_finalized.remove(&state.inner_ref().height);
                 }
             }
         }
-    };
-
-    async {
-        streamlet.run().await;
-        Ok(())
     }
-    .race(main_loop)
-    .await
 }

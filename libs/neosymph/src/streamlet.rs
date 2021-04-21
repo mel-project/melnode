@@ -3,6 +3,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+use crate::msg::{self, VoteMsg};
 use anyhow::Context;
 use async_trait::async_trait;
 use blkstructs::{Block, SealedState, StakeMapping, Transaction, STAKE_EPOCH};
@@ -10,14 +11,12 @@ use broadcaster::BroadcastChannel;
 use chainstate::ChainState;
 use msg::{ActualProposal, Message, ProposalMsg, SignedMessage, Signer};
 use smol::channel::{Receiver, Sender};
+use smol::prelude::*;
 use smol_timeout::TimeoutExt;
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
-use crate::msg::{self, VoteMsg};
-
 mod chainstate;
-
-const BLOCK_INTERVAL_SECS: u64 = 30;
+mod imtree;
 
 /// A Streamlet is a single-epoch  instance of Symphonia.
 pub struct Streamlet<N: Network, L: TxLookup> {
@@ -27,94 +26,111 @@ pub struct Streamlet<N: Network, L: TxLookup> {
     signer: Signer,
     cfg: StreamletCfg<N, L>,
 
-    send_event: Option<Sender<(StreamletEvt, ChainState)>>,
+    send_event: Option<Sender<StreamletEvt>>,
 
+    interval: Duration,
     last_lnc: HashVal,
 }
 
 impl<N: Network, L: TxLookup> Streamlet<N, L> {
     /// Create a new pacemaker.
     pub fn new(cfg: StreamletCfg<N, L>) -> Self {
+        let interval = cfg.interval;
         Self {
             chain: ChainState::new(cfg.genesis.clone(), cfg.stakes.clone(), cfg.epoch),
             partial_props: HashMap::new(),
 
             signer: Signer::new(cfg.my_sk),
             cfg,
-
             send_event: None,
 
+            interval,
             last_lnc: tmelcrypt::hash_single(b"couldn't be this"),
         }
     }
 
-    /// Subscribe to events.
-    pub fn subscribe(&mut self) -> Receiver<(StreamletEvt, ChainState)> {
-        let (send, recv) = smol::channel::unbounded();
-        self.send_event = Some(send);
-        recv
-    }
+    /// Starts the streamlet pacemaker, returning a handle with which to interact with the pacemaker.
+    pub fn start(mut self) -> StreamletHandle {
+        let (send_event, recv_event) = smol::channel::unbounded();
+        let (send_force_finalize, recv_force_finalize) = smol::channel::unbounded();
+        self.send_event = Some(send_event);
+        let exec: smol::Executor<'static> = smol::Executor::new();
+        exec.spawn(async move {
+            let my_public = self.cfg.my_sk.to_public();
+            loop {
+                self.notify_lnc();
+                let (height, height_time) = self.next_height_time();
 
-    /// Runs the pacemaker indefinitely.
-    pub async fn run(mut self) {
-        let my_public = self.cfg.my_sk.to_public();
-        self.notify_lnc();
-        loop {
-            let height = self.wait_block().await;
-            let proposer = self.cfg.get_proposer(height);
-            let iam_proposer = proposer == my_public;
-            log::debug!(
-                "Reached height {}, proposer is {:?} (iam_proposer = {})",
-                height,
-                proposer,
-                iam_proposer
-            );
-
-            // if I'm a proposer, broadcast a proposal
-            if iam_proposer {
-                let lnc_tip = self
-                    .chain
-                    .get_block(self.chain.get_lnc_tip())
-                    .expect("must have LNC")
-                    .state
-                    .clone();
-                if let Some(proposal_content) = self.solicit_proposal(lnc_tip, height).await {
-                    log::debug!(
-                        "height {}, sending proposal w/ {} txx",
-                        height,
-                        proposal_content.proposal.txhashes.len()
-                    );
-                    // HACK: wait 5 seconds to give the constituent transactions of the block a chance to propagate to ALL stakers
-                    smol::Timer::after(Duration::from_secs(5)).await;
-                    let msg = self.signer.sign(Message::Proposal(proposal_content));
-                    self.cfg.network.broadcast(msg).await;
-                } else {
-                    log::warn!("proposal event wasn't responded to correctly")
-                }
-            }
-
-            // process received messages "simultaneously" with processing partial proposals.
-            for _ in 0..BLOCK_INTERVAL_SECS / 2 {
-                // give the partial proposals a chance at least every second
-                self.promote_partials().await;
-                let msg = self
-                    .cfg
-                    .network
-                    .receive()
-                    .timeout(Duration::from_millis(1000))
-                    .await;
-                if let Some(msg) = msg {
-                    log::warn!("truly received {:?}", msg);
-                    let sender = msg.sender;
-                    let msg_body = msg.body().cloned();
-                    if let Some(msg_body) = msg_body {
-                        if let Err(err) = self.process_msg(sender, msg_body) {
-                            log::warn!("can't process msg: {:?}", err);
+                // process received messages
+                let process_loop = async {
+                    loop {
+                        self.promote_partials().await;
+                        let msg = self
+                            .cfg
+                            .network
+                            .receive()
+                            .timeout(Duration::from_millis(500))
+                            .await;
+                        if let Some(msg) = msg {
+                            let sender = msg.sender;
+                            let msg_body = msg.body().cloned();
+                            if let Some(msg_body) = msg_body {
+                                if let Err(err) = self.process_msg(sender, msg_body) {
+                                    log::warn!("can't process msg: {:?}", err);
+                                }
+                                self.notify_lnc()
+                            }
                         }
-                        self.notify_lnc()
+                        if let Ok(val) = recv_force_finalize.try_recv() {
+                            self.partial_props.clear();
+                            self.chain.force_finalize(val);
+                        }
+                    }
+                };
+                process_loop
+                    .race(async {
+                        while SystemTime::now() < height_time {
+                            smol::Timer::after(Duration::from_millis(100)).await;
+                        }
+                    })
+                    .await;
+
+                let proposer = self.cfg.get_proposer(height);
+                let iam_proposer = proposer == my_public;
+                log::debug!(
+                    "Reached height {}, proposer is {:?} (iam_proposer = {})",
+                    height,
+                    proposer,
+                    iam_proposer
+                );
+
+                // if I'm a proposer, broadcast a proposal
+                if iam_proposer {
+                    let lnc_tip = self
+                        .chain
+                        .get_block(self.chain.get_lnc_tip())
+                        .expect("must have LNC")
+                        .state
+                        .clone();
+                    if let Some(proposal_content) = self.solicit_proposal(lnc_tip, height).await {
+                        log::debug!(
+                            "height {}, sending proposal w/ {} txx",
+                            height,
+                            proposal_content.proposal.txhashes.len()
+                        );
+                        let msg = self.signer.sign(Message::Proposal(proposal_content));
+                        self.cfg.network.broadcast(msg).await;
+                    } else {
+                        log::warn!("proposal event wasn't responded to correctly")
                     }
                 }
             }
+        })
+        .detach();
+        StreamletHandle {
+            recv_event,
+            send_force_finalize,
+            exec,
         }
     }
 
@@ -210,24 +226,44 @@ impl<N: Network, L: TxLookup> Streamlet<N, L> {
     /// emits an event
     fn event(&mut self, evt: StreamletEvt) {
         if let Some(send) = self.send_event.as_ref() {
-            let _ = send.try_send((evt, self.chain.clone()));
+            let _ = send.try_send(evt);
         }
     }
 
     /// waits until the next block height, then returns that height
-    async fn wait_block(&self) -> u64 {
+    fn next_height_time(&self) -> (u64, SystemTime) {
         let now = SystemTime::now();
-        let elapsed_secs = now
+        let elapsed_time = now
             .duration_since(self.cfg.start_time)
-            .expect("clock randomly jumped, that breaks streamlet")
-            .as_secs();
-        let next_height = elapsed_secs / BLOCK_INTERVAL_SECS + 1;
-        let next_time =
-            self.cfg.start_time + Duration::from_secs(next_height * BLOCK_INTERVAL_SECS);
-        while SystemTime::now() < next_time {
-            smol::Timer::after(Duration::from_millis(100)).await;
-        }
-        next_height
+            .expect("clock randomly jumped, that breaks streamlet");
+        let next_height = elapsed_time.as_millis() / self.interval.as_millis();
+        let next_height = next_height as u64;
+        let next_time = self.cfg.start_time + self.interval * (next_height as u32 + 1);
+        (next_height, next_time)
+    }
+}
+
+/// A handle with which to interact with a running Streamlet instance.
+pub struct StreamletHandle {
+    recv_event: Receiver<StreamletEvt>,
+    send_force_finalize: Sender<SealedState>,
+    exec: smol::Executor<'static>,
+}
+
+impl StreamletHandle {
+    /// Waits for the next event.
+    pub async fn next_event(&mut self) -> StreamletEvt {
+        self.exec
+            .run(self.recv_event.recv())
+            .await
+            .expect("background streamlet task somehow died")
+    }
+
+    /// Forcibly finalizes a block, pruning the blockchain.
+    pub fn force_finalize(&mut self, state: SealedState) {
+        self.send_force_finalize
+            .try_send(state)
+            .expect("background streamlet somehow couldn't accept a force finalize")
     }
 }
 
@@ -247,6 +283,7 @@ pub struct StreamletCfg<N: Network, L: TxLookup> {
     pub stakes: StakeMapping,
     pub epoch: u64,
     pub start_time: SystemTime,
+    pub interval: Duration,
 
     pub my_sk: Ed25519SK,
 
@@ -255,7 +292,13 @@ pub struct StreamletCfg<N: Network, L: TxLookup> {
 
 impl<N: Network, L: TxLookup> StreamletCfg<N, L> {
     /// Creates a streamlet configuration given a state, network, and lookup function.
-    pub fn new(last_sealed: SealedState, my_sk: Ed25519SK, network: N, lookup: L) -> Self {
+    pub fn new(
+        last_sealed: SealedState,
+        my_sk: Ed25519SK,
+        network: N,
+        lookup: L,
+        interval: Duration,
+    ) -> Self {
         let first_stake = last_sealed.inner_ref().stakes.val_iter().next().unwrap();
         Self {
             network,
@@ -264,6 +307,7 @@ impl<N: Network, L: TxLookup> StreamletCfg<N, L> {
             stakes: last_sealed.inner_ref().stakes.clone(),
             epoch: last_sealed.inner_ref().height / STAKE_EPOCH,
             start_time: std::time::UNIX_EPOCH + Duration::from_secs(1614578400),
+            interval,
             my_sk,
             get_proposer: Box::new(move |_height| first_stake.pubkey),
         }
@@ -276,7 +320,7 @@ impl<N: Network, L: TxLookup> StreamletCfg<N, L> {
 
 /// An async-trait that represents a network.
 #[async_trait]
-pub trait Network {
+pub trait Network: Send + Sync + 'static {
     /// Broadcasts a message to the network.
     async fn broadcast(&self, msg: SignedMessage);
 
@@ -316,7 +360,7 @@ impl Network for MockNet {
 }
 
 /// A trait that represents a backend for looking up transactions by hash
-pub trait TxLookup {
+pub trait TxLookup: Send + Sync + 'static {
     /// Look up a transaction by its hash
     fn lookup(&self, hash: HashVal) -> Option<Transaction>;
 }

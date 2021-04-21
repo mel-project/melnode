@@ -14,6 +14,9 @@ pub struct ChainState {
     stakes: blkstructs::StakeMapping,
     // epoch
     epoch: u64,
+
+    // last drained finalized stat
+    last_drained_final: u64,
 }
 
 impl ChainState {
@@ -27,6 +30,7 @@ impl ChainState {
                 state: genesis,
                 votes: im::HashSet::new(),
                 vote_weight: 1.0,
+                finalized: true,
             },
         );
         Self {
@@ -34,6 +38,7 @@ impl ChainState {
             tips: im::hashset![genhash],
             stakes,
             epoch,
+            last_drained_final: 0,
         }
     }
 
@@ -78,19 +83,38 @@ impl ChainState {
             blk.vote_weight,
             blk.state.header().hash()
         );
+
         Ok(())
     }
 
     /// Forcibly sets a block to final
-    pub fn force_finalize(&mut self, state: SealedState) -> anyhow::Result<()> {
-        log::warn!("force finalizing {:?}", state.header().hash());
+    pub fn force_finalize(&mut self, state: SealedState) {
+        log::debug!("force finalizing {:?}", state.header().hash());
+        log::debug!("current state before force: {}", self.graphviz());
         let synth = CsBlock {
-            state,
+            state: state.clone(),
             vote_weight: 1.0,
             votes: Default::default(),
+            finalized: true,
         };
         self.insert_block(synth);
-        Ok(())
+
+        // remove all blocks that are not descendants of the given block.
+        let mut descendants = im::HashSet::new();
+        for tip in self.tips.iter() {
+            let branch = self.get_branch(*tip);
+            if branch.iter().any(|v| v.state.header() == state.header()) {
+                for d in branch
+                    .into_iter()
+                    .filter(|v| v.state.inner_ref().height > state.inner_ref().height)
+                {
+                    descendants.insert(d.state.header().hash());
+                }
+            }
+        }
+        descendants.insert(state.header().hash());
+        self.blocks.retain(|k, _| descendants.contains(k));
+        self.tips.retain(|k| descendants.contains(k));
     }
 
     /// The last block of the epoch
@@ -117,6 +141,7 @@ impl ChainState {
                 state: prop_ancestor.clone(),
                 votes: Default::default(),
                 vote_weight: 0.0,
+                finalized: false,
             });
         }
         // process the actual block
@@ -131,6 +156,7 @@ impl ChainState {
             state,
             votes: Default::default(),
             vote_weight: 0.0,
+            finalized: false,
         });
         *self = this;
         Ok(())
@@ -148,10 +174,11 @@ impl ChainState {
         buff.push_str("digraph G {\n");
 
         for (node_id, node) in self.blocks.iter() {
+            let node_name = node.state.inner_ref().height;
             buff.push_str(&format!(
                 "\"{:?}\" [shape=rectangle, label=\"{:?} ({}%, w={})\", style=filled, {}];\n",
                 node_id,
-                node_id,
+                node_name,
                 (node.vote_weight * 100.0) as i32,
                 self.get_weight(*node_id),
                 if self.get_lnc_tip() == *node_id {
@@ -172,44 +199,22 @@ impl ChainState {
         buff
     }
 
-    /// Drain all finalized blocks out of the system. Prunes the chainstate to start from the last finalized block, discarding absolutely everything else.
+    /// Drain all finalized blocks out of the system, that haven't been drained previously.
     pub fn drain_finalized(&mut self) -> Vec<SealedState> {
         // first we find the last finalized block
         let mut toret = Vec::new();
         if let Some(mut tip) = self.find_finalized() {
+            let old_last_drained_final = self.last_drained_final;
             while let Some(blk) = self.blocks.get(&tip) {
+                if blk.state.header().height <= old_last_drained_final {
+                    break;
+                }
                 toret.push(blk.clone());
+                self.last_drained_final = blk.state.inner_ref().height;
                 tip = blk.parent();
             }
         }
         toret.reverse();
-        // then we "reset"
-        if let Some(finalized_tip) = toret.last() {
-            let finalized_hash = finalized_tip.state.header().hash();
-            let mut new_self =
-                Self::new(finalized_tip.state.clone(), self.stakes.clone(), self.epoch);
-            // copy all branches that root at the new tip
-            for &tip in self.tips.iter() {
-                let branch = self.get_branch(tip);
-                if branch
-                    .iter()
-                    .any(|v| v.state.header().hash() == finalized_hash)
-                {
-                    for elem in branch {
-                        if elem.state.header().hash() == finalized_hash {
-                            break;
-                        }
-                        new_self.insert_block(elem.clone())
-                    }
-                }
-            }
-            // we also insert the parent of the last finalized block into the new self.
-            // this way, we can immediately finalize the next block because there will be a "three-in-a-row".
-            if let Some(penultimate) = toret.get(toret.len() - 2) {
-                new_self.insert_block(penultimate.clone());
-            }
-            *self = new_self;
-        }
         toret.into_iter().map(|v| v.state).collect()
     }
 
@@ -243,12 +248,9 @@ impl ChainState {
             accum
         };
         // find three consecutive non-empty blocks
-        for idx in 1..full_branch.len() - 1 {
-            if !full_branch[idx - 1].is_empty()
-                && !full_branch[idx].is_empty()
-                && !full_branch[idx + 1].is_empty()
-            {
-                return Some(full_branch[idx]);
+        for window in full_branch.windows(3) {
+            if !window[0].is_empty() && !window[1].is_empty() && !window[2].is_empty() {
+                return Some(window[1]);
             }
         }
         None
@@ -297,6 +299,7 @@ pub(crate) struct CsBlock {
     pub state: SealedState,
     votes: im::HashSet<Ed25519PK>,
     vote_weight: f64,
+    finalized: bool,
 }
 
 impl CsBlock {

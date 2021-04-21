@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 use blkstructs::{Transaction, TxKind};
-use nodeprot::{NodeClient, ValClient};
+use nodeprot::NodeClient;
 use rand::prelude::*;
 use structopt::StructOpt;
 #[derive(StructOpt)]
