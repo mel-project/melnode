@@ -45,6 +45,7 @@ async fn main_inner() -> anyhow::Result<()> {
     // Rendered paths
     app.at("/").get(html::get_homepage);
     app.at("/blocks/:height").get(html::get_blockpage);
+    app.at("/blocks/:height/:txhash").get(html::get_txpage);
     // Raw paths
     app.at("/raw/latest").get(raw::get_latest);
     app.at("/raw/blocks/:height").get(raw::get_header);

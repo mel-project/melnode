@@ -104,9 +104,15 @@ impl Transaction {
         }
         toret
     }
-    /// Returns the weight of the transaction. Takes in an adjustment factor that should be a generous estimate of signature size.
-    pub fn weight(&self, adjust: u128) -> u128 {
-        let raw_length = stdcode::serialize(self).unwrap().len() as u128 + adjust;
+
+    /// Returns the minimum fee of the transaction at a given fee multiplier, with a given "ballast".
+    pub fn min_fee(&self, fee_multiplier: u128, ballast: u128) -> u128 {
+        (self.weight().saturating_add(ballast)).saturating_mul(fee_multiplier) >> 16
+    }
+
+    /// Returns the weight of the transaction.
+    pub fn weight(&self) -> u128 {
+        let raw_length = stdcode::serialize(self).unwrap().len() as u128;
         let script_weights: u128 = self
             .scripts
             .iter()

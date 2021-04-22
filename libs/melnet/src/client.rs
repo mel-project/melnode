@@ -154,7 +154,7 @@ async fn singlehost_monitor(
     }
 
     loop {
-        let heap_overflow = heap.len() > 256;
+        let heap_overflow = heap.len() > 4;
         let deadline = async {
             if heap_overflow {
             } else if let Some((min, _)) = heap.peek_min() {
@@ -164,13 +164,13 @@ async fn singlehost_monitor(
             };
         };
 
-        let evt: Evt = async { Some(Evt::Insertion(recv_insertion.recv().await.ok()?)) }
-            .or(async { Some(Evt::Request(recv_request.recv().await.ok()?)) })
-            .or(async {
-                deadline.await;
-                Some(Evt::Timeout)
-            })
-            .await?;
+        let evt: Evt = async {
+            deadline.await;
+            Some(Evt::Timeout)
+        }
+        .or(async { Some(Evt::Insertion(recv_insertion.recv().await.ok()?)) })
+        .or(async { Some(Evt::Request(recv_request.recv().await.ok()?)) })
+        .await?;
 
         match evt {
             Evt::Insertion(insertion) => {

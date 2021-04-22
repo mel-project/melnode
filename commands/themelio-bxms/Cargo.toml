@@ -26,3 +26,5 @@ askama="0.8"
 
 serde={version="1", features=["derive"]}
 num-traits="0.2"
+
+futures-util="0.3"

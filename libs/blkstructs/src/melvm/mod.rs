@@ -662,10 +662,10 @@ impl OpCode {
             OpCode::Hash(n) => 50 + *n as u128,
             OpCode::SigEOk(n) => 100 + *n as u128,
 
-            OpCode::Store => 50,
-            OpCode::Load => 50,
-            OpCode::StoreImm(_) => 50,
-            OpCode::LoadImm(_) => 50,
+            OpCode::Store => 10,
+            OpCode::Load => 10,
+            OpCode::StoreImm(_) => 4,
+            OpCode::LoadImm(_) => 4,
 
             OpCode::VRef => 10,
             OpCode::VSet => 50,

@@ -21,6 +21,15 @@ big_array! { BigArray; }
 #[serde(transparent)]
 pub struct HashVal(#[serde(with = "stdcode::hex32")] pub [u8; 32]);
 
+impl FromStr for HashVal {
+    type Err = hex::FromHexError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut inner = [0u8; 32];
+        hex::decode_to_slice(s, &mut inner)?;
+        Ok(Self(inner))
+    }
+}
+
 impl Display for HashVal {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         hex::encode(&self.0).fmt(f)

@@ -3155,6 +3155,7 @@ dependencies = [
  "anyhow",
  "askama",
  "blkstructs",
+ "futures-util",
  "hex",
  "log",
  "nodeprot",
@@ -3251,6 +3252,7 @@ dependencies = [
  "rand 0.8.3",
  "smol",
  "structopt",
+ "tmelcrypt",
 ]
 
 [[package]]

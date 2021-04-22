@@ -1,4 +1,3 @@
-use async_net::TcpStream;
 use serde::{de::DeserializeOwned, Serialize};
 use smol::channel::Sender;
 use smol::prelude::*;
@@ -27,7 +26,7 @@ pub(crate) fn responder_to_closure<
     state: crate::NetState,
     mut responder: impl Endpoint<Req, Resp> + 'static + Send,
 ) -> BoxedResponder {
-    let clos = move |bts: &[u8], conn: TcpStream| {
+    let clos = move |bts: &[u8]| {
         let decoded: Result<Req, _> = stdcode::deserialize(&bts);
         match decoded {
             Ok(decoded) => {
@@ -58,7 +57,7 @@ pub(crate) fn responder_to_closure<
 
 #[allow(clippy::type_complexity)]
 pub(crate) struct BoxedResponder(
-    pub Box<dyn FnMut(&[u8], TcpStream) -> smol::future::Boxed<crate::Result<Vec<u8>>> + Send>,
+    pub Box<dyn FnMut(&[u8]) -> smol::future::Boxed<crate::Result<Vec<u8>>> + Send>,
 );
 
 /// A `Request<Req, Resp>` carries a stdcode-compatible request of type `Req and can be responded to with responses of type Resp.

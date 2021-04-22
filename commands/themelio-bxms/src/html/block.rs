@@ -3,6 +3,8 @@ use askama::Template;
 use blkstructs::Header;
 use nodeprot::ValClient;
 
+use super::RenderTimeTracer;
+
 #[derive(Template)]
 #[template(path = "block.html")]
 struct BlockTemplate {
@@ -12,6 +14,8 @@ struct BlockTemplate {
 }
 
 pub async fn get_blockpage(req: tide::Request<ValClient>) -> tide::Result<tide::Body> {
+    let _render = RenderTimeTracer::new("blockpage");
+
     let height: u64 = req.param("height").unwrap().parse().map_err(to_badreq)?;
     let last_snap = req.state().snapshot().await.map_err(to_badgateway)?;
     let block = last_snap
@@ -24,7 +28,7 @@ pub async fn get_blockpage(req: tide::Request<ValClient>) -> tide::Result<tide::
     let mut body: tide::Body = BlockTemplate {
         header: block.header,
         txcount: block.transactions.len(),
-        txweight: block.transactions.iter().map(|v| v.weight(0)).sum(),
+        txweight: block.transactions.iter().map(|v| v.weight()).sum(),
     }
     .render()
     .unwrap()

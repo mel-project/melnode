@@ -29,7 +29,7 @@ use rand::prelude::*;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use reqs::*;
-use smol::Timer;
+use smol::{channel::Receiver, Timer};
 use smol_timeout::TimeoutExt;
 use std::time::Duration;
 
@@ -91,31 +91,45 @@ impl NetState {
                 }
             })
         };
+
+        // Max number of connections
+        const MAX_CONNECTIONS: usize = 256;
+        let conn_semaphore = smol::lock::Semaphore::new(MAX_CONNECTIONS);
+        let (conn_abort_send, conn_abort_recv) = smol::channel::unbounded::<()>();
         loop {
-            let (conn, _) = listener.accept().await.unwrap();
+            let (conn, addr) = listener.accept().await.unwrap();
             let self_copy = self.clone();
-            smolscale::spawn(async move {
-                let _ = self_copy.server_handle(conn).await;
-            })
-            .detach();
+            if let Some(_guard) = conn_semaphore.try_acquire() {
+                let conn_abort_recv = conn_abort_recv.clone();
+                smolscale::spawn(async move {
+                    if let Some(Err(e)) = self_copy
+                        .server_handle(conn, conn_abort_recv)
+                        .timeout(Duration::from_secs(120))
+                        .await
+                    {
+                        log::debug!("{} terminating on error: {:?}", addr, e)
+                    }
+                })
+                .detach();
+            } else {
+                log::warn!("too many connections, rejecting an accepted connection and aborting an existing one!");
+                conn_abort_send.try_send(()).unwrap();
+            }
         }
     }
 
-    async fn server_handle(&self, mut conn: TcpStream) -> anyhow::Result<()> {
+    async fn server_handle(
+        &self,
+        mut conn: TcpStream,
+        conn_abort_recv: Receiver<()>,
+    ) -> anyhow::Result<()> {
         conn.set_nodelay(true)?;
         loop {
-            let opt = self
-                .server_handle_one(&mut conn)
-                .timeout(Duration::from_secs(60))
-                .await;
-            match opt {
-                None => {
-                    break;
-                }
-                Some(res) => res?,
+            self.server_handle_one(&mut conn).await?;
+            if conn_abort_recv.try_recv().is_ok() {
+                anyhow::bail!("aborting on too-many-connections signal")
             }
         }
-        Ok(())
     }
 
     async fn server_handle_one(&self, conn: &mut TcpStream) -> anyhow::Result<()> {
@@ -139,7 +153,7 @@ impl NetState {
             let mut verbs = self.verbs.lock();
             let responder = verbs.get_mut(&cmd.verb);
             if let Some(responder) = responder {
-                Some((responder.0)(&cmd.payload, conn.clone()))
+                Some((responder.0)(&cmd.payload))
             } else {
                 None
             }
