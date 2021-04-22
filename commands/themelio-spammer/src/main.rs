@@ -1,17 +1,37 @@
-use std::net::SocketAddr;
+use std::{
+    net::SocketAddr,
+    num::NonZeroU32,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
 
 use anyhow::Context;
 use blkstructs::{
     melvm::Covenant, CoinData, CoinID, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
 };
+use governor::{
+    clock::QuantaClock,
+    state::{InMemoryState, NotKeyed},
+    Quota, RateLimiter,
+};
 use nodeprot::NodeClient;
 use rand::prelude::*;
+use smol::prelude::*;
+use smol_timeout::TimeoutExt;
 use structopt::StructOpt;
+
 #[derive(StructOpt)]
 pub struct Args {
     #[structopt(long)]
     /// A full node to connect to
     connect: SocketAddr,
+
+    #[structopt(long, default_value = "1")]
+    /// How many transactions to send every second. Defaults to 1.
+    tps: u32,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -20,8 +40,22 @@ fn main() -> anyhow::Result<()> {
 
 async fn main_async() -> anyhow::Result<()> {
     let args = Args::from_args();
-    let client = NodeClient::new(blkstructs::NetID::Testnet, args.connect);
+    let lim = Arc::new(RateLimiter::direct(
+        Quota::per_second(NonZeroU32::new(args.tps).unwrap())
+            .allow_burst(NonZeroU32::new(1).unwrap()),
+    ));
+    for _ in 0..100 {
+        let client = NodeClient::new(blkstructs::NetID::Testnet, args.connect);
+        let lim = lim.clone();
+        smol::spawn(async move { spammer(&client, lim).await }).detach();
+    }
+    smol::future::pending().await
+}
 
+async fn spammer(
+    client: &NodeClient,
+    lim: Arc<RateLimiter<NotKeyed, InMemoryState, QuantaClock>>,
+) -> anyhow::Result<()> {
     let (pk, sk) = tmelcrypt::ed25519_keygen();
     let my_covenant = Covenant::std_ed25519_pk(pk);
     let first_tx = {
@@ -53,9 +87,13 @@ async fn main_async() -> anyhow::Result<()> {
         index: 0,
     };
     let mut last_value = 1 << 32;
-
-    for iter in 1u64.. {
-        eprintln!("spammed {} transactions!", iter);
+    loop {
+        static ITERS: AtomicU64 = AtomicU64::new(0);
+        eprintln!(
+            "spammed {} transactions!",
+            ITERS.fetch_add(1, Ordering::Relaxed)
+        );
+        lim.until_ready().await;
         let new_tx = Transaction {
             kind: TxKind::Normal,
             inputs: vec![last_coinid],
@@ -71,16 +109,15 @@ async fn main_async() -> anyhow::Result<()> {
             data: vec![],
         }
         .sign_ed25519(sk);
-        dbg!(new_tx.weight());
         client
             .send_tx(new_tx.clone())
+            .timeout(Duration::from_secs(10))
             .await
-            .context("couldn't send subsequent transaction")?;
+            .context("couldn't send subsequent transaction")??;
         last_coinid = CoinID {
             txhash: new_tx.hash_nosigs(),
             index: 0,
         };
         last_value -= MICRO_CONVERTER;
     }
-    unreachable!()
 }

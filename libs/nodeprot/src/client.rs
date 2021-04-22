@@ -2,6 +2,7 @@ use std::{
     collections::BTreeMap,
     net::SocketAddr,
     sync::{Arc, Mutex},
+    time::Instant,
 };
 
 use autosmt::{CompressedProof, FullProof};
@@ -9,8 +10,10 @@ use blkstructs::{
     Block, CoinDataHeight, CoinID, ConsensusProof, Header, NetID, PoolState, SmtMapping, StakeDoc,
     StakeMapping, Transaction, STAKE_EPOCH,
 };
+use futures_util::stream::{FuturesOrdered, FuturesUnordered};
 use melnet::MelnetError;
 use serde::{de::DeserializeOwned, Serialize};
+use smol::stream::StreamExt;
 use tmelcrypt::HashVal;
 
 use crate::{AbbreviatedBlock, NodeRequest, StateSummary, Substate};
@@ -347,52 +350,50 @@ async fn get_full_block(this: NodeClient, height: u64) -> melnet::Result<Block> 
     let (abbr_block, _): (AbbreviatedBlock, ConsensusProof) =
         stdcode::deserialize(&this.request(NodeRequest::GetAbbrBlock(height)).await?)
             .map_err(|e| melnet::MelnetError::Custom(e.to_string()))?;
-    let semaphore = smol::lock::Semaphore::new(16);
-    let lexec = smol::Executor::new();
-    let txx_tasks: Vec<smol::Task<melnet::Result<Transaction>>> = abbr_block
-        .txhashes
-        .iter()
-        .cloned()
-        .map(|v| {
-            let this = this.clone();
-            let semaphore = &semaphore;
-            lexec.spawn(async move {
-                let _guard = semaphore.acquire().await;
-                let (v, _) = get_smt_branch(
-                    this,
-                    height,
-                    Substate::Transactions,
-                    tmelcrypt::hash_single(&v),
-                )
-                .await?;
-                let tx = stdcode::deserialize(&v).map_err(|_| {
-                    melnet::MelnetError::Custom("could not deserialize transaction".into())
-                })?;
-                Ok(tx)
-            })
-        })
-        .collect();
+    let semaphore = smol::lock::Semaphore::new(64);
+    let mut txx_tasks = FuturesUnordered::new();
+    let txcount = abbr_block.txhashes.len();
+    for txhash in abbr_block.txhashes {
+        let semaphore = &semaphore;
+        let this = this.clone();
+        txx_tasks.push(async move {
+            let _guard = semaphore.acquire().await;
+            let (v, _) = get_smt_branch(
+                this,
+                height,
+                Substate::Transactions,
+                tmelcrypt::hash_single(&txhash),
+            )
+            .await?;
+            let tx = stdcode::deserialize(&v).map_err(|_| {
+                melnet::MelnetError::Custom("could not deserialize transaction".into())
+            })?;
+            Ok::<_, melnet::MelnetError>(tx)
+        });
+    }
+
     let mut txx = vec![];
     let mut txx_smt = SmtMapping::new(
         autosmt::Forest::load(autosmt::MemDB::default()).get_tree(Default::default()),
     );
-    lexec
-        .run(async move {
-            for task in txx_tasks {
-                let tx = task.await?;
-                txx.push(tx.clone());
-                txx_smt.insert(tx.hash_nosigs(), tx);
-            }
-            if txx_smt.root_hash() != abbr_block.header.transactions_hash {
-                return Err(melnet::MelnetError::Custom(
-                    "full block doesn't hash to the header".into(),
-                ));
-            }
-            Ok(Block {
-                header: abbr_block.header,
-                transactions: txx.into(),
-                proposer_action: abbr_block.proposer_action,
-            })
-        })
-        .await
+    while let Some(val) = txx_tasks.next().await {
+        let tx: Transaction = val?;
+        txx.push(tx.clone());
+        log::debug!("loaded {}/{} transactions", txx.len(), txcount);
+    }
+
+    for tx in txx.iter() {
+        txx_smt.insert(tx.hash_nosigs(), tx.clone());
+    }
+
+    if txx_smt.root_hash() != abbr_block.header.transactions_hash {
+        return Err(melnet::MelnetError::Custom(
+            "full block doesn't hash to the header".into(),
+        ));
+    }
+    Ok(Block {
+        header: abbr_block.header,
+        transactions: txx.into(),
+        proposer_action: abbr_block.proposer_action,
+    })
 }

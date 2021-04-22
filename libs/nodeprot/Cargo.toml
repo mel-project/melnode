@@ -18,3 +18,5 @@ cached="0.23"
 hex="0.4"
 
 smol="1"
+log="0.4"
+futures-util="0.3"

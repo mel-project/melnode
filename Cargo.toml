@@ -20,8 +20,10 @@ members = [
 
 [profile.dev]
 panic = "abort"
-opt-level = 0 
+opt-level = 1 
+overflow-checks = true
 
 [profile.release]
 panic = "abort"
 opt-level = 3
+overflow-checks = true

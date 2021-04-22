@@ -52,7 +52,7 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
     for height in (0u64..=last_snap.current_header().height).rev().take(30) {
         let last_snap = last_snap.clone();
         futs.push(async move {
-            log::trace!("rendering block {}", height);
+            log::debug!("rendering block {}", height);
             let old_snap = last_snap.get_older(height).await.map_err(to_badgateway)?;
             let reward_coin = old_snap
                 .get_coin(CoinID::proposer_reward(height))
