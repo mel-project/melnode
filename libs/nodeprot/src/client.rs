@@ -49,7 +49,7 @@ impl ValClient {
     }
 
     /// Obtains the latest validated snapshot. Use this method first to get something to validate info against.
-    pub async fn snapshot_latest(&self) -> melnet::Result<ValClientSnapshot> {
+    pub async fn insecure_latest_snapshot(&self) -> melnet::Result<ValClientSnapshot> {
         self.trust_latest().await;
         self.snapshot().await
     }

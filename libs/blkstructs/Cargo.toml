@@ -30,7 +30,7 @@ env_logger = "0.7"
 defmac = "0.2"
 serde = {version="1.0.116", features=["derive"]}
 bytes = { version = "1", features = ["serde"] }
-primitive-types = {version="0.9.0", default-features=false, features=["serde"]}
+primitive-types = {version="0.8.0", default-features=false, features=["serde"]}
 serde_repr = "0.1"
 once_cell="1"
 genawaiter="0.99.1"

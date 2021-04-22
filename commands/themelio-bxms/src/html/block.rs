@@ -13,6 +13,7 @@ struct BlockTemplate {
     txweight: u128,
 }
 
+#[tracing::instrument(skip(req))]
 pub async fn get_blockpage(req: tide::Request<ValClient>) -> tide::Result<tide::Body> {
     let _render = RenderTimeTracer::new("blockpage");
 
