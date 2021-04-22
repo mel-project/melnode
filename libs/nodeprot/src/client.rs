@@ -259,10 +259,7 @@ impl NodeClient {
     async fn request(&self, req: NodeRequest) -> melnet::Result<Vec<u8>> {
         // eprintln!("==> {:?}", req);
         // let start = Instant::now();
-        let res: Vec<u8> = melnet::g_client()
-            .request(self.remote, &self.netname, "node", req)
-            .await?;
-        // eprintln!("<== {:?} ({} bytes)", start.elapsed(), res.len());
+        let res: Vec<u8> = melnet::request(self.remote, &self.netname, "node", req).await?;
         Ok(res)
     }
 

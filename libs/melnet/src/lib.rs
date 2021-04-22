@@ -8,13 +8,13 @@
 //! 2. If running as a server, register RPC verbs with `NetState::register_verb` and run `NetState::run_server` in the background.
 //! 3. Use a `Client`, like the global one returned by `g_client()`, to make RPC calls to other servers. Servers are simply identified by a `std::net::SocketAddr`.
 
-mod connpool;
-mod responder;
-pub use connpool::g_client;
+mod client;
+mod endpoint;
 mod routingtable;
+use client::Client;
 use derivative::*;
+pub use endpoint::*;
 use log::{debug, trace};
-pub use responder::*;
 use routingtable::*;
 use serde::{de::DeserializeOwned, Serialize};
 use std::sync::Arc;
@@ -22,6 +22,7 @@ use std::{collections::HashMap, net::SocketAddr};
 mod reqs;
 use async_net::{TcpListener, TcpStream};
 mod common;
+pub use client::request;
 pub use common::*;
 use parking_lot::{Mutex, RwLock};
 use rand::prelude::*;
@@ -59,17 +60,16 @@ impl NetState {
                     if !routes.is_empty() {
                         let (rand_neigh, _) = routes[rng.gen::<usize>() % routes.len()];
                         let (rand_route, _) = routes[rng.gen::<usize>() % routes.len()];
-                        let to_wait = g_client()
-                            .request::<RoutingRequest, String>(
-                                rand_neigh,
-                                &state.network_name,
-                                "new_addr",
-                                RoutingRequest {
-                                    proto: String::from("tcp"),
-                                    addr: rand_route.to_string(),
-                                },
-                            )
-                            .await;
+                        let to_wait = crate::request::<RoutingRequest, String>(
+                            rand_neigh,
+                            &state.network_name,
+                            "new_addr",
+                            RoutingRequest {
+                                proto: String::from("tcp"),
+                                addr: rand_route.to_string(),
+                            },
+                        )
+                        .await;
                         match to_wait {
                             Ok(output) => {
                                 trace!(
@@ -191,54 +191,49 @@ impl NetState {
     /// Registers the handler for new_peer.
     fn setup_routing(&mut self) {
         // ping just responds to a u64 with itself
-        self.register_verb(
-            "ping",
-            anon_responder(|ping: Request<u64, _>| {
-                let body = ping.body;
-                ping.respond(Ok(body))
-            }),
-        );
-        self.register_verb(
-            "new_addr",
-            anon_responder(|request: Request<RoutingRequest, _>| {
-                let rr = request.body.clone();
-                let state = request.state.clone();
-                let unreach = || MelnetError::Custom(String::from("invalid"));
-                if rr.proto != "tcp" {
-                    log::debug!("new_addr saw unrecognizable protocol = {:?}", rr.proto);
-                    request.respond(Err(MelnetError::Custom("bad protocol".into())));
-                    return;
+        self.listen("ping", |ping: Request<u64, _>| {
+            let body = ping.body;
+            ping.response.send(Ok(body))
+        });
+        self.listen("new_addr", |request: Request<RoutingRequest, _>| {
+            let rr = request.body.clone();
+            let state = request.state.clone();
+            let unreach = || MelnetError::Custom(String::from("invalid"));
+            if rr.proto != "tcp" {
+                log::debug!("new_addr saw unrecognizable protocol = {:?}", rr.proto);
+                request
+                    .response
+                    .send(Err(MelnetError::Custom("bad protocol".into())));
+                return;
+            }
+            // move into a task now
+            smolscale::spawn(async move {
+                let resp: u64 = crate::request(
+                    *smol::net::resolve(&rr.addr).await.ok()?.first()?,
+                    &state.network_name.to_owned(),
+                    "ping",
+                    814u64,
+                )
+                .await
+                .ok()?;
+                if resp != 814 {
+                    debug!("new_addr bad ping {:?} {:?}", rr.addr, resp);
+                    request.response.send(Err(unreach()));
+                } else {
+                    state.add_route(*smol::net::resolve(&rr.addr).await.ok()?.first()?);
+                    request.response.send(Ok("".to_string()));
                 }
-                // move into a task now
-                smolscale::spawn(async move {
-                    let resp: u64 = g_client()
-                        .request(
-                            *smol::net::resolve(&rr.addr).await.ok()?.first()?,
-                            &state.network_name.to_owned(),
-                            "ping",
-                            814u64,
-                        )
-                        .await
-                        .ok()?;
-                    if resp != 814 {
-                        debug!("new_addr bad ping {:?} {:?}", rr.addr, resp);
-                        request.respond(Err(unreach()));
-                    } else {
-                        state.add_route(*smol::net::resolve(&rr.addr).await.ok()?.first()?);
-                        request.respond(Ok("".to_string()));
-                    }
-                    Some(())
-                })
-                .detach();
-            }),
-        );
+                Some(())
+            })
+            .detach();
+        });
     }
 
     /// Registers a verb.
-    pub fn register_verb<
+    pub fn listen<
         Req: DeserializeOwned + Send + 'static,
         Resp: Serialize + Send + 'static,
-        T: Responder<Req, Resp> + Send + 'static,
+        T: Endpoint<Req, Resp> + Send + 'static,
     >(
         &self,
         verb: &str,
@@ -284,9 +279,9 @@ mod tests {
             let ns = NetState::new_with_name("test");
             // TODO: Fix regsiter verb (does this require a local system up or can we use a test server?)
             // ns.register_verb("test", |_, input: String| async { Ok(input) });
-            ns.register_verb(
+            ns.listen(
                 "test",
-                anon_responder(|_: responder::Request<String, String>| ()),
+                anon_responder(|_: endpoint::Request<String, String>| ()),
             );
             ns.run_server(
                 smol::net::TcpListener::bind("127.0.0.1:12345")

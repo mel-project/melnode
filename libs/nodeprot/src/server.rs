@@ -42,27 +42,29 @@ impl<S: NodeServer> NodeResponder<S> {
     }
 }
 
-impl<S: NodeServer> melnet::Responder<NodeRequest, Vec<u8>> for NodeResponder<S> {
+impl<S: NodeServer> melnet::Endpoint<NodeRequest, Vec<u8>> for NodeResponder<S> {
     fn respond(&mut self, req: Request<NodeRequest, Vec<u8>>) {
         let state = req.state.clone();
         match req.body.clone() {
-            NodeRequest::SendTx(tx) => req.respond(self.server.send_tx(state, tx).map(|_| vec![])),
-            NodeRequest::GetSummary => req.respond(
+            NodeRequest::SendTx(tx) => req
+                .response
+                .send(self.server.send_tx(state, tx).map(|_| vec![])),
+            NodeRequest::GetSummary => req.response.send(
                 self.server
                     .get_summary()
                     .map(|sum| stdcode::serialize(&sum).unwrap()),
             ),
-            NodeRequest::GetAbbrBlock(height) => req.respond(
+            NodeRequest::GetAbbrBlock(height) => req.response.send(
                 self.server
                     .get_abbr_block(height)
                     .map(|blk| stdcode::serialize(&blk).unwrap()),
             ),
-            NodeRequest::GetSmtBranch(height, elem, key) => req.respond(
+            NodeRequest::GetSmtBranch(height, elem, key) => req.response.send(
                 self.server
                     .get_smt_branch(height, elem, key)
                     .map(|v| stdcode::serialize(&v).unwrap()),
             ),
-            NodeRequest::GetStakersRaw(height) => req.respond(
+            NodeRequest::GetStakersRaw(height) => req.response.send(
                 self.server
                     .get_stakers_raw(height)
                     .map(|v| stdcode::serialize(&v).unwrap()),

@@ -9,14 +9,14 @@ use tmelcrypt::HashVal;
 use crate::{notfound, to_badgateway, to_badreq};
 
 /// Get the latest status
-#[tracing::instrument]
+#[tracing::instrument(skip(req))]
 pub async fn get_latest(req: tide::Request<ValClient>) -> tide::Result<Body> {
     let last_snap = req.state().snapshot().await.map_err(to_badgateway)?;
     Ok(Body::from_json(&last_snap.current_header())?)
 }
 
 /// Get a particular block header
-#[tracing::instrument]
+#[tracing::instrument(skip(req))]
 pub async fn get_header(req: tide::Request<ValClient>) -> tide::Result<Body> {
     let height: u64 = req.param("height")?.parse().map_err(to_badreq)?;
     let last_snap = req.state().snapshot().await.map_err(to_badgateway)?;
@@ -25,7 +25,7 @@ pub async fn get_header(req: tide::Request<ValClient>) -> tide::Result<Body> {
 }
 
 /// Get a particular transaction
-#[tracing::instrument]
+#[tracing::instrument(skip(req))]
 pub async fn get_transaction(req: tide::Request<ValClient>) -> tide::Result<Body> {
     let height: u64 = req.param("height")?.parse()?;
     let txhash: String = req.param("txhash")?.into();
@@ -43,7 +43,7 @@ pub async fn get_transaction(req: tide::Request<ValClient>) -> tide::Result<Body
 }
 
 /// Get a particular coin
-#[tracing::instrument]
+#[tracing::instrument(skip(req))]
 pub async fn get_coin(req: tide::Request<ValClient>) -> tide::Result<Body> {
     let height: u64 = req.param("height")?.parse()?;
     let coinid_string: String = req.param("coinid")?.into();
@@ -66,7 +66,7 @@ pub async fn get_coin(req: tide::Request<ValClient>) -> tide::Result<Body> {
 }
 
 /// Get a particular pool
-#[tracing::instrument]
+#[tracing::instrument(skip(req))]
 pub async fn get_pool(req: tide::Request<ValClient>) -> tide::Result<Body> {
     let height: u64 = req.param("height")?.parse()?;
     let denom_string: String = req.param("denom")?.into();
@@ -79,7 +79,7 @@ pub async fn get_pool(req: tide::Request<ValClient>) -> tide::Result<Body> {
 }
 
 /// Get a particular block
-#[tracing::instrument]
+#[tracing::instrument(skip(req))]
 pub async fn get_full_block(req: tide::Request<ValClient>) -> tide::Result<Body> {
     let height: u64 = req.param("height")?.parse().map_err(to_badreq)?;
     let last_snap = req.state().snapshot().await.map_err(to_badgateway)?;

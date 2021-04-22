@@ -22,25 +22,22 @@ fn main() -> anyhow::Result<()> {
         let nstate = NetState::new_with_name("gossip");
         let seen_msgs = Arc::new(parking_lot::RwLock::new(HashSet::new()));
         // register the verbs
-        nstate.register_verb(
-            "gossip",
-            melnet::anon_responder(move |req: Request<GossipMsg, _>| {
-                println!("received {:?}", req.body);
-                if seen_msgs.read().get(&req.body.id).is_none() {
-                    seen_msgs.write().insert(req.body.id);
-                    let body = req.body.clone();
-                    let state = req.state.clone();
-                    // spam to all my neighbors
-                    smolscale::spawn(async move {
-                        if let Err(e) = spam_neighbors(&state, body).await {
-                            println!("failed: {}", e);
-                        }
-                    })
-                    .detach();
-                }
-                req.respond(Ok(()));
-            }),
-        );
+        nstate.listen("gossip", move |req: Request<GossipMsg, _>| {
+            println!("received {:?}", req.body);
+            if seen_msgs.read().get(&req.body.id).is_none() {
+                seen_msgs.write().insert(req.body.id);
+                let body = req.body.clone();
+                let state = req.state.clone();
+                // spam to all my neighbors
+                smolscale::spawn(async move {
+                    if let Err(e) = spam_neighbors(&state, body).await {
+                        println!("failed: {}", e);
+                    }
+                })
+                .detach();
+            }
+            req.response.send(Ok(()));
+        });
         // listen
         nstate
             .run_server(tcp_listener)
@@ -52,9 +49,7 @@ fn main() -> anyhow::Result<()> {
 
 async fn spam_neighbors(nstate: &NetState, req: GossipMsg) -> anyhow::Result<()> {
     for &neigh in nstate.routes().iter() {
-        melnet::g_client()
-            .request(neigh, "gossip", "gossip", req.clone())
-            .await?;
+        melnet::request(neigh, "gossip", "gossip", req.clone()).await?;
     }
     Ok(())
 }

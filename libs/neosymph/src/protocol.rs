@@ -48,24 +48,19 @@ impl SymphGossip {
         let messages = Arc::new(Mutex::new(MsgState::default()));
         {
             let messages = messages.clone();
-            network.register_verb(
+            network.listen(
                 SYMPH_GOSSIP,
-                melnet::anon_responder(
-                    move |req: melnet::Request<MsgStateStatus, MsgStateDiff>| {
-                        let status = req.body.clone();
-                        let diff = messages.lock().oneside_diff(status);
-                        req.respond(Ok(diff))
-                    },
-                ),
+                move |req: melnet::Request<MsgStateStatus, MsgStateDiff>| {
+                    let status = req.body.clone();
+                    let diff = messages.lock().oneside_diff(status);
+                    req.response.send(Ok(diff))
+                },
             );
         }
-        network.register_verb(
-            CONFIRM_SOLICIT,
-            melnet::anon_responder(move |req: melnet::Request<u64, _>| {
-                let body = req.body;
-                req.respond(Ok(get_sig(body)))
-            }),
-        );
+        network.listen(CONFIRM_SOLICIT, move |req: melnet::Request<u64, _>| {
+            let body = req.body;
+            req.response.send(Ok(get_sig(body)))
+        });
         let net2 = network.clone();
         let msg2 = messages.clone();
         let sinc = send_incoming.clone();
@@ -90,12 +85,13 @@ impl SymphGossip {
         height: u64,
     ) -> anyhow::Result<Option<(Ed25519PK, Vec<u8>)>> {
         let random_route = *self.network.routes().first().unwrap();
-        Ok(melnet::g_client()
-            .request(random_route, NETNAME, CONFIRM_SOLICIT, height)
-            .timeout(Duration::from_secs(10))
-            .await
-            .ok_or_else(|| anyhow::anyhow!("melnet timeout"))?
-            .context(format!("error connecting to {}", random_route))?)
+        Ok(
+            melnet::request(random_route, NETNAME, CONFIRM_SOLICIT, height)
+                .timeout(Duration::from_secs(10))
+                .await
+                .ok_or_else(|| anyhow::anyhow!("melnet timeout"))?
+                .context(format!("error connecting to {}", random_route))?,
+        )
     }
 }
 
@@ -136,8 +132,7 @@ async fn broadcast_loop(
         // log::trace!("status obtained: {:?}", status);
         let neighbor = network.routes()[0];
 
-        let res = melnet::g_client()
-            .request(neighbor, NETNAME, SYMPH_GOSSIP, status)
+        let res = melnet::request(neighbor, NETNAME, SYMPH_GOSSIP, status)
             .timeout(Duration::from_secs(10))
             .await;
         match res {

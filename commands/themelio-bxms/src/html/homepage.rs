@@ -38,11 +38,12 @@ struct PoolSummary {
 }
 
 /// Homepage
+#[tracing::instrument(skip(req))]
 pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
     let last_snap = req.state().snapshot().await.map_err(to_badgateway)?;
     let mut blocks = Vec::new();
     let mut transactions = Vec::new();
-    for height in (0u64..=last_snap.current_header().height).rev().take(100) {
+    for height in (0u64..=last_snap.current_header().height).rev().take(30) {
         let old_snap = last_snap.get_older(height).await.map_err(to_badgateway)?;
         let reward_coin = old_snap
             .get_coin(CoinID::proposer_reward(height))
@@ -56,7 +57,7 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
             reward_amount: MicroUnit(reward_amount, "mel".into()),
         });
         // push transactions
-        if transactions.len() < 100 {
+        if transactions.len() < 30 {
             for transaction in old_block.transactions {
                 transactions.push(TransactionSummary {
                     hash: hex::encode(&transaction.hash_nosigs()),
@@ -87,14 +88,14 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
     .unwrap_or_default();
 
     let pool = PoolSummary {
-        mel_per_sym: dbg!(last_snap
+        mel_per_sym: last_snap
             .get_pool(&DENOM_TSYM)
             .await
-            .map_err(to_badgateway)?)
-        .unwrap()
-        .implied_price()
-        .to_f64()
-        .unwrap_or_default(),
+            .map_err(to_badgateway)?
+            .unwrap()
+            .implied_price()
+            .to_f64()
+            .unwrap_or_default(),
         mel_per_dosc,
     };
 

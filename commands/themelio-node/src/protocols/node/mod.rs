@@ -36,7 +36,7 @@ impl NodeProtocol {
         }
         network.add_route(addr);
         let responder = AuditorResponder::new(storage.clone());
-        network.register_verb("node", NodeResponder::new(responder));
+        network.listen("node", NodeResponder::new(responder));
         let _network_task = smolscale::spawn({
             let network = network.clone();
             async move {
@@ -198,7 +198,7 @@ async fn tx_bcast(network: melnet::NetState, recv_tx_bcast: Receiver<Transaction
         log::debug!("about to broadcast txhash {:?}", to_cast.hash_nosigs());
         for neigh in network.routes().iter().take(4).cloned() {
             log::debug!("bcast {:?} => {:?}", to_cast.hash_nosigs(), neigh);
-            smolscale::spawn(melnet::g_client().request::<_, ()>(
+            smolscale::spawn(melnet::request::<_, ()>(
                 neigh,
                 NODE_NETNAME,
                 "send_tx",

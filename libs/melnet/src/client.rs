@@ -17,9 +17,14 @@ lazy_static! {
     static ref CONN_POOL: Client = Client::default();
 }
 
-/// Returns a reference to the global ConnPool instance.
-pub fn g_client() -> &'static Client {
-    &CONN_POOL
+/// Does a melnet request to any given endpoint, using the global client.
+pub async fn request<TInput: Serialize, TOutput: DeserializeOwned + std::fmt::Debug>(
+    addr: SocketAddr,
+    netname: &str,
+    verb: &str,
+    req: TInput,
+) -> Result<TOutput> {
+    CONN_POOL.request(addr, netname, verb, req).await
 }
 
 /// Implements a thread-safe pool of connections to melnet, or any HTTP/1.1-style keepalive protocol, servers.
@@ -30,7 +35,7 @@ pub struct Client {
 
 impl Client {
     /// Connects to a given address, which may return either a new connection or an existing one.
-    pub async fn connect(&self, addr: impl ToSocketAddrs) -> std::io::Result<TcpStream> {
+    async fn connect(&self, addr: impl ToSocketAddrs) -> std::io::Result<TcpStream> {
         let addr = addr.to_socket_addrs()?.next().unwrap();
         let existing = {
             let pool = self.pool.read();
@@ -59,7 +64,7 @@ impl Client {
         }
     }
     /// Takes ownership of and returns a given TCP connection back to the pool.
-    pub fn recycle(&self, conn: TcpStream) {
+    fn recycle(&self, conn: TcpStream) {
         let addr = conn.peer_addr().unwrap();
         self.pool
             .write()
