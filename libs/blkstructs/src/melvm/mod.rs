@@ -121,6 +121,12 @@ impl Covenant {
             0x55 => output.push(OpCode::VSlice),
             0x56 => output.push(OpCode::BEmpty),
             0x57 => output.push(OpCode::VSet),
+            // bitwise
+            0x60 => output.push(OpCode::Shl),
+            0x61 => output.push(OpCode::Shr),
+            0x62 => output.push(OpCode::BitAnd),
+            0x63 => output.push(OpCode::BitOr),
+            0x64 => output.push(OpCode::BitXor),
             // control flow
             0xa0 => output.push(OpCode::Jmp(u16arg(bcode)?)),
             0xa1 => output.push(OpCode::Bez(u16arg(bcode)?)),
@@ -218,6 +224,12 @@ impl Covenant {
             OpCode::VSlice => output.push(0x55),
             OpCode::BEmpty => output.push(0x56),
             OpCode::VSet => output.push(0x57),
+            // bitwise
+            OpCode::Shl => output.push(0x60),
+            OpCode::Shr => output.push(0x61),
+            OpCode::BitAnd => output.push(0x62),
+            OpCode::BitOr => output.push(0x63),
+            OpCode::BitXor => output.push(0x64),
             // control flow
             OpCode::Jmp(val) => {
                 output.push(0xa0);
@@ -400,6 +412,31 @@ impl Executor {
                 } else {
                     Some(Value::Int(U256::zero()))
                 }
+            })?,
+            OpCode::Shl => self.do_binop(|x, offset| {
+                let x = x.as_int()?;
+                let offset = offset.as_int()?;
+                Some(Value::Int(x << offset))
+            })?,
+            OpCode::Shr => self.do_binop(|x, offset| {
+                let x = x.as_int()?;
+                let offset = offset.as_int()?;
+                Some(Value::Int(x >> offset))
+            })?,
+            OpCode::BitAnd => self.do_binop(|x, y| {
+                let x = x.as_int()?;
+                let y = y.as_int()?;
+                Some(Value::Int(x & y))
+            })?,
+            OpCode::BitOr => self.do_binop(|x, y| {
+                let x = x.as_int()?;
+                let y = y.as_int()?;
+                Some(Value::Int(x | y))
+            })?,
+            OpCode::BitXor => self.do_binop(|x, y| {
+                let x = x.as_int()?;
+                let y = y.as_int()?;
+                Some(Value::Int(x ^ y))
             })?,
             // cryptography
             OpCode::Hash(n) => self.do_monop(|to_hash| {
@@ -605,6 +642,12 @@ pub enum OpCode {
     Eql,
     Lt,
     Gt,
+    // bitwise
+    Shl,
+    Shr,
+    BitAnd,
+    BitOr,
+    BitXor,
     // cryptographyy
     Hash(u16),
     //SIGE,
@@ -658,6 +701,12 @@ impl OpCode {
             OpCode::Eql => 4,
             OpCode::Lt => 4,
             OpCode::Gt => 4,
+
+            OpCode::Shl => 4,
+            OpCode::Shr => 4,
+            OpCode::BitAnd => 4,
+            OpCode::BitOr => 4,
+            OpCode::BitXor => 4,
 
             OpCode::Hash(n) => 50 + *n as u128,
             OpCode::SigEOk(n) => 100 + *n as u128,
