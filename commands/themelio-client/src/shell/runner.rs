@@ -1,5 +1,5 @@
 use crate::shell::command::ShellCommand;
-use crate::shell::output::{command_error, exit, readline_error};
+use crate::shell::output::{print_command_error, print_exit_message, print_readline_error};
 use crate::shell::prompt::ShellInputPrompt;
 use crate::shell::sub::runner::WalletSubShellRunner;
 use crate::utils::context::ExecutionContext;
@@ -32,16 +32,16 @@ impl WalletShellRunner {
                 Ok(cmd) => {
                     // Exit if the user chooses to exit.
                     if cmd == ShellCommand::Exit {
-                        exit().await?;
+                        print_exit_message();
                         return Ok(());
                     }
 
                     // Output error, if any, and continue running.
                     if let Err(err) = self.dispatch(&cmd).await {
-                        command_error(&err, &cmd).await?
+                        print_command_error(&err, &cmd)
                     }
                 }
-                Err(err) => readline_error(&err).await?,
+                Err(err) => print_readline_error(&err),
             }
         }
     }

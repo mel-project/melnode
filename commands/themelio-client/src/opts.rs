@@ -27,10 +27,6 @@ pub struct ClientOpts {
     #[structopt(long, short, default_value = "5")]
     pub sleep_sec: u64,
 
-    /// Time to sleep in seconds while polling for transaction confirmation data from node.
-    #[structopt(long, short, default_value = "1051000000")]
-    pub fee: u128,
-
     /// Contains all the sub-command options for a client
     #[structopt(subcommand)]
     pub sub_opts: ClientSubOpts,

@@ -17,7 +17,6 @@ pub struct ExecutionContext {
     pub database: std::path::PathBuf,
     pub version: String,
     pub sleep_sec: u64,
-    pub fee: u128,
 
     #[serde(skip_serializing)]
     pub formatter: Arc<Box<dyn OutputFormatter + Sync + Send + 'static>>,

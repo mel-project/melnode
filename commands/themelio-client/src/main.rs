@@ -1,14 +1,14 @@
-use crate::utils::context::ExecutionContext;
 use crate::opts::{ClientOpts, ClientSubOpts, OutputFormat, WalletUtilsCommand};
 use crate::shell::runner::WalletShellRunner;
-use utils::executor::CommandExecutor;
+use crate::utils::context::ExecutionContext;
 use std::sync::Arc;
 use structopt::StructOpt;
+use utils::executor::CommandExecutor;
 
-mod utils;
 mod opts;
-mod wallet;
 mod shell;
+mod utils;
+mod wallet;
 
 /// Parse options from input arguments and asynchronously dispatch them.
 fn main() {
@@ -25,7 +25,6 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
     let host = opts.host;
     let database = opts.database;
     let sleep_sec = opts.sleep_sec;
-    let fee = opts.fee;
 
     match opts.sub_opts {
         ClientSubOpts::WalletShell => {
@@ -36,7 +35,6 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                 host,
                 database,
                 sleep_sec,
-                fee,
                 formatter,
             };
             let runner = WalletShellRunner::new(context);
@@ -50,7 +48,6 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                 host,
                 database,
                 sleep_sec,
-                fee,
                 formatter,
             };
             let executor = CommandExecutor::new(context);

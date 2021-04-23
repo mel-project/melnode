@@ -37,8 +37,7 @@ impl CommandExecutor {
         let wallet = manager.load_wallet(wallet_name, secret).await?;
 
         // Create faucet tx.
-        let fee = self.context.fee;
-        let tx = wallet.create_faucet_tx(amount, unit, fee).await?;
+        let tx = wallet.create_faucet_tx(amount, unit, 1000000).await?;
 
         // Send the faucet tx.
         wallet.send_tx(&tx).await?;
