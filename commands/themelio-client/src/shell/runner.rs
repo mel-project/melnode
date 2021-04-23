@@ -1,10 +1,10 @@
-use crate::utils::context::ExecutionContext;
-use crate::utils::executor::CommandExecutor;
-use crate::utils::prompt::InputPrompt;
 use crate::shell::command::ShellCommand;
 use crate::shell::output::{command_error, exit, readline_error};
 use crate::shell::prompt::ShellInputPrompt;
 use crate::shell::sub::runner::WalletSubShellRunner;
+use crate::utils::context::ExecutionContext;
+use crate::utils::executor::CommandExecutor;
+use crate::utils::prompt::InputPrompt;
 
 /// Run an wallet_shell command given an execution context
 /// This is for end users to create and show wallets
@@ -21,7 +21,7 @@ impl WalletShellRunner {
     /// Run wallet_shell commands from user input until user exits.
     pub async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
-        let prompt = ShellInputPrompt::new();
+        let prompt = ShellInputPrompt;
         let formatted_prompt = prompt.format_prompt(&self.context.version).await?;
 
         loop {
@@ -36,13 +36,9 @@ impl WalletShellRunner {
                         return Ok(());
                     }
 
-                    // Dispatch the command
-                    let dispatch_result = &self.dispatch(&cmd).await;
-
                     // Output error, if any, and continue running.
-                    match dispatch_result {
-                        Err(err) => command_error(err, &cmd).await?,
-                        _ => {}
+                    if let Err(err) = self.dispatch(&cmd).await {
+                        command_error(&err, &cmd).await?
                     }
                 }
                 Err(err) => readline_error(&err).await?,

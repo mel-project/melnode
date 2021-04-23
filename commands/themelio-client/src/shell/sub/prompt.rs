@@ -1,17 +1,11 @@
-use crate::utils::prompt::{common_read_line, InputPrompt};
 use crate::shell::sub::command::SubShellCommand;
+use crate::utils::prompt::{common_read_line, InputPrompt};
 use colored::Colorize;
 use std::convert::TryFrom;
 
 use async_trait::async_trait;
 
-pub struct SubShellInputPrompt {}
-
-impl SubShellInputPrompt {
-    pub fn new() -> Self {
-        return SubShellInputPrompt {};
-    }
-}
+pub struct SubShellInputPrompt;
 
 #[async_trait]
 impl InputPrompt<SubShellCommand> for SubShellInputPrompt {
@@ -21,13 +15,13 @@ impl InputPrompt<SubShellCommand> for SubShellInputPrompt {
 
     async fn format_named_prompt(&self, version: &str, name: &str) -> anyhow::Result<String> {
         let prompt_stack: Vec<String> = vec![
-            format!("themelio-client").cyan().bold().to_string(),
+            "themelio-client".to_string().cyan().bold().to_string(),
             format!("(v{})", version).magenta().to_string(),
-            format!("➜ ").cyan().bold().to_string(),
+            "➜ ".to_string().cyan().bold().to_string(),
             format!("({})", name).cyan().to_string(),
-            format!("➜ ").cyan().bold().to_string(),
+            "➜ ".to_string().cyan().bold().to_string(),
         ];
-        Ok(format!("{}", prompt_stack.join(" ")))
+        Ok(prompt_stack.join(" "))
     }
 
     async fn read_line(&self, prompt: &str) -> anyhow::Result<SubShellCommand> {

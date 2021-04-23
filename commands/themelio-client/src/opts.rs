@@ -57,10 +57,10 @@ impl OutputFormat {
     }
 
     pub fn make(&self) -> Box<dyn OutputFormatter + Sync + Send + 'static> {
-        return match self {
+        match self {
             OutputFormat::Plain => Box::new(PlainOutputFormatter {}),
             OutputFormat::Json => Box::new(JsonOutputFormatter {}),
-        };
+        }
     }
 }
 

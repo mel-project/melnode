@@ -16,8 +16,8 @@ pub struct WalletStorage {
 }
 
 impl WalletStorage {
-    pub fn new(path: &PathBuf) -> Self {
-        Self { path: path.clone() }
+    pub fn new(path: PathBuf) -> Self {
+        Self { path }
     }
 
     /// Insert wallet_shell data by wallet_shell name.

@@ -27,7 +27,7 @@ impl WalletManager {
             anyhow::bail!(WalletError::InvalidWalletName(name.to_string()))
         }
 
-        let storage = WalletStorage::new(&self.context.database);
+        let storage = WalletStorage::new(self.context.database.clone());
         // Check if wallet with same name already exits.
         if let Some(_stored_wallet_data) = storage.get(name).await? {
             anyhow::bail!(WalletError::DuplicateWalletName(name.to_string()))
@@ -48,7 +48,7 @@ impl WalletManager {
 
     /// Get existing wallet data by name given the corresponding secret.
     pub async fn load_wallet(&self, name: &str, secret: &str) -> anyhow::Result<Wallet> {
-        let storage = WalletStorage::new(&self.context.database);
+        let storage = WalletStorage::new(self.context.database.clone());
         let wallet_data = storage.get(name).await?.unwrap();
         let sk = Ed25519SK::from_str(secret).unwrap();
 
@@ -65,7 +65,7 @@ impl WalletManager {
 
     /// Get all wallet data in storage by name.
     pub async fn get_all_wallets(&self) -> anyhow::Result<BTreeMap<String, WalletData>> {
-        let storage = WalletStorage::new(&self.context.database);
+        let storage = WalletStorage::new(self.context.database.clone());
         let wallet_data_by_name: BTreeMap<String, WalletData> = storage.get_all().await?;
         Ok(wallet_data_by_name)
     }
