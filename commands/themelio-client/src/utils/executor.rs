@@ -107,7 +107,6 @@ impl CommandExecutor {
     }
 
     /// Check transaction until it is confirmed.
-    /// TODO: we may need a max timeout to set upper bound on tx polling.
     pub async fn confirm_tx(
         &self,
         tx: &Transaction,
@@ -115,11 +114,14 @@ impl CommandExecutor {
         sleep_sec: u64,
     ) -> anyhow::Result<CoinDataHeight> {
         loop {
-            let (coin_data_height, coin_id) = wallet.check_tx(tx).await?;
+            let (coin_data_height, coin_id) = wallet.check_sent_tx(tx).await?;
             self.context
                 .formatter
                 .check_coin(&coin_data_height, &coin_id)
                 .await?;
+            if let Some(cdh) = coin_data_height {
+                return Ok(cdh);
+            }
             self.context.sleep(sleep_sec).await?;
         }
     }

@@ -24,7 +24,7 @@ impl InputPrompt<SubShellCommand> for SubShellInputPrompt {
         Ok(prompt_stack.join(" "))
     }
 
-    async fn read_line(&self, prompt: &str) -> anyhow::Result<SubShellCommand> {
+    async fn read_command(&self, prompt: &str) -> anyhow::Result<SubShellCommand> {
         let input = common_read_line(prompt.to_string()).await?;
         let open_wallet_cmd = SubShellCommand::try_from(input)?;
         Ok(open_wallet_cmd)

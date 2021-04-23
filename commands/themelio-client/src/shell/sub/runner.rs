@@ -46,7 +46,7 @@ impl WalletSubShellRunner {
         loop {
             // Get command from user input.
 
-            let prompt_input = prompt.read_line(&formatted_prompt).await;
+            let prompt_input = prompt.read_command(&formatted_prompt).await;
             match prompt_input {
                 Ok(open_cmd) => {
                     // Exit if the user chooses to exit.

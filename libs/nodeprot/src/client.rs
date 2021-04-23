@@ -50,14 +50,15 @@ impl ValClient {
 
     /// Obtains the latest validated snapshot. Use this method first to get something to validate info against.
     pub async fn insecure_latest_snapshot(&self) -> melnet::Result<ValClientSnapshot> {
-        self.trust_latest().await;
+        self.trust_latest().await?;
         self.snapshot().await
     }
 
     // trust latest height
-    async fn trust_latest(&self) {
-        let summary = self.raw.get_summary().await.unwrap(); // Add error handling
+    async fn trust_latest(&self) -> melnet::Result<()> {
+        let summary = self.raw.get_summary().await?;
         self.trust(summary.height, summary.header.hash());
+        Ok(())
     }
 
     /// Obtains a validated snapshot based on what height was trusted.

@@ -25,7 +25,7 @@ impl WalletShellRunner {
         let formatted_prompt = prompt.format_prompt(&self.context.version).await?;
 
         loop {
-            let prompt_input = prompt.read_line(&formatted_prompt).await;
+            let prompt_input = prompt.read_command(&formatted_prompt).await;
 
             // Get command from user input.
             match prompt_input {

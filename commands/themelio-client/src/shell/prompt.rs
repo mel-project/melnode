@@ -21,7 +21,7 @@ impl InputPrompt<ShellCommand> for ShellInputPrompt {
         todo!()
     }
 
-    async fn read_line(&self, prompt: &str) -> anyhow::Result<ShellCommand> {
+    async fn read_command(&self, prompt: &str) -> anyhow::Result<ShellCommand> {
         let input = common_read_line(prompt.to_string()).await?;
         let wallet_cmd = ShellCommand::try_from(input)?;
         Ok(wallet_cmd)

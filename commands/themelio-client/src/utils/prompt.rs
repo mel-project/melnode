@@ -9,7 +9,7 @@ pub trait InputPrompt<T> {
     async fn format_named_prompt(&self, version: &str, name: &str) -> anyhow::Result<String>;
 
     /// Get user input and parse it into a wallet_shell command.
-    async fn read_line(&self, prompt: &str) -> anyhow::Result<T>;
+    async fn read_command(&self, prompt: &str) -> anyhow::Result<T>;
 }
 
 /// Helper method that read_line method in trait can call to handle raw user input.

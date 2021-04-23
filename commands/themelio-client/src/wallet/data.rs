@@ -1,5 +1,6 @@
 use std::collections;
 
+use melvm::Covenant;
 use serde::{Deserialize, Serialize};
 
 use blkstructs::{melvm, CoinData, CoinDataHeight, CoinID, Transaction, TxKind};
@@ -12,18 +13,23 @@ pub struct WalletData {
     unspent_coins: im::HashMap<CoinID, CoinDataHeight>,
     spent_coins: im::HashMap<CoinID, CoinDataHeight>,
     tx_in_progress: im::HashMap<HashVal, Transaction>,
-    pub my_script: melvm::Covenant,
+    my_covenant: melvm::Covenant,
 }
 
 impl WalletData {
     /// Create a new data.
-    pub fn new(my_script: melvm::Covenant) -> Self {
+    pub fn new(my_covenant: Covenant) -> Self {
         WalletData {
             unspent_coins: im::HashMap::new(),
             spent_coins: im::HashMap::new(),
             tx_in_progress: im::HashMap::new(),
-            my_script,
+            my_covenant,
         }
+    }
+
+    /// Obtain a reference to my covenant
+    pub fn my_covenant(&self) -> &Covenant {
+        &self.my_covenant
     }
 
     /// Unspent Coins
@@ -57,7 +63,7 @@ impl WalletData {
             inputs: vec![],
             outputs,
             fee: 0,
-            scripts: vec![self.my_script.clone()],
+            scripts: vec![self.my_covenant.clone()],
             data: vec![],
             sigs: vec![],
         };
@@ -86,10 +92,10 @@ impl WalletData {
                     .ok_or_else(|| anyhow::anyhow!("not enough money"))?;
                 if difference > 0 {
                     change.push(CoinData {
-                        covhash: self.my_script.hash(),
+                        covhash: self.my_covenant.hash(),
                         value: difference,
                         denom: cointype.clone(),
-                        additional_data: vec![], // TODO: what this?
+                        additional_data: vec![],
                     })
                 }
             }

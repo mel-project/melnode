@@ -40,7 +40,7 @@ impl Wallet {
             inputs: vec![],
             outputs: vec![CoinData {
                 denom: DENOM_TMEL.to_owned(),
-                covhash: self.data.my_script.hash(),
+                covhash: self.data.my_covenant().hash(),
                 value: value * MICRO_CONVERTER,
                 additional_data: vec![],
             }],
@@ -93,7 +93,7 @@ impl Wallet {
     }
 
     /// Update snapshot and check if we can get the coin from the transaction.
-    pub async fn check_tx(
+    pub async fn check_sent_tx(
         &self,
         tx: &Transaction,
     ) -> anyhow::Result<(Option<CoinDataHeight>, CoinID)> {

@@ -22,7 +22,7 @@ impl OutputFormatter for PlainOutputFormatter {
         writeln!(
             tw,
             ">> Address:\t{}",
-            wallet.data.my_script.hash().to_addr().yellow()
+            wallet.data.my_covenant().hash().to_addr().yellow()
         )
         .unwrap();
         writeln!(tw, ">> Secret:\t{}", hex::encode(wallet.sk.0).dimmed()).unwrap();
@@ -38,7 +38,7 @@ impl OutputFormatter for PlainOutputFormatter {
         let mut tw = TabWriter::new(vec![]);
         writeln!(tw, ">> [NAME]\t[ADDRESS]").unwrap();
         for (name, wallet) in wallets {
-            writeln!(tw, ">> {}\t{}", name, wallet.my_script.hash().to_addr()).unwrap();
+            writeln!(tw, ">> {}\t{}", name, wallet.my_covenant().hash().to_addr()).unwrap();
         }
         tw.flush().unwrap();
         eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
