@@ -15,7 +15,7 @@ impl Display for MicroUnit {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{}.{} {}",
+            "{}.{:06} {}",
             self.0 / MICRO_CONVERTER,
             self.0 % MICRO_CONVERTER,
             self.1

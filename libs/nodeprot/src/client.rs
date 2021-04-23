@@ -183,6 +183,29 @@ impl ValClientSnapshot {
         self.get_smt_value_serde(Substate::Coins, coinid).await
     }
 
+    /// A helper function to gets the CoinDataHeight for a coin *spent* at this height. This requires special handling because if the coin was created and spent at the same height, then the coin would never appear in a confirmed coin mapping.
+    pub async fn get_coin_spent_here(
+        &self,
+        coinid: CoinID,
+    ) -> melnet::Result<Option<CoinDataHeight>> {
+        // First we try the transactions mapping in this block.
+        if let Some(tx) = self.get_transaction(coinid.txhash).await? {
+            // Great. Now we can reconstruct the CDH from the transaction.
+            return Ok(tx
+                .outputs
+                .get(coinid.index as usize)
+                .map(|v| CoinDataHeight {
+                    coin_data: v.clone(),
+                    height: self.height,
+                }));
+        }
+        // Okay, so that didn't really work. That means that if the CDH does exist, it's in the previous block's coin mapping.
+        self.get_older(self.height.saturating_sub(1))
+            .await?
+            .get_coin(coinid)
+            .await
+    }
+
     /// Gets a pool info.
     pub async fn get_pool(&self, denom: &[u8]) -> melnet::Result<Option<PoolState>> {
         self.get_smt_value_serde(Substate::Pools, denom).await

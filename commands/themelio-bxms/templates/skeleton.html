@@ -6,15 +6,40 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="preconnect" href="https://fonts.gstatic.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900" rel="stylesheet">
+
     <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet" />
     <style>
+        @import "https://rsms.me/inter/inter.css";
+
         * {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter var', "Inter", sans-serif;
             letter-spacing: -0.2px;
+            font-feature-settings: "calt"off, "ss01";
+        }
+
+        html {
+            font-size: 17.6px;
+        }
+
+
+        .link {
+            fill: none;
+            stroke: #000;
+            stroke-opacity: .2;
+        }
+
+        .link:hover {
+            stroke-opacity: .5;
+        }
+
+        table td,
+        table td * {
+            vertical-align: top;
         }
 
     </style>
+    <script defer src="https://d3js.org/d3.v4.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/gh/holtzy/D3-graph-gallery@master/LIB/sankey.js"></script>
 </head>
 
 <body>

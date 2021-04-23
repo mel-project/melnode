@@ -5,26 +5,101 @@
 {% block body %}
 
 <div class="container mx-auto max-w-screen-lg">
-  <div class="grid grid-cols-1 md:grid-cols-2 mt-8 mb-8">
-    <div class="col-span-2 mb-3">
-      <h3 class="text-2xl font-semibold">Summary</h3>
-    </div>
+  <div class="mb-3 mt-12">
+    <h3 class="text-2xl font-bold">Summary</h3>
+  </div>
 
-    <div class="col-span-1">
-      <table class="table-auto w-full">
+  <div class="m-3">
+    <table class="table-auto w-full text-sm text-left">
+      <tbody>
+        <tr>
+          <td class="text-black text-opacity-50 font-bold">Hash</td>
+          <td class="font-medium">{{ txhash }}</td>
+        </tr>
+        <tr>
+          <td class="text-black text-opacity-50 font-bold">Fee</td>
+          <td class="font-medium">{{ fee }}<br>
+            <span class="text-black text-opacity-50">{{ base_fee }} <i>base</i></span><br>
+            <span class="text-black text-opacity-50">{{ tips }} <i>tips</i></span><br>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid grid-cols-1 text-sm">
+    <div class="m-3">
+      <span class="text-black text-opacity-50 font-bold">Net senders</span><br>
+      <table class="table-fixed w-full text-left">
         <tbody>
+          {% for loss_entry in net_loss %}
           <tr>
-            <td>Hash</td>
-            <td class="font-mono">{{ txhash }}</td>
+            <td>{{ loss_entry.0 }}</td>
+            <td class="font-medium" style="color: #a22041">
+              {% for loss_denom in loss_entry.1 %}
+              {{ loss_denom }}<br>
+              {% endfor %}
+            </td>
           </tr>
+          {% endfor %}
         </tbody>
       </table>
     </div>
 
+    <div class="m-3">
+      <span class="text-black text-opacity-50 font-bold">Net receivers</span><br>
+      <table class="table-fixed w-full text-left">
+        <tbody>
+          {% for gain_entry in net_gain %}
+          <tr>
+            <td>{{ gain_entry.0 }}</td>
+            <td class="font-medium" style="color: #007b43">
+              {% for gain_denom in gain_entry.1 %}
+              {{ gain_denom }}<br>
+              {% endfor %}
+            </td>
+          </tr>
+          {% endfor %}
 
+          <tr>
+            <td><i>(Total fees)</i></td>
+            <td class="font-medium" style="color: #007b43">
+              {{ fee }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
+  <div class="mb-3 mt-12">
+    <h3 class="text-2xl font-bold">Details</h3>
+  </div>
 
-</div>
+  <div class="m-3">
+    <table class="table-fixed w-full text-left">
+      <tbody>
+        <tr>
+          <td class="text-black text-opacity-50 font-semibold">Confirmed in block</td>
+          <td><a href="/blocks/{{height}}" class="text-blue-600">{{height}}</a></td>
+        </tr>
+        <tr>
+          <td class="text-black text-opacity-50 font-semibold">Hash</td>
+          <td>{{ txhash }}</td>
+        </tr>
+        <tr>
+          <td class="text-black text-opacity-50 font-semibold">Weight</td>
+          <td>{{ transaction.weight() }}</td>
+        </tr>
+        <tr>
+          <td class="text-black text-opacity-50 font-semibold">Total output</td>
+          <td> {% for gain_entry in gross_gain %}
+            {{ gain_entry }}
+            {% endfor %}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}

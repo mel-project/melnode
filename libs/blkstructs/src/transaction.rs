@@ -106,7 +106,7 @@ impl Transaction {
     }
 
     /// Returns the minimum fee of the transaction at a given fee multiplier, with a given "ballast".
-    pub fn min_fee(&self, fee_multiplier: u128, ballast: u128) -> u128 {
+    pub fn base_fee(&self, fee_multiplier: u128, ballast: u128) -> u128 {
         (self.weight().saturating_add(ballast)).saturating_mul(fee_multiplier) >> 16
     }
 

@@ -1,25 +1,146 @@
-use crate::{to_badgateway, to_badreq};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    convert::TryInto,
+};
+
+use crate::{notfound, to_badgateway, to_badreq};
+use anyhow::Context;
 use askama::Template;
+use blkstructs::{Transaction, DENOM_DOSC, DENOM_TMEL, DENOM_TSYM};
 use nodeprot::ValClient;
 use tmelcrypt::HashVal;
 
-use super::RenderTimeTracer;
+use super::{MicroUnit, RenderTimeTracer};
 
 #[derive(Template)]
 #[template(path = "transaction.html")]
 struct TransactionTemplate {
     txhash: HashVal,
+    height: u64,
+    transaction: Transaction,
+    fee: MicroUnit,
+    base_fee: MicroUnit,
+    tips: MicroUnit,
+    net_loss: BTreeMap<String, Vec<MicroUnit>>,
+    net_gain: BTreeMap<String, Vec<MicroUnit>>,
+    gross_gain: Vec<MicroUnit>,
 }
 
 #[tracing::instrument(skip(req))]
+#[allow(clippy::comparison_chain)]
 pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Body> {
     let _render = RenderTimeTracer::new("txpage");
 
     let height: u64 = req.param("height").unwrap().parse().map_err(to_badreq)?;
     let txhash: HashVal = req.param("txhash").unwrap().parse().map_err(to_badreq)?;
-    let snap = req.state().snapshot().await.map_err(to_badgateway)?;
+    let snap = req
+        .state()
+        .snapshot()
+        .await
+        .map_err(to_badgateway)?
+        .get_older(height)
+        .await
+        .map_err(to_badgateway)?;
+    let transaction = snap
+        .get_transaction(txhash)
+        .await
+        .map_err(to_badgateway)?
+        .ok_or_else(notfound)?;
 
-    let mut body: tide::Body = TransactionTemplate { txhash }.render().unwrap().into();
+    // now that we have the transaction, we can construct the info.
+    let denoms: BTreeSet<_> = transaction
+        .outputs
+        .iter()
+        .map(|v| v.denom.clone())
+        .collect();
+    let mut net_loss: BTreeMap<String, Vec<MicroUnit>> = BTreeMap::new();
+    let mut net_gain: BTreeMap<String, Vec<MicroUnit>> = BTreeMap::new();
+    for denom in denoms {
+        let mut balance: BTreeMap<HashVal, i128> = BTreeMap::new();
+        // we add to the balance
+        for output in transaction.outputs.iter() {
+            if output.denom == denom {
+                let new_balance = balance
+                    .get(&output.covhash)
+                    .cloned()
+                    .unwrap_or_default()
+                    .checked_add(output.value.try_into()?)
+                    .context("cannot add")?;
+                balance.insert(output.covhash, new_balance);
+            }
+        }
+        // we subtract from the balance
+        for input in transaction.inputs.iter().copied() {
+            let cdh = snap
+                .get_coin_spent_here(input)
+                .await?
+                .context("no CDH found for one of the inputs")?;
+            if cdh.coin_data.denom == denom {
+                let new_balance = balance
+                    .get(&cdh.coin_data.covhash)
+                    .cloned()
+                    .unwrap_or_default()
+                    .checked_sub(cdh.coin_data.value.try_into()?)
+                    .context("cannot add")?;
+                balance.insert(cdh.coin_data.covhash, new_balance);
+            }
+        }
+        // we update net loss/gain
+        for (addr, balance) in balance {
+            if balance < 0 {
+                net_loss
+                    .entry(addr.to_addr())
+                    .or_default()
+                    .push(MicroUnit((-balance) as u128, friendly_denom(&denom)));
+            } else if balance > 0 {
+                net_gain
+                    .entry(addr.to_addr())
+                    .or_default()
+                    .push(MicroUnit(balance as u128, friendly_denom(&denom)));
+            }
+        }
+    }
+
+    let fee = transaction.fee;
+    let fee_mult = snap
+        .get_older(height - 1)
+        .await
+        .map_err(to_badgateway)?
+        .current_header()
+        .fee_multiplier;
+    let base_fee = transaction.base_fee(fee_mult, 0);
+    let tips = fee.saturating_sub(base_fee);
+
+    let mut body: tide::Body = TransactionTemplate {
+        txhash,
+        height,
+        transaction: transaction.clone(),
+        net_loss,
+        net_gain,
+        fee: MicroUnit(fee, "mel".into()),
+        base_fee: MicroUnit(base_fee, "mel".into()),
+        tips: MicroUnit(tips, "mel".into()),
+        gross_gain: transaction
+            .total_outputs()
+            .iter()
+            .map(|(denom, val)| MicroUnit(*val, friendly_denom(denom)))
+            .collect(),
+    }
+    .render()
+    .unwrap()
+    .into();
     body.set_mime("text/html");
     Ok(body)
+}
+
+fn friendly_denom(denom: &[u8]) -> String {
+    if denom == DENOM_TMEL {
+        "mel".to_string()
+    } else if denom == DENOM_TSYM {
+        "sym".to_string()
+    } else if denom == DENOM_DOSC {
+        "nDOSC".to_string()
+    } else {
+        format!("Custom ({}..)", hex::encode(&denom[..5]))
+    }
 }

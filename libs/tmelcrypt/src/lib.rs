@@ -45,12 +45,12 @@ impl HashVal {
     pub fn to_addr(&self) -> String {
         let raw_base32 = base32::encode(base32::Alphabet::Crockford {}, &self.0);
         let checksum = hash_keyed(b"address-checksum", &self.0).0[0] % 10;
-        let res = format!("T{}{}", checksum, raw_base32);
-        res.into_bytes()
-            .chunks(5)
-            .map(|chunk| String::from_utf8_lossy(chunk).to_ascii_lowercase())
-            .collect::<Vec<_>>()
-            .join("-")
+        format!("T{}{}", checksum, raw_base32).to_ascii_lowercase()
+        // res.into_bytes()
+        //     .chunks(5)
+        //     .map(|chunk| String::from_utf8_lossy(chunk).to_ascii_lowercase())
+        //     .collect::<Vec<_>>()
+        //     .join("-")
     }
 
     pub fn from_addr(addr: &str) -> Option<Self> {
