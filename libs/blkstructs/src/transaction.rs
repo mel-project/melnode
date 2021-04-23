@@ -80,8 +80,8 @@ impl Transaction {
         let self_bytes = stdcode::serialize(&s).unwrap();
         tmelcrypt::hash_single(&self_bytes)
     }
-    /// sign_ed25519 appends an ed25519 signature to the transaction.
-    pub fn sign_ed25519(mut self, sk: tmelcrypt::Ed25519SK) -> Self {
+    /// sign_ed25519 consumes the transaction, appends an ed25519 signature, adn returns it..
+    pub fn signed_ed25519(mut self, sk: tmelcrypt::Ed25519SK) -> Self {
         self.sigs.push(sk.sign(&self.hash_nosigs().0));
         self
     }
@@ -141,6 +141,12 @@ impl Transaction {
             txhash: self.hash_nosigs(),
             index,
         }
+    }
+
+    /// Convenience function that applies the correct fee. Call this *before* signing the transaction, with a ballast that's an upper bound on the number of bytes added to the transaction as signatures. 100 is a good value for a ballast.
+    pub fn applied_fee(mut self, fee_multiplier: u128, ballast: u128) -> Self {
+        self.fee = self.base_fee(fee_multiplier, ballast);
+        self
     }
 }
 
@@ -278,7 +284,7 @@ pub(crate) mod tests {
         // Create a transaction from valid which has another signature
         let more_sig_tx = valid_tx.clone();
         let new_sk = tmelcrypt::ed25519_keygen().1;
-        let more_sig_tx = more_sig_tx.sign_ed25519(new_sk);
+        let more_sig_tx = more_sig_tx.signed_ed25519(new_sk);
 
         // Ensure they all hash to same value
         let h1 = valid_tx.hash_nosigs();
@@ -302,7 +308,7 @@ pub(crate) mod tests {
         let mut mult_signature_tx = no_sigs_tx.clone();
         let n = 5;
         for (_pk, sk) in vec![tmelcrypt::ed25519_keygen(); n].iter() {
-            mult_signature_tx = mult_signature_tx.sign_ed25519(*sk);
+            mult_signature_tx = mult_signature_tx.signed_ed25519(*sk);
         }
 
         // verify it has N signatures
@@ -311,7 +317,7 @@ pub(crate) mod tests {
         // sign it M times
         let m = 8;
         for (_pk, sk) in vec![tmelcrypt::ed25519_keygen(); m].iter() {
-            mult_signature_tx = mult_signature_tx.sign_ed25519(*sk);
+            mult_signature_tx = mult_signature_tx.signed_ed25519(*sk);
         }
 
         // verify it has N + M signatures
@@ -333,8 +339,8 @@ pub(crate) mod tests {
 
         // sign it
         let mut tx = no_sigs_tx.clone();
-        tx = tx.sign_ed25519(sk1);
-        tx = tx.sign_ed25519(sk2);
+        tx = tx.signed_ed25519(sk1);
+        tx = tx.signed_ed25519(sk2);
 
         // verify it is signed by expected keys
         let sig1 = tx.sigs[0].clone();

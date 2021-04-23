@@ -14,9 +14,10 @@ pub struct JsonOutputFormatter {}
 impl OutputFormatter for JsonOutputFormatter {
     /// Display json of name, secret key and covenant of the wallet.
     async fn wallet(&self, wallet: Wallet) -> anyhow::Result<()> {
-        let json = serde_json::to_string_pretty(&wallet).unwrap();
-        eprintln!("{}", json);
-        Ok(())
+        // let json = serde_json::to_string_pretty(&wallet).unwrap();
+        // eprintln!("{}", json);
+        // Ok(())
+        todo!()
     }
 
     /// Display json of all stored wallet wallet addresses by name.

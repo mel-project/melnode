@@ -3,20 +3,18 @@ use crate::wallet::data::WalletData;
 use blkstructs::{
     CoinData, CoinDataHeight, CoinID, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
 };
-use serde::Serialize;
 use tmelcrypt::Ed25519SK;
 
-/// Responsible for using an in memory wallet to send transactions.
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
+/// Representation of an open wallet. Automatically keeps storage in sync.
 pub struct Wallet {
-    pub sk: Ed25519SK,
-    pub name: String,
-    pub data: WalletData,
-    pub context: ExecutionContext,
+    sk: Ed25519SK,
+    name: String,
+    data: WalletData,
+    context: ExecutionContext,
 }
 
 impl Wallet {
+    /// Creates a new wallet
     pub fn new(sk: Ed25519SK, name: &str, data: WalletData, context: ExecutionContext) -> Self {
         let name = name.to_string();
         Self {
@@ -34,6 +32,7 @@ impl Wallet {
         unit: &str,
         fee: u128,
     ) -> anyhow::Result<Transaction> {
+        // TODO: units
         let value: u128 = amount.parse()?;
         let tx = Transaction {
             kind: TxKind::Faucet,
@@ -48,7 +47,8 @@ impl Wallet {
             scripts: vec![],
             sigs: vec![],
             data: vec![],
-        };
+        }
+        .applied_fee(self.context.fee_multiplier().await?, 100);
         Ok(tx)
     }
 
@@ -79,16 +79,8 @@ impl Wallet {
 
     /// Update snapshot and send a transaction.
     pub async fn send_tx(&self, tx: &Transaction) -> anyhow::Result<()> {
-        let snapshot = self.context.get_latest_snapshot().await?;
-        let res = snapshot.raw.send_tx(tx.clone()).await;
-        match res {
-            Ok(_) => {
-                println!("sent faucet tx");
-            }
-            Err(ref err) => {
-                println!("{:?}", *err)
-            }
-        }
+        let snapshot = self.context.valclient.snapshot().await?;
+        snapshot.get_raw().send_tx(tx.clone()).await?;
         Ok(())
     }
 
@@ -101,7 +93,7 @@ impl Wallet {
             txhash: tx.hash_nosigs(),
             index: 0,
         };
-        let snapshot = self.context.get_latest_snapshot().await?;
+        let snapshot = self.context.valclient.snapshot().await?;
         Ok((snapshot.get_coin(coin).await?, coin))
     }
 
@@ -119,4 +111,19 @@ impl Wallet {
     //     pub async fn balance(&self, wallet_data: &WalletData, ) -> anyhow::Result<CoinID> {
     //         Ok(CoinID{ txhash: Default::default(), index: 0 })
     //     }
+
+    /// Get name of the wallet
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Get the inner data of the wallet
+    pub fn data(&self) -> &WalletData {
+        &self.data
+    }
+
+    /// Get the secret key of the wallet
+    pub fn secret(&self) -> &Ed25519SK {
+        &self.sk
+    }
 }

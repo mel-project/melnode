@@ -406,7 +406,7 @@ mod tests {
             data: vec![],
             sigs: vec![],
         }
-        .sign_ed25519(my_sk);
+        .signed_ed25519(my_sk);
         second_state.apply_tx(&newcoin_tx).unwrap();
         let deposit_tx = Transaction {
             kind: TxKind::LiqDeposit,
@@ -430,7 +430,7 @@ mod tests {
             data: newcoin_tx.hash_nosigs().to_vec(), // this is important, since it "points" to the pool
             sigs: vec![],
         }
-        .sign_ed25519(my_sk);
+        .signed_ed25519(my_sk);
         second_state.apply_tx(&deposit_tx).unwrap();
         let second_sealed = second_state.seal(None);
         for pool in second_sealed.inner_ref().pools.val_iter() {
