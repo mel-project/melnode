@@ -108,7 +108,7 @@ async fn spammer(
             sigs: vec![],
             data: vec![],
         }
-        .sign_ed25519(sk);
+        .signed_ed25519(sk);
         client
             .send_tx(new_tx.clone())
             .timeout(Duration::from_secs(10))

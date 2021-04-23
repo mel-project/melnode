@@ -1,9 +1,12 @@
 use crate::opts::{ClientOpts, ClientSubOpts, OutputFormat, WalletUtilsCommand};
 use crate::shell::runner::WalletShellRunner;
 use crate::utils::context::ExecutionContext;
-use std::sync::Arc;
+use nodeprot::ValClient;
+use std::{convert::TryInto, sync::Arc};
 use structopt::StructOpt;
+use tmelcrypt::HashVal;
 use utils::executor::CommandExecutor;
+use wallet::storage::WalletStorage;
 
 mod opts;
 mod shell;
@@ -23,8 +26,18 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
     let version = env!("CARGO_PKG_VERSION").to_string();
     let network = blkstructs::NetID::Testnet;
     let host = opts.host;
-    let database = opts.database;
+    let database = Arc::new(WalletStorage::open(&opts.database)?);
     let sleep_sec = opts.sleep_sec;
+    let valclient = ValClient::new(network, host);
+    // TODO: read from argument
+    valclient.trust(
+        35852,
+        HashVal(
+            hex::decode("bf24ee8dacc5d16fae2e8bf8a8102ae8cf913225ab3df16c85f490806a053d42")?
+                .try_into()
+                .unwrap(),
+        ),
+    );
 
     match opts.sub_opts {
         ClientSubOpts::WalletShell => {
@@ -35,6 +48,7 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                 host,
                 database,
                 sleep_sec,
+                valclient,
                 formatter,
             };
             let runner = WalletShellRunner::new(context);
@@ -47,6 +61,7 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                 network,
                 host,
                 database,
+                valclient,
                 sleep_sec,
                 formatter,
             };

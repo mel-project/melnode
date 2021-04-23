@@ -1,6 +1,6 @@
-use std::marker::PhantomData;
+use std::{borrow::Borrow, marker::PhantomData};
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 /// A sled-backed mapping.
 pub struct SledMap<K: DeserializeOwned + Serialize, V: DeserializeOwned + Serialize> {
@@ -32,9 +32,13 @@ impl<K: DeserializeOwned + Serialize, V: DeserializeOwned + Serialize> SledMap<K
     }
 
     /// Gets from the SledMap.
-    pub fn get(&self, key: &K) -> Option<V> {
+    pub fn get<Q>(&self, key: &Q) -> Option<V>
+    where
+        K: Borrow<Q>,
+        Q: Serialize + ?Sized,
+    {
         self.disk_tree
-            .get(&stdcode::serialize(key).unwrap())
+            .get(&stdcode::serialize(&key).unwrap())
             .expect("get failed")
             .map(|v| stdcode::deserialize(&v).expect("cannot deserialize"))
     }

@@ -129,10 +129,15 @@ impl ValClient {
 pub struct ValClientSnapshot {
     height: u64,
     header: Header,
-    pub raw: NodeClient,
+    raw: NodeClient,
 }
 
 impl ValClientSnapshot {
+    /// Gets a reference to the raw, unvalidating raw client.
+    pub fn get_raw(&self) -> &NodeClient {
+        &self.raw
+    }
+
     /// Gets an older snapshot.
     pub async fn get_older(&self, old_height: u64) -> melnet::Result<Self> {
         if old_height > self.height {

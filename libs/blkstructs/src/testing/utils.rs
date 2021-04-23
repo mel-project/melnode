@@ -46,7 +46,7 @@ pub fn random_valid_txx_count(
             data: vec![],
             sigs: vec![],
         };
-        new_tx = new_tx.sign_ed25519(signer);
+        new_tx = new_tx.signed_ed25519(signer);
         for (i, out) in new_tx.outputs.iter().enumerate() {
             let cin = CoinID {
                 txhash: new_tx.hash_nosigs(),
@@ -104,7 +104,7 @@ pub fn tx_create_token(
         tx.fee = tx_fee;
     });
 
-    new_coin_tx.sign_ed25519(signer_keypair.1)
+    new_coin_tx.signed_ed25519(signer_keypair.1)
 }
 
 // let deposit_tx = Transaction {
@@ -149,7 +149,7 @@ pub fn tx_deposit(
         tx.scripts = vec![melvm::Covenant::std_ed25519_pk(pk.clone())];
         tx.fee = fee;
     });
-    tx.sign_ed25519(keypair.1)
+    tx.signed_ed25519(keypair.1)
 }
 
 // Filter tx outputs by PK
@@ -194,7 +194,7 @@ pub fn tx_send_mels_to(
         tx.fee = fee;
     });
 
-    tx.sign_ed25519(keypair_sender.1)
+    tx.signed_ed25519(keypair_sender.1)
 }
 
 // pub fn create_mel_buy_tx(

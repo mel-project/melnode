@@ -34,7 +34,7 @@ fn random_valid_txx(
             data: vec![],
             sigs: vec![],
         };
-        new_tx = new_tx.sign_ed25519(signer);
+        new_tx = new_tx.signed_ed25519(signer);
         for (i, out) in new_tx.outputs.iter().enumerate() {
             let cin = CoinID {
                 txhash: new_tx.hash_nosigs(),

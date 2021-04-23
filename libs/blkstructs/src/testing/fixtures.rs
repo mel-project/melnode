@@ -147,7 +147,7 @@ pub fn tx_send_mel_from_seed_coin(
 
     // Sign tx from sender sk
     let sender_sk = genesis_covenant_keypair.1;
-    let tx = tx.sign_ed25519(sender_sk);
+    let tx = tx.signed_ed25519(sender_sk);
 
     // return the receiver keypair and tx
     (keypair, tx)

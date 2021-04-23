@@ -18,14 +18,19 @@ impl OutputFormatter for PlainOutputFormatter {
     /// Display name, secret key and covenant of the wallet.
     async fn wallet(&self, wallet: Wallet) -> anyhow::Result<()> {
         let mut tw = TabWriter::new(vec![]);
-        writeln!(tw, ">> New data:\t{}", wallet.name.bold()).unwrap();
+        writeln!(tw, ">> New data:\t{}", wallet.name().bold()).unwrap();
         writeln!(
             tw,
             ">> Address:\t{}",
-            wallet.data.my_covenant().hash().to_addr().yellow()
+            wallet.data().my_covenant().hash().to_addr().yellow()
         )
         .unwrap();
-        writeln!(tw, ">> Secret:\t{}", hex::encode(wallet.sk.0).dimmed()).unwrap();
+        writeln!(
+            tw,
+            ">> Secret:\t{}",
+            hex::encode(wallet.secret().0).dimmed()
+        )
+        .unwrap();
         eprintln!("{}", String::from_utf8(tw.into_inner().unwrap()).unwrap());
         Ok(())
     }
