@@ -31,9 +31,9 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
     let valclient = ValClient::new(network, host);
     // TODO: read from argument
     valclient.trust(
-        3363,
+        3360,
         HashVal(
-            hex::decode("843640b26a4a6e55e9c2ef485412c6af7ebefac2872ea029534abb84f038404f")?
+            hex::decode("6846b28b1e65a3b775290874f1ddd13036b7c1fa6e3d897b53dd5178d1ea5033")?
                 .try_into()
                 .unwrap(),
         ),
