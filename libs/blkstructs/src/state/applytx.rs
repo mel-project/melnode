@@ -97,9 +97,9 @@ impl<'a> StateHandle<'a> {
         let last_header = self
             .state
             .history
-            .get(&(self.state.height.saturating_sub(0)))
+            .get(&(self.state.height.saturating_sub(1)))
             .0
-            .unwrap();
+            .unwrap_or_else(|| self.state.clone().seal(None).header());
         // iterate through the inputs
         for (spend_idx, coin_id) in tx.inputs.iter().enumerate() {
             if self.get_stake(coin_id.txhash).is_some() {
