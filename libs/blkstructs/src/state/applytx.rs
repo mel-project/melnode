@@ -12,7 +12,6 @@ use crate::{
 use super::melmint;
 
 /// A mutable "handle" to a particular State. Can be "committed" like a database transaction.
-/// Note: Option type values are used to indicate deletion when None
 pub(crate) struct StateHandle<'a> {
     state: &'a mut State,
 
@@ -26,6 +25,7 @@ pub(crate) struct StateHandle<'a> {
 }
 
 impl<'a> StateHandle<'a> {
+    /// Creates a new state handle.
     pub fn new(state: &'a mut State) -> Self {
         let fee_pool_cache = state.fee_pool;
         let tips_cache = state.tips;
@@ -43,7 +43,8 @@ impl<'a> StateHandle<'a> {
         }
     }
 
-    pub fn apply_tx_batch(&mut self, txx: &[Transaction]) -> Result<(), StateError> {
+    /// Applies a batch of transactions, returning an error if any of them fail. Consumes and re-returns the handle; if any fail the handle is gone.
+    pub fn apply_tx_batch(mut self, txx: &[Transaction]) -> Result<Self, StateError> {
         for tx in txx {
             if !tx.is_well_formed() {
                 return Err(StateError::MalformedTx);
@@ -62,9 +63,10 @@ impl<'a> StateHandle<'a> {
             .filter(|tx| tx.kind != TxKind::Normal && tx.kind != TxKind::Faucet)
             .map(|tx| self.apply_tx_special(tx))
             .collect::<Result<_, _>>()?;
-        Ok(())
+        Ok(self)
     }
 
+    /// Commits all the changes in this handle, at once.
     pub fn commit(self) {
         // commit coins
         for (k, v) in self.coin_cache {

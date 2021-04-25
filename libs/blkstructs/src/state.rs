@@ -293,9 +293,7 @@ impl State {
 
     pub fn apply_tx_batch(&mut self, txx: &[txn::Transaction]) -> Result<(), StateError> {
         let old_hash = self.coins.root_hash();
-        let mut handle = StateHandle::new(self);
-        handle.apply_tx_batch(txx)?;
-        handle.commit();
+        StateHandle::new(self).apply_tx_batch(txx)?.commit();
         log::debug!(
             "applied a batch of {} txx to {:?} => {:?}",
             txx.len(),
