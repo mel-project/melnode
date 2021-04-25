@@ -251,7 +251,6 @@ async fn staker_loop(
                 for state in states.iter() {
                     unconfirmed_finalized.insert(state.inner_ref().height, state.header().hash());
                 }
-                let confirmation_semaphore = Semaphore::new(16);
                 let mut confirmation_tasks = FuturesUnordered::new();
                 for state in states {
                     // If this state is beyond our epoch, then we do NOT confirm it.
@@ -265,7 +264,6 @@ async fn staker_loop(
                     if state.header().height > last_confirmed {
                         last_confirmed = state.header().height;
                         confirmation_tasks.push(async {
-                            let _guard = confirmation_semaphore.acquire().await;
                             let height = state.header().height;
                             let mut consensus_proof = BTreeMap::new();
                             // until we have full strength

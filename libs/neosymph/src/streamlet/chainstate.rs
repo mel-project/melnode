@@ -90,7 +90,6 @@ impl ChainState {
     /// Forcibly sets a block to final
     pub fn force_finalize(&mut self, state: SealedState) {
         log::debug!("force finalizing {:?}", state.header().hash());
-        log::debug!("current state before force: {}", self.graphviz());
         let synth = CsBlock {
             state: state.clone(),
             vote_weight: 1.0,
