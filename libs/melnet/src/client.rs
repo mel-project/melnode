@@ -6,9 +6,9 @@ use log::trace;
 use min_max_heap::MinMaxHeap;
 use parking_lot::RwLock;
 use serde::{de::DeserializeOwned, Serialize};
-use smol::Timer;
 use smol::{channel::Receiver, prelude::*};
 use smol::{channel::Sender, net::TcpStream};
+use smol::{lock::Semaphore, Timer};
 use std::collections::HashMap;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::{Duration, Instant};
@@ -82,6 +82,10 @@ impl Client {
         verb: &str,
         req: TInput,
     ) -> Result<TOutput> {
+        // Semaphore
+        static GLOBAL_LIMIT: Semaphore = Semaphore::new(64);
+        let _guard = GLOBAL_LIMIT.acquire().await;
+
         // grab a connection
         let mut conn = self.connect(addr).await.map_err(MelnetError::Network)?;
         conn.set_nodelay(true).unwrap();

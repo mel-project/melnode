@@ -1,5 +1,6 @@
 use crate::utils::context::ExecutionContext;
 use crate::wallet::data::WalletData;
+use anyhow::Context;
 use blkstructs::{
     CoinData, CoinDataHeight, CoinID, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
 };
@@ -48,7 +49,8 @@ impl Wallet {
             sigs: vec![],
             data: vec![],
         }
-        .applied_fee(self.context.fee_multiplier().await?, 100);
+        .applied_fee(self.context.fee_multiplier().await?, 100, 0)
+        .context("cannot apply fee")?;
         Ok(tx)
     }
 

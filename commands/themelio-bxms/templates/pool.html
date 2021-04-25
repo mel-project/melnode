@@ -1,0 +1,43 @@
+{% extends "skeleton.html" %}
+
+{% block title %} Melscan {% endblock %}
+
+{% block nav %}
+<a href="/" class="text-black hover:text-opacity-60 hover:underline">Melscan</a>
+{% endblock %}
+
+
+{% block body %}
+<div class="container mx-auto max-w-screen-lg">
+  <div class="mb-3 mt-8">
+    <h3 class="text-2xl font-bold">Token {{denom}}</h3>
+  </div>
+
+  <div class="grid grid-cols-12 grid-flow-col">
+    <div class="md:col-span-8 col-span-12 md:row-span-3">
+      <div class="h-64" id="graph"></div>
+    </div>
+
+    <div class="col-span-12 md:col-span-4">LEFT</div>
+    <div class="col-span-12 md:col-span-4">LEFT</div>
+    <div class="col-span-12 md:col-span-4">LEFT</div>
+  </div>
+
+  <script>
+    const last_week = JSON.parse('{{ last_week_json|safe }}').map((d) => { d.date = new Date(d.date); return d });
+    const last_month = JSON.parse('{{ last_month_json|safe }}').map((d) => { d.date = new Date(d.date); return d });
+    // run after d3 etc loads
+    window.addEventListener('DOMContentLoaded', function () {
+      MG.data_graphic({
+        data: last_month,
+        full_width: true,
+        full_height: true,
+        left: 100,
+        x_accessor: 'date',
+        y_accessor: 'price',
+        target: "#graph",
+      });
+    });
+  </script>
+</div>
+{% endblock %}

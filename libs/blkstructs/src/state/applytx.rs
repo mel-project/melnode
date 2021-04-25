@@ -5,8 +5,8 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use tmelcrypt::HashVal;
 
 use crate::{
-    CoinDataHeight, CoinID, StakeDoc, State, StateError, Transaction, TxKind, COVHASH_DESTROY,
-    DENOM_DOSC, DENOM_NEWCOIN, DENOM_TSYM, STAKE_EPOCH,
+    melvm::CovenantEnv, CoinDataHeight, CoinID, StakeDoc, State, StateError, Transaction, TxKind,
+    COVHASH_DESTROY, DENOM_DOSC, DENOM_NEWCOIN, DENOM_TSYM, STAKE_EPOCH,
 };
 
 use super::melmint;
@@ -91,8 +91,15 @@ impl<'a> StateHandle<'a> {
         let scripts = tx.script_as_map();
         // build a map of input coins
         let mut in_coins: im::HashMap<Vec<u8>, u128> = im::HashMap::new();
+        // get last header
+        let last_header = self
+            .state
+            .history
+            .get(&(self.state.height.saturating_sub(0)))
+            .0
+            .unwrap();
         // iterate through the inputs
-        for coin_id in tx.inputs.iter() {
+        for (spend_idx, coin_id) in tx.inputs.iter().enumerate() {
             if self.get_stake(coin_id.txhash).is_some() {
                 return Err(StateError::CoinLocked);
             }
@@ -109,7 +116,15 @@ impl<'a> StateHandle<'a> {
                     let script = scripts
                         .get(&coin_data.coin_data.covhash)
                         .ok_or(StateError::NonexistentScript(coin_data.coin_data.covhash))?;
-                    if !script.check(tx, coin_id, &coin_data) {
+                    if !script.check(
+                        tx,
+                        CovenantEnv {
+                            spender_coinid: coin_id,
+                            spender_cdh: &coin_data,
+                            spender_index: spend_idx as u8,
+                            last_header: &last_header,
+                        },
+                    ) {
                         return Err(StateError::ViolatesScript(coin_data.coin_data.covhash));
                     }
                     self.del_coin(*coin_id);

@@ -2,12 +2,17 @@
 
 {% block title %} Melscan {% endblock %}
 
+{% block nav %}
+<a href="/" class="text-black hover:text-opacity-60 hover:underline">Melscan</a>
+{% endblock %}
+
+
 {% block body %}
 
 <div class="container mx-auto max-w-screen-lg">
   <div class="grid grid-cols-1 md:grid-cols-3 mt-8 mb-8">
     <div class="col-span-3 mb-3">
-      <h3 class="text-2xl font-semibold">Melmint/Melswap</h3>
+      <h3 class="text-2xl font-bold">Melmint/Melswap</h3>
     </div>
 
     <div>
@@ -25,7 +30,7 @@
 
   <div class="grid grid-cols-1 md:grid-cols-2 mt-12 mb-12 grid-flow-row">
     <div class="col-span-full mb-3">
-      <h3 class="text-2xl font-semibold">Latest activity</h3>
+      <h3 class="text-2xl font-bold">Latest activity</h3>
     </div>
 
     <div>
@@ -39,11 +44,11 @@
             <th>Proposer reward</th>
           </tr>
         </thead>
-        <tbody class="leading-loose font-medium text-sm">
+        <tbody class="leading-loose text-sm">
           {% for block in blocks %}
           <tr>
-            <td><a href="/blocks/{{block.header.height}}" class="text-blue-600">{{block.header.height}}</a></td>
-            <td>{{block.total_weight}}</td>
+            <td class="font-medium"><a href="/blocks/{{block.header.height}}" class="text-blue-600">{{block.header.height}}</a></td>
+            <td>{{block.total_weight}} wu</td>
             <td>{{ block.reward_amount }}</td>
           </tr>
           {% endfor %}
@@ -61,7 +66,7 @@
             <th>Mel moved</th>
           </tr>
         </thead>
-        <tbody class="leading-loose font-medium text-sm">
+        <tbody class="leading-loose text-sm">
           {% for tx in transactions %}
           <tr>
             <td><a href="/blocks/{{tx.height}}/{{tx.hash}}" class="text-blue-600">{{tx.shorthash}}...</a></td>

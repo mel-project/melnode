@@ -10,7 +10,7 @@ use std::{
 
 use anyhow::Context;
 use blkstructs::{
-    melvm::Covenant, CoinData, CoinID, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
+    melvm::Covenant, CoinData, CoinID, Transaction, TxKind, DENOM_DOSC, DENOM_TMEL, MICRO_CONVERTER,
 };
 use governor::{
     clock::QuantaClock,
@@ -18,10 +18,12 @@ use governor::{
     Quota, RateLimiter,
 };
 use nodeprot::NodeClient;
+use priority_queue::PriorityQueue;
 use rand::prelude::*;
 use smol::prelude::*;
 use smol_timeout::TimeoutExt;
 use structopt::StructOpt;
+use tmelcrypt::Ed25519SK;
 
 #[derive(StructOpt)]
 pub struct Args {
@@ -42,51 +44,62 @@ async fn main_async() -> anyhow::Result<()> {
     let args = Args::from_args();
     let lim = Arc::new(RateLimiter::direct(
         Quota::per_second(NonZeroU32::new(args.tps).unwrap())
-            .allow_burst(NonZeroU32::new(1).unwrap()),
+            .allow_burst(NonZeroU32::new(2).unwrap()),
     ));
-    for _ in 0..100 {
+    for _ in 0..args.tps.min(100) {
         let client = NodeClient::new(blkstructs::NetID::Testnet, args.connect);
         let lim = lim.clone();
-        smol::spawn(async move { spammer(&client, lim).await }).detach();
+        smol::spawn(async move { spammer(&client, lim).await.unwrap() }).detach();
     }
     smol::future::pending().await
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+struct QueueEntry {
+    coinid: CoinID,
+    value: u128,
+    unlock_key: Ed25519SK,
 }
 
 async fn spammer(
     client: &NodeClient,
     lim: Arc<RateLimiter<NotKeyed, InMemoryState, QuantaClock>>,
 ) -> anyhow::Result<()> {
-    let (pk, sk) = tmelcrypt::ed25519_keygen();
-    let my_covenant = Covenant::std_ed25519_pk(pk);
-    let first_tx = {
+    let first_queue_entry = {
+        let (pk, sk) = tmelcrypt::ed25519_keygen();
+        let my_covenant = Covenant::std_ed25519_pk_4(pk);
         let mut buf = vec![0u8; 32];
         rand::thread_rng().fill_bytes(&mut buf);
-        Transaction {
+        let first_tx = Transaction {
             kind: TxKind::Faucet,
             inputs: vec![],
             outputs: vec![CoinData {
                 denom: DENOM_TMEL.into(),
-                value: 1 << 32,
+                value: 1 << 40,
                 additional_data: vec![],
                 covhash: my_covenant.hash(),
             }],
-            fee: 1087000000,
+            fee: MICRO_CONVERTER,
             data: buf,
             scripts: vec![],
             sigs: vec![],
+        };
+
+        client
+            .send_tx(first_tx.clone())
+            .await
+            .context("cannot send first tx")?;
+        QueueEntry {
+            coinid: CoinID {
+                txhash: first_tx.hash_nosigs(),
+                index: 0,
+            },
+            value: 1 << 40,
+            unlock_key: sk,
         }
     };
-
-    client
-        .send_tx(first_tx.clone())
-        .await
-        .context("cannot send first tx")?;
-
-    let mut last_coinid = CoinID {
-        txhash: first_tx.hash_nosigs(),
-        index: 0,
-    };
-    let mut last_value = 1 << 32;
+    let mut coin_queue = PriorityQueue::new();
+    coin_queue.push(first_queue_entry, rand::random::<u64>());
     loop {
         static ITERS: AtomicU64 = AtomicU64::new(0);
         eprintln!(
@@ -94,30 +107,63 @@ async fn spammer(
             ITERS.fetch_add(1, Ordering::Relaxed)
         );
         lim.until_ready().await;
-        let new_tx = Transaction {
+        eprintln!("gonna spam...");
+
+        let num_to_gather = (rand::random::<usize>() % 3).max(1).min(coin_queue.len());
+        let inputs = (0..num_to_gather)
+            .map(|_| coin_queue.pop().unwrap().0)
+            .collect::<Vec<_>>();
+        let num_outputs = (rand::random::<usize>() % 3).max(1);
+        let total_input = inputs.iter().map(|v| v.value).sum::<u128>();
+        let outputs = (0..num_outputs)
+            .map(|_| (total_input - MICRO_CONVERTER) / (num_outputs as u128))
+            .map(|value| {
+                let (pk, sk) = tmelcrypt::ed25519_keygen();
+                (
+                    CoinData {
+                        value,
+                        denom: DENOM_TMEL.into(),
+                        covhash: Covenant::std_ed25519_pk_4(pk).hash(),
+                        additional_data: vec![],
+                    },
+                    sk,
+                )
+            })
+            .collect::<Vec<_>>();
+        let fee = total_input - outputs.iter().map(|v| v.0.value).sum::<u128>();
+        dbg!(total_input);
+        dbg!(outputs.iter().map(|v| v.0.value).sum::<u128>() + fee);
+
+        let mut new_tx = Transaction {
             kind: TxKind::Normal,
-            inputs: vec![last_coinid],
-            outputs: vec![CoinData {
-                denom: DENOM_TMEL.into(),
-                value: last_value - MICRO_CONVERTER,
-                additional_data: vec![],
-                covhash: my_covenant.hash(),
-            }],
-            fee: MICRO_CONVERTER,
-            scripts: vec![my_covenant.clone()],
+            inputs: inputs.iter().map(|v| v.coinid).collect(),
+            outputs: outputs.iter().map(|v| v.0.clone()).collect(),
+            fee,
+            scripts: inputs
+                .iter()
+                .map(|v| Covenant::std_ed25519_pk_4(v.unlock_key.to_public()))
+                .collect(),
             sigs: vec![],
             data: vec![],
+        };
+        for sk in inputs.iter().map(|v| v.unlock_key) {
+            new_tx = new_tx.signed_ed25519(sk);
         }
-        .signed_ed25519(sk);
+        for (index, (output, unlock_key)) in outputs.iter().enumerate() {
+            let entry = QueueEntry {
+                coinid: CoinID {
+                    txhash: new_tx.hash_nosigs(),
+                    index: index as u8,
+                },
+                value: output.value,
+                unlock_key: *unlock_key,
+            };
+            coin_queue.push(entry, rand::random::<u64>());
+        }
         client
             .send_tx(new_tx.clone())
             .timeout(Duration::from_secs(10))
             .await
             .context("couldn't send subsequent transaction")??;
-        last_coinid = CoinID {
-            txhash: new_tx.hash_nosigs(),
-            index: 0,
-        };
-        last_value -= MICRO_CONVERTER;
     }
 }

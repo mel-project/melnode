@@ -1,24 +1,76 @@
-use crate::CoinDataHeight;
 pub use crate::{CoinData, CoinID, Transaction};
+use crate::{CoinDataHeight, Header};
 use arbitrary::Arbitrary;
 use primitive_types::U256;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryInto;
+use tmelcrypt::HashVal;
 
 mod lexer;
 
+/// Heap address where the transaction trying to spend the coin encumbered by this covenant (spender) is put
+pub const ADDR_SPENDER_TX: u16 = 0;
+/// Heap address where the spender's hash is put.
+pub const ADDR_SPENDER_TXHASH: u16 = 1;
+/// Heap address where the *parent* (the transaction that created the coin now getting spent)'s hash is put
+pub const ADDR_PARENT_TXHASH: u16 = 2;
+/// Heap address where the index, at the parent, of the coin being spent is put. For example, if we are spending the third output of some transaction, `Heap[ADDR_PARENT_INDEX] = 2`.
+pub const ADDR_PARENT_INDEX: u16 = 3;
+/// Heap address where the hash of the running covenant is put.
+pub const ADDR_SELF_HASH: u16 = 4;
+/// Heap address where the face value of the coin being spent is put.
+pub const ADDR_PARENT_VALUE: u16 = 5;
+/// Heap address where the denomination of the coin being spent is put.
+pub const ADDR_PARENT_DENOM: u16 = 6;
+/// Heap address where the additional data of the coin being spent is put.
+pub const ADDR_PARENT_ADDITIONAL_DATA: u16 = 7;
+/// Heap address where the height of the parent is put.
+pub const ADDR_PARENT_HEIGHT: u16 = 7;
+/// Heap address where the "spender index" is put. For example, if this coin is spent as the first input of the spender, then `Heap[ADDR_SPENDER_INDEX] = 0`.
+pub const ADDR_SPENDER_INDEX: u16 = 8;
+/// Heap address where the header of the last block is put. If the covenant is being evaluated for a transaction in block N, this is the header of block N-1.
+pub const ADDR_LAST_HEADER: u16 = 9;
+
+// hm.insert(2, txhash.0.into());
+// hm.insert(3, Value::Int(U256::from(*index)));
+
+// let CoinDataHeight {
+//     coin_data:
+//         CoinData {
+//             covhash,
+//             value,
+//             denom,
+//             additional_data,
+//         },
+//     height,
+// } = &env.spending_cdh;
+
+// hm.insert(4, covhash.0.into());
+// hm.insert(5, value.clone().into());
+// hm.insert(6, denom.clone().into());
+// hm.insert(7, additional_data.clone().into());
+// hm.insert(8, height.clone().into());
+
 #[derive(Clone, Eq, PartialEq, Debug, Arbitrary, Serialize, Deserialize, Hash)]
+/// A MelVM covenant. Essentially, given a transaction that attempts to spend it, it either allows the transaction through or doesn't.
 pub struct Covenant(pub Vec<u8>);
 
+#[derive(Clone, Eq, PartialEq, Debug, Hash)]
+/// The execution environment of a covenant.
+pub struct CovenantEnv<'a> {
+    pub spender_coinid: &'a CoinID,
+    pub spender_cdh: &'a CoinDataHeight,
+    pub spender_index: u8,
+    pub last_header: &'a Header,
+}
+
 impl Covenant {
-    pub fn check(
-        &self,
-        tx: &Transaction,
-        spending_coinid: &CoinID,
-        spending_cdh: &CoinDataHeight,
-    ) -> bool {
-        self.check_opt(tx, spending_coinid, spending_cdh).is_some()
+    /// Checks a transaction, returning whether or not the transaction is valid.
+    ///
+    /// The caller must also pass in the [CoinID] and [CoinDataHeight] corresponding to the coin that's being spent, as well as the [Header] of the *previous* block (if this transaction is trying to go into block N, then the header of block N-1). This allows the covenant to access (a committment to) its execution environment, allowing constructs like timelock contracts and colored-coin-like systems.
+    pub fn check(&self, tx: &Transaction, env: CovenantEnv) -> bool {
+        self.check_opt(tx, env).is_some()
     }
 
     pub fn check_raw(&self, args: &[Value]) -> bool {
@@ -37,18 +89,36 @@ impl Covenant {
         tmelcrypt::hash_single(&self.0)
     }
 
-    fn check_opt(
-        &self,
-        tx: &Transaction,
-        spending_coinid: &CoinID,
-        spending_cdh: &CoinDataHeight,
-    ) -> Option<()> {
+    fn check_opt(&self, tx: &Transaction, env: CovenantEnv) -> Option<()> {
         let ops = self.to_ops()?;
-        Executor::from(tx.clone(), *spending_coinid, spending_cdh.clone()).run_return(&ops)
+        Executor::new_from_env(tx.clone(), env).run_return(&ops)
     }
 
     pub fn std_ed25519_pk(pk: tmelcrypt::Ed25519PK) -> Self {
         Covenant::from_ops(&[
+            OpCode::PushI(0.into()),
+            OpCode::PushI(6.into()),
+            OpCode::LoadImm(0),
+            OpCode::VRef,
+            OpCode::VRef,
+            OpCode::PushB(pk.0.to_vec()),
+            OpCode::LoadImm(1),
+            OpCode::SigEOk(32),
+        ])
+        .unwrap()
+    }
+
+    pub fn std_ed25519_pk_4(pk: tmelcrypt::Ed25519PK) -> Self {
+        Covenant::from_ops(&[
+            OpCode::PushI(0.into()),
+            OpCode::PushI(6.into()),
+            OpCode::LoadImm(0),
+            OpCode::VRef,
+            OpCode::VRef,
+            OpCode::PushB(pk.0.to_vec()),
+            OpCode::LoadImm(1),
+            OpCode::SigEOk(32),
+            OpCode::Bnz(8),
             OpCode::PushI(0.into()),
             OpCode::PushI(6.into()),
             OpCode::LoadImm(0),
@@ -288,16 +358,16 @@ impl Executor {
             heap: heap_init,
         }
     }
-    pub fn from(tx: Transaction, spending_coinid: CoinID, spending_cdh: CoinDataHeight) -> Self {
+    pub fn new_from_env(tx: Transaction, env: CovenantEnv) -> Self {
         let mut hm = HashMap::new();
-        hm.insert(1, Value::from_bytes(&tx.hash_nosigs().0));
+        hm.insert(ADDR_SPENDER_TXHASH, Value::from_bytes(&tx.hash_nosigs().0));
         let tx_val = Value::from(tx);
-        hm.insert(0, tx_val);
+        hm.insert(ADDR_SPENDER_TX, tx_val);
 
-        let CoinID { txhash, index } = spending_coinid;
+        let CoinID { txhash, index } = &env.spender_coinid;
 
-        hm.insert(2, txhash.0.into());
-        hm.insert(3, Value::Int(U256::from(index)));
+        hm.insert(ADDR_PARENT_TXHASH, txhash.0.into());
+        hm.insert(ADDR_PARENT_INDEX, Value::Int(U256::from(*index)));
 
         let CoinDataHeight {
             coin_data:
@@ -308,13 +378,15 @@ impl Executor {
                     additional_data,
                 },
             height,
-        } = spending_cdh;
+        } = &env.spender_cdh;
 
-        hm.insert(4, covhash.0.into());
-        hm.insert(5, value.into());
-        hm.insert(6, denom.into());
-        hm.insert(7, additional_data.into());
-        hm.insert(8, height.into());
+        hm.insert(ADDR_SELF_HASH, covhash.0.into());
+        hm.insert(ADDR_PARENT_VALUE, value.clone().into());
+        hm.insert(ADDR_PARENT_DENOM, denom.clone().into());
+        hm.insert(ADDR_PARENT_ADDITIONAL_DATA, additional_data.clone().into());
+        hm.insert(ADDR_PARENT_HEIGHT, height.clone().into());
+        hm.insert(ADDR_LAST_HEADER, Value::from(*env.last_header));
+        hm.insert(ADDR_SPENDER_INDEX, Value::from(env.spender_index as u64));
 
         Executor::new(hm)
     }
@@ -810,6 +882,24 @@ impl From<CoinData> for Value {
     }
 }
 
+impl From<Header> for Value {
+    fn from(cd: Header) -> Self {
+        Value::Vector(im::vector![
+            (cd.network as u64).into(),
+            cd.previous.into(),
+            cd.height.into(),
+            cd.history_hash.into(),
+            cd.coins_hash.into(),
+            cd.transactions_hash.into(),
+            cd.fee_pool.into(),
+            cd.fee_multiplier.into(),
+            cd.dosc_speed.into(),
+            cd.pools_hash.into(),
+            cd.stakes_hash.into()
+        ])
+    }
+}
+
 impl From<CoinDataHeight> for Value {
     fn from(cd: CoinDataHeight) -> Self {
         Value::Vector(im::vector![cd.coin_data.into(), cd.height.into()])
@@ -833,6 +923,12 @@ impl From<Covenant> for Value {
 
 impl From<[u8; 32]> for Value {
     fn from(v: [u8; 32]) -> Self {
+        Value::Bytes(v.iter().cloned().collect::<im::Vector<u8>>())
+    }
+}
+
+impl From<HashVal> for Value {
+    fn from(v: HashVal) -> Self {
         Value::Bytes(v.iter().cloned().collect::<im::Vector<u8>>())
     }
 }

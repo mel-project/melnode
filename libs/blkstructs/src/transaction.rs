@@ -3,7 +3,7 @@ use arbitrary::Arbitrary;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 #[derive(
     Clone,
@@ -30,6 +30,20 @@ pub enum TxKind {
     LiqWithdraw = 0x53,
 
     Faucet = 0xff,
+}
+
+impl Display for TxKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TxKind::Normal => "Normal".fmt(f),
+            TxKind::Stake => "Stake".fmt(f),
+            TxKind::DoscMint => "DoscMint".fmt(f),
+            TxKind::Swap => "Swap".fmt(f),
+            TxKind::LiqDeposit => "LiqDeposit".fmt(f),
+            TxKind::LiqWithdraw => "LiqWithdraw".fmt(f),
+            TxKind::Faucet => "Faucet".fmt(f),
+        }
+    }
 }
 
 /// Transaction represents an individual, serializable Themelio transaction.
@@ -143,10 +157,17 @@ impl Transaction {
         }
     }
 
-    /// Convenience function that applies the correct fee. Call this *before* signing the transaction, with a ballast that's an upper bound on the number of bytes added to the transaction as signatures. 100 is a good value for a ballast.
-    pub fn applied_fee(mut self, fee_multiplier: u128, ballast: u128) -> Self {
+    /// Convenience function that applies the correct fee. Call this *before* signing the transaction, with a ballast that's an upper bound on the number of bytes added to the transaction as signatures. 100 is a good value for a ballast. Provide the index of the output to deduct from; returns None if the output doesn't have enough money to cover fees.
+    pub fn applied_fee(
+        mut self,
+        fee_multiplier: u128,
+        ballast: u128,
+        deduct_from_idx: usize,
+    ) -> Option<Self> {
         self.fee = self.base_fee(fee_multiplier, ballast);
-        self
+        let deduct_from = self.outputs.get_mut(deduct_from_idx)?;
+        deduct_from.value = deduct_from.value.checked_sub(self.fee)?;
+        Some(self)
     }
 }
 
@@ -188,7 +209,13 @@ pub struct CoinData {
     pub additional_data: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Arbitrary, Debug)]
+impl CoinData {
+    pub fn additional_data_hex(&self) -> String {
+        hex::encode(&self.additional_data)
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Arbitrary, Debug, Eq, PartialEq, Hash)]
 /// A `CoinData` but coupled with a block height. This is what actually gets stored in the global state, allowing constraints and the validity-checking algorithm to easily access the age of a coin.
 pub struct CoinDataHeight {
     pub coin_data: CoinData,

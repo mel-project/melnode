@@ -3,9 +3,12 @@ use std::{fmt::Display, time::Instant};
 
 use blkstructs::MICRO_CONVERTER;
 mod block;
+mod pool;
 mod transaction;
+
 pub use block::*;
 pub use homepage::*;
+pub use pool::*;
 pub use transaction::*;
 
 // A wrapper for microunit-denominated values

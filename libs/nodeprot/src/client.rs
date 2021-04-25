@@ -379,14 +379,11 @@ async fn get_full_block(this: NodeClient, height: u64) -> melnet::Result<Block> 
     let (abbr_block, _): (AbbreviatedBlock, ConsensusProof) =
         stdcode::deserialize(&this.request(NodeRequest::GetAbbrBlock(height)).await?)
             .map_err(|e| melnet::MelnetError::Custom(e.to_string()))?;
-    let semaphore = smol::lock::Semaphore::new(64);
     let mut txx_tasks = FuturesUnordered::new();
     let txcount = abbr_block.txhashes.len();
     for txhash in abbr_block.txhashes {
-        let semaphore = &semaphore;
         let this = this.clone();
         txx_tasks.push(async move {
-            let _guard = semaphore.acquire().await;
             let (v, _) = get_smt_branch(
                 this,
                 height,
