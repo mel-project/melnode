@@ -121,8 +121,8 @@ impl<'a> StateHandle<'a> {
                     if !script.check(
                         tx,
                         CovenantEnv {
-                            spender_coinid: coin_id,
-                            spender_cdh: &coin_data,
+                            parent_coinid: coin_id,
+                            parent_cdh: &coin_data,
                             spender_index: spend_idx as u8,
                             last_header: &last_header,
                         },

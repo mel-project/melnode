@@ -59,8 +59,8 @@ pub struct Covenant(pub Vec<u8>);
 #[derive(Clone, Eq, PartialEq, Debug, Hash)]
 /// The execution environment of a covenant.
 pub struct CovenantEnv<'a> {
-    pub spender_coinid: &'a CoinID,
-    pub spender_cdh: &'a CoinDataHeight,
+    pub parent_coinid: &'a CoinID,
+    pub parent_cdh: &'a CoinDataHeight,
     pub spender_index: u8,
     pub last_header: &'a Header,
 }
@@ -378,7 +378,7 @@ impl Executor {
         let tx_val = Value::from(tx);
         hm.insert(ADDR_SPENDER_TX, tx_val);
         if let Some(env) = env {
-            let CoinID { txhash, index } = &env.spender_coinid;
+            let CoinID { txhash, index } = &env.parent_coinid;
 
             hm.insert(ADDR_PARENT_TXHASH, txhash.0.into());
             hm.insert(ADDR_PARENT_INDEX, Value::Int(U256::from(*index)));
@@ -392,7 +392,7 @@ impl Executor {
                         additional_data,
                     },
                 height,
-            } = &env.spender_cdh;
+            } = &env.parent_cdh;
 
             hm.insert(ADDR_SELF_HASH, covhash.0.into());
             hm.insert(ADDR_PARENT_VALUE, value.clone().into());
