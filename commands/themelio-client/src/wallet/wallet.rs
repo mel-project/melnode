@@ -1,6 +1,6 @@
 use crate::utils::context::ExecutionContext;
 use crate::wallet::data::WalletData;
-use anyhow::Context;
+use anyhow::Context; // was used by create_faucet_tx
 use blkstructs::{
     CoinData, CoinDataHeight, CoinID, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
 };
@@ -23,59 +23,6 @@ impl ActiveWallet {
             data,
             context,
         }
-    }
-
-    /// Create a faucet transaction given the amount, unit and a value for fee.
-    pub async fn create_faucet_tx(
-        &self,
-        amount: &str,
-        unit: &str,
-        fee: u128,
-    ) -> anyhow::Result<Transaction> {
-        // TODO: units
-        let value: u128 = amount.parse()?;
-        let tx = Transaction {
-            kind: TxKind::Faucet,
-            inputs: vec![],
-            outputs: vec![CoinData {
-                denom: DENOM_TMEL.to_owned(),
-                covhash: self.data.my_covenant().hash(),
-                value: value * MICRO_CONVERTER,
-                additional_data: vec![],
-            }],
-            fee,
-            scripts: vec![],
-            sigs: vec![],
-            data: vec![],
-        }
-        .applied_fee(self.context.fee_multiplier().await?, 100, 0)
-        .context("cannot apply fee")?;
-        Ok(tx)
-    }
-
-    pub async fn create_send_mel_tx(
-        &self,
-        addr: &str,
-        amount: &str,
-        unit: &str,
-        fee: u128,
-    ) -> anyhow::Result<Transaction> {
-        unimplemented!()
-        // let value: u128 = amount.parse()?;
-        // let tx = Transaction {
-        //     kind: TxKind::Faucet,
-        //     inputs: vec![],
-        //     outputs: vec![CoinData {
-        //         denom: DENOM_TMEL.to_owned(),
-        //         covhash: self.data.my_script.hash(),
-        //         value: value * MICRO_CONVERTER,
-        //     }],
-        //     fee,
-        //     scripts: vec![],
-        //     sigs: vec![],
-        //     data: vec![],
-        // };
-        // Ok(tx)
     }
 
     /// Update snapshot and send a transaction.
