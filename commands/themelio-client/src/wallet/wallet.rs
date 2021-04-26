@@ -79,7 +79,7 @@ impl Wallet {
 
     /// Update snapshot and send a transaction.
     pub async fn send_tx(&self, tx: &Transaction) -> anyhow::Result<()> {
-        let snapshot = self.context.valclient.snapshot().await?;
+        let snapshot = self.context.client.snapshot().await?;
         snapshot.get_raw().send_tx(tx.clone()).await?;
         Ok(())
     }
@@ -93,7 +93,7 @@ impl Wallet {
             txhash: tx.hash_nosigs(),
             index: 0,
         };
-        let snapshot = self.context.valclient.snapshot().await?;
+        let snapshot = self.context.client.snapshot().await?;
         Ok((snapshot.get_coin(coin).await?, coin))
     }
 

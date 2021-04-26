@@ -41,6 +41,7 @@ impl WalletShellRunner {
                         print_command_error(&err, &cmd)
                     }
                 }
+                // Output parsing error and continue running.
                 Err(err) => print_readline_error(&err),
             }
         }

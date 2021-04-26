@@ -6,12 +6,15 @@ use std::{convert::TryInto, sync::Arc};
 use structopt::StructOpt;
 use tmelcrypt::HashVal;
 use utils::executor::CommandExecutor;
-use wallet::storage::WalletStorage;
+use crate::config::{DEFAULT_TRUST_HEIGHT, DEFAULT_TRUST_HEADER_HASH};
+use storage::SledMap;
+use crate::wallet::data::WalletData;
 
 mod opts;
 mod shell;
 mod utils;
 mod wallet;
+mod config;
 
 /// Parse options from input arguments and asynchronously dispatch them.
 fn main() {
@@ -26,14 +29,16 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
     let version = env!("CARGO_PKG_VERSION").to_string();
     let network = blkstructs::NetID::Testnet;
     let host = opts.host;
-    let database = Arc::new(WalletStorage::open(&opts.database)?);
+    let sled_map = SledMap::<String, WalletData>::new(
+        sled::open(&opts.path)?.open_tree(b"wallet_storage")?,
+    );
+    let database = Arc::new(sled_map);
     let sleep_sec = opts.sleep_sec;
-    let valclient = ValClient::new(network, host);
-    // TODO: read from argument
-    valclient.trust(
-        35852,
+    let client = ValClient::new(network, host);
+    client.trust(
+        DEFAULT_TRUST_HEIGHT,
         HashVal(
-            hex::decode("bf24ee8dacc5d16fae2e8bf8a8102ae8cf913225ab3df16c85f490806a053d42")?
+            hex::decode(DEFAULT_TRUST_HEADER_HASH)?
                 .try_into()
                 .unwrap(),
         ),
@@ -48,7 +53,7 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                 host,
                 database,
                 sleep_sec,
-                valclient,
+                client: client,
                 formatter,
             };
             let runner = WalletShellRunner::new(context);
@@ -61,7 +66,7 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                 network,
                 host,
                 database,
-                valclient,
+                client: client,
                 sleep_sec,
                 formatter,
             };

@@ -7,7 +7,6 @@ use tmelcrypt::Ed25519SK;
 use crate::utils::context::ExecutionContext;
 use crate::wallet::data::WalletData;
 use crate::wallet::error::WalletError;
-use crate::wallet::storage::WalletStorage;
 use crate::wallet::wallet::Wallet;
 
 /// Responsible for managing persisted wallets and providing a wallet instance for transacting.

@@ -1,0 +1,2 @@
+pub const DEFAULT_TRUST_HEIGHT: u64 = 35852;
+pub const DEFAULT_TRUST_HEADER_HASH: &str = "bf24ee8dacc5d16fae2e8bf8a8102ae8cf913225ab3df16c85f490806a053d42";

@@ -25,7 +25,7 @@ impl OutputFormatter for JsonOutputFormatter {
         &self,
         wallets: BTreeMap<String, WalletData>,
     ) -> anyhow::Result<()> {
-        let json = serde_json::to_string_pretty(&wallets).unwrap();
+        let json = serde_json::to_string_pretty(&wallets)?;
         eprintln!("{}", json);
         Ok(())
     }
@@ -51,7 +51,7 @@ impl OutputFormatter for JsonOutputFormatter {
             coin,
         };
 
-        let json = serde_json::to_string_pretty(&confirmed).unwrap();
+        let json = serde_json::to_string_pretty(&confirmed)?;
 
         eprintln!("{}", json);
         Ok(())
@@ -67,7 +67,7 @@ impl OutputFormatter for JsonOutputFormatter {
             pending_message: String,
         }
         let pending = Pending { pending_message };
-        let json = serde_json::to_string_pretty(&pending).unwrap();
+        let json = serde_json::to_string_pretty(&pending)?;
 
         eprintln!("{}", json);
         Ok(())
