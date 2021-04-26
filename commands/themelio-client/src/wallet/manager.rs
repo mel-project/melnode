@@ -23,12 +23,12 @@ impl WalletManager {
     pub async fn create_wallet(&self, name: &str) -> anyhow::Result<ActiveWallet> {
         // Check if wallet has only alphanumerics.
         if !name.chars().all(char::is_alphanumeric) {
-            anyhow::bail!(WalletError::InvalidWalletName(name.to_string()))
+            anyhow::bail!(WalletError::InvalidName(name.to_string()))
         }
 
         // Check if wallet with same name already exits.
         if let Some(_stored_wallet_data) = self.context.database.get(name) {
-            anyhow::bail!(WalletError::DuplicateWalletName(name.to_string()))
+            anyhow::bail!(WalletError::DuplicateName(name.to_string()))
         }
 
         // Generate wallet data and store it.
@@ -46,8 +46,12 @@ impl WalletManager {
 
     /// Get existing wallet data by name given the corresponding secret.
     pub async fn load_wallet(&self, name: &str, secret: &str) -> anyhow::Result<ActiveWallet> {
-        let wallet_data = self.context.database.get(name).unwrap();
-        let sk = Ed25519SK::from_str(secret).unwrap();
+        let wallet_data = self.context.database.get(name);
+        if wallet_data.is_none() {
+            anyhow::bail!(WalletError::NotFound(name.to_string()))
+        }
+        let wallet_data = wallet_data.unwrap();
+        let sk = Ed25519SK::from_str(secret)?;
 
         // TODO: add wallet data pk verification
         // let wallet_secret = hex::decode(wallet_secret)?;
