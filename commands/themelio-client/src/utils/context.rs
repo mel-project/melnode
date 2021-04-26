@@ -1,12 +1,12 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use smol::Timer;
 
-use crate::{utils::formatter::formatter::OutputFormatter};
-use nodeprot::{ValClient};
-use std::sync::Arc;
-
+use nodeprot::ValClient;
 use storage::SledMap;
+
+use crate::{utils::formatter::formatter::OutputFormatter};
 use crate::wallet::data::WalletData;
 
 /// Contains data for the entire life-cycle of a command being executed.

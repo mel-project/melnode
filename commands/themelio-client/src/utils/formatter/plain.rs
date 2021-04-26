@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::io::prelude::*;
 
+use async_trait::async_trait;
 use colored::Colorize;
 use tabwriter::TabWriter;
 
@@ -9,7 +10,6 @@ use blkstructs::{CoinDataHeight, CoinID};
 use crate::utils::formatter::formatter::OutputFormatter;
 use crate::wallet::data::WalletData;
 use crate::wallet::wallet::ActiveWallet;
-use async_trait::async_trait;
 
 pub struct PlainOutputFormatter {}
 

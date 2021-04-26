@@ -1,8 +1,11 @@
+use std::collections::BTreeMap;
+
+use async_trait::async_trait;
+
+use blkstructs::{CoinDataHeight, CoinID};
+
 use crate::wallet::data::WalletData;
 use crate::wallet::wallet::ActiveWallet;
-use async_trait::async_trait;
-use blkstructs::{CoinDataHeight, CoinID};
-use std::collections::BTreeMap;
 
 #[async_trait]
 pub trait OutputFormatter {

@@ -1,12 +1,13 @@
 use std::collections::BTreeMap;
 
+use async_trait::async_trait;
+use serde::Serialize;
+
 use blkstructs::{CoinDataHeight, CoinID};
 
 use crate::utils::formatter::formatter::OutputFormatter;
 use crate::wallet::data::WalletData;
 use crate::wallet::wallet::ActiveWallet;
-use async_trait::async_trait;
-use serde::Serialize;
 
 pub struct JsonOutputFormatter {}
 

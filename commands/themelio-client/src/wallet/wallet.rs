@@ -1,9 +1,10 @@
-use crate::utils::context::ExecutionContext;
-use crate::wallet::data::WalletData;
 use blkstructs::{
-    CoinData, CoinDataHeight, CoinID, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
+    CoinData, CoinDataHeight, CoinID, DENOM_TMEL, MICRO_CONVERTER, Transaction, TxKind,
 };
 use tmelcrypt::Ed25519SK;
+
+use crate::utils::context::ExecutionContext;
+use crate::wallet::data::WalletData;
 
 /// Representation of an open wallet. Automatically keeps storage in sync.
 pub struct ActiveWallet {

@@ -1,8 +1,10 @@
-use crate::shell::command::ShellCommand;
-use crate::utils::prompt::{common_read_line, InputPrompt};
+use std::convert::TryFrom;
+
 use async_trait::async_trait;
 use colored::Colorize;
-use std::convert::TryFrom;
+
+use crate::shell::command::ShellCommand;
+use crate::utils::prompt::{common_read_line, InputPrompt};
 
 pub struct ShellInputPrompt;
 

@@ -1,13 +1,16 @@
+use std::{convert::TryInto, sync::Arc};
+
+use structopt::StructOpt;
+
+use nodeprot::ValClient;
+use storage::SledMap;
+use tmelcrypt::HashVal;
+use utils::executor::CommandExecutor;
+
+use crate::config::{DEFAULT_TRUST_HEADER_HASH, DEFAULT_TRUST_HEIGHT};
 use crate::opts::{ClientOpts, ClientSubOpts, OutputFormat, WalletUtilsCommand};
 use crate::shell::runner::WalletShellRunner;
 use crate::utils::context::ExecutionContext;
-use nodeprot::ValClient;
-use std::{convert::TryInto, sync::Arc};
-use structopt::StructOpt;
-use tmelcrypt::HashVal;
-use utils::executor::CommandExecutor;
-use crate::config::{DEFAULT_TRUST_HEIGHT, DEFAULT_TRUST_HEADER_HASH};
-use storage::SledMap;
 use crate::wallet::data::WalletData;
 
 mod opts;

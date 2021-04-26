@@ -1,10 +1,12 @@
+use std::str::FromStr;
+
+use serde::{Deserialize, Serialize};
+use serde_scan::ScanError;
+use structopt::StructOpt;
+
 use crate::utils::formatter::formatter::OutputFormatter;
 use crate::utils::formatter::json::JsonOutputFormatter;
 use crate::utils::formatter::plain::PlainOutputFormatter;
-use serde::{Deserialize, Serialize};
-use serde_scan::ScanError;
-use std::str::FromStr;
-use structopt::StructOpt;
 
 #[derive(Debug, Clone, StructOpt)]
 #[structopt(name = "Themelio Client CLI")]
