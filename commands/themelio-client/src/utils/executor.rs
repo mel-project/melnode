@@ -117,7 +117,7 @@ impl CommandExecutor {
             let (coin_data_height, coin_id) = wallet.check_sent_tx(tx).await?;
             self.context
                 .formatter
-                .check_coin(&coin_data_height, &coin_id)
+                .check_coin(coin_data_height.clone(), coin_id)
                 .await?;
             if let Some(cdh) = coin_data_height {
                 return Ok(cdh);

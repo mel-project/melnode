@@ -11,7 +11,6 @@
 mod client;
 mod endpoint;
 mod routingtable;
-use client::Client;
 use derivative::*;
 pub use endpoint::*;
 use log::{debug, trace};

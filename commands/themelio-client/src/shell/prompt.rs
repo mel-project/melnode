@@ -5,6 +5,7 @@ use colored::Colorize;
 
 use crate::shell::command::ShellCommand;
 use crate::utils::prompt::{common_read_line, InputPrompt};
+use crate::wallet::error::WalletError;
 
 pub struct ShellInputPrompt;
 
@@ -25,7 +26,10 @@ impl InputPrompt<ShellCommand> for ShellInputPrompt {
 
     async fn read_command(&self, prompt: &str) -> anyhow::Result<ShellCommand> {
         let input = common_read_line(prompt.to_string()).await?;
-        let wallet_cmd = ShellCommand::try_from(input)?;
-        Ok(wallet_cmd)
+        let wallet_cmd = ShellCommand::try_from(input.clone());
+        if wallet_cmd.is_err() {
+            anyhow::bail!(WalletError::InvalidInputArgs(input))
+        }
+        Ok(wallet_cmd?)
     }
 }

@@ -34,27 +34,26 @@ impl OutputFormatter for JsonOutputFormatter {
     /// Display json showing height and coin id information upon a coin being confimed.
     async fn coin_confirmed(
         &self,
-        coin_data_height: &CoinDataHeight,
-        coin: &CoinID,
+        coin_data_height: CoinDataHeight,
+        coin: CoinID,
     ) -> anyhow::Result<()> {
-        let coin_data_height = coin_data_height.clone();
-        let coin = coin.clone();
-
-        #[derive(Serialize)]
-        #[serde(rename_all = "camelCase")]
-        struct Confirmed {
-            coin_data_height: CoinDataHeight,
-            coin: CoinID,
-        }
-
-        let confirmed = Confirmed {
-            coin_data_height,
-            coin,
-        };
-
-        let json = serde_json::to_string_pretty(&confirmed)?;
-
-        eprintln!("{}", json);
+        // let coin_data_height = coin_data_height.clone();
+        //
+        // #[derive(Serialize)]
+        // #[serde(rename_all = "camelCase")]
+        // struct Confirmed {
+        //     coin_data_height: CoinDataHeight,
+        //     coin: CoinID,
+        // }
+        //
+        // let confirmed = Confirmed {
+        //     coin_data_height,
+        //     coin,
+        // };
+        //
+        // let json = serde_json::to_string_pretty(&confirmed)?;
+        //
+        // eprintln!("{}", json);
         Ok(())
     }
 
@@ -78,12 +77,12 @@ impl OutputFormatter for JsonOutputFormatter {
     /// at which a confirmed message will be displayed.
     async fn check_coin(
         &self,
-        coin_data_height: &Option<CoinDataHeight>,
-        coin_id: &CoinID,
+        coin_data_height: Option<CoinDataHeight>,
+        coin_id: CoinID,
     ) -> anyhow::Result<()> {
         match coin_data_height {
             None => self.coin_pending().await?,
-            Some(coin_data_height) => self.coin_confirmed(&coin_data_height, &coin_id).await?,
+            Some(coin_data_height) => self.coin_confirmed(coin_data_height, coin_id).await?,
         }
         Ok(())
     }

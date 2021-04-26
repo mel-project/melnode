@@ -34,7 +34,7 @@ impl WalletManager {
         // Generate wallet data and store it.
         let (pk, sk) = tmelcrypt::ed25519_keygen();
         let script = Covenant::std_ed25519_pk(pk);
-        let wallet_data = WalletData::new(script.clone());
+        let wallet_data = WalletData::new(script);
 
         // Insert wallet data and return sk & wallet data.
         self.context
@@ -53,7 +53,11 @@ impl WalletManager {
             anyhow::bail!(WalletError::NotFound(name.to_string()))
         }
         let wallet_data = wallet_data.unwrap();
-        let sk = Ed25519SK::from_str(secret)?;
+        let sk = Ed25519SK::from_str(secret);
+        if sk.is_err() {
+            anyhow::bail!(WalletError::InvalidSecret(name.to_string()))
+        }
+        let sk = sk?;
 
         // TODO: add wallet data pk verification
         // let wallet_secret = hex::decode(wallet_secret)?;
