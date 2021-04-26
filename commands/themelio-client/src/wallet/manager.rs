@@ -7,9 +7,9 @@ use tmelcrypt::Ed25519SK;
 use crate::utils::context::ExecutionContext;
 use crate::wallet::data::WalletData;
 use crate::wallet::error::WalletError;
-use crate::wallet::wallet::Wallet;
+use crate::wallet::wallet::ActiveWallet;
 
-/// Responsible for managing persisted wallets and providing a wallet instance for transacting.
+/// Responsible for managing persisted wallets and providing an unlocked active wallet.
 pub struct WalletManager {
     context: ExecutionContext,
 }
@@ -20,14 +20,14 @@ impl WalletManager {
     }
 
     /// Create a wallet from wallet name iff name is valid and wallet doesn't already exist.
-    pub async fn create_wallet(&self, name: &str) -> anyhow::Result<Wallet> {
+    pub async fn create_wallet(&self, name: &str) -> anyhow::Result<ActiveWallet> {
         // Check if wallet has only alphanumerics.
         if !name.chars().all(char::is_alphanumeric) {
             anyhow::bail!(WalletError::InvalidWalletName(name.to_string()))
         }
 
         // Check if wallet with same name already exits.
-        if let Some(_stored_wallet_data) = self.context.database.get(name).await? {
+        if let Some(_stored_wallet_data) = self.context.database.get(name) {
             anyhow::bail!(WalletError::DuplicateWalletName(name.to_string()))
         }
 
@@ -37,16 +37,16 @@ impl WalletManager {
         let wallet_data = WalletData::new(script.clone());
 
         // Insert wallet data and return sk & wallet data.
-        self.context.database.insert(name, &wallet_data).await?;
+        self.context.database.insert(name.to_string(), wallet_data.clone());
 
         // Return created wallet
-        let wallet = Wallet::new(sk, name, wallet_data, self.context.clone());
+        let wallet = ActiveWallet::new(sk, name, wallet_data, self.context.clone());
         Ok(wallet)
     }
 
     /// Get existing wallet data by name given the corresponding secret.
-    pub async fn load_wallet(&self, name: &str, secret: &str) -> anyhow::Result<Wallet> {
-        let wallet_data = self.context.database.get(name).await?.unwrap();
+    pub async fn load_wallet(&self, name: &str, secret: &str) -> anyhow::Result<ActiveWallet> {
+        let wallet_data = self.context.database.get(name).unwrap();
         let sk = Ed25519SK::from_str(secret).unwrap();
 
         // TODO: add wallet data pk verification
@@ -56,14 +56,12 @@ impl WalletManager {
         //      return Err(anyhow::anyhow!("unlocking failed, make sure you have the right secret!"));
         // }
 
-        let wallet = Wallet::new(sk, name, wallet_data, self.context.clone());
+        let wallet = ActiveWallet::new(sk, name, wallet_data, self.context.clone());
         Ok(wallet)
     }
 
     /// Get all wallet data in storage by name.
     pub async fn get_all_wallets(&self) -> anyhow::Result<BTreeMap<String, WalletData>> {
-        let wallet_data_by_name: BTreeMap<String, WalletData> =
-            self.context.database.get_all().await?;
-        Ok(wallet_data_by_name)
+        Ok(self.context.database.get_all().collect())
     }
 }

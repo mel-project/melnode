@@ -2,7 +2,7 @@ use blkstructs::{CoinDataHeight, Transaction};
 
 use crate::utils::context::ExecutionContext;
 use crate::wallet::manager::WalletManager;
-use crate::wallet::wallet::Wallet;
+use crate::wallet::wallet::ActiveWallet;
 
 /// Responsible for executing a single client CLI command non-interactively.
 pub struct CommandExecutor {
@@ -110,7 +110,7 @@ impl CommandExecutor {
     pub async fn confirm_tx(
         &self,
         tx: &Transaction,
-        wallet: &Wallet,
+        wallet: &ActiveWallet,
         sleep_sec: u64,
     ) -> anyhow::Result<CoinDataHeight> {
         loop {

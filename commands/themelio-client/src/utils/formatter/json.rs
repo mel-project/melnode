@@ -4,7 +4,7 @@ use blkstructs::{CoinDataHeight, CoinID};
 
 use crate::utils::formatter::formatter::OutputFormatter;
 use crate::wallet::data::WalletData;
-use crate::wallet::wallet::Wallet;
+use crate::wallet::wallet::ActiveWallet;
 use async_trait::async_trait;
 use serde::Serialize;
 
@@ -13,7 +13,7 @@ pub struct JsonOutputFormatter {}
 #[async_trait]
 impl OutputFormatter for JsonOutputFormatter {
     /// Display json of name, secret key and covenant of the wallet.
-    async fn wallet(&self, wallet: Wallet) -> anyhow::Result<()> {
+    async fn wallet(&self, wallet: ActiveWallet) -> anyhow::Result<()> {
         // let json = serde_json::to_string_pretty(&wallet).unwrap();
         // eprintln!("{}", json);
         // Ok(())

@@ -6,14 +6,14 @@ use blkstructs::{
 use tmelcrypt::Ed25519SK;
 
 /// Representation of an open wallet. Automatically keeps storage in sync.
-pub struct Wallet {
+pub struct ActiveWallet {
     sk: Ed25519SK,
     name: String,
     data: WalletData,
     context: ExecutionContext,
 }
 
-impl Wallet {
+impl ActiveWallet {
     /// Creates a new wallet
     pub fn new(sk: Ed25519SK, name: &str, data: WalletData, context: ExecutionContext) -> Self {
         let name = name.to_string();

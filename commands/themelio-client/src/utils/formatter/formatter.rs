@@ -1,5 +1,5 @@
 use crate::wallet::data::WalletData;
-use crate::wallet::wallet::Wallet;
+use crate::wallet::wallet::ActiveWallet;
 use async_trait::async_trait;
 use blkstructs::{CoinDataHeight, CoinID};
 use std::collections::BTreeMap;
@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 #[async_trait]
 pub trait OutputFormatter {
     /// Display wallet information.
-    async fn wallet(&self, wallet: Wallet) -> anyhow::Result<()>;
+    async fn wallet(&self, wallet: ActiveWallet) -> anyhow::Result<()>;
 
     /// Display information on all stored wallets by name.
     async fn wallet_addresses_by_name(

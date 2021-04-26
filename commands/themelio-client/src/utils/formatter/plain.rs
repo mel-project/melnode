@@ -8,7 +8,7 @@ use blkstructs::{CoinDataHeight, CoinID};
 
 use crate::utils::formatter::formatter::OutputFormatter;
 use crate::wallet::data::WalletData;
-use crate::wallet::wallet::Wallet;
+use crate::wallet::wallet::ActiveWallet;
 use async_trait::async_trait;
 
 pub struct PlainOutputFormatter {}
@@ -16,7 +16,7 @@ pub struct PlainOutputFormatter {}
 #[async_trait]
 impl OutputFormatter for PlainOutputFormatter {
     /// Display name, secret key and covenant of the wallet.
-    async fn wallet(&self, wallet: Wallet) -> anyhow::Result<()> {
+    async fn wallet(&self, wallet: ActiveWallet) -> anyhow::Result<()> {
         let mut tw = TabWriter::new(vec![]);
         writeln!(tw, ">> New data:\t{}", wallet.name().bold()).unwrap();
         writeln!(
