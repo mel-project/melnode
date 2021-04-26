@@ -30,7 +30,7 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
     let network = blkstructs::NetID::Testnet;
     let host = opts.host;
     let sled_map = SledMap::<String, WalletData>::new(
-        sled::open(&opts.path)?.open_tree(b"wallet_storage")?,
+        sled::open(&opts.database)?.open_tree(b"wallet_storage")?,
     );
     let database = Arc::new(sled_map);
     let sleep_sec = opts.sleep_sec;
@@ -53,7 +53,7 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                 host,
                 database,
                 sleep_sec,
-                client: client,
+                client,
                 formatter,
             };
             let runner = WalletShellRunner::new(context);
@@ -66,7 +66,7 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                 network,
                 host,
                 database,
-                client: client,
+                client,
                 sleep_sec,
                 formatter,
             };
