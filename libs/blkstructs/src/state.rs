@@ -7,6 +7,7 @@ use defmac::defmac;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
+use arbitrary::Arbitrary;
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use std::sync::Arc;
@@ -112,6 +113,7 @@ impl GenesisConfig {
     Serialize_repr,
     Deserialize_repr,
     Hash,
+    Arbitrary,
 )]
 #[repr(u8)]
 pub enum NetID {
@@ -291,9 +293,7 @@ impl State {
 
     pub fn apply_tx_batch(&mut self, txx: &[txn::Transaction]) -> Result<(), StateError> {
         let old_hash = self.coins.root_hash();
-        let mut handle = StateHandle::new(self);
-        handle.apply_tx_batch(txx)?;
-        handle.commit();
+        StateHandle::new(self).apply_tx_batch(txx)?.commit();
         log::debug!(
             "applied a batch of {} txx to {:?} => {:?}",
             txx.len(),
@@ -527,9 +527,8 @@ impl ConfirmedState {
 }
 
 // impl Deref<Target =
-
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq)]
-/// A block header.
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq, Hash, Arbitrary)]
+/// A block header, which commits to a particular SealedState.
 pub struct Header {
     pub network: NetID,
     pub previous: HashVal,

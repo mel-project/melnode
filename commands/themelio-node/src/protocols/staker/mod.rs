@@ -4,7 +4,7 @@ use blkstructs::{
     melvm, AbbrBlock, ProposerAction, SealedState, StakeMapping, Transaction, STAKE_EPOCH,
 };
 use dashmap::DashMap;
-use futures_util::stream::FuturesUnordered;
+use futures_util::stream::{FuturesOrdered, FuturesUnordered};
 use neosymph::{msg::ProposalMsg, StreamletCfg, StreamletEvt, SymphGossip};
 use smol::{lock::Semaphore, prelude::*};
 use std::{collections::BTreeMap, convert::TryInto, net::SocketAddr, sync::Arc, time::Duration};
@@ -162,7 +162,7 @@ async fn staker_loop(
         genesis: genesis.clone(),
         stakes: stakes.clone(),
         epoch,
-        start_time: std::time::UNIX_EPOCH + Duration::from_secs(1617854400), // Apr 8 2021
+        start_time: std::time::UNIX_EPOCH + Duration::from_secs(1619280000), // Apr 25 2021
         my_sk,
         interval: Duration::from_secs(30),
         get_proposer: Box::new(gen_get_proposer(genesis.clone(), stakes.clone())),
@@ -251,8 +251,7 @@ async fn staker_loop(
                 for state in states.iter() {
                     unconfirmed_finalized.insert(state.inner_ref().height, state.header().hash());
                 }
-                let confirmation_semaphore = Semaphore::new(16);
-                let mut confirmation_tasks = FuturesUnordered::new();
+                let mut confirmation_tasks = FuturesOrdered::new();
                 for state in states {
                     // If this state is beyond our epoch, then we do NOT confirm it.
                     if state.header().height / STAKE_EPOCH > epoch {
@@ -265,7 +264,6 @@ async fn staker_loop(
                     if state.header().height > last_confirmed {
                         last_confirmed = state.header().height;
                         confirmation_tasks.push(async {
-                            let _guard = confirmation_semaphore.acquire().await;
                             let height = state.header().height;
                             let mut consensus_proof = BTreeMap::new();
                             // until we have full strength
@@ -297,19 +295,12 @@ async fn staker_loop(
                                     }
                                 }
                             }
-                            log::debug!("CONFIRMED HEIGHT {}", height);
                             (state, consensus_proof)
                         });
                     }
                 }
-
-                // we realize the unconfirmed states
-                let mut confirmed_states = BTreeMap::new();
                 while let Some((state, proof)) = confirmation_tasks.next().await {
-                    confirmed_states.insert(state.inner_ref().height, (state, proof));
-                }
-                let mut storage = storage.write();
-                for (_, (state, proof)) in confirmed_states {
+                    let mut storage = storage.write();
                     let block = state.to_block();
                     if let Err(err) = storage.apply_block(block, proof) {
                         log::warn!(

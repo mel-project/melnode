@@ -1,24 +1,80 @@
-use crate::CoinDataHeight;
 pub use crate::{CoinData, CoinID, Transaction};
+use crate::{CoinDataHeight, Header};
 use arbitrary::Arbitrary;
 use primitive_types::U256;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryInto;
+use tmelcrypt::HashVal;
 
 mod lexer;
 
+/// Heap address where the transaction trying to spend the coin encumbered by this covenant (spender) is put
+pub const ADDR_SPENDER_TX: u16 = 0;
+/// Heap address where the spender's hash is put.
+pub const ADDR_SPENDER_TXHASH: u16 = 1;
+/// Heap address where the *parent* (the transaction that created the coin now getting spent)'s hash is put
+pub const ADDR_PARENT_TXHASH: u16 = 2;
+/// Heap address where the index, at the parent, of the coin being spent is put. For example, if we are spending the third output of some transaction, `Heap[ADDR_PARENT_INDEX] = 2`.
+pub const ADDR_PARENT_INDEX: u16 = 3;
+/// Heap address where the hash of the running covenant is put.
+pub const ADDR_SELF_HASH: u16 = 4;
+/// Heap address where the face value of the coin being spent is put.
+pub const ADDR_PARENT_VALUE: u16 = 5;
+/// Heap address where the denomination of the coin being spent is put.
+pub const ADDR_PARENT_DENOM: u16 = 6;
+/// Heap address where the additional data of the coin being spent is put.
+pub const ADDR_PARENT_ADDITIONAL_DATA: u16 = 7;
+/// Heap address where the height of the parent is put.
+pub const ADDR_PARENT_HEIGHT: u16 = 7;
+/// Heap address where the "spender index" is put. For example, if this coin is spent as the first input of the spender, then `Heap[ADDR_SPENDER_INDEX] = 0`.
+pub const ADDR_SPENDER_INDEX: u16 = 8;
+/// Heap address where the header of the last block is put. If the covenant is being evaluated for a transaction in block N, this is the header of block N-1.
+pub const ADDR_LAST_HEADER: u16 = 9;
+
+// hm.insert(2, txhash.0.into());
+// hm.insert(3, Value::Int(U256::from(*index)));
+
+// let CoinDataHeight {
+//     coin_data:
+//         CoinData {
+//             covhash,
+//             value,
+//             denom,
+//             additional_data,
+//         },
+//     height,
+// } = &env.spending_cdh;
+
+// hm.insert(4, covhash.0.into());
+// hm.insert(5, value.clone().into());
+// hm.insert(6, denom.clone().into());
+// hm.insert(7, additional_data.clone().into());
+// hm.insert(8, height.clone().into());
+
 #[derive(Clone, Eq, PartialEq, Debug, Arbitrary, Serialize, Deserialize, Hash)]
+/// A MelVM covenant. Essentially, given a transaction that attempts to spend it, it either allows the transaction through or doesn't.
 pub struct Covenant(pub Vec<u8>);
 
+#[derive(Clone, Eq, PartialEq, Debug, Hash)]
+/// The execution environment of a covenant.
+pub struct CovenantEnv<'a> {
+    pub spender_coinid: &'a CoinID,
+    pub spender_cdh: &'a CoinDataHeight,
+    pub spender_index: u8,
+    pub last_header: &'a Header,
+}
+
 impl Covenant {
-    pub fn check(
-        &self,
-        tx: &Transaction,
-        spending_coinid: &CoinID,
-        spending_cdh: &CoinDataHeight,
-    ) -> bool {
-        self.check_opt(tx, spending_coinid, spending_cdh).is_some()
+    /// Checks a transaction, returning whether or not the transaction is valid.
+    ///
+    /// The caller must also pass in the [CoinID] and [CoinDataHeight] corresponding to the coin that's being spent, as well as the [Header] of the *previous* block (if this transaction is trying to go into block N, then the header of block N-1). This allows the covenant to access (a committment to) its execution environment, allowing constructs like timelock contracts and colored-coin-like systems.
+    pub fn check(&self, tx: &Transaction, env: CovenantEnv) -> bool {
+        self.check_opt(tx, Some(env)).is_some()
+    }
+
+    pub(crate) fn check_no_env(&self, tx: &Transaction) -> bool {
+        self.check_opt(tx, None).is_some()
     }
 
     pub fn check_raw(&self, args: &[Value]) -> bool {
@@ -37,18 +93,36 @@ impl Covenant {
         tmelcrypt::hash_single(&self.0)
     }
 
-    fn check_opt(
-        &self,
-        tx: &Transaction,
-        spending_coinid: &CoinID,
-        spending_cdh: &CoinDataHeight,
-    ) -> Option<()> {
+    fn check_opt(&self, tx: &Transaction, env: Option<CovenantEnv>) -> Option<()> {
         let ops = self.to_ops()?;
-        Executor::from(tx.clone(), *spending_coinid, spending_cdh.clone()).run_return(&ops)
+        Executor::new_from_env(tx.clone(), env).run_return(&ops)
     }
 
     pub fn std_ed25519_pk(pk: tmelcrypt::Ed25519PK) -> Self {
         Covenant::from_ops(&[
+            OpCode::PushI(0.into()),
+            OpCode::PushI(6.into()),
+            OpCode::LoadImm(0),
+            OpCode::VRef,
+            OpCode::VRef,
+            OpCode::PushB(pk.0.to_vec()),
+            OpCode::LoadImm(1),
+            OpCode::SigEOk(32),
+        ])
+        .unwrap()
+    }
+
+    pub fn std_ed25519_pk_4(pk: tmelcrypt::Ed25519PK) -> Self {
+        Covenant::from_ops(&[
+            OpCode::PushI(0.into()),
+            OpCode::PushI(6.into()),
+            OpCode::LoadImm(0),
+            OpCode::VRef,
+            OpCode::VRef,
+            OpCode::PushB(pk.0.to_vec()),
+            OpCode::LoadImm(1),
+            OpCode::SigEOk(32),
+            OpCode::Bnz(8),
             OpCode::PushI(0.into()),
             OpCode::PushI(6.into()),
             OpCode::LoadImm(0),
@@ -117,10 +191,19 @@ impl Covenant {
             0x51 => output.push(OpCode::VAppend),
             0x52 => output.push(OpCode::VEmpty),
             0x53 => output.push(OpCode::VLength),
-            0x54 => output.push(OpCode::BPush),
-            0x55 => output.push(OpCode::VSlice),
-            0x56 => output.push(OpCode::BEmpty),
-            0x57 => output.push(OpCode::VSet),
+            0x54 => output.push(OpCode::VSlice),
+            0x55 => output.push(OpCode::VSet),
+            0x56 => output.push(OpCode::VPush),
+            0x57 => output.push(OpCode::VCons),
+            // bytes
+            0x70 => output.push(OpCode::BRef),
+            0x71 => output.push(OpCode::BAppend),
+            0x72 => output.push(OpCode::BEmpty),
+            0x73 => output.push(OpCode::BLength),
+            0x74 => output.push(OpCode::BSlice),
+            0x75 => output.push(OpCode::BSet),
+            0x76 => output.push(OpCode::BPush),
+            0x77 => output.push(OpCode::BCons),
             // bitwise
             0x60 => output.push(OpCode::Shl),
             0x61 => output.push(OpCode::Shr),
@@ -220,10 +303,19 @@ impl Covenant {
             OpCode::VAppend => output.push(0x51),
             OpCode::VEmpty => output.push(0x52),
             OpCode::VLength => output.push(0x53),
-            OpCode::BPush => output.push(0x54),
-            OpCode::VSlice => output.push(0x55),
-            OpCode::BEmpty => output.push(0x56),
-            OpCode::VSet => output.push(0x57),
+            OpCode::VSlice => output.push(0x54),
+            OpCode::VSet => output.push(0x55),
+            OpCode::VPush => output.push(0x56),
+            OpCode::VCons => output.push(0x57),
+            // bytes
+            OpCode::BRef => output.push(0x70),
+            OpCode::BAppend => output.push(0x71),
+            OpCode::BEmpty => output.push(0x72),
+            OpCode::BLength => output.push(0x73),
+            OpCode::BSlice => output.push(0x74),
+            OpCode::BSet => output.push(0x75),
+            OpCode::BPush => output.push(0x76),
+            OpCode::BCons => output.push(0x77),
             // bitwise
             OpCode::Shl => output.push(0x60),
             OpCode::Shr => output.push(0x61),
@@ -288,33 +380,36 @@ impl Executor {
             heap: heap_init,
         }
     }
-    pub fn from(tx: Transaction, spending_coinid: CoinID, spending_cdh: CoinDataHeight) -> Self {
+    pub fn new_from_env(tx: Transaction, env: Option<CovenantEnv>) -> Self {
         let mut hm = HashMap::new();
-        hm.insert(1, Value::from_bytes(&tx.hash_nosigs().0));
+        hm.insert(ADDR_SPENDER_TXHASH, Value::from_bytes(&tx.hash_nosigs().0));
         let tx_val = Value::from(tx);
-        hm.insert(0, tx_val);
+        hm.insert(ADDR_SPENDER_TX, tx_val);
+        if let Some(env) = env {
+            let CoinID { txhash, index } = &env.spender_coinid;
 
-        let CoinID { txhash, index } = spending_coinid;
+            hm.insert(ADDR_PARENT_TXHASH, txhash.0.into());
+            hm.insert(ADDR_PARENT_INDEX, Value::Int(U256::from(*index)));
 
-        hm.insert(2, txhash.0.into());
-        hm.insert(3, Value::Int(U256::from(index)));
+            let CoinDataHeight {
+                coin_data:
+                    CoinData {
+                        covhash,
+                        value,
+                        denom,
+                        additional_data,
+                    },
+                height,
+            } = &env.spender_cdh;
 
-        let CoinDataHeight {
-            coin_data:
-                CoinData {
-                    covhash,
-                    value,
-                    denom,
-                    additional_data,
-                },
-            height,
-        } = spending_cdh;
-
-        hm.insert(4, covhash.0.into());
-        hm.insert(5, value.into());
-        hm.insert(6, denom.into());
-        hm.insert(7, additional_data.into());
-        hm.insert(8, height.into());
+            hm.insert(ADDR_SELF_HASH, covhash.0.into());
+            hm.insert(ADDR_PARENT_VALUE, value.clone().into());
+            hm.insert(ADDR_PARENT_DENOM, denom.clone().into());
+            hm.insert(ADDR_PARENT_ADDITIONAL_DATA, additional_data.clone().into());
+            hm.insert(ADDR_PARENT_HEIGHT, height.clone().into());
+            hm.insert(ADDR_LAST_HEADER, Value::from(*env.last_header));
+            hm.insert(ADDR_SPENDER_INDEX, Value::from(env.spender_index as u64));
+        }
 
         Executor::new(hm)
     }
@@ -342,42 +437,26 @@ impl Executor {
     pub fn do_op(&mut self, op: &OpCode, pc: u32) -> Option<u32> {
         match op {
             // arithmetic
-            OpCode::Add => {
-                self.do_binop(|x, y| Some(Value::Int(x.as_int()?.overflowing_add(y.as_int()?).0)))?
-            }
-            OpCode::Sub => {
-                self.do_binop(|x, y| Some(Value::Int(x.as_int()?.overflowing_sub(y.as_int()?).0)))?
-            }
-            OpCode::Mul => {
-                self.do_binop(|x, y| Some(Value::Int(x.as_int()?.overflowing_mul(y.as_int()?).0)))?
-            }
-            OpCode::Div => self.do_binop(|x, y| {
-                if y.as_int()? == U256::zero() {
-                    None
-                } else {
-                    Some(Value::Int(
-                        x.as_int()?
-                            .checked_add(y.as_int()?)
-                            .unwrap_or_else(|| 0.into()),
-                    ))
-                }
+            OpCode::Add => self.do_binop(|x, y| {
+                Some(Value::Int(x.into_int()?.overflowing_add(y.into_int()?).0))
             })?,
-            OpCode::Rem => self.do_binop(|x, y| {
-                if y.as_int()? == U256::zero() {
-                    None
-                } else {
-                    Some(Value::Int(
-                        x.as_int()?
-                            .checked_rem(y.as_int()?)
-                            .unwrap_or_else(|| 0.into()),
-                    ))
-                }
+            OpCode::Sub => self.do_binop(|x, y| {
+                Some(Value::Int(x.into_int()?.overflowing_sub(y.into_int()?).0))
             })?,
+            OpCode::Mul => self.do_binop(|x, y| {
+                Some(Value::Int(x.into_int()?.overflowing_mul(y.into_int()?).0))
+            })?,
+            OpCode::Div => {
+                self.do_binop(|x, y| Some(Value::Int(x.into_int()?.checked_div(y.into_int()?)?)))?
+            }
+            OpCode::Rem => {
+                self.do_binop(|x, y| Some(Value::Int(x.into_int()?.checked_rem(y.into_int()?)?)))?
+            }
             // logic
-            OpCode::And => self.do_binop(|x, y| Some(Value::Int(x.as_int()? & y.as_int()?)))?,
-            OpCode::Or => self.do_binop(|x, y| Some(Value::Int(x.as_int()? | y.as_int()?)))?,
-            OpCode::Xor => self.do_binop(|x, y| Some(Value::Int(x.as_int()? ^ y.as_int()?)))?,
-            OpCode::Not => self.do_monop(|x| Some(Value::Int(!x.as_int()?)))?,
+            OpCode::And => self.do_binop(|x, y| Some(Value::Int(x.into_int()? & y.into_int()?)))?,
+            OpCode::Or => self.do_binop(|x, y| Some(Value::Int(x.into_int()? | y.into_int()?)))?,
+            OpCode::Xor => self.do_binop(|x, y| Some(Value::Int(x.into_int()? ^ y.into_int()?)))?,
+            OpCode::Not => self.do_monop(|x| Some(Value::Int(!x.into_int()?)))?,
             OpCode::Eql => self.do_binop(|x, y| match (x, y) {
                 (Value::Int(x), Value::Int(y)) => {
                     if x == y {
@@ -386,61 +465,54 @@ impl Executor {
                         Some(Value::Int(U256::zero()))
                     }
                 }
-                (Value::Bytes(x), Value::Bytes(y)) => {
-                    if x.len() == y.len() && x.iter().zip(y).all(|(a, ref b)| a == b) {
-                        Some(Value::Int(U256::one()))
-                    } else {
-                        Some(Value::Int(U256::zero()))
-                    }
-                }
                 _ => None,
             })?,
             OpCode::Lt => self.do_binop(|x, y| {
-                let x = x.as_int()?;
-                let y = y.as_int()?;
-                if x.overflowing_sub(y).1 {
+                let x = x.into_int()?;
+                let y = y.into_int()?;
+                if x < y {
                     Some(Value::Int(U256::one()))
                 } else {
                     Some(Value::Int(U256::zero()))
                 }
             })?,
             OpCode::Gt => self.do_binop(|x, y| {
-                let x = x.as_int()?;
-                let y = y.as_int()?;
-                if !x.overflowing_sub(y).1 {
+                let x = x.into_int()?;
+                let y = y.into_int()?;
+                if !x > y {
                     Some(Value::Int(U256::one()))
                 } else {
                     Some(Value::Int(U256::zero()))
                 }
             })?,
             OpCode::Shl => self.do_binop(|x, offset| {
-                let x = x.as_int()?;
-                let offset = offset.as_int()?;
+                let x = x.into_int()?;
+                let offset = offset.into_int()?;
                 Some(Value::Int(x << offset))
             })?,
             OpCode::Shr => self.do_binop(|x, offset| {
-                let x = x.as_int()?;
-                let offset = offset.as_int()?;
+                let x = x.into_int()?;
+                let offset = offset.into_int()?;
                 Some(Value::Int(x >> offset))
             })?,
             OpCode::BitAnd => self.do_binop(|x, y| {
-                let x = x.as_int()?;
-                let y = y.as_int()?;
+                let x = x.into_int()?;
+                let y = y.into_int()?;
                 Some(Value::Int(x & y))
             })?,
             OpCode::BitOr => self.do_binop(|x, y| {
-                let x = x.as_int()?;
-                let y = y.as_int()?;
+                let x = x.into_int()?;
+                let y = y.into_int()?;
                 Some(Value::Int(x | y))
             })?,
             OpCode::BitXor => self.do_binop(|x, y| {
-                let x = x.as_int()?;
-                let y = y.as_int()?;
+                let x = x.into_int()?;
+                let y = y.into_int()?;
                 Some(Value::Int(x ^ y))
             })?,
             // cryptography
             OpCode::Hash(n) => self.do_monop(|to_hash| {
-                let to_hash = to_hash.as_bytes()?;
+                let to_hash = to_hash.into_bytes()?;
                 if to_hash.len() > *n as usize {
                     return None;
                 }
@@ -449,18 +521,18 @@ impl Executor {
             })?,
             OpCode::SigEOk(n) => self.do_triop(|message, public_key, signature| {
                 //println!("SIGEOK({:?}, {:?}, {:?})", message, public_key, signature);
-                let pk = public_key.as_bytes()?;
+                let pk = public_key.into_bytes()?;
                 if pk.len() > 32 {
                     return Some(Value::from_bool(false));
                 }
                 let pk_b: Vec<u8> = pk.iter().cloned().collect();
                 let public_key = tmelcrypt::Ed25519PK::from_bytes(&pk_b)?;
-                let message = message.as_bytes()?;
+                let message = message.into_bytes()?;
                 if message.len() > *n as usize {
                     return None;
                 }
                 let message: Vec<u8> = message.iter().cloned().collect();
-                let signature = signature.as_bytes()?;
+                let signature = signature.into_bytes()?;
                 if signature.len() > 64 {
                     return Some(Value::from_bool(false));
                 }
@@ -469,12 +541,12 @@ impl Executor {
             })?,
             // storage access
             OpCode::Store => {
-                let addr = self.stack.pop()?.as_u16()?;
+                let addr = self.stack.pop()?.into_u16()?;
                 let val = self.stack.pop()?;
                 self.heap.insert(addr, val);
             }
             OpCode::Load => {
-                let addr = self.stack.pop()?.as_u16()?;
+                let addr = self.stack.pop()?.into_u16()?;
                 let res = self.heap.get(&addr)?.clone();
                 self.stack.push(res)
             }
@@ -488,69 +560,83 @@ impl Executor {
             }
             // vector operations
             OpCode::VRef => self.do_binop(|vec, idx| {
-                let idx = idx.as_u16()? as usize;
-                match vec {
-                    Value::Bytes(bts) => Some(Value::Int(U256::from(*bts.get(idx)?))),
-                    Value::Vector(elems) => Some(elems.get(idx)?.clone()),
-                    _ => None,
-                }
+                let idx = idx.into_u16()? as usize;
+                Some(vec.into_vector()?.get(idx)?.clone())
             })?,
             OpCode::VSet => self.do_triop(|vec, idx, value| {
-                let idx = idx.as_u16()? as usize;
-                match vec {
-                    Value::Bytes(mut bts) => {
-                        let converted = value.as_u16()? as u8;
-                        bts[idx] = converted;
-                        Some(Value::Bytes(bts))
-                    }
-                    Value::Vector(mut elems) => {
-                        elems[idx] = value;
-                        Some(Value::Vector(elems))
-                    }
-                    _ => None,
-                }
+                let idx = idx.into_u16()? as usize;
+                let mut vec = vec.into_vector()?;
+                vec.set(idx, value);
+                Some(Value::Vector(vec))
             })?,
-            OpCode::VAppend => self.do_binop(|v1, v2| match (v1, v2) {
-                (Value::Bytes(mut v1), Value::Bytes(v2)) => {
-                    v1.append(v2);
-                    Some(Value::Bytes(v1))
-                }
-                (Value::Vector(mut v1), Value::Vector(v2)) => {
-                    v1.append(v2);
-                    Some(Value::Vector(v1))
-                }
-                _ => None,
+            OpCode::VAppend => self.do_binop(|v1, v2| {
+                let mut v1 = v1.into_vector()?;
+                let v2 = v2.into_vector()?;
+                v1.append(v2);
+                Some(Value::Vector(v1))
             })?,
             OpCode::VSlice => self.do_triop(|vec, i, j| {
-                let i = i.as_u16()? as usize;
-                let j = j.as_u16()? as usize;
+                let i = i.into_u16()? as usize;
+                let j = j.into_u16()? as usize;
                 match vec {
                     Value::Vector(mut vec) => Some(Value::Vector(vec.slice(i..j))),
-                    Value::Bytes(mut vec) => Some(Value::Bytes(vec.slice(i..j))),
                     _ => None,
                 }
             })?,
             OpCode::VLength => self.do_monop(|vec| match vec {
                 Value::Vector(vec) => Some(Value::Int(U256::from(vec.len()))),
-                Value::Bytes(vec) => Some(Value::Int(U256::from(vec.len()))),
                 _ => None,
             })?,
             OpCode::VEmpty => self.stack.push(Value::Vector(im::Vector::new())),
+            OpCode::VPush => self.do_binop(|vec, item| {
+                let mut vec = vec.into_vector()?;
+                vec.push_back(item);
+                Some(Value::Vector(vec))
+            })?,
+            OpCode::VCons => self.do_binop(|item, vec| {
+                let mut vec = vec.into_vector()?;
+                vec.push_front(item);
+                Some(Value::Vector(vec))
+            })?,
+            // bit stuff
             OpCode::BEmpty => self.stack.push(Value::Bytes(im::Vector::new())),
-            OpCode::BPush => self.do_binop(|vec, val| match vec {
-                Value::Vector(mut vec) => {
-                    vec.push_back(val);
-                    Some(Value::Vector(vec))
+            OpCode::BPush => self.do_binop(|vec, val| {
+                let mut vec = vec.into_bytes()?;
+                let val = val.into_int()?;
+                vec.push_back(val.low_u32() as u8);
+                Some(Value::Bytes(vec))
+            })?,
+            OpCode::BCons => self.do_binop(|item, vec| {
+                let mut vec = vec.into_bytes()?;
+                vec.push_front(item.into_truncated_u8()?);
+                Some(Value::Bytes(vec))
+            })?,
+            OpCode::BRef => self.do_binop(|vec, idx| {
+                let idx = idx.into_u16()? as usize;
+                Some(Value::Int(vec.into_bytes()?.get(idx)?.clone().into()))
+            })?,
+            OpCode::BSet => self.do_triop(|vec, idx, value| {
+                let idx = idx.into_u16()? as usize;
+                let mut vec = vec.into_bytes()?;
+                vec.set(idx, value.into_truncated_u8()?);
+                Some(Value::Bytes(vec))
+            })?,
+            OpCode::BAppend => self.do_binop(|v1, v2| {
+                let mut v1 = v1.into_bytes()?;
+                let v2 = v2.into_bytes()?;
+                v1.append(v2);
+                Some(Value::Bytes(v1))
+            })?,
+            OpCode::BSlice => self.do_triop(|vec, i, j| {
+                let i = i.into_u16()? as usize;
+                let j = j.into_u16()? as usize;
+                match vec {
+                    Value::Bytes(mut vec) => Some(Value::Bytes(vec.slice(i..j))),
+                    _ => None,
                 }
-                Value::Bytes(mut vec) => {
-                    let bts = val.as_int()?;
-                    if bts > U256::from(255) {
-                        return None;
-                    }
-                    let bts = bts.low_u32() as u8;
-                    vec.push_back(bts);
-                    Some(Value::Bytes(vec))
-                }
+            })?,
+            OpCode::BLength => self.do_monop(|vec| match vec {
+                Value::Bytes(vec) => Some(Value::Int(U256::from(vec.len()))),
                 _ => None,
             })?,
             // control flow
@@ -574,7 +660,7 @@ impl Executor {
             }
             // Conversions
             OpCode::BtoI => self.do_monop(|x| {
-                let mut bytes = x.as_bytes()?;
+                let mut bytes = x.into_bytes()?;
                 if bytes.len() < 32 {
                     return None;
                 }
@@ -587,7 +673,7 @@ impl Executor {
                 ))
             })?,
             OpCode::ItoB => self.do_monop(|x| {
-                let n = x.as_int()?;
+                let n = x.into_int()?;
                 let mut bytes = im::vector![];
                 for i in 0..32 {
                     bytes.push_back(n.byte(i));
@@ -661,13 +747,22 @@ pub enum OpCode {
     LoadImm(u16),
     // vector operations
     VRef,
-    VSet,
     VAppend,
-    VSlice,
-    VLength,
     VEmpty,
+    VLength,
+    VSlice,
+    VSet,
+    VPush,
+    VCons,
+    // bytes operations
+    BRef,
+    BAppend,
     BEmpty,
+    BLength,
+    BSlice,
+    BSet,
     BPush,
+    BCons,
 
     // control flow
     Bez(u16),
@@ -717,13 +812,21 @@ impl OpCode {
             OpCode::LoadImm(_) => 4,
 
             OpCode::VRef => 10,
-            OpCode::VSet => 50,
+            OpCode::VSet => 20,
             OpCode::VAppend => 50,
             OpCode::VSlice => 50,
-            OpCode::VLength => 10,
+            OpCode::VLength => 4,
             OpCode::VEmpty => 4,
             OpCode::BEmpty => 4,
             OpCode::BPush => 10,
+            OpCode::VPush => 10,
+            OpCode::VCons => 10,
+            OpCode::BRef => 10,
+            OpCode::BAppend => 10,
+            OpCode::BLength => 4,
+            OpCode::BSlice => 50,
+            OpCode::BSet => 20,
+            OpCode::BCons => 10,
 
             OpCode::ItoB => 50,
             OpCode::BtoI => 50,
@@ -750,19 +853,23 @@ pub enum Value {
 }
 
 impl Value {
-    fn as_int(&self) -> Option<U256> {
+    fn into_int(self) -> Option<U256> {
         match self {
-            Value::Int(bi) => Some(*bi),
+            Value::Int(bi) => Some(bi),
             _ => None,
         }
     }
-    fn as_u16(&self) -> Option<u16> {
-        let num = self.as_int()?;
+    fn into_u16(self) -> Option<u16> {
+        let num = self.into_int()?;
         if num > U256::from(65535) {
             None
         } else {
             Some(num.low_u32() as u16)
         }
+    }
+    fn into_truncated_u8(self) -> Option<u8> {
+        let num = self.into_int()?;
+        Some(num.low_u32() as u8)
     }
     pub fn from_bytes(bts: &[u8]) -> Self {
         let mut new = im::Vector::new();
@@ -779,9 +886,16 @@ impl Value {
         }
     }
 
-    fn as_bytes(&self) -> Option<im::Vector<u8>> {
+    fn into_bytes(self) -> Option<im::Vector<u8>> {
         match self {
-            Value::Bytes(bts) => Some(bts.clone()),
+            Value::Bytes(bts) => Some(bts),
+            _ => None,
+        }
+    }
+
+    fn into_vector(self) -> Option<im::Vector<Value>> {
+        match self {
+            Value::Vector(vec) => Some(vec),
             _ => None,
         }
     }
@@ -810,6 +924,24 @@ impl From<CoinData> for Value {
     }
 }
 
+impl From<Header> for Value {
+    fn from(cd: Header) -> Self {
+        Value::Vector(im::vector![
+            (cd.network as u64).into(),
+            cd.previous.into(),
+            cd.height.into(),
+            cd.history_hash.into(),
+            cd.coins_hash.into(),
+            cd.transactions_hash.into(),
+            cd.fee_pool.into(),
+            cd.fee_multiplier.into(),
+            cd.dosc_speed.into(),
+            cd.pools_hash.into(),
+            cd.stakes_hash.into()
+        ])
+    }
+}
+
 impl From<CoinDataHeight> for Value {
     fn from(cd: CoinDataHeight) -> Self {
         Value::Vector(im::vector![cd.coin_data.into(), cd.height.into()])
@@ -833,6 +965,12 @@ impl From<Covenant> for Value {
 
 impl From<[u8; 32]> for Value {
     fn from(v: [u8; 32]) -> Self {
+        Value::Bytes(v.iter().cloned().collect::<im::Vector<u8>>())
+    }
+}
+
+impl From<HashVal> for Value {
+    fn from(v: HashVal) -> Self {
         Value::Bytes(v.iter().cloned().collect::<im::Vector<u8>>())
     }
 }
@@ -915,9 +1053,9 @@ mod tests {
         .unwrap();
         println!("script length is {}", check_sig_script.0.len());
         let mut tx = Transaction::empty_test().signed_ed25519(sk);
-        assert!(check_sig_script.check(&tx, &[]));
+        assert!(check_sig_script.check_no_env(&tx));
         tx.sigs[0][0] ^= 123;
-        assert!(!check_sig_script.check(&tx, &[]));
+        assert!(!check_sig_script.check_no_env(&tx));
     }
 
     #[quickcheck]
@@ -930,7 +1068,7 @@ mod tests {
                 let loop_ops = vec![OpCode::Loop(1, ops.clone())];
                 let loop_script = Covenant::from_ops(&loop_ops).unwrap();
                 let orig_script = Covenant::from_ops(&ops).unwrap();
-                loop_script.check(&tx, &[]) == orig_script.check(&tx, &[])
+                loop_script.check_no_env(&tx) == orig_script.check_no_env(&tx)
             }
         }
     }
@@ -943,8 +1081,8 @@ mod tests {
             None => true,
             Some(ops) => {
                 let orig_script = Covenant::from_ops(&ops).unwrap();
-                let first = orig_script.check(&tx, &[]);
-                let second = orig_script.check(&tx, &[]);
+                let first = orig_script.check_no_env(&tx);
+                let second = orig_script.check_no_env(&tx);
                 first == second
             }
         }

@@ -6,7 +6,9 @@ use std::{
 use crate::{notfound, to_badgateway, to_badreq};
 use anyhow::Context;
 use askama::Template;
-use blkstructs::{Transaction, DENOM_DOSC, DENOM_TMEL, DENOM_TSYM};
+use blkstructs::{
+    CoinData, CoinDataHeight, CoinID, Transaction, DENOM_DOSC, DENOM_TMEL, DENOM_TSYM,
+};
 use nodeprot::ValClient;
 use tmelcrypt::HashVal;
 
@@ -16,8 +18,11 @@ use super::{MicroUnit, RenderTimeTracer};
 #[template(path = "transaction.html")]
 struct TransactionTemplate {
     txhash: HashVal,
+    txhash_abbr: String,
     height: u64,
     transaction: Transaction,
+    inputs_with_cdh: Vec<(usize, CoinID, CoinDataHeight, MicroUnit)>,
+    outputs: Vec<(usize, CoinData, MicroUnit)>,
     fee: MicroUnit,
     base_fee: MicroUnit,
     tips: MicroUnit,
@@ -111,12 +116,41 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
     let base_fee = transaction.base_fee(fee_mult, 0);
     let tips = fee.saturating_sub(base_fee);
 
+    let mut inputs_with_cdh = vec![];
+    // we subtract from the balance
+    for (index, input) in transaction.inputs.iter().copied().enumerate() {
+        let cdh = snap
+            .get_coin_spent_here(input)
+            .await?
+            .context("no CDH found for one of the inputs")?;
+        inputs_with_cdh.push((
+            index,
+            input,
+            cdh.clone(),
+            MicroUnit(cdh.coin_data.value, friendly_denom(&cdh.coin_data.denom)),
+        ));
+    }
+
     let mut body: tide::Body = TransactionTemplate {
         txhash,
+        txhash_abbr: hex::encode(&txhash[..5]),
         height,
         transaction: transaction.clone(),
         net_loss,
+        inputs_with_cdh,
         net_gain,
+        outputs: transaction
+            .outputs
+            .iter()
+            .enumerate()
+            .map(|(i, cd)| {
+                (
+                    i,
+                    cd.clone(),
+                    MicroUnit(cd.value, friendly_denom(&cd.denom)),
+                )
+            })
+            .collect(),
         fee: MicroUnit(fee, "mel".into()),
         base_fee: MicroUnit(base_fee, "mel".into()),
         tips: MicroUnit(tips, "mel".into()),

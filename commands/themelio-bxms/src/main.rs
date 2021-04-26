@@ -34,9 +34,9 @@ async fn main_inner() -> anyhow::Result<()> {
     let client = ValClient::new(NetID::Testnet, args.connect);
     // TODO read this from an argument
     client.trust(
-        35852,
+        3360,
         HashVal(
-            hex::decode("bf24ee8dacc5d16fae2e8bf8a8102ae8cf913225ab3df16c85f490806a053d42")?
+            hex::decode("6846b28b1e65a3b775290874f1ddd13036b7c1fa6e3d897b53dd5178d1ea5033")?
                 .try_into()
                 .unwrap(),
         ),
@@ -45,6 +45,7 @@ async fn main_inner() -> anyhow::Result<()> {
     // Rendered paths
     app.at("/").get(html::get_homepage);
     app.at("/blocks/:height").get(html::get_blockpage);
+    app.at("/pools/:denom").get(html::get_poolpage);
     app.at("/blocks/:height/:txhash").get(html::get_txpage);
     // Raw paths
     app.at("/raw/latest").get(raw::get_latest);

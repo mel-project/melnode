@@ -64,7 +64,7 @@ pub fn fee_estimate() -> u128 {
     let fee_multiplier = 10000;
     let fee = TransactionFactory::new()
         .build(|_| {})
-        .weight(0)
+        .weight()
         .saturating_mul(fee_multiplier);
     fee
 }

@@ -1,9 +1,10 @@
 use crate::{to_badgateway, to_badreq};
 use askama::Template;
-use blkstructs::Header;
+use blkstructs::{CoinID, Header};
 use nodeprot::ValClient;
+use tmelcrypt::HashVal;
 
-use super::RenderTimeTracer;
+use super::{MicroUnit, RenderTimeTracer};
 
 #[derive(Template)]
 #[template(path = "block.html")]
@@ -11,6 +12,12 @@ struct BlockTemplate {
     header: Header,
     txcount: usize,
     txweight: u128,
+    txhashes: Vec<(HashVal, u128)>,
+
+    fee_pool: MicroUnit,
+    fee_multiplier: f64,
+    reward_amount: MicroUnit,
+    total_fees: MicroUnit,
 }
 
 #[tracing::instrument(skip(req))]
@@ -25,11 +32,28 @@ pub async fn get_blockpage(req: tide::Request<ValClient>) -> tide::Result<tide::
         .map_err(to_badgateway)?
         .current_block()
         .await?;
+    let reward_coin = last_snap
+        .get_older(height)
+        .await
+        .map_err(to_badgateway)?
+        .get_coin(CoinID::proposer_reward(height))
+        .await
+        .map_err(to_badgateway)?;
+    let reward_amount = reward_coin.map(|v| v.coin_data.value).unwrap_or_default();
 
     let mut body: tide::Body = BlockTemplate {
         header: block.header,
         txcount: block.transactions.len(),
         txweight: block.transactions.iter().map(|v| v.weight()).sum(),
+        txhashes: block
+            .transactions
+            .iter()
+            .map(|v| (v.hash_nosigs(), v.weight()))
+            .collect(),
+        fee_multiplier: block.header.fee_multiplier as f64 / 65536.0,
+        reward_amount: MicroUnit(reward_amount, "mel".into()),
+        total_fees: MicroUnit(block.transactions.iter().map(|v| v.fee).sum(), "mel".into()),
+        fee_pool: MicroUnit(block.header.fee_pool, "mel".into()),
     }
     .render()
     .unwrap()

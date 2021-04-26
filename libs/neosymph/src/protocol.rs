@@ -149,7 +149,7 @@ async fn broadcast_loop(
                     let _ = send_incoming.try_send(msg);
                 }
             }
-            other => log::warn!("broadcast_loop error: {:?}", other),
+            other => log::warn!("broadcast_loop to {} error: {:?}", neighbor, other),
         }
         smol::Timer::after(Duration::from_millis(100)).await;
     }

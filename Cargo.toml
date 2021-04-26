@@ -15,7 +15,8 @@ members = [
     "libs/neosymph",
     "libs/stdcode",
     "libs/storage",
-    "libs/tmelcrypt"
+    "libs/tmelcrypt",
+    "libs/blkdb"
 ]
 
 [profile.dev]

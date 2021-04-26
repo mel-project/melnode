@@ -5,14 +5,13 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use tmelcrypt::HashVal;
 
 use crate::{
-    CoinDataHeight, CoinID, StakeDoc, State, StateError, Transaction, TxKind, COVHASH_DESTROY,
-    DENOM_DOSC, DENOM_NEWCOIN, DENOM_TSYM, STAKE_EPOCH,
+    melvm::CovenantEnv, CoinDataHeight, CoinID, StakeDoc, State, StateError, Transaction, TxKind,
+    COVHASH_DESTROY, DENOM_DOSC, DENOM_NEWCOIN, DENOM_TSYM, STAKE_EPOCH,
 };
 
 use super::melmint;
 
 /// A mutable "handle" to a particular State. Can be "committed" like a database transaction.
-/// Note: Option type values are used to indicate deletion when None
 pub(crate) struct StateHandle<'a> {
     state: &'a mut State,
 
@@ -26,6 +25,7 @@ pub(crate) struct StateHandle<'a> {
 }
 
 impl<'a> StateHandle<'a> {
+    /// Creates a new state handle.
     pub fn new(state: &'a mut State) -> Self {
         let fee_pool_cache = state.fee_pool;
         let tips_cache = state.tips;
@@ -43,7 +43,8 @@ impl<'a> StateHandle<'a> {
         }
     }
 
-    pub fn apply_tx_batch(&mut self, txx: &[Transaction]) -> Result<(), StateError> {
+    /// Applies a batch of transactions, returning an error if any of them fail. Consumes and re-returns the handle; if any fail the handle is gone.
+    pub fn apply_tx_batch(mut self, txx: &[Transaction]) -> Result<Self, StateError> {
         for tx in txx {
             if !tx.is_well_formed() {
                 return Err(StateError::MalformedTx);
@@ -62,9 +63,10 @@ impl<'a> StateHandle<'a> {
             .filter(|tx| tx.kind != TxKind::Normal && tx.kind != TxKind::Faucet)
             .map(|tx| self.apply_tx_special(tx))
             .collect::<Result<_, _>>()?;
-        Ok(())
+        Ok(self)
     }
 
+    /// Commits all the changes in this handle, at once.
     pub fn commit(self) {
         // commit coins
         for (k, v) in self.coin_cache {
@@ -91,8 +93,15 @@ impl<'a> StateHandle<'a> {
         let scripts = tx.script_as_map();
         // build a map of input coins
         let mut in_coins: im::HashMap<Vec<u8>, u128> = im::HashMap::new();
+        // get last header
+        let last_header = self
+            .state
+            .history
+            .get(&(self.state.height.saturating_sub(1)))
+            .0
+            .unwrap_or_else(|| self.state.clone().seal(None).header());
         // iterate through the inputs
-        for coin_id in tx.inputs.iter() {
+        for (spend_idx, coin_id) in tx.inputs.iter().enumerate() {
             if self.get_stake(coin_id.txhash).is_some() {
                 return Err(StateError::CoinLocked);
             }
@@ -109,7 +118,15 @@ impl<'a> StateHandle<'a> {
                     let script = scripts
                         .get(&coin_data.coin_data.covhash)
                         .ok_or(StateError::NonexistentScript(coin_data.coin_data.covhash))?;
-                    if !script.check(tx, coin_id, &coin_data) {
+                    if !script.check(
+                        tx,
+                        CovenantEnv {
+                            spender_coinid: coin_id,
+                            spender_cdh: &coin_data,
+                            spender_index: spend_idx as u8,
+                            last_header: &last_header,
+                        },
+                    ) {
                         return Err(StateError::ViolatesScript(coin_data.coin_data.covhash));
                     }
                     self.del_coin(*coin_id);
