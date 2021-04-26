@@ -1,6 +1,6 @@
 use std::{borrow::Borrow, marker::PhantomData};
 
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 
 /// A sled-backed mapping.
 pub struct SledMap<K: DeserializeOwned + Serialize, V: DeserializeOwned + Serialize> {

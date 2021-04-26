@@ -2,7 +2,7 @@ use blkstructs::{CoinDataHeight, Transaction};
 
 use crate::utils::context::ExecutionContext;
 use crate::wallet::manager::WalletManager;
-use crate::wallet::wallet::Wallet;
+use crate::wallet::wallet::ActiveWallet;
 
 /// Responsible for executing a single client CLI command non-interactively.
 pub struct CommandExecutor {
@@ -110,14 +110,14 @@ impl CommandExecutor {
     pub async fn confirm_tx(
         &self,
         tx: &Transaction,
-        wallet: &Wallet,
+        wallet: &ActiveWallet,
         sleep_sec: u64,
     ) -> anyhow::Result<CoinDataHeight> {
         loop {
             let (coin_data_height, coin_id) = wallet.check_sent_tx(tx).await?;
             self.context
                 .formatter
-                .check_coin(&coin_data_height, &coin_id)
+                .check_coin(coin_data_height.clone(), coin_id)
                 .await?;
             if let Some(cdh) = coin_data_height {
                 return Ok(cdh);
