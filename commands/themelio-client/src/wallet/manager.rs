@@ -37,7 +37,9 @@ impl WalletManager {
         let wallet_data = WalletData::new(script.clone());
 
         // Insert wallet data and return sk & wallet data.
-        self.context.database.insert(name.to_string(), wallet_data.clone());
+        self.context
+            .database
+            .insert(name.to_string(), wallet_data.clone());
 
         // Return created wallet
         let wallet = ActiveWallet::new(sk, name, wallet_data, self.context.clone());

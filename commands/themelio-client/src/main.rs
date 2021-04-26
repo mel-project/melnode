@@ -13,11 +13,11 @@ use crate::shell::runner::WalletShellRunner;
 use crate::utils::context::ExecutionContext;
 use crate::wallet::data::WalletData;
 
+mod config;
 mod opts;
 mod shell;
 mod utils;
 mod wallet;
-mod config;
 
 /// Parse options from input arguments and asynchronously dispatch them.
 fn main() {
@@ -40,11 +40,7 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
     let client = ValClient::new(network, host);
     client.trust(
         DEFAULT_TRUST_HEIGHT,
-        HashVal(
-            hex::decode(DEFAULT_TRUST_HEADER_HASH)?
-                .try_into()
-                .unwrap(),
-        ),
+        HashVal(hex::decode(DEFAULT_TRUST_HEADER_HASH)?.try_into().unwrap()),
     );
 
     match opts.sub_opts {

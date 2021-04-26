@@ -1,5 +1,5 @@
 use blkstructs::{
-    CoinData, CoinDataHeight, CoinID, DENOM_TMEL, MICRO_CONVERTER, Transaction, TxKind,
+    CoinData, CoinDataHeight, CoinID, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
 };
 use tmelcrypt::Ed25519SK;
 

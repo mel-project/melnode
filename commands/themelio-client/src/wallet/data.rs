@@ -2,7 +2,7 @@ use std::collections;
 
 use serde::{Deserialize, Serialize};
 
-use blkstructs::{CoinData, CoinDataHeight, CoinID, melvm, Transaction, TxKind};
+use blkstructs::{melvm, CoinData, CoinDataHeight, CoinID, Transaction, TxKind};
 use melvm::Covenant;
 use tmelcrypt::HashVal;
 

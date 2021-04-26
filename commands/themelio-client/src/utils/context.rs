@@ -6,7 +6,7 @@ use smol::Timer;
 use nodeprot::ValClient;
 use storage::SledMap;
 
-use crate::{utils::formatter::formatter::OutputFormatter};
+use crate::utils::formatter::formatter::OutputFormatter;
 use crate::wallet::data::WalletData;
 
 /// Contains data for the entire life-cycle of a command being executed.
@@ -15,7 +15,7 @@ use crate::wallet::data::WalletData;
 pub struct ExecutionContext {
     pub host: smol::net::SocketAddr,
     pub network: blkstructs::NetID,
-    pub database: Arc<SledMap::<String, WalletData>>,
+    pub database: Arc<SledMap<String, WalletData>>,
     pub client: ValClient,
     pub version: String,
     pub sleep_sec: u64,
