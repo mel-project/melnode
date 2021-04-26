@@ -4,7 +4,7 @@ use crate::utils::context::ExecutionContext;
 use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::ActiveWallet;
 
-/// Responsible for executing a single client CLI command non-interactively.
+/// Responsible for executing a single client CLI command given all the inputs.
 pub struct CommandExecutor {
     context: ExecutionContext,
 }

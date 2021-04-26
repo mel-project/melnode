@@ -27,7 +27,7 @@ fn main() {
     });
 }
 
-/// Either start the wallet shell runner or invoke a utils command using an executor.
+/// Either start the wallet shell or execute a wallet utils command.
 async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
     let version = env!("CARGO_PKG_VERSION").to_string();
     let network = blkstructs::NetID::Testnet;
