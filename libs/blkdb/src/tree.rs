@@ -1,5 +1,6 @@
 use blkstructs::{Header, ProposerAction, SealedState};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use parking_lot::RwLock;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use tmelcrypt::HashVal;
 
@@ -7,7 +8,15 @@ use crate::traits::DbBackend;
 
 /// A block tree, stored on a particular backend.
 pub struct BlockTree<B: DbBackend> {
-    inner: Inner<B>,
+    inner: RwLock<Inner<B>>,
+}
+
+impl<B: DbBackend> BlockTree<B> {
+    /// Create a new BlockTree.
+    pub fn new(backend: B) -> Self {
+        let inner = RwLock::new(Inner { backend });
+        Self { inner }
+    }
 }
 
 /// Lower-level helper struct that provides fail-safe basic operations.
@@ -20,10 +29,9 @@ impl<B: DbBackend> Inner<B> {
     fn get_block(&self, blkhash: HashVal, height: Option<u64>) -> Option<InternalValue> {
         let height = match height {
             Some(height) => height,
-            None => stdcode::deserialize(&self.backend.get(&index_key(blkhash))?).unwrap(),
+            None => self.index_get(blkhash)?,
         };
-        let internal = self.backend.get(&main_key(blkhash, height))?;
-        Some(stdcode::deserialize(&internal).unwrap())
+        self.internal_get(blkhash, height)
     }
 
     /// Inserts a block into the database
@@ -41,11 +49,57 @@ impl<B: DbBackend> Inner<B> {
         // - then we insert into the blkhash index
         // - then we update the tips list
         let header = state.header();
-        self.backend.insert(
-            &main_key(state.header().hash(), state.inner_ref().height),
-            &stdcode::serialize(&InternalValue::from_state(state, action)).unwrap(),
+        let blkhash = header.hash();
+        // insert the block
+        self.internal_insert(
+            blkhash,
+            header.height,
+            InternalValue::from_state(state, action),
         );
-        todo!()
+        // insert into parent
+        if let Some(mut parent) =
+            self.get_block(header.previous, Some(header.height.saturating_sub(1)))
+        {
+            parent.next.insert(blkhash);
+            self.internal_insert(header.previous, parent.header.height, parent);
+        }
+        // insert into blkhash index
+        self.index_insert(blkhash, header.height);
+        // update tips list
+        self.tip_remove(header.previous);
+        self.tip_insert(blkhash, header.height);
+        None
+    }
+
+    fn internal_insert(&mut self, blkhash: HashVal, height: u64, value: InternalValue) {
+        self.backend.insert(
+            &main_key(blkhash, height),
+            &stdcode::serialize(&value).unwrap(),
+        );
+    }
+
+    fn index_insert(&mut self, blkhash: HashVal, height: u64) {
+        self.backend
+            .insert(&index_key(blkhash), &stdcode::serialize(&height).unwrap());
+    }
+
+    fn tip_insert(&mut self, blkhash: HashVal, height: u64) {
+        self.backend
+            .insert(&tip_key(blkhash), &stdcode::serialize(&height).unwrap());
+    }
+
+    fn internal_get(&self, blkhash: HashVal, height: u64) -> Option<InternalValue> {
+        stdcode::deserialize(&self.backend.get(&main_key(blkhash, height))?)
+            .expect("cannot deserialize internal value")
+    }
+
+    fn index_get(&self, blkhash: HashVal) -> Option<u64> {
+        stdcode::deserialize(&self.backend.get(&index_key(blkhash))?)
+            .expect("cannot deserialize index value")
+    }
+
+    fn tip_remove(&self, blkhash: HashVal) {
+        self.backend.remove(&tip_key(blkhash));
     }
 }
 
