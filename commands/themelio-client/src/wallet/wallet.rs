@@ -5,16 +5,15 @@ use blkstructs::{
     CoinData, CoinDataHeight, CoinID, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
 };
 use tmelcrypt::Ed25519SK;
-
 /// Representation of an open wallet. Automatically keeps storage in sync.
-pub struct Wallet {
+pub struct ActiveWallet {
     sk: Ed25519SK,
     name: String,
     data: WalletData,
     context: ExecutionContext,
 }
 
-impl Wallet {
+impl ActiveWallet {
     /// Creates a new wallet
     pub fn new(sk: Ed25519SK, name: &str, data: WalletData, context: ExecutionContext) -> Self {
         let name = name.to_string();
@@ -81,7 +80,7 @@ impl Wallet {
 
     /// Update snapshot and send a transaction.
     pub async fn send_tx(&self, tx: &Transaction) -> anyhow::Result<()> {
-        let snapshot = self.context.valclient.snapshot().await?;
+        let snapshot = self.context.client.snapshot().await?;
         snapshot.get_raw().send_tx(tx.clone()).await?;
         Ok(())
     }
@@ -95,7 +94,7 @@ impl Wallet {
             txhash: tx.hash_nosigs(),
             index: 0,
         };
-        let snapshot = self.context.valclient.snapshot().await?;
+        let snapshot = self.context.client.snapshot().await?;
         Ok((snapshot.get_coin(coin).await?, coin))
     }
 

@@ -1,9 +1,9 @@
 use std::collections;
 
-use melvm::Covenant;
 use serde::{Deserialize, Serialize};
 
 use blkstructs::{melvm, CoinData, CoinDataHeight, CoinID, Transaction, TxKind};
+use melvm::Covenant;
 use tmelcrypt::HashVal;
 
 /// Immutable & cloneable in-memory data that can be persisted.

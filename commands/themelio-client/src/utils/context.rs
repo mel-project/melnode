@@ -1,12 +1,13 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use smol::Timer;
 
-use crate::{utils::formatter::formatter::OutputFormatter, wallet::storage::WalletStorage};
-use nodeprot::{ValClient, ValClientSnapshot};
-use std::sync::Arc;
+use nodeprot::ValClient;
+use storage::SledMap;
 
-use serde::Serialize;
+use crate::utils::formatter::formatter::OutputFormatter;
+use crate::wallet::data::WalletData;
 
 /// Contains data for the entire life-cycle of a command being executed.
 ///
@@ -14,8 +15,8 @@ use serde::Serialize;
 pub struct ExecutionContext {
     pub host: smol::net::SocketAddr,
     pub network: blkstructs::NetID,
-    pub database: Arc<WalletStorage>,
-    pub valclient: ValClient,
+    pub database: Arc<SledMap<String, WalletData>>,
+    pub client: ValClient,
     pub version: String,
     pub sleep_sec: u64,
 
@@ -41,7 +42,7 @@ impl ExecutionContext {
     /// Convenience function for getting the fee multiplier.
     pub async fn fee_multiplier(&self) -> anyhow::Result<u128> {
         Ok(self
-            .valclient
+            .client
             .snapshot()
             .await?
             .current_header()

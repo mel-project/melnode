@@ -1,13 +1,19 @@
+use std::{convert::TryInto, sync::Arc};
+
+use structopt::StructOpt;
+
+use nodeprot::ValClient;
+use storage::SledMap;
+use tmelcrypt::HashVal;
+use utils::executor::CommandExecutor;
+
+use crate::config::{DEFAULT_TRUST_HEADER_HASH, DEFAULT_TRUST_HEIGHT};
 use crate::opts::{ClientOpts, ClientSubOpts, OutputFormat, WalletUtilsCommand};
 use crate::shell::runner::WalletShellRunner;
 use crate::utils::context::ExecutionContext;
-use nodeprot::ValClient;
-use std::{convert::TryInto, sync::Arc};
-use structopt::StructOpt;
-use tmelcrypt::HashVal;
-use utils::executor::CommandExecutor;
-use wallet::storage::WalletStorage;
+use crate::wallet::data::WalletData;
 
+mod config;
 mod opts;
 mod shell;
 mod utils;
@@ -26,17 +32,15 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
     let version = env!("CARGO_PKG_VERSION").to_string();
     let network = blkstructs::NetID::Testnet;
     let host = opts.host;
-    let database = Arc::new(WalletStorage::open(&opts.database)?);
+    let sled_map = SledMap::<String, WalletData>::new(
+        sled::open(&opts.database)?.open_tree(b"wallet_storage")?,
+    );
+    let database = Arc::new(sled_map);
     let sleep_sec = opts.sleep_sec;
-    let valclient = ValClient::new(network, host);
-    // TODO: read from argument
-    valclient.trust(
-        3360,
-        HashVal(
-            hex::decode("6846b28b1e65a3b775290874f1ddd13036b7c1fa6e3d897b53dd5178d1ea5033")?
-                .try_into()
-                .unwrap(),
-        ),
+    let client = ValClient::new(network, host);
+    client.trust(
+        DEFAULT_TRUST_HEIGHT,
+        HashVal(hex::decode(DEFAULT_TRUST_HEADER_HASH)?.try_into().unwrap()),
     );
 
     match opts.sub_opts {
@@ -48,7 +52,7 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                 host,
                 database,
                 sleep_sec,
-                valclient,
+                client,
                 formatter,
             };
             let runner = WalletShellRunner::new(context);
@@ -61,7 +65,7 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                 network,
                 host,
                 database,
-                valclient,
+                client,
                 sleep_sec,
                 formatter,
             };

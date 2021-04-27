@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::io::prelude::*;
 
+use async_trait::async_trait;
 use colored::Colorize;
 use tabwriter::TabWriter;
 
@@ -8,15 +9,14 @@ use blkstructs::{CoinDataHeight, CoinID};
 
 use crate::utils::formatter::formatter::OutputFormatter;
 use crate::wallet::data::WalletData;
-use crate::wallet::wallet::Wallet;
-use async_trait::async_trait;
+use crate::wallet::wallet::ActiveWallet;
 
 pub struct PlainOutputFormatter {}
 
 #[async_trait]
 impl OutputFormatter for PlainOutputFormatter {
     /// Display name, secret key and covenant of the wallet.
-    async fn wallet(&self, wallet: Wallet) -> anyhow::Result<()> {
+    async fn wallet(&self, wallet: ActiveWallet) -> anyhow::Result<()> {
         let mut tw = TabWriter::new(vec![]);
         writeln!(tw, ">> New data:\t{}", wallet.name().bold()).unwrap();
         writeln!(
@@ -53,8 +53,8 @@ impl OutputFormatter for PlainOutputFormatter {
     /// Display message showing height and coin id information upon a coin being confimed.
     async fn coin_confirmed(
         &self,
-        coin_data_height: &CoinDataHeight,
-        coin: &CoinID,
+        coin_data_height: CoinDataHeight,
+        coin: CoinID,
     ) -> anyhow::Result<()> {
         eprintln!(
             ">>> Coin is confirmed at current height {}",
@@ -77,12 +77,12 @@ impl OutputFormatter for PlainOutputFormatter {
     /// at which a confirmed message will be displayed.
     async fn check_coin(
         &self,
-        coin_data_height: &Option<CoinDataHeight>,
-        coin_id: &CoinID,
+        coin_data_height: Option<CoinDataHeight>,
+        coin_id: CoinID,
     ) -> anyhow::Result<()> {
         match coin_data_height {
             None => self.coin_pending().await?,
-            Some(coin_data_height) => self.coin_confirmed(&coin_data_height, &coin_id).await?,
+            Some(coin_data_height) => self.coin_confirmed(coin_data_height, coin_id).await?,
         }
         Ok(())
     }
