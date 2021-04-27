@@ -562,6 +562,14 @@ dependencies = [
 [[package]]
 name = "blkdb"
 version = "0.1.0"
+dependencies = [
+ "blkstructs",
+ "im",
+ "parking_lot 0.11.1",
+ "serde",
+ "stdcode",
+ "tmelcrypt",
+]
 
 [[package]]
 name = "blkstructs"
