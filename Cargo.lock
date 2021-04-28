@@ -564,11 +564,13 @@ dependencies = [
 name = "blkdb"
 version = "0.1.0"
 dependencies = [
+ "autosmt",
  "blkstructs",
  "im",
  "parking_lot 0.11.1",
  "serde",
  "stdcode",
+ "thiserror",
  "tmelcrypt",
 ]
 

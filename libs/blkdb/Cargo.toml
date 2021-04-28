@@ -9,7 +9,9 @@ edition = "2018"
 [dependencies]
 im="15"
 parking_lot="0.11"
+autosmt={path="../autosmt"}
 blkstructs={path="../blkstructs"}
 tmelcrypt={path="../tmelcrypt"}
 stdcode={path="../stdcode"}
 serde={version="1", features=["derive"]}
+thiserror="1"
