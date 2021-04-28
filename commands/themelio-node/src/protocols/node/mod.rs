@@ -83,7 +83,7 @@ async fn blksync_loop(network: melnet::NetState, state: SharedStorage) {
                 }
             }
         }
-        smol::Timer::after(Duration::from_millis(1000)).await;
+        smol::Timer::after(Duration::from_millis(100)).await;
     }
 }
 

@@ -1,8 +1,9 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr, time::Duration};
 
+use anyhow::Context;
 use blkstructs::{Block, ConsensusProof, NetID, Transaction};
 use nodeprot::{AbbreviatedBlock, NodeClient};
-
+use smol_timeout::TimeoutExt;
 use tmelcrypt::HashVal;
 
 /// This cancellable async function synchronizes the block state with some other node. If the other node has the next few blocks, those are returned.
@@ -12,7 +13,7 @@ pub async fn sync_state(
     starting_height: u64,
     get_cached_tx: impl Fn(HashVal) -> Option<Transaction> + Send + Sync,
 ) -> anyhow::Result<Vec<(Block, ConsensusProof)>> {
-    const BLKSIZE: u64 = 128;
+    const BLKSIZE: u64 = 64;
     let exec = smol::Executor::new();
     let tasks = {
         let mut toret = Vec::new();
@@ -46,7 +47,11 @@ async fn get_one_block(
 ) -> anyhow::Result<(Block, ConsensusProof)> {
     log::trace!("get_one_block({})", height);
     let client = NodeClient::new(NetID::Testnet, remote);
-    let remote_state: (AbbreviatedBlock, ConsensusProof) = client.get_abbr_block(height).await?;
+    let remote_state: (AbbreviatedBlock, ConsensusProof) = client
+        .get_abbr_block(height)
+        .timeout(Duration::from_secs(5))
+        .await
+        .context("timed out")??;
     // now let's check the state
     if remote_state.0.header.height != height {
         anyhow::bail!("server responded with the wrong height");

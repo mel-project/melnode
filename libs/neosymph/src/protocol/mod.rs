@@ -1,3 +1,5 @@
+mod msgstate;
+
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use crate::{
@@ -13,7 +15,6 @@ use smol::channel::{Receiver, Sender};
 use smol::prelude::*;
 use smol_timeout::TimeoutExt;
 use tmelcrypt::Ed25519PK;
-mod msgstate;
 const NETNAME: &str = "testnet-staker";
 
 const SYMPH_GOSSIP: &str = "symph-gossip";

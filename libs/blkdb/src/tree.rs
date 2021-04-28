@@ -23,7 +23,11 @@ impl<B: DbBackend> BlockTree<B> {
     }
 
     /// Attempts to apply a block.
-    pub fn apply_block(&mut self, block: &Block) -> Result<(), ApplyBlockErr> {
+    pub fn apply_block(
+        &mut self,
+        block: &Block,
+        init_metadata: &[u8],
+    ) -> Result<(), ApplyBlockErr> {
         let previous = self
             .inner
             .get_block(
@@ -35,7 +39,8 @@ impl<B: DbBackend> BlockTree<B> {
         let next_state = previous
             .apply_block(block)
             .map_err(ApplyBlockErr::CannotValidate)?;
-        self.inner.insert_block(next_state, block.proposer_action);
+        self.inner
+            .insert_block(next_state, block.proposer_action, init_metadata);
         Ok(())
     }
 
@@ -79,11 +84,19 @@ impl<B: DbBackend> BlockTree<B> {
     }
 
     /// Sets the genesis block of the tree. This also prunes all elements that do not belong to the given genesis block.
-    pub fn set_genesis(&mut self, state: SealedState, action: Option<ProposerAction>) {
+    pub fn set_genesis(
+        &mut self,
+        state: SealedState,
+        action: Option<ProposerAction>,
+        init_metadata: &[u8],
+    ) {
         let state_hash = state.header().hash();
         if self.get_cursor(state_hash).is_none() {
             // directly insert the block now
-            assert!(self.inner.insert_block(state, action).is_none());
+            assert!(self
+                .inner
+                .insert_block(state, action, init_metadata)
+                .is_none());
         }
 
         let old_genesis = self.get_tips().into_iter().next().map(|v| {
@@ -302,6 +315,7 @@ impl<B: DbBackend> Inner<B> {
         &mut self,
         state: SealedState,
         action: Option<ProposerAction>,
+        init_metadata: &[u8],
     ) -> Option<InternalValue> {
         if let Some(val) = self.get_block(state.header().hash(), Some(state.inner_ref().height)) {
             return Some(val);
@@ -317,7 +331,7 @@ impl<B: DbBackend> Inner<B> {
         self.internal_insert(
             blkhash,
             header.height,
-            InternalValue::from_state(state, action),
+            InternalValue::from_state(state, action, init_metadata.to_vec()),
         );
         // insert into parent
         if let Some(mut parent) =
@@ -407,13 +421,13 @@ struct InternalValue {
 }
 
 impl InternalValue {
-    fn from_state(state: SealedState, action: Option<ProposerAction>) -> Self {
+    fn from_state(state: SealedState, action: Option<ProposerAction>, metadata: Vec<u8>) -> Self {
         Self {
             header: state.header(),
             partial_state: state.partial_encoding(),
             action,
             next: Default::default(),
-            metadata: vec![],
+            metadata,
         }
     }
 
