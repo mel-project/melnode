@@ -41,7 +41,7 @@ impl NodeStorage {
 
         // initialize stuff
         if history.get_tips().is_empty() {
-            history.set_genesis(State::genesis(&forest, genesis).seal(None), None, &[]);
+            history.set_genesis(State::genesis(&forest, genesis).seal(None), &[]);
         }
 
         let mempool_state = history.get_tips()[0].to_state().next_state();

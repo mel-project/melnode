@@ -39,8 +39,7 @@ impl<B: DbBackend> BlockTree<B> {
         let next_state = previous
             .apply_block(block)
             .map_err(ApplyBlockErr::CannotValidate)?;
-        self.inner
-            .insert_block(next_state, block.proposer_action, init_metadata);
+        self.inner.insert_block(next_state, init_metadata);
         Ok(())
     }
 
@@ -84,19 +83,11 @@ impl<B: DbBackend> BlockTree<B> {
     }
 
     /// Sets the genesis block of the tree. This also prunes all elements that do not belong to the given genesis block.
-    pub fn set_genesis(
-        &mut self,
-        state: SealedState,
-        action: Option<ProposerAction>,
-        init_metadata: &[u8],
-    ) {
+    pub fn set_genesis(&mut self, state: SealedState, init_metadata: &[u8]) {
         let state_hash = state.header().hash();
         if self.get_cursor(state_hash).is_none() {
             // directly insert the block now
-            assert!(self
-                .inner
-                .insert_block(state, action, init_metadata)
-                .is_none());
+            assert!(self.inner.insert_block(state, init_metadata).is_none());
         }
 
         let old_genesis = self.get_tips().into_iter().next().map(|v| {
@@ -311,15 +302,11 @@ impl<B: DbBackend> Inner<B> {
     }
 
     /// Inserts a block into the database
-    fn insert_block(
-        &mut self,
-        state: SealedState,
-        action: Option<ProposerAction>,
-        init_metadata: &[u8],
-    ) -> Option<InternalValue> {
+    fn insert_block(&mut self, state: SealedState, init_metadata: &[u8]) -> Option<InternalValue> {
         if let Some(val) = self.get_block(state.header().hash(), Some(state.inner_ref().height)) {
             return Some(val);
         }
+        let action = state.proposer_action().cloned();
         // we carefully insert the block to avoid inconsistency:
         // - first we insert the block itself
         // - then we point the parent to it
