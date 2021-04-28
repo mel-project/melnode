@@ -3,3 +3,4 @@ pub mod error;
 pub mod manager;
 pub mod wallet;
 pub mod tx;
+pub mod info;

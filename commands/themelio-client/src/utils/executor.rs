@@ -3,6 +3,7 @@ use blkstructs::{CoinDataHeight, Transaction};
 use crate::utils::context::ExecutionContext;
 use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::ActiveWallet;
+use crate::wallet::info::CreatedWalletInfo;
 
 /// Responsible for executing a single client CLI command given all the inputs.
 pub struct CommandExecutor {
@@ -14,13 +15,23 @@ impl CommandExecutor {
         Self { context }
     }
 
-    /// Creates a new wallet, stores it into db and outputs the name & secret.
-    pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<()> {
+    /// Creates a new wallet, stores it into db and returns info about the created wallet..
+    pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<CreatedWalletInfo> {
+        //  Create wallet
         let manager = WalletManager::new(self.context.clone());
         let wallet = manager.create_wallet(wallet_name).await?;
-        let formatter = self.context.formatter.clone();
-        formatter.wallet(wallet).await?;
-        Ok(())
+
+        // Get created wallet info
+        let name = wallet.name().to_string();
+        let address = wallet.data().my_covenant().hash().to_addr();
+        let secret = hex::encode(wallet.secret().0);
+        let info = CreatedWalletInfo {
+            name,
+            address,
+            secret,
+        };
+
+        Ok(info)
     }
 
     /// Creates a faucet tx to fund the wallet.
