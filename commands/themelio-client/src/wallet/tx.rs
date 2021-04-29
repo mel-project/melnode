@@ -8,13 +8,13 @@ impl TxBuilder {
     /// Create a faucet transaction given inputs as strings amount, unit and a value for fee.
     pub async fn create_faucet_tx(
         amount: &str,
-        unit: &str,
+        _unit: &str,
         cov_hash: HashVal,
-        fee: u128,
-        fee_multiplier: u128,
     ) -> anyhow::Result<Option<Transaction>> {
         // TODO: units
         let value: u128 = amount.parse()?;
+        let fee_multiplier: u128 = 20; // Fixing in next PR
+
         let tx = Transaction {
             kind: TxKind::Faucet,
             inputs: vec![],
@@ -24,11 +24,12 @@ impl TxBuilder {
                 value: value * MICRO_CONVERTER,
                 additional_data: vec![],
             }],
-            fee,
+            fee: 0, // Fixing fee in next PR
             scripts: vec![],
             sigs: vec![],
             data: vec![],
         }.applied_fee(fee_multiplier, BALLAST, 0);
+
         Ok(tx)
     }
 

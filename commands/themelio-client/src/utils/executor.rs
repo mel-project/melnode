@@ -5,7 +5,9 @@ use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::ActiveWallet;
 use crate::wallet::info::CreatedWalletInfo;
 
-use erased_serde::{Serialize, Serializer};
+use erased_serde::{Serialize};
+use crate::wallet::tx::TxBuilder;
+use crate::wallet::error::WalletError;
 
 /// Responsible for executing a single client CLI command given all the inputs.
 pub struct CommandExecutor {
@@ -52,8 +54,14 @@ impl CommandExecutor {
         let wallet = manager.load_wallet(wallet_name, secret).await?;
 
         // Create faucet tx.
-        let tx = wallet.create_faucet_tx(amount, unit, 1000000).await?;
+        let cov_hash = wallet.data().my_covenant().hash();
+        let tx = TxBuilder::create_faucet_tx(amount, unit, cov_hash).await?;
 
+        if tx.is_none() {
+            anyhow::bail!(WalletError::InvalidInputArgs(wallet_name.to_string()))
+        }
+        let tx = tx.unwrap();
+        
         // Send the faucet tx.
         wallet.send_tx(&tx).await?;
 

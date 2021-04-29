@@ -67,8 +67,12 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                 WalletUtilsCommand::CreateWallet { wallet_name } => {
                     executor.create_wallet(&wallet_name).await
                 }
-                // WalletUtilsCommand::Faucet { .. } => {}
-                // WalletUtilsCommand::SendCoins { .. } => {}
+                WalletUtilsCommand::Faucet { wallet_name, secret, amount, unit } => {
+                    executor.faucet(&wallet_name, &secret, &amount, &unit).await
+                }
+                WalletUtilsCommand::SendCoins { wallet_name, secret, address, amount, unit } => {
+                    executor.send_coins(&wallet_name, &secret, &address, &amount, &unit).await
+                }
                 // WalletUtilsCommand::AddCoins { .. } => {}
                 // WalletUtilsCommand::ShowBalance { .. } => {}
                 // WalletUtilsCommand::ShowWallets => {}
