@@ -56,12 +56,11 @@ impl CommandExecutor {
         // Create faucet tx.
         let cov_hash = wallet.data().my_covenant().hash();
         let tx = TxBuilder::create_faucet_tx(amount, unit, cov_hash).await?;
-
         if tx.is_none() {
             anyhow::bail!(WalletError::InvalidInputArgs(wallet_name.to_string()))
         }
         let tx = tx.unwrap();
-        
+
         // Send the faucet tx.
         wallet.send_tx(&tx).await?;
 
@@ -138,10 +137,11 @@ impl CommandExecutor {
     ) -> anyhow::Result<CoinDataHeight> {
         loop {
             let (coin_data_height, coin_id) = wallet.check_sent_tx(tx).await?;
-            self.context
-                .formatter
-                .check_coin(coin_data_height.clone(), coin_id)
-                .await?;
+            // Move this logic to wallet
+            // self.context
+            //     .formatter
+            //     .check_coin(coin_data_height.clone(), coin_id)
+            //     .await?;
             if let Some(cdh) = coin_data_height {
                 return Ok(cdh);
             }
