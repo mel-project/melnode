@@ -2,7 +2,6 @@ use std::{
     collections::BTreeMap,
     net::SocketAddr,
     sync::{Arc, Mutex},
-    time::Instant,
 };
 
 use autosmt::{CompressedProof, FullProof};
@@ -10,7 +9,7 @@ use blkstructs::{
     Block, CoinDataHeight, CoinID, ConsensusProof, Header, NetID, PoolState, SmtMapping, StakeDoc,
     StakeMapping, Transaction, STAKE_EPOCH,
 };
-use futures_util::stream::{FuturesOrdered, FuturesUnordered};
+use futures_util::stream::FuturesUnordered;
 use melnet::MelnetError;
 use serde::{de::DeserializeOwned, Serialize};
 use smol::stream::StreamExt;

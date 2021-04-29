@@ -3,7 +3,7 @@ use std::time::{Duration, SystemTime};
 use crate::{notfound, to_badgateway, to_badreq};
 use anyhow::Context;
 use askama::Template;
-use blkstructs::{DENOM_DOSC, DENOM_TMEL, DENOM_TSYM};
+use blkstructs::{DENOM_DOSC, DENOM_TMEL, DENOM_TSYM, MICRO_CONVERTER};
 use futures_util::stream::FuturesUnordered;
 use nodeprot::ValClient;
 use num_traits::ToPrimitive;
@@ -18,6 +18,7 @@ struct PoolTemplate {
     denom: String,
     last_week_json: String,
     last_month_json: String,
+    last_item: PoolDataItem,
 }
 
 #[tracing::instrument(skip(req))]
@@ -37,6 +38,7 @@ pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::B
         },
         last_month_json: serde_json::to_string(&last_month).unwrap(),
         last_week_json: serde_json::to_string(&last_week).unwrap(),
+        last_item: last_week.last().context("no last")?.clone(),
     }
     .render()
     .unwrap()
@@ -57,7 +59,10 @@ async fn pool_items(
     // at most DIVIDER points
     let snapshot = &snapshot;
     let mut item_futs = FuturesUnordered::new();
-    for height in (last_height - blocks..=last_height).step_by((blocks / DIVIDER) as usize) {
+    for height in (last_height - blocks..=last_height)
+        .rev()
+        .step_by((blocks / DIVIDER) as usize)
+    {
         item_futs.push(async move {
             let old_snap = snapshot.get_older(height).await.map_err(to_badgateway)?;
             let pool_info = old_snap
@@ -66,7 +71,7 @@ async fn pool_items(
                 .map_err(to_badgateway)?
                 .ok_or_else(notfound)?;
             let price = pool_info.implied_price().to_f64().unwrap_or_default();
-            let liquidity = pool_info.mels as f64 * 2.0;
+            let liquidity = pool_info.mels as f64 * 2.0 / MICRO_CONVERTER as f64;
             Ok::<_, tide::Error>(PoolDataItem {
                 date: chrono::Utc::now()
                     .checked_sub_signed(
@@ -93,7 +98,7 @@ async fn pool_items(
     Ok(output)
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 struct PoolDataItem {
     date: chrono::NaiveDateTime,
     height: u64,

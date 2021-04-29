@@ -59,8 +59,8 @@ pub struct Covenant(pub Vec<u8>);
 #[derive(Clone, Eq, PartialEq, Debug, Hash)]
 /// The execution environment of a covenant.
 pub struct CovenantEnv<'a> {
-    pub spender_coinid: &'a CoinID,
-    pub spender_cdh: &'a CoinDataHeight,
+    pub parent_coinid: &'a CoinID,
+    pub parent_cdh: &'a CoinDataHeight,
     pub spender_index: u8,
     pub last_header: &'a Header,
 }
@@ -177,6 +177,8 @@ impl Covenant {
             0x24 => output.push(OpCode::Eql),
             0x25 => output.push(OpCode::Lt),
             0x26 => output.push(OpCode::Gt),
+            0x27 => output.push(OpCode::Shl),
+            0x28 => output.push(OpCode::Shr),
             // cryptography
             0x30 => output.push(OpCode::Hash(u16arg(bcode)?)),
             //0x31 => output.push(OpCode::SIGE),
@@ -204,12 +206,6 @@ impl Covenant {
             0x75 => output.push(OpCode::BSet),
             0x76 => output.push(OpCode::BPush),
             0x77 => output.push(OpCode::BCons),
-            // bitwise
-            0x60 => output.push(OpCode::Shl),
-            0x61 => output.push(OpCode::Shr),
-            0x62 => output.push(OpCode::BitAnd),
-            0x63 => output.push(OpCode::BitOr),
-            0x64 => output.push(OpCode::BitXor),
             // control flow
             0xa0 => output.push(OpCode::Jmp(u16arg(bcode)?)),
             0xa1 => output.push(OpCode::Bez(u16arg(bcode)?)),
@@ -277,6 +273,8 @@ impl Covenant {
             OpCode::Eql => output.push(0x24),
             OpCode::Lt => output.push(0x25),
             OpCode::Gt => output.push(0x26),
+            OpCode::Shl => output.push(0x27),
+            OpCode::Shr => output.push(0x28),
             // cryptography
             OpCode::Hash(n) => {
                 output.push(0x30);
@@ -316,12 +314,6 @@ impl Covenant {
             OpCode::BSet => output.push(0x75),
             OpCode::BPush => output.push(0x76),
             OpCode::BCons => output.push(0x77),
-            // bitwise
-            OpCode::Shl => output.push(0x60),
-            OpCode::Shr => output.push(0x61),
-            OpCode::BitAnd => output.push(0x62),
-            OpCode::BitOr => output.push(0x63),
-            OpCode::BitXor => output.push(0x64),
             // control flow
             OpCode::Jmp(val) => {
                 output.push(0xa0);
@@ -386,7 +378,7 @@ impl Executor {
         let tx_val = Value::from(tx);
         hm.insert(ADDR_SPENDER_TX, tx_val);
         if let Some(env) = env {
-            let CoinID { txhash, index } = &env.spender_coinid;
+            let CoinID { txhash, index } = &env.parent_coinid;
 
             hm.insert(ADDR_PARENT_TXHASH, txhash.0.into());
             hm.insert(ADDR_PARENT_INDEX, Value::Int(U256::from(*index)));
@@ -400,7 +392,7 @@ impl Executor {
                         additional_data,
                     },
                 height,
-            } = &env.spender_cdh;
+            } = &env.parent_cdh;
 
             hm.insert(ADDR_SELF_HASH, covhash.0.into());
             hm.insert(ADDR_PARENT_VALUE, value.clone().into());
@@ -494,21 +486,6 @@ impl Executor {
                 let x = x.into_int()?;
                 let offset = offset.into_int()?;
                 Some(Value::Int(x >> offset))
-            })?,
-            OpCode::BitAnd => self.do_binop(|x, y| {
-                let x = x.into_int()?;
-                let y = y.into_int()?;
-                Some(Value::Int(x & y))
-            })?,
-            OpCode::BitOr => self.do_binop(|x, y| {
-                let x = x.into_int()?;
-                let y = y.into_int()?;
-                Some(Value::Int(x | y))
-            })?,
-            OpCode::BitXor => self.do_binop(|x, y| {
-                let x = x.into_int()?;
-                let y = y.into_int()?;
-                Some(Value::Int(x ^ y))
             })?,
             // cryptography
             OpCode::Hash(n) => self.do_monop(|to_hash| {
@@ -728,12 +705,8 @@ pub enum OpCode {
     Eql,
     Lt,
     Gt,
-    // bitwise
     Shl,
     Shr,
-    BitAnd,
-    BitOr,
-    BitXor,
     // cryptographyy
     Hash(u16),
     //SIGE,
@@ -796,12 +769,8 @@ impl OpCode {
             OpCode::Eql => 4,
             OpCode::Lt => 4,
             OpCode::Gt => 4,
-
             OpCode::Shl => 4,
             OpCode::Shr => 4,
-            OpCode::BitAnd => 4,
-            OpCode::BitOr => 4,
-            OpCode::BitXor => 4,
 
             OpCode::Hash(n) => 50 + *n as u128,
             OpCode::SigEOk(n) => 100 + *n as u128,
