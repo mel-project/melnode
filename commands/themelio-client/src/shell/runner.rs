@@ -1,7 +1,7 @@
 use crate::shell::command::ShellCommand;
 use crate::shell::output::{print_command_error, print_exit_message, print_readline_error};
 use crate::shell::prompt::ShellInputPrompt;
-use crate::shell::sub::runner::WalletSubShellRunner;
+use crate::shell::sub::sub_runner::WalletSubShellRunner;
 use crate::utils::context::ExecutionContext;
 use crate::utils::executor::CommandExecutor;
 use crate::utils::prompt::InputPrompt;

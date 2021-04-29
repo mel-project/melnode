@@ -5,6 +5,8 @@ use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::ActiveWallet;
 use crate::wallet::info::CreatedWalletInfo;
 
+use erased_serde::{Serialize, Serializer};
+
 /// Responsible for executing a single client CLI command given all the inputs.
 pub struct CommandExecutor {
     context: ExecutionContext,
@@ -16,12 +18,12 @@ impl CommandExecutor {
     }
 
     /// Creates a new wallet, stores it into db and returns info about the created wallet..
-    pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<CreatedWalletInfo> {
-        //  Create wallet
+    pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<Box<dyn Serialize>> {
+         // Create a wallet in storage and retrieve the active wallet
         let manager = WalletManager::new(self.context.clone());
         let wallet = manager.create_wallet(wallet_name).await?;
 
-        // Get created wallet info
+        // Get created wallet info from the active wallet
         let name = wallet.name().to_string();
         let address = wallet.data().my_covenant().hash().to_addr();
         let secret = hex::encode(wallet.secret().0);
@@ -31,7 +33,9 @@ impl CommandExecutor {
             secret,
         };
 
-        Ok(info)
+        // Return a serialize trait so result can be formatted outside of executor context
+        let serialize = Box::new(info) as Box<dyn Serialize>;
+        Ok(serialize)
     }
 
     /// Creates a faucet tx to fund the wallet.
