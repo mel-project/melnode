@@ -48,7 +48,7 @@ impl CommandExecutor {
         secret: &str,
         amount: &str,
         unit: &str,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Box<dyn Serialize>> {
         // Load wallet from wallet manager using name and secret
         let manager = WalletManager::new(self.context.clone());
         let wallet = manager.load_wallet(wallet_name, secret).await?;
@@ -68,7 +68,11 @@ impl CommandExecutor {
         let sleep_sec = self.context.sleep_sec;
         self.confirm_tx(&tx, &wallet, sleep_sec).await?;
 
-        Ok(())
+        // TODO: add faucet info
+        // Get faucet tx info from the active wallet
+        // Return a serialize trait so result can be formatted outside of executor context
+
+        anyhow::bail!(WalletError::InvalidInputArgs("tmp".to_string()))
     }
 
     /// Sends coins from the wallet to a destination.

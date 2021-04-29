@@ -3,7 +3,7 @@ use crate::utils::executor::CommandExecutor;
 use crate::wallet::manager::WalletManager;
 use crate::shell::prompt::{format_named_prompt, read_sub_shell_command};
 use crate::shell::command::SubShellCommand;
-use crate::shell::output::{print_subshell_exit, print_dispatch_error, print_readline_error};
+use crate::shell::output::{print_subshell_exit, print_dispatch_error, print_readline_error, print_subshell_help};
 
 /// A sub-wallet_shell runner executed within the higher-level wallet_shell.
 /// This wallet_shell unlocks a wallet, transacts with the network and shows balances.
@@ -95,7 +95,8 @@ impl WalletSubShellRunner {
     /// Calls faucet on the command executor with the inputs passed into sub-wallet_shell.
     async fn faucet(&self, amt: &str, denom: &str) -> anyhow::Result<()> {
         let executor = CommandExecutor::new(self.context.clone());
-        executor.faucet(&self.name, &self.secret, amt, denom).await
+        // executor.faucet(&self.name, &self.secret, amt, denom).await
+        todo!("add faucet here")
     }
 
     /// Calls send coins on the command executor with the inputs passed into the sub-wallet_shell.
@@ -120,13 +121,13 @@ impl WalletSubShellRunner {
 
     /// Show available sub wallet_shell command args & inputs to user
     async fn help(&self) -> anyhow::Result<()> {
-        help().await?;
+        print_subshell_help();
         Ok(())
     }
 
     /// Show exit message
     async fn exit(&self) -> anyhow::Result<()> {
-        exit().await?;
+        print_subshell_exit();
         Ok(())
     }
 }
