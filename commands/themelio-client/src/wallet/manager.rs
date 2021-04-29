@@ -9,7 +9,7 @@ use crate::wallet::data::WalletData;
 use crate::wallet::error::WalletError;
 use crate::wallet::wallet::ActiveWallet;
 
-/// Responsible for managing persisted wallets and providing an unlocked active wallet.
+/// Responsible for creating new wallets or loading and unlocking wallets.
 pub struct WalletManager {
     context: ExecutionContext,
 }

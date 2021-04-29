@@ -1,14 +1,14 @@
-use std::{convert::TryInto, sync::Arc};
+use std::{convert::TryInto, io, sync::Arc};
 
-use structopt::StructOpt;
-
+use erased_serde::Serializer;
 use nodeprot::ValClient;
 use storage::SledMap;
+use structopt::StructOpt;
 use tmelcrypt::HashVal;
 use utils::executor::CommandExecutor;
 
 use crate::config::{DEFAULT_TRUST_HEADER_HASH, DEFAULT_TRUST_HEIGHT};
-use crate::opts::{ClientOpts, ClientSubOpts, OutputFormat, WalletUtilsCommand};
+use crate::opts::{ClientOpts, ClientSubOpts, WalletUtilsCommand};
 use crate::shell::runner::WalletShellRunner;
 use crate::utils::context::ExecutionContext;
 use crate::wallet::data::WalletData;
@@ -27,8 +27,9 @@ fn main() {
     });
 }
 
-/// Either start the wallet shell runner or invoke a utils command using an executor.
+/// Either start the wallet shell or execute a wallet utils command.
 async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
+    // Initialize execution context
     let version = env!("CARGO_PKG_VERSION").to_string();
     let network = blkstructs::NetID::Testnet;
     let host = opts.host;
@@ -42,35 +43,26 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
         DEFAULT_TRUST_HEIGHT,
         HashVal(hex::decode(DEFAULT_TRUST_HEADER_HASH)?.try_into().unwrap()),
     );
+    let context = ExecutionContext {
+        version,
+        network,
+        host,
+        database,
+        sleep_sec,
+        client,
+    };
 
+    // Run in either wallet shell or utils mode.
     match opts.sub_opts {
         ClientSubOpts::WalletShell => {
-            let formatter = Arc::new(OutputFormat::default());
-            let context = ExecutionContext {
-                version,
-                network,
-                host,
-                database,
-                sleep_sec,
-                client,
-                formatter,
-            };
             let runner = WalletShellRunner::new(context);
-            runner.run().await
+            runner.run().await?
         }
-        ClientSubOpts::WalletUtils(util_opts) => {
-            let formatter = Arc::new(util_opts.output_format.make());
-            let context = ExecutionContext {
-                version,
-                network,
-                host,
-                database,
-                client,
-                sleep_sec,
-                formatter,
-            };
+        ClientSubOpts::WalletUtils(cmd) => {
             let executor = CommandExecutor::new(context);
-            match util_opts.cmd {
+
+            // Execute command and get serializable results
+            let ser = match cmd {
                 WalletUtilsCommand::CreateWallet { wallet_name } => {
                     executor.create_wallet(&wallet_name).await
                 }
@@ -80,28 +72,20 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                     amount,
                     unit,
                 } => executor.faucet(&wallet_name, &secret, &amount, &unit).await,
-                WalletUtilsCommand::SendCoins {
-                    wallet_name,
-                    secret,
-                    address,
-                    amount,
-                    unit,
-                } => {
-                    executor
-                        .send_coins(&wallet_name, &secret, &address, &amount, &unit)
-                        .await
-                }
-                WalletUtilsCommand::AddCoins {
-                    wallet_name,
-                    secret,
-                    coin_id,
-                } => executor.add_coins(&wallet_name, &secret, &coin_id).await,
-                WalletUtilsCommand::ShowBalance {
-                    wallet_name,
-                    secret,
-                } => executor.show_balance(&wallet_name, &secret).await,
-                WalletUtilsCommand::ShowWallets => executor.show_wallets().await,
-            }
+                // WalletUtilsCommand::SendCoins { wallet_name, secret, address, amount, unit } => {
+                //     executor.send_coins(&wallet_name, &secret, &address, &amount, &unit).await
+                // }
+                // WalletUtilsCommand::AddCoins { .. } => {}
+                // WalletUtilsCommand::ShowBalance { .. } => {}
+                // WalletUtilsCommand::ShowWallets => {}
+                _ => todo!("not impl"),
+            }?;
+
+            // Show results serialized as JSON
+            let json = &mut serde_json::Serializer::new(io::stdout());
+            ser.erased_serialize(&mut Serializer::erase(json))?;
         }
     }
+
+    Ok(())
 }

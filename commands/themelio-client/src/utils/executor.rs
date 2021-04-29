@@ -1,10 +1,15 @@
 use blkstructs::{CoinDataHeight, Transaction};
 
 use crate::utils::context::ExecutionContext;
+use crate::wallet::info::CreatedWalletInfo;
 use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::ActiveWallet;
 
-/// Responsible for executing a single client CLI command non-interactively.
+use crate::wallet::error::WalletError;
+use crate::wallet::tx::TxBuilder;
+use erased_serde::Serialize;
+
+/// Responsible for executing a single client CLI command given all the inputs.
 pub struct CommandExecutor {
     context: ExecutionContext,
 }
@@ -14,13 +19,25 @@ impl CommandExecutor {
         Self { context }
     }
 
-    /// Creates a new wallet, stores it into db and outputs the name & secret.
-    pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<()> {
+    /// Creates a new wallet, stores it into db and returns info about the created wallet..
+    pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<Box<dyn Serialize>> {
+        // Create a wallet in storage and retrieve the active wallet
         let manager = WalletManager::new(self.context.clone());
         let wallet = manager.create_wallet(wallet_name).await?;
-        let formatter = self.context.formatter.clone();
-        formatter.wallet(wallet).await?;
-        Ok(())
+
+        // Get created wallet info from the active wallet
+        let name = wallet.name().to_string();
+        let address = wallet.data().my_covenant().hash().to_addr();
+        let secret = hex::encode(wallet.secret().0);
+        let info = CreatedWalletInfo {
+            name,
+            address,
+            secret,
+        };
+
+        // Return a serialize trait so result can be formatted outside of executor context
+        let serialize = Box::new(info) as Box<dyn Serialize>;
+        Ok(serialize)
     }
 
     /// Creates a faucet tx to fund the wallet.
@@ -31,13 +48,18 @@ impl CommandExecutor {
         secret: &str,
         amount: &str,
         unit: &str,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Box<dyn Serialize>> {
         // Load wallet from wallet manager using name and secret
         let manager = WalletManager::new(self.context.clone());
         let wallet = manager.load_wallet(wallet_name, secret).await?;
 
         // Create faucet tx.
-        let tx = wallet.create_faucet_tx(amount, unit, 1000000).await?;
+        let cov_hash = wallet.data().my_covenant().hash();
+        let tx = TxBuilder::create_faucet_tx(amount, unit, cov_hash).await?;
+        if tx.is_none() {
+            anyhow::bail!(WalletError::InvalidInputArgs(wallet_name.to_string()))
+        }
+        let tx = tx.unwrap();
 
         // Send the faucet tx.
         wallet.send_tx(&tx).await?;
@@ -46,7 +68,11 @@ impl CommandExecutor {
         let sleep_sec = self.context.sleep_sec;
         self.confirm_tx(&tx, &wallet, sleep_sec).await?;
 
-        Ok(())
+        // TODO: add faucet info
+        // Get faucet tx info from the active wallet
+        // Return a serialize trait so result can be formatted outside of executor context
+
+        anyhow::bail!(WalletError::InvalidInputArgs("tmp".to_string()))
     }
 
     /// Sends coins from the wallet to a destination.
@@ -115,10 +141,11 @@ impl CommandExecutor {
     ) -> anyhow::Result<CoinDataHeight> {
         loop {
             let (coin_data_height, coin_id) = wallet.check_sent_tx(tx).await?;
-            self.context
-                .formatter
-                .check_coin(coin_data_height.clone(), coin_id)
-                .await?;
+            // Move this logic to wallet
+            // self.context
+            //     .formatter
+            //     .check_coin(coin_data_height.clone(), coin_id)
+            //     .await?;
             if let Some(cdh) = coin_data_height {
                 return Ok(cdh);
             }

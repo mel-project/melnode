@@ -6,7 +6,6 @@ use smol::Timer;
 use nodeprot::ValClient;
 use storage::SledMap;
 
-use crate::utils::formatter::formatter::OutputFormatter;
 use crate::wallet::data::WalletData;
 
 /// Contains data for the entire life-cycle of a command being executed.
@@ -19,12 +18,9 @@ pub struct ExecutionContext {
     pub client: ValClient,
     pub version: String,
     pub sleep_sec: u64,
-
-    pub formatter: Arc<Box<dyn OutputFormatter + Sync + Send + 'static>>,
 }
 
 impl ExecutionContext {
-    /// TODO: change to default
     /// Sleep on current async task for a duration set in seconds.
     pub async fn sleep(&self, sec: u64) -> anyhow::Result<()> {
         let duration = Duration::from_secs(sec);

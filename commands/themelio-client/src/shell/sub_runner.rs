@@ -1,9 +1,10 @@
-use crate::shell::sub::command::SubShellCommand;
-use crate::shell::sub::output::{dispatch_error, exit, help, readline_error};
-use crate::shell::sub::prompt::SubShellInputPrompt;
+use crate::shell::command::SubShellCommand;
+use crate::shell::output::{
+    print_dispatch_error, print_readline_error, print_subshell_exit, print_subshell_help,
+};
+use crate::shell::prompt::{format_named_prompt, read_sub_shell_command};
 use crate::utils::context::ExecutionContext;
 use crate::utils::executor::CommandExecutor;
-use crate::utils::prompt::InputPrompt;
 use crate::wallet::manager::WalletManager;
 
 /// A sub-wallet_shell runner executed within the higher-level wallet_shell.
@@ -38,20 +39,17 @@ impl WalletSubShellRunner {
     /// Read and execute sub-wallet_shell commands from user until user exits.
     pub(crate) async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
-        let prompt = SubShellInputPrompt;
-        let formatted_prompt = prompt
-            .format_named_prompt(&self.context.version, &self.name)
-            .await?;
+        let formatted_prompt = format_named_prompt(&self.context.version, &self.name);
 
         loop {
             // Get command from user input.
 
-            let prompt_input = prompt.read_command(&formatted_prompt).await;
+            let prompt_input = read_sub_shell_command(&formatted_prompt).await;
             match prompt_input {
                 Ok(open_cmd) => {
                     // Exit if the user chooses to exit.
                     if open_cmd == SubShellCommand::Exit {
-                        exit().await?;
+                        print_subshell_exit();
                         return Ok(());
                     }
 
@@ -61,11 +59,11 @@ impl WalletSubShellRunner {
 
                     // Output error, if any, and continue running.
                     match dispatch_result {
-                        Err(err) => dispatch_error(err, &open_cmd).await?,
+                        Err(err) => print_dispatch_error(err, &open_cmd),
                         _ => {}
                     }
                 }
-                Err(err) => readline_error(&err).await?,
+                Err(err) => print_readline_error(&err),
             }
         }
     }
@@ -99,7 +97,8 @@ impl WalletSubShellRunner {
     /// Calls faucet on the command executor with the inputs passed into sub-wallet_shell.
     async fn faucet(&self, amt: &str, denom: &str) -> anyhow::Result<()> {
         let executor = CommandExecutor::new(self.context.clone());
-        executor.faucet(&self.name, &self.secret, amt, denom).await
+        // executor.faucet(&self.name, &self.secret, amt, denom).await
+        todo!("add faucet here")
     }
 
     /// Calls send coins on the command executor with the inputs passed into the sub-wallet_shell.
@@ -124,13 +123,13 @@ impl WalletSubShellRunner {
 
     /// Show available sub wallet_shell command args & inputs to user
     async fn help(&self) -> anyhow::Result<()> {
-        help().await?;
+        print_subshell_help();
         Ok(())
     }
 
     /// Show exit message
     async fn exit(&self) -> anyhow::Result<()> {
-        exit().await?;
+        print_subshell_exit();
         Ok(())
     }
 }
