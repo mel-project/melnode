@@ -22,8 +22,19 @@ pub(crate)  fn print_dispatch_error(err: &Error, sub_cmd: &SubShellCommand)  {
     eprintln!("ERROR: {} when dispatching {:?}", err, sub_cmd);
 }
 
-/// Show available input commands
-pub(crate) fn print_help() {
+/// Show available input commands for the shell
+pub(crate) fn print_shell_help() {
+    eprintln!("\nAvailable commands are: ");
+    eprintln!(">> create-wallet <wallet-name>");
+    eprintln!(">> open-wallet <wallet-name> <secret>");
+    eprintln!(">> show");
+    eprintln!(">> help");
+    eprintln!(">> exit");
+    eprintln!(">> ");
+}
+
+/// Show available input commands for the sub shell
+pub(crate) fn print_subshell_help() {
     eprintln!("\nAvailable commands are: ");
     eprintln!(">> faucet <amount> <unit>");
     eprintln!(">> send-coins <address> <amount> <unit>");
@@ -39,10 +50,10 @@ pub(crate) fn print_help() {
 
 /// Show exit message
 pub(crate) fn print_shell_exit() {
-    eprintln!("\nExiting Themelio Client Wallet Shell");
+    eprintln!("\nExiting Themelio Client wallet shell");
 }
 
 /// Show exit message
 pub(crate) fn print_subshell_exit() {
-    eprintln!("\nExiting Themelio Client Active Wallet");
+    eprintln!("\nExiting Themelio Client active wallet");
 }

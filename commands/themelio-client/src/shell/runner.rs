@@ -1,10 +1,9 @@
 use crate::shell::command::ShellCommand;
-use crate::shell::output::{print_command_error, print_exit_message, print_readline_error};
-use crate::shell::prompt::ShellInputPrompt;
-use crate::shell::sub::sub_runner::WalletSubShellRunner;
+use crate::shell::output::{print_command_error, print_exit_message, print_readline_error, print_shell_help, print_shell_exit};
 use crate::utils::context::ExecutionContext;
 use crate::utils::executor::CommandExecutor;
-use crate::utils::prompt::InputPrompt;
+use crate::shell::sub_runner::WalletSubShellRunner;
+use crate::shell::prompt::{format_prompt, read_shell_command};
 
 /// Run an wallet_shell command given an execution context
 /// This is for end users to create and show wallets
@@ -21,11 +20,10 @@ impl WalletShellRunner {
     /// Run wallet_shell commands from user input until user exits.
     pub async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
-        let prompt = ShellInputPrompt;
-        let formatted_prompt = prompt.format_prompt(&self.context.version).await?;
+        let formatted_prompt = format_prompt(&self.context.version);
 
         loop {
-            let prompt_input = prompt.read_command(&formatted_prompt).await;
+            let prompt_input = read_shell_command(&formatted_prompt).await;
 
             // Get command from user input.
             match prompt_input {
@@ -46,18 +44,23 @@ impl WalletShellRunner {
             }
         }
     }
-
-    /// Dispatch and process the wallet_shell command.
     async fn dispatch(&self, cmd: &ShellCommand) -> anyhow::Result<()> {
-        let ce = CommandExecutor::new(self.context.clone());
-        // Dispatch a command and return a command result.
+        let ce =CommandExecutor::new(self.context.clone());
+
         match &cmd {
-            ShellCommand::CreateWallet(name) => ce.create_wallet(name).await,
-            ShellCommand::ShowWallets => ce.show_wallets().await,
-            ShellCommand::OpenWallet(name, secret) => self.open_wallet(name, secret).await,
-            ShellCommand::Help => self.help().await,
-            ShellCommand::Exit => self.exit().await,
+            ShellCommand::CreateWallet(wallet_name) => {
+                ce.create_wallet(wallet_name).await?;
+            }
+            ShellCommand::ShowWallets => {
+                ce.show_wallets().await?;
+            }
+            ShellCommand::OpenWallet(wallet_name, secret) => {
+                self.open_wallet(wallet_name, secret).await?;
+            }
+            ShellCommand::Help => { print_shell_help(); }
+            ShellCommand::Exit => { print_shell_exit(); }
         }
+        Ok(())
     }
 
     async fn open_wallet(&self, name: &str, secret: &str) -> anyhow::Result<()> {
@@ -66,19 +69,4 @@ impl WalletShellRunner {
         Ok(())
     }
 
-    async fn help(&self) -> anyhow::Result<()> {
-        eprintln!("\nAvailable commands are: ");
-        eprintln!(">> create-wallet <wallet-name>");
-        eprintln!(">> open-wallet <wallet-name> <secret>");
-        eprintln!(">> show");
-        eprintln!(">> help");
-        eprintln!(">> exit");
-        eprintln!(">> ");
-        Ok(())
-    }
-
-    async fn exit(&self) -> anyhow::Result<()> {
-        eprintln!("\nExiting Themelio Client wallet shell");
-        Ok(())
-    }
 }
