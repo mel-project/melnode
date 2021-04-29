@@ -1,13 +1,13 @@
 use blkstructs::{CoinDataHeight, Transaction};
 
 use crate::utils::context::ExecutionContext;
+use crate::wallet::info::CreatedWalletInfo;
 use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::ActiveWallet;
-use crate::wallet::info::CreatedWalletInfo;
 
-use erased_serde::{Serialize};
-use crate::wallet::tx::TxBuilder;
 use crate::wallet::error::WalletError;
+use crate::wallet::tx::TxBuilder;
+use erased_serde::Serialize;
 
 /// Responsible for executing a single client CLI command given all the inputs.
 pub struct CommandExecutor {
@@ -21,7 +21,7 @@ impl CommandExecutor {
 
     /// Creates a new wallet, stores it into db and returns info about the created wallet..
     pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<Box<dyn Serialize>> {
-         // Create a wallet in storage and retrieve the active wallet
+        // Create a wallet in storage and retrieve the active wallet
         let manager = WalletManager::new(self.context.clone());
         let wallet = manager.create_wallet(wallet_name).await?;
 

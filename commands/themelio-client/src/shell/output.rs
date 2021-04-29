@@ -18,7 +18,7 @@ pub(crate) fn print_exit_message() {
 }
 
 /// Output the error when dispatching command
-pub(crate)  fn print_dispatch_error(err: &Error, sub_cmd: &SubShellCommand)  {
+pub(crate) fn print_dispatch_error(err: &Error, sub_cmd: &SubShellCommand) {
     eprintln!("ERROR: {} when dispatching {:?}", err, sub_cmd);
 }
 

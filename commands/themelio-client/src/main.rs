@@ -1,9 +1,9 @@
-use std::{convert::TryInto, sync::Arc, io};
+use std::{convert::TryInto, io, sync::Arc};
 
-use structopt::StructOpt;
-use erased_serde::{Serializer};
+use erased_serde::Serializer;
 use nodeprot::ValClient;
 use storage::SledMap;
+use structopt::StructOpt;
 use tmelcrypt::HashVal;
 use utils::executor::CommandExecutor;
 
@@ -66,16 +66,19 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                 WalletUtilsCommand::CreateWallet { wallet_name } => {
                     executor.create_wallet(&wallet_name).await
                 }
-                WalletUtilsCommand::Faucet { wallet_name, secret, amount, unit } => {
-                    executor.faucet(&wallet_name, &secret, &amount, &unit).await
-                }
+                WalletUtilsCommand::Faucet {
+                    wallet_name,
+                    secret,
+                    amount,
+                    unit,
+                } => executor.faucet(&wallet_name, &secret, &amount, &unit).await,
                 // WalletUtilsCommand::SendCoins { wallet_name, secret, address, amount, unit } => {
                 //     executor.send_coins(&wallet_name, &secret, &address, &amount, &unit).await
                 // }
                 // WalletUtilsCommand::AddCoins { .. } => {}
                 // WalletUtilsCommand::ShowBalance { .. } => {}
                 // WalletUtilsCommand::ShowWallets => {}
-                _ => todo!("not impl")
+                _ => todo!("not impl"),
             }?;
 
             // Show results serialized as JSON

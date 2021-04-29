@@ -1,7 +1,7 @@
-use std::convert::TryFrom;
-use colored::Colorize;
 use crate::shell::command::{ShellCommand, SubShellCommand};
 use crate::wallet::error::WalletError;
+use colored::Colorize;
+use std::convert::TryFrom;
 
 pub(crate) fn format_prompt(version: &str) -> String {
     let prompt_stack: Vec<String> = vec![
@@ -32,7 +32,6 @@ pub(crate) async fn read_shell_command(prompt: &str) -> anyhow::Result<ShellComm
     Ok(wallet_cmd?)
 }
 
-
 pub(crate) async fn read_sub_shell_command(prompt: &str) -> anyhow::Result<SubShellCommand> {
     let input = common_read_line(prompt.to_string()).await?;
     let open_wallet_cmd = SubShellCommand::try_from(input)?;
@@ -44,5 +43,6 @@ pub(crate) async fn common_read_line(prompt: String) -> anyhow::Result<String> {
     smol::unblock(move || {
         let mut rl = rustyline::Editor::<()>::new();
         Ok(rl.readline(&prompt)?)
-    }).await
+    })
+    .await
 }

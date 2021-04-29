@@ -1,6 +1,6 @@
-use blkstructs::{Transaction, TxKind, CoinData, DENOM_TMEL, MICRO_CONVERTER};
-use tmelcrypt::HashVal;
 use crate::config::BALLAST;
+use blkstructs::{CoinData, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER};
+use tmelcrypt::HashVal;
 
 pub struct TxBuilder;
 
@@ -28,7 +28,8 @@ impl TxBuilder {
             scripts: vec![],
             sigs: vec![],
             data: vec![],
-        }.applied_fee(fee_multiplier, BALLAST, 0);
+        }
+        .applied_fee(fee_multiplier, BALLAST, 0);
 
         Ok(tx)
     }

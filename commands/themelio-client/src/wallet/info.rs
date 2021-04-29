@@ -23,17 +23,8 @@ impl Printable for CreatedWalletInfo {
         let secret = self.secret.clone();
 
         writeln!(tw, ">> New data:\t{}", name.bold()).unwrap();
-        writeln!(
-            tw,
-            ">> Address:\t{}",
-            addr.yellow()
-        )
-            .unwrap();
-        writeln!(
-            tw,
-            ">> Secret:\t{}",
-            secret.dimmed()
-        ).unwrap();
+        writeln!(tw, ">> Address:\t{}", addr.yellow()).unwrap();
+        writeln!(tw, ">> Secret:\t{}", secret.dimmed()).unwrap();
 
         let info = String::from_utf8(tw.into_inner().unwrap()).unwrap();
         write!(w, "{}", &info);
