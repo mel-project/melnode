@@ -1,8 +1,8 @@
 use crate::context::ExecutionContext;
 use crate::executor::CommandExecutor;
 use crate::shell::command::ShellCommand;
-use crate::shell::io::common_read_line;
-use crate::shell::io::print_readline_error;
+use crate::shell::common::print_error;
+use crate::shell::common::read_line;
 use crate::shell::sub_runner::WalletSubShellRunner;
 use crate::wallet::error::WalletError;
 use anyhow::Error;
@@ -44,7 +44,7 @@ impl WalletShellRunner {
                     }
                 }
                 // Output parsing error and continue running.
-                Err(err) => print_readline_error(&err),
+                Err(err) => print_error(&err),
             }
         }
     }
@@ -95,7 +95,7 @@ impl WalletShellRunner {
 
     /// Read input to prompt and parse it into a shell command
     pub(crate) async fn read_command(&self, prompt: &str) -> anyhow::Result<ShellCommand> {
-        let input = common_read_line(prompt.to_string()).await?;
+        let input = read_line(prompt.to_string()).await?;
         let wallet_cmd = ShellCommand::try_from(input.clone());
         if wallet_cmd.is_err() {
             anyhow::bail!(WalletError::InvalidInputArgs(input))

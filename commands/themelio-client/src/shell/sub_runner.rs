@@ -1,8 +1,10 @@
 use crate::context::ExecutionContext;
 use crate::executor::CommandExecutor;
 use crate::shell::command::SubShellCommand;
-use crate::shell::io::{common_read_line, print_readline_error};
+use crate::shell::common::{print_error, read_line};
 use crate::wallet::manager::WalletManager;
+use anyhow::Error;
+use colored::Colorize;
 use std::convert::TryFrom;
 
 /// A sub-wallet_shell runner executed within the higher-level wallet_shell.
@@ -47,7 +49,7 @@ impl WalletSubShellRunner {
                 Ok(open_cmd) => {
                     // Exit if the user chooses to exit.
                     if open_cmd == SubShellCommand::Exit {
-                        self.exit();
+                        self.print_exit();
                         return Ok(());
                     }
 
@@ -57,11 +59,11 @@ impl WalletSubShellRunner {
 
                     // Output error, if any, and continue running.
                     match dispatch_result {
-                        Err(err) => print_dispatch_error(err, &open_cmd),
+                        Err(err) => self.print_dispatch_error(err, &open_cmd),
                         _ => {}
                     }
                 }
-                Err(err) => print_readline_error(&err),
+                Err(err) => print_error(&err),
             }
         }
     }
@@ -127,8 +129,8 @@ impl WalletSubShellRunner {
     }
 
     /// Read input to prompt and parse it into a sub shell command
-    async fn read_command(prompt: &str) -> anyhow::Result<SubShellCommand> {
-        let input = common_read_line(prompt.to_string()).await?;
+    async fn read_command(&self, prompt: &str) -> anyhow::Result<SubShellCommand> {
+        let input = read_line(prompt.to_string()).await?;
         let open_wallet_cmd = SubShellCommand::try_from(input)?;
         Ok(open_wallet_cmd)
     }
@@ -154,7 +156,7 @@ impl WalletSubShellRunner {
     }
 
     /// Create a named prompt for sub shell mode to show wallet name.
-    fn format_named_prompt(&self, version: &str, name: &str) -> String {
+    fn format_prompt(&self, version: &str, name: &str) -> String {
         let prompt_stack: Vec<String> = vec![
             "themelio-client".to_string().cyan().bold().to_string(),
             format!("(v{})", version).magenta().to_string(),
