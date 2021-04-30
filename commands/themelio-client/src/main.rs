@@ -63,11 +63,10 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
             let executor = CommandExecutor::new(context);
 
             // Execute command and get serializable results
-            let ser = match cmd {
+            let ser: Box<dyn Serialize> = match cmd {
                 WalletUtilsCommand::CreateWallet { wallet_name } => {
                     let info = executor.create_wallet(&wallet_name).await?;
-                    let ser = Box::new(info) as Box<dyn Serialize>;
-                    ser
+                    Box::new(info) as Box<dyn Serialize>
                 }
                 WalletUtilsCommand::Faucet {
                     wallet_name,
@@ -78,8 +77,7 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                     let info = executor
                         .faucet(&wallet_name, &secret, &amount, &unit)
                         .await?;
-                    let ser = Box::new(info) as Box<dyn Serialize>;
-                    ser
+                    Box::new(info) as Box<dyn Serialize>
                 }
                 WalletUtilsCommand::SendCoins {
                     wallet_name,
@@ -91,8 +89,7 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                     let info = executor
                         .send_coins(&wallet_name, &secret, &address, &amount, &unit)
                         .await?;
-                    let ser = Box::new(info) as Box<dyn Serialize>;
-                    ser
+                    Box::new(info) as Box<dyn Serialize>
                 }
                 WalletUtilsCommand::AddCoins {
                     wallet_name,
@@ -100,14 +97,19 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                     coin_id,
                 } => {
                     let info = executor.add_coins(&wallet_name, &secret, &coin_id).await?;
-                    let ser = Box::new(info) as Box<dyn Serialize>;
-                    ser
+                    Box::new(info) as Box<dyn Serialize>
                 }
                 WalletUtilsCommand::ShowBalance {
                     wallet_name,
                     secret,
-                } => executor.show_balance(&wallet_name, &secret).await,
-                WalletUtilsCommand::ShowWallets => executor.show_wallets().await,
+                } => {
+                    let info = executor.show_balance(&wallet_name, &secret).await?;
+                    Box::new(info) as Box<dyn Serialize>
+                }
+                WalletUtilsCommand::ShowWallets => {
+                    let info = executor.show_wallets().await?;
+                    Box::new(info) as Box<dyn Serialize>
+                }
                 WalletUtilsCommand::DepositCoins {
                     wallet_name,
                     secret,
@@ -116,7 +118,7 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                     cov_hash_b,
                     amount_b,
                 } => {
-                    executor
+                    let info = executor
                         .deposit(
                             &wallet_name,
                             &secret,
@@ -125,7 +127,8 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                             &cov_hash_b,
                             &amount_b,
                         )
-                        .await
+                        .await?;
+                    Box::new(info) as Box<dyn Serialize>
                 }
                 WalletUtilsCommand::WithdrawCoins {
                     wallet_name,
@@ -135,7 +138,7 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                     cov_hash_b,
                     amount_b,
                 } => {
-                    executor
+                    let info = executor
                         .withdraw(
                             &wallet_name,
                             &secret,
@@ -144,7 +147,8 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                             &cov_hash_b,
                             &amount_b,
                         )
-                        .await
+                        .await?;
+                    Box::new(info) as Box<dyn Serialize>
                 }
                 WalletUtilsCommand::SwapCoins {
                     wallet_name,
@@ -152,11 +156,12 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                     cov_hash,
                     amount,
                 } => {
-                    executor
+                    let info = executor
                         .swap(&wallet_name, &secret, &cov_hash, &amount)
-                        .await
+                        .await?;
+                    Box::new(info) as Box<dyn Serialize>
                 }
-            }?;
+            };
 
             // Show results serialized as JSON
             let json = &mut serde_json::Serializer::new(io::stdout());

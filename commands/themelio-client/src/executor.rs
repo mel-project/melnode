@@ -1,4 +1,4 @@
-use blkstructs::{CoinDataHeight, CoinID, Transaction};
+use blkstructs::{CoinDataHeight, Transaction};
 
 use crate::context::ExecutionContext;
 use crate::wallet::info::{
@@ -8,9 +8,7 @@ use crate::wallet::info::{
 use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::ActiveWallet;
 
-use crate::wallet::error::WalletError;
 use crate::wallet::tx::TxBuilder;
-use erased_serde::Serialize;
 
 /// Responsible for executing a single client CLI command given all the inputs and returning a result.
 pub struct CommandExecutor {
@@ -37,8 +35,8 @@ impl CommandExecutor {
         Ok(info)
     }
 
-    /// Creates a faucet tx to fund the wallet.
-    /// It then sends the transaction and waits for a confirmation of the coins on the ledger.
+    /// Creates a faucet tx to fund the wallet and sends it.
+    /// It waits for a confirmation of the coins on the ledger.
     pub async fn faucet(
         &self,
         wallet_name: &str,
@@ -66,7 +64,7 @@ impl CommandExecutor {
         Ok(info)
     }
 
-    /// Sends coins from the wallet to a destination.
+    /// Sends coins from a wallet to an address.
     pub async fn send_coins(
         &self,
         wallet_name: &str,
@@ -100,7 +98,7 @@ impl CommandExecutor {
         Ok(SendCoinsInfo)
     }
 
-    /// Adds coins by coin id to wallet.
+    /// Adds coins by coin id to a wallet.
     pub async fn add_coins(
         &self,
         _wallet_name: &str,
