@@ -20,7 +20,7 @@ mod opts;
 mod shell;
 mod wallet;
 
-/// Parse options from input arguments and asynchronously dispatch them.
+/// Parse options from input arguments and asynchronously dispatch associated command.
 fn main() {
     smolscale::block_on(async move {
         let opts: ClientOpts = ClientOpts::from_args();
@@ -28,7 +28,7 @@ fn main() {
     });
 }
 
-/// Either start the wallet shell or execute a wallet utils command.
+/// Open an interactive wallet shell or execute a wallet utils command using input options.
 async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
     // Initialize execution context
     let version = env!("CARGO_PKG_VERSION").to_string();

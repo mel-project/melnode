@@ -9,7 +9,7 @@ use crate::wallet::error::WalletError;
 use crate::wallet::tx::TxBuilder;
 use erased_serde::Serialize;
 
-/// Responsible for executing a single client CLI command given all the inputs.
+/// Responsible for executing a single client CLI command given all the inputs and returning a result.
 pub struct CommandExecutor {
     context: ExecutionContext,
 }
@@ -19,28 +19,19 @@ impl CommandExecutor {
         Self { context }
     }
 
-    /// Creates a new wallet, stores it into db and returns info about the created wallet..
-    pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<Box<dyn Serialize>> {
+    /// Creates a new wallet, stores it into db and returns info about the created wallet.
+    pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<CreatedWalletInfo> {
         // Create a wallet in storage and retrieve the active wallet
         let manager = WalletManager::new(self.context.clone());
         let wallet = manager.create_wallet(wallet_name).await?;
 
-        // Get created wallet info from the active wallet
-        let name = wallet.name().to_string();
-        let address = wallet.data().my_covenant().hash().to_addr();
-        let secret = hex::encode(wallet.secret().clone().0);
+        // Return info on the created wallet.
         let info = CreatedWalletInfo {
-            name,
-            address,
-            secret,
+            name: wallet.name().to_string(),
+            address: wallet.data().my_covenant().hash().to_addr(),
+            secret: hex::encode(wallet.secret().clone().0),
         };
-
-        // Print progress results
-        info.print(&mut std::io::stderr());
-
-        // Return a serialize trait so result can be formatted outside of executor context
-        let serialize = Box::new(info) as Box<dyn Serialize>;
-        Ok(serialize)
+        Ok(info)
     }
 
     /// Creates a faucet tx to fund the wallet.
@@ -51,35 +42,31 @@ impl CommandExecutor {
         secret: &str,
         amount: &str,
         unit: &str,
-    ) -> anyhow::Result<Box<dyn Serialize>> {
+    ) -> anyhow::Result<FaucetTxConfirmedInfo> {
         // Load wallet from wallet manager using name and secret
         let manager = WalletManager::new(self.context.clone());
         let wallet = manager.load_wallet(wallet_name, secret).await?;
 
-        // Create faucet tx.
+        // Create the faucet transaction.
         let cov_hash = wallet.data().my_covenant().hash();
         let tx = TxBuilder::create_faucet_tx(amount, unit, cov_hash).await?;
+
+        // Send the faucet transaction.
         if tx.is_none() {
             anyhow::bail!(WalletError::InvalidInputArgs(wallet_name.to_string()))
         }
         let tx = tx.unwrap();
-
-        // Send the faucet tx.
         wallet.send_tx(&tx).await?;
 
-        // Wait for tx confirmation
-        let sleep_sec = self.context.sleep_sec;
-        let coin_data_height = self.confirm_tx(&tx, &wallet, sleep_sec).await?;
+        // Wait for confirmation of the transaction.
+        let coin_data_height = self.confirm_tx(&tx, &wallet).await?;
 
-        // Get faucet tx info
+        // Return information about the faucet transaction and it's confirmation.
         let info = FaucetTxConfirmedInfo {
             tx,
             coin_data_height,
         };
-
-        // Return a serialize trait of faucet tx info
-        let serialize = Box::new(info) as Box<dyn Serialize>;
-        Ok(serialize)
+        Ok(info)
     }
 
     /// Sends coins from the wallet to a destination.
@@ -185,7 +172,6 @@ impl CommandExecutor {
         &self,
         tx: &Transaction,
         wallet: &ActiveWallet,
-        sleep_sec: u64,
     ) -> anyhow::Result<CoinDataHeight> {
         loop {
             let (coin_data_height, coin_id) = wallet.check_sent_tx(tx).await?;
@@ -197,7 +183,7 @@ impl CommandExecutor {
             if let Some(cdh) = coin_data_height {
                 return Ok(cdh);
             }
-            self.context.sleep(sleep_sec.clone()).await?;
+            self.context.sleep(self.context.sleep_sec).await?;
         }
     }
 }
