@@ -317,9 +317,9 @@ impl<B: DbBackend> Inner<B> {
 
     /// Inserts a block into the database
     fn insert_block(&mut self, state: SealedState, init_metadata: &[u8]) -> Option<InternalValue> {
-        if let Some(val) = self.get_block(state.header().hash(), Some(state.inner_ref().height)) {
-            return Some(val);
-        }
+        // if let Some(val) = self.get_block(state.header().hash(), Some(state.inner_ref().height)) {
+        //     return Some(val);
+        // }
         let action = state.proposer_action().cloned();
         // we carefully insert the block to avoid inconsistency:
         // - first we insert the block itself

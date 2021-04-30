@@ -126,6 +126,7 @@ impl ChainState {
         let to_send = self.get_leaves(their_lnc_tips);
         to_send
             .into_iter()
+            .take(16)
             .map(|hash| {
                 let cursor = self
                     .inner
