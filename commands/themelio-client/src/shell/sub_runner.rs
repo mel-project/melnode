@@ -24,8 +24,8 @@ impl WalletSubShellRunner {
     ) -> anyhow::Result<Self> {
         let name = name.to_string();
         let secret = secret.to_string();
-        let context = context.clone();
 
+        // Ensure we can unlock this wallet with the seed.
         let manager = WalletManager::new(context.clone());
         let _ = manager.load_wallet(&name, &secret).await?;
 
@@ -39,7 +39,7 @@ impl WalletSubShellRunner {
     /// Read and execute sub-wallet_shell commands from user until user exits.
     pub(crate) async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
-        let formatted_prompt = self.format_prompt(&self.context.version, &self.name);
+        let formatted_prompt = self.format_prompt();
 
         loop {
             // Get command from user input.
@@ -156,12 +156,14 @@ impl WalletSubShellRunner {
     }
 
     /// Create a named prompt for sub shell mode to show wallet name.
-    fn format_prompt(&self, version: &str, name: &str) -> String {
+    fn format_prompt(&self) -> String {
+        let version = self.context.version.clone();
+        let name = self.name.clone();
         let prompt_stack: Vec<String> = vec![
             "themelio-client".to_string().cyan().bold().to_string(),
-            format!("(v{})", version).magenta().to_string(),
+            format!("(v{})", &version).magenta().to_string(),
             "➜ ".to_string().cyan().bold().to_string(),
-            format!("({})", name).cyan().to_string(),
+            format!("({})", &name).cyan().to_string(),
             "➜ ".to_string().cyan().bold().to_string(),
         ];
         prompt_stack.join(" ")
