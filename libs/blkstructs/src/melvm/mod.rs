@@ -315,6 +315,8 @@ impl Covenant {
             OpCode::ItoB => output.push(0xc0),
             OpCode::BtoI => output.push(0xc1),
 
+            OpCode::TypeQ => output.push(0xcf),
+
             // literals
             OpCode::PushB(bts) => {
                 output.push(0xf0);
@@ -328,6 +330,10 @@ impl Covenant {
                 output.push(0xf1);
                 let out = num.to_be_bytes();
                 output.extend_from_slice(&out);
+            }
+
+            OpCode::Dup => {
+                output.push(0xff);
             }
         }
         Some(())
@@ -626,6 +632,17 @@ impl Executor {
                 self.stack.push(bts);
             }
             OpCode::PushI(num) => self.stack.push(Value::Int(*num)),
+            OpCode::TypeQ => self.do_monop(|x| match x {
+                Value::Int(_) => Some(Value::Int(0u32.into())),
+                Value::Bytes(_) => Some(Value::Int(1u32.into())),
+                Value::Vector(_) => Some(Value::Int(2u32.into())),
+            })?,
+            // dup
+            OpCode::Dup => {
+                let val = self.stack.pop()?;
+                self.stack.push(val.clone());
+                self.stack.push(val);
+            }
         }
         Some(pc + 1)
     }
@@ -709,11 +726,15 @@ pub enum OpCode {
     // type conversions
     ItoB,
     BtoI,
+    TypeQ,
     // SERIAL(u16),
 
     // literals
     PushB(Vec<u8>),
     PushI(U256),
+
+    // duplication
+    Dup,
 }
 
 impl OpCode {
@@ -760,6 +781,8 @@ impl OpCode {
             OpCode::BSet => 20,
             OpCode::BCons => 10,
 
+            OpCode::TypeQ => 4,
+
             OpCode::ItoB => 50,
             OpCode::BtoI => 50,
 
@@ -773,6 +796,8 @@ impl OpCode {
 
             OpCode::PushB(_) => 1,
             OpCode::PushI(_) => 1,
+
+            OpCode::Dup => 4,
         }
     }
 }
