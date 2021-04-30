@@ -1,12 +1,12 @@
 use crate::context::ExecutionContext;
 use crate::executor::CommandExecutor;
 use crate::shell::command::ShellCommand;
-use crate::shell::io::{format_prompt, read_shell_command};
-use crate::shell::io::{
-    print_command_error, print_exit_message, print_readline_error, print_shell_exit,
-    print_shell_help,
-};
+use crate::shell::io::common_read_line;
+use crate::shell::io::print_readline_error;
 use crate::shell::sub_runner::WalletSubShellRunner;
+use crate::wallet::error::WalletError;
+use std::convert::TryFrom;
+use std::fmt::Error;
 
 /// Run an wallet_shell command given an execution context
 /// This is for end users to create and show wallets
@@ -23,23 +23,23 @@ impl WalletShellRunner {
     /// Run wallet_shell commands from user input until user exits.
     pub async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
-        let formatted_prompt = format_prompt(&self.context.version);
+        let formatted_prompt = self.format_prompt();
 
         loop {
-            let prompt_input = read_shell_command(&formatted_prompt).await;
+            let prompt_input = self.read_command(&formatted_prompt).await;
 
             // Get command from user input.
             match prompt_input {
                 Ok(cmd) => {
                     // Exit if the user chooses to exit.
                     if cmd == ShellCommand::Exit {
-                        print_exit_message();
+                        self.exit();
                         return Ok(());
                     }
 
                     // Output error, if any, and continue running.
                     if let Err(err) = self.dispatch(&cmd).await {
-                        print_command_error(&err, &cmd)
+                        self.print_command_error(&err, &cmd)
                     }
                 }
                 // Output parsing error and continue running.
@@ -61,10 +61,10 @@ impl WalletShellRunner {
                 self.open_wallet(wallet_name, secret).await?;
             }
             ShellCommand::Help => {
-                print_shell_help();
+                self.help();
             }
             ShellCommand::Exit => {
-                print_shell_exit();
+                self.exit();
             }
         }
         Ok(())
@@ -74,5 +74,47 @@ impl WalletShellRunner {
         let runner = WalletSubShellRunner::new(self.context.clone(), name, secret).await?;
         runner.run().await?;
         Ok(())
+    }
+
+    /// Show exit message.
+    fn exit(&self) {
+        eprintln!("\nExiting Themelio Client wallet_shell");
+    }
+
+    /// Show available input commands for the shell
+    fn help(&self) {
+        eprintln!("\nAvailable commands are: ");
+        eprintln!(">> create-wallet <wallet-name>");
+        eprintln!(">> open-wallet <wallet-name> <secret>");
+        eprintln!(">> show-wallets");
+        eprintln!(">> help");
+        eprintln!(">> exit");
+        eprintln!(">> ");
+    }
+
+    /// Read input to prompt and parse it into a shell command
+    pub(crate) async fn read_command(&self, prompt: &str) -> anyhow::Result<ShellCommand> {
+        let input = common_read_line(prompt.to_string()).await?;
+        let wallet_cmd = ShellCommand::try_from(input.clone());
+        if wallet_cmd.is_err() {
+            anyhow::bail!(WalletError::InvalidInputArgs(input))
+        }
+        Ok(wallet_cmd?)
+    }
+
+    /// Output the error when dispatching command.
+    fn print_command_error(&self, err: &Error, cmd: &ShellCommand) {
+        eprintln!("ERROR: {} with wallet_shell command {:?}", err, cmd);
+    }
+
+    /// Create a prompt for shell mode
+    fn format_prompt(&self) -> String {
+        let version = self.context.version.clone();
+        let prompt_stack: Vec<String> = vec![
+            "themelio-client".to_string().cyan().bold().to_string(),
+            format!("(v{})", &version).magenta().to_string(),
+            "➜ ".to_string().cyan().bold().to_string(),
+        ];
+        prompt_stack.join(" ")
     }
 }
