@@ -1,7 +1,7 @@
-use blkstructs::{CoinDataHeight, Transaction};
+use blkstructs::{CoinDataHeight, CoinID, Transaction};
 
 use crate::context::ExecutionContext;
-use crate::wallet::info::{CreatedWalletInfo, FaucetTxConfirmedInfo, Printable};
+use crate::wallet::info::{CreatedWalletInfo, FaucetInfo, Printable};
 use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::ActiveWallet;
 
@@ -42,27 +42,21 @@ impl CommandExecutor {
         secret: &str,
         amount: &str,
         unit: &str,
-    ) -> anyhow::Result<FaucetTxConfirmedInfo> {
+    ) -> anyhow::Result<FaucetInfo> {
         // Load wallet from wallet manager using name and secret
         let manager = WalletManager::new(self.context.clone());
         let wallet = manager.load_wallet(wallet_name, secret).await?;
 
-        // Create the faucet transaction.
+        // Create the faucet transaction and send it.
         let cov_hash = wallet.data().my_covenant().hash();
         let tx = TxBuilder::create_faucet_tx(amount, unit, cov_hash).await?;
-
-        // Send the faucet transaction.
-        if tx.is_none() {
-            anyhow::bail!(WalletError::InvalidInputArgs(wallet_name.to_string()))
-        }
-        let tx = tx.unwrap();
         wallet.send_tx(&tx).await?;
 
         // Wait for confirmation of the transaction.
         let coin_data_height = self.confirm_tx(&tx, &wallet).await?;
 
-        // Return information about the faucet transaction and it's confirmation.
-        let info = FaucetTxConfirmedInfo {
+        // Return information about the confirmed faucet transaction.
+        let info = FaucetInfo {
             tx,
             coin_data_height,
         };
@@ -108,25 +102,18 @@ impl CommandExecutor {
         _wallet_name: &str,
         _secret: &str,
         _coin_id: &str,
-    ) -> anyhow::Result<Box<dyn Serialize>> {
-        unimplemented!();
-        // Ok(())
+    ) -> anyhow::Result<()> {
+        Ok(())
     }
 
     /// Shows the total known wallet balance.
-    pub async fn show_balance(
-        &self,
-        _wallet_name: &str,
-        _secret: &str,
-    ) -> anyhow::Result<Box<dyn Serialize>> {
-        unimplemented!();
-        // Ok(())
+    pub async fn show_balance(&self, _wallet_name: &str, _secret: &str) -> anyhow::Result<()> {
+        Ok(())
     }
 
     /// Shows all the wallets by name that are stored in the db.
-    pub async fn show_wallets(&self) -> anyhow::Result<Box<dyn Serialize>> {
-        unimplemented!();
-        // Ok(())
+    pub async fn show_wallets(&self) -> anyhow::Result<()> {
+        Ok(())
     }
 
     /// Liq. Deposit a token pair into melswap

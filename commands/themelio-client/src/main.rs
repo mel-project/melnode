@@ -1,6 +1,6 @@
 use std::{convert::TryInto, io, sync::Arc};
 
-use erased_serde::Serializer;
+use erased_serde::{Serialize, Serializer};
 use executor::CommandExecutor;
 use nodeprot::ValClient;
 use storage::SledMap;
@@ -65,14 +65,22 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
             // Execute command and get serializable results
             let ser = match cmd {
                 WalletUtilsCommand::CreateWallet { wallet_name } => {
-                    executor.create_wallet(&wallet_name).await
+                    let info = executor.create_wallet(&wallet_name).await?;
+                    let ser = Box::new(info) as Box<dyn Serialize>;
+                    ser
                 }
                 WalletUtilsCommand::Faucet {
                     wallet_name,
                     secret,
                     amount,
                     unit,
-                } => executor.faucet(&wallet_name, &secret, &amount, &unit).await,
+                } => {
+                    let info = executor
+                        .faucet(&wallet_name, &secret, &amount, &unit)
+                        .await?;
+                    let ser = Box::new(info) as Box<dyn Serialize>;
+                    ser
+                }
                 WalletUtilsCommand::SendCoins {
                     wallet_name,
                     secret,
@@ -80,15 +88,21 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                     amount,
                     unit,
                 } => {
-                    executor
+                    let info = executor
                         .send_coins(&wallet_name, &secret, &address, &amount, &unit)
-                        .await
+                        .await?;
+                    let ser = Box::new(info) as Box<dyn Serialize>;
+                    ser
                 }
                 WalletUtilsCommand::AddCoins {
                     wallet_name,
                     secret,
                     coin_id,
-                } => executor.add_coins(&wallet_name, &secret, &coin_id).await,
+                } => {
+                    let info = executor.add_coins(&wallet_name, &secret, &coin_id).await?;
+                    let ser = Box::new(info) as Box<dyn Serialize>;
+                    ser
+                }
                 WalletUtilsCommand::ShowBalance {
                     wallet_name,
                     secret,

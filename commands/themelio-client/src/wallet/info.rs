@@ -13,10 +13,22 @@ pub struct CreatedWalletInfo {
 }
 
 #[derive(Serialize, Debug)]
-pub struct FaucetTxConfirmedInfo {
+pub struct FaucetInfo {
     pub tx: Transaction,
     pub coin_data_height: CoinDataHeight,
 }
+
+#[derive(Serialize, Debug)]
+pub struct SendCoinsInfo;
+
+#[derive(Serialize, Debug)]
+pub struct DepositInfo;
+
+#[derive(Serialize, Debug)]
+pub struct WithdrawInfo;
+
+#[derive(Serialize, Debug)]
+pub struct SwapInfo;
 
 pub trait Printable {
     fn print(&self, w: &mut dyn std::io::Write);
@@ -38,7 +50,7 @@ impl Printable for CreatedWalletInfo {
     }
 }
 
-impl Printable for FaucetTxConfirmedInfo {
+impl Printable for FaucetInfo {
     fn print(&self, w: &mut dyn Write) {
         let mut tw = TabWriter::new(vec![]);
         let coin_data_height = self.coin_data_height.clone();
