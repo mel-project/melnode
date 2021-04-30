@@ -1,8 +1,7 @@
 use crate::context::ExecutionContext;
 use crate::wallet::data::WalletData;
-use anyhow::Context; // was used by create_faucet_tx
 use blkstructs::{
-    CoinData, CoinDataHeight, CoinID, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
+    CoinDataHeight, CoinID, Transaction,
 };
 use tmelcrypt::Ed25519SK;
 
