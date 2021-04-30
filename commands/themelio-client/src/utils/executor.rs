@@ -105,8 +105,7 @@ impl CommandExecutor {
         // print confirmation results for send mel tx
         // println!("confirmed at height {:?}! ", coin_data_height);
         // CommandOutput::print_confirmed_send_mel_tx(&coin_data_height).await?;
-
-        Ok(())
+        todo!("")
     }
 
     /// Adds coins by coin id to wallet.
