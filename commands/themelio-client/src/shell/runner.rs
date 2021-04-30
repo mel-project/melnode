@@ -5,8 +5,9 @@ use crate::shell::io::common_read_line;
 use crate::shell::io::print_readline_error;
 use crate::shell::sub_runner::WalletSubShellRunner;
 use crate::wallet::error::WalletError;
+use anyhow::Error;
+use colored::Colorize;
 use std::convert::TryFrom;
-use std::fmt::Error;
 
 /// Run an wallet_shell command given an execution context
 /// This is for end users to create and show wallets

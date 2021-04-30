@@ -1,6 +1,6 @@
 use anyhow::Error;
 
-/// Helper method that read_line method in trait can call to handle raw user input.
+/// Helper function that uses a prompt to get to handle raw user input.
 pub(crate) async fn common_read_line(prompt: String) -> anyhow::Result<String> {
     smol::unblock(move || {
         let mut rl = rustyline::Editor::<()>::new();
@@ -9,7 +9,7 @@ pub(crate) async fn common_read_line(prompt: String) -> anyhow::Result<String> {
     .await
 }
 
-/// Output the error when reading user input.
+/// Output an error to standard error.
 pub(crate) fn print_readline_error(_err: &Error) {
     eprintln!("ERROR: can't parse input command");
 }
