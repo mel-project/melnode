@@ -73,6 +73,7 @@ impl WalletShellRunner {
         Ok(())
     }
 
+    /// Start the sub shell runner with a particular wallet
     async fn open_wallet(&self, name: &str, secret: &str) -> anyhow::Result<()> {
         let runner = WalletSubShellRunner::new(self.context.clone(), name, secret).await?;
         runner.run().await?;
