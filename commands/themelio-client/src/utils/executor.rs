@@ -1,7 +1,7 @@
 use blkstructs::{CoinDataHeight, Transaction};
 
 use crate::utils::context::ExecutionContext;
-use crate::wallet::info::CreatedWalletInfo;
+use crate::wallet::info::{CreatedWalletInfo, FaucetTxConfirmedInfo};
 use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::ActiveWallet;
 
@@ -66,13 +66,17 @@ impl CommandExecutor {
 
         // Wait for tx confirmation
         let sleep_sec = self.context.sleep_sec;
-        self.confirm_tx(&tx, &wallet, sleep_sec).await?;
+        let coin_data_height = self.confirm_tx(&tx, &wallet, sleep_sec).await?;
 
-        // TODO: add faucet info
-        // Get faucet tx info from the active wallet
-        // Return a serialize trait so result can be formatted outside of executor context
+        // Get faucet tx info
+        let info = FaucetTxConfirmedInfo {
+            tx,
+            coin_data_height,
+        };
 
-        anyhow::bail!(WalletError::InvalidInputArgs("tmp".to_string()))
+        // Return a serialize trait of faucet tx info
+        let serialize = Box::new(info) as Box<dyn Serialize>;
+        Ok(serialize)
     }
 
     /// Sends coins from the wallet to a destination.
@@ -190,7 +194,7 @@ impl CommandExecutor {
             if let Some(cdh) = coin_data_height {
                 return Ok(cdh);
             }
-            self.context.sleep(sleep_sec).await?;
+            self.context.sleep(sleep_sec.clone()).await?;
         }
     }
 }

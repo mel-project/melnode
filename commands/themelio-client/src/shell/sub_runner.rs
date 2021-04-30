@@ -113,7 +113,9 @@ impl WalletSubShellRunner {
     /// Calls add coins on the command executor with the inputs passed into the sub-wallet_shell.
     async fn add_coins(&self, coin_id: &str) -> anyhow::Result<()> {
         let executor = CommandExecutor::new(self.context.clone());
-        executor.add_coins(&self.name, &self.secret, coin_id).await?;
+        executor
+            .add_coins(&self.name, &self.secret, coin_id)
+            .await?;
         Ok(())
     }
 
