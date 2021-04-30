@@ -1,6 +1,6 @@
 use blkstructs::{CoinDataHeight, Transaction};
 
-use crate::utils::context::ExecutionContext;
+use crate::context::ExecutionContext;
 use crate::wallet::info::{CreatedWalletInfo, FaucetTxConfirmedInfo};
 use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::ActiveWallet;

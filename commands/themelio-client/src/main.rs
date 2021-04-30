@@ -1,22 +1,23 @@
 use std::{convert::TryInto, io, sync::Arc};
 
 use erased_serde::Serializer;
+use executor::CommandExecutor;
 use nodeprot::ValClient;
 use storage::SledMap;
 use structopt::StructOpt;
 use tmelcrypt::HashVal;
-use utils::executor::CommandExecutor;
 
 use crate::config::{DEFAULT_TRUST_HEADER_HASH, DEFAULT_TRUST_HEIGHT};
+use crate::context::ExecutionContext;
 use crate::opts::{ClientOpts, ClientSubOpts, WalletUtilsCommand};
 use crate::shell::runner::WalletShellRunner;
-use crate::utils::context::ExecutionContext;
 use crate::wallet::data::WalletData;
 
 mod config;
+mod context;
+mod executor;
 mod opts;
 mod shell;
-mod utils;
 mod wallet;
 
 /// Parse options from input arguments and asynchronously dispatch them.

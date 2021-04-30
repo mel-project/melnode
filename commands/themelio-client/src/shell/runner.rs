@@ -1,3 +1,5 @@
+use crate::context::ExecutionContext;
+use crate::executor::CommandExecutor;
 use crate::shell::command::ShellCommand;
 use crate::shell::io::{format_prompt, read_shell_command};
 use crate::shell::io::{
@@ -5,8 +7,6 @@ use crate::shell::io::{
     print_shell_help,
 };
 use crate::shell::sub_runner::WalletSubShellRunner;
-use crate::utils::context::ExecutionContext;
-use crate::utils::executor::CommandExecutor;
 
 /// Run an wallet_shell command given an execution context
 /// This is for end users to create and show wallets
