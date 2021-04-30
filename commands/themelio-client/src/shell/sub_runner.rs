@@ -97,8 +97,10 @@ impl WalletSubShellRunner {
     /// Calls faucet on the command executor with the inputs passed into sub-wallet_shell.
     async fn faucet(&self, amt: &str, denom: &str) -> anyhow::Result<()> {
         let executor = CommandExecutor::new(self.context.clone());
-        // executor.faucet(&self.name, &self.secret, amt, denom).await
-        todo!("add faucet here")
+        let _ = executor
+            .faucet(&self.name, &self.secret, amt, denom)
+            .await?;
+        Ok(())
     }
 
     /// Calls send coins on the command executor with the inputs passed into the sub-wallet_shell.

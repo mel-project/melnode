@@ -36,8 +36,7 @@ impl CommandExecutor {
         };
 
         // Print progress results
-        let mut stderr = std::io::stderr();
-        info.print(&mut stderr);
+        info.print(&mut std::io::stderr());
 
         // Return a serialize trait so result can be formatted outside of executor context
         let serialize = Box::new(info) as Box<dyn Serialize>;

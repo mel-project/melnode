@@ -6,6 +6,7 @@ pub struct TxBuilder;
 
 impl TxBuilder {
     /// Create a faucet transaction given inputs as strings amount, unit and a value for fee.
+    /// TODO: fix fees
     pub async fn create_faucet_tx(
         amount: &str,
         _unit: &str,
@@ -13,7 +14,7 @@ impl TxBuilder {
     ) -> anyhow::Result<Option<Transaction>> {
         // TODO: units
         let value: u128 = amount.parse()?;
-        let fee_multiplier: u128 = 20; // Fixing in next PR
+        let fee_multiplier: u128 = 1000;
 
         let tx = Transaction {
             kind: TxKind::Faucet,
@@ -24,14 +25,14 @@ impl TxBuilder {
                 value: value * MICRO_CONVERTER,
                 additional_data: vec![],
             }],
-            fee: 0, // Fixing fee in next PR
+            fee: 105975,
             scripts: vec![],
             sigs: vec![],
             data: vec![],
-        }
-        .applied_fee(fee_multiplier, BALLAST, 0);
+        };
+        // .applied_fee(fee_multiplier, BALLAST, 0);
 
-        Ok(tx)
+        Ok(Some(tx))
     }
 
     pub async fn create_send_mel_tx(
