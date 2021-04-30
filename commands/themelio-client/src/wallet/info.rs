@@ -18,7 +18,7 @@ pub struct FaucetTxConfirmedInfo {
     pub coin_data_height: CoinDataHeight,
 }
 
-trait Printable {
+pub trait Printable {
     fn print(&self, w: &mut dyn std::io::Write);
 }
 

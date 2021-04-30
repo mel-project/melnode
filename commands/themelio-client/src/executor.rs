@@ -1,7 +1,7 @@
 use blkstructs::{CoinDataHeight, Transaction};
 
 use crate::context::ExecutionContext;
-use crate::wallet::info::{CreatedWalletInfo, FaucetTxConfirmedInfo};
+use crate::wallet::info::{CreatedWalletInfo, FaucetTxConfirmedInfo, Printable};
 use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::ActiveWallet;
 
@@ -34,6 +34,10 @@ impl CommandExecutor {
             address,
             secret,
         };
+
+        // Print progress results
+        let mut stderr = std::io::stderr();
+        info.print(&mut stderr);
 
         // Return a serialize trait so result can be formatted outside of executor context
         let serialize = Box::new(info) as Box<dyn Serialize>;
