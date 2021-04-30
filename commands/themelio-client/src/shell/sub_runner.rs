@@ -25,7 +25,7 @@ impl WalletSubShellRunner {
         let name = name.to_string();
         let secret = secret.to_string();
 
-        // Ensure we can unlock this wallet with the seed.
+        // Ensure we can load & unlock this wallet with the seed.
         let manager = WalletManager::new(context.clone());
         let _ = manager.load_wallet(&name, &secret).await?;
 
@@ -43,24 +43,19 @@ impl WalletSubShellRunner {
 
         loop {
             // Get command from user input.
-
             let prompt_input = self.read_command(&formatted_prompt).await;
+
             match prompt_input {
-                Ok(open_cmd) => {
+                Ok(sub_shell_cmd) => {
                     // Exit if the user chooses to exit.
-                    if open_cmd == SubShellCommand::Exit {
+                    if sub_shell_cmd == SubShellCommand::Exit {
                         self.print_exit();
                         return Ok(());
                     }
 
-                    // Dispatch the command.
-                    // TODO: clean this up as the match following this seems non-canonical.
-                    let dispatch_result = &self.dispatch(&open_cmd).await;
-
                     // Output error, if any, and continue running.
-                    match dispatch_result {
-                        Err(err) => self.print_dispatch_error(err, &open_cmd),
-                        _ => {}
+                    if let Err(err) = self.dispatch(&sub_shell_cmd).await {
+                        self.print_command_error(&err, &sub_shell_cmd)
                     }
                 }
                 Err(err) => print_error(&err),
@@ -68,7 +63,7 @@ impl WalletSubShellRunner {
         }
     }
 
-    /// Dispatch and process a single sub-wallet_shell command.
+    /// Dispatch and process a single sub shell command.
     async fn dispatch(&self, interactive_cmd: &SubShellCommand) -> anyhow::Result<()> {
         // Dispatch a command and return a command result
         match &interactive_cmd {
@@ -85,10 +80,10 @@ impl WalletSubShellRunner {
                 self.balance().await?;
             }
             SubShellCommand::Help => {
-                self.help().await?;
+                self.print_help();
             }
             SubShellCommand::Exit => {
-                self.exit().await?;
+                self.print_exit();
             }
         }
         Ok(())
@@ -170,7 +165,7 @@ impl WalletSubShellRunner {
     }
 
     /// Output the error when dispatching command
-    fn print_dispatch_error(&self, err: &Error, sub_cmd: &SubShellCommand) {
+    fn print_command_error(&self, err: &Error, sub_cmd: &SubShellCommand) {
         eprintln!("ERROR: {} when dispatching {:?}", err, sub_cmd);
     }
 }

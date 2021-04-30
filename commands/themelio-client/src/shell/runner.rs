@@ -17,30 +17,30 @@ pub struct WalletShellRunner {
 }
 
 impl WalletShellRunner {
-    pub fn new(context: ExecutionContext) -> Self {
+    pub(crate) fn new(context: ExecutionContext) -> Self {
         Self { context }
     }
 
     /// Run wallet_shell commands from user input until user exits.
-    pub async fn run(&self) -> anyhow::Result<()> {
+    pub(crate) async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
         let formatted_prompt = self.format_prompt();
 
         loop {
+            // Get command from user input.
             let prompt_input = self.read_command(&formatted_prompt).await;
 
-            // Get command from user input.
             match prompt_input {
-                Ok(cmd) => {
+                Ok(shell_cmd) => {
                     // Exit if the user chooses to exit.
-                    if cmd == ShellCommand::Exit {
-                        self.exit();
+                    if shell_cmd == ShellCommand::Exit {
+                        self.print_exit();
                         return Ok(());
                     }
 
                     // Output error, if any, and continue running.
-                    if let Err(err) = self.dispatch(&cmd).await {
-                        self.print_command_error(&err, &cmd)
+                    if let Err(err) = self.dispatch(&shell_cmd).await {
+                        self.print_command_error(&err, &shell_cmd)
                     }
                 }
                 // Output parsing error and continue running.
@@ -48,6 +48,8 @@ impl WalletShellRunner {
             }
         }
     }
+
+    /// Dispatch and process a single shell command.
     async fn dispatch(&self, cmd: &ShellCommand) -> anyhow::Result<()> {
         let ce = CommandExecutor::new(self.context.clone());
 
@@ -62,10 +64,10 @@ impl WalletShellRunner {
                 self.open_wallet(wallet_name, secret).await?;
             }
             ShellCommand::Help => {
-                self.help();
+                self.print_help();
             }
             ShellCommand::Exit => {
-                self.exit();
+                self.print_exit();
             }
         }
         Ok(())
@@ -78,12 +80,12 @@ impl WalletShellRunner {
     }
 
     /// Show exit message.
-    fn exit(&self) {
+    fn print_exit(&self) {
         eprintln!("\nExiting Themelio Client wallet_shell");
     }
 
     /// Show available input commands for the shell
-    fn help(&self) {
+    fn print_help(&self) {
         eprintln!("\nAvailable commands are: ");
         eprintln!(">> create-wallet <wallet-name>");
         eprintln!(">> open-wallet <wallet-name> <secret>");
