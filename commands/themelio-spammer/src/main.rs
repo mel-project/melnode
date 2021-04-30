@@ -9,9 +9,7 @@ use std::{
 };
 
 use anyhow::Context;
-use blkstructs::{
-    melvm::Covenant, CoinData, CoinID, Transaction, TxKind, DENOM_DOSC, DENOM_TMEL, MICRO_CONVERTER,
-};
+use blkstructs::{melvm::Covenant, CoinData, CoinID, Denom, Transaction, TxKind, MICRO_CONVERTER};
 use governor::{
     clock::QuantaClock,
     state::{InMemoryState, NotKeyed},
@@ -67,14 +65,14 @@ async fn spammer(
 ) -> anyhow::Result<()> {
     let first_queue_entry = {
         let (pk, sk) = tmelcrypt::ed25519_keygen();
-        let my_covenant = Covenant::std_ed25519_pk_4(pk);
+        let my_covenant = Covenant::std_ed25519_pk(pk);
         let mut buf = vec![0u8; 32];
         rand::thread_rng().fill_bytes(&mut buf);
         let first_tx = Transaction {
             kind: TxKind::Faucet,
             inputs: vec![],
             outputs: vec![CoinData {
-                denom: DENOM_TMEL.into(),
+                denom: Denom::Mel,
                 value: 1 << 40,
                 additional_data: vec![],
                 covhash: my_covenant.hash(),
@@ -122,8 +120,8 @@ async fn spammer(
                 (
                     CoinData {
                         value,
-                        denom: DENOM_TMEL.into(),
-                        covhash: Covenant::std_ed25519_pk_4(pk).hash(),
+                        denom: Denom::Mel,
+                        covhash: Covenant::std_ed25519_pk(pk).hash(),
                         additional_data: vec![],
                     },
                     sk,
@@ -141,7 +139,7 @@ async fn spammer(
             fee,
             scripts: inputs
                 .iter()
-                .map(|v| Covenant::std_ed25519_pk_4(v.unlock_key.to_public()))
+                .map(|v| Covenant::std_ed25519_pk(v.unlock_key.to_public()))
                 .collect(),
             sigs: vec![],
             data: vec![],

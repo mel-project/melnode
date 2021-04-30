@@ -1,5 +1,5 @@
 pub use crate::stake::*;
-use crate::{constants::*, melvm::Covenant, preseal_melmint, CoinDataHeight, TxKind};
+use crate::{constants::*, melvm::Covenant, preseal_melmint, CoinDataHeight, Denom, TxKind};
 use crate::{smtmapping::*, CoinData};
 use crate::{transaction as txn, CoinID};
 use applytx::StateHandle;
@@ -177,7 +177,7 @@ impl State {
             CoinDataHeight {
                 height: 0,
                 coin_data: CoinData {
-                    denom: DENOM_TMEL.into(),
+                    denom: Denom::Mel,
                     value: cfg.init_micromels,
                     covhash: cfg.init_covhash,
                     additional_data: vec![],
@@ -260,7 +260,7 @@ impl State {
         let init_coin = txn::CoinData {
             covhash: start_cov_hash,
             value: start_micro_mels,
-            denom: DENOM_TMEL.to_vec(),
+            denom: Denom::Mel,
             additional_data: vec![],
         };
         empty.coins.insert(
@@ -332,7 +332,7 @@ impl State {
                 coin_data: CoinData {
                     covhash: action.reward_dest,
                     value: base_fees + tips,
-                    denom: DENOM_TMEL.into(),
+                    denom: Denom::Mel,
                     additional_data: vec![],
                 },
                 height: self.height,

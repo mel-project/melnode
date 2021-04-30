@@ -57,8 +57,8 @@ impl SmtMapping<tmelcrypt::HashVal, StakeDoc> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::State;
-    use crate::{melvm, CoinData, CoinDataHeight, CoinID, DENOM_TMEL};
+    use crate::{melvm, CoinData, CoinDataHeight, CoinID};
+    use crate::{Denom, State};
     use rstest::rstest;
     use std::collections::HashMap;
     use tmelcrypt::Ed25519SK;
@@ -81,7 +81,7 @@ mod tests {
                 coin_data: CoinData {
                     covhash: start_conshash,
                     value: start_micromels,
-                    denom: DENOM_TMEL.to_vec(),
+                    denom: Denom::Mel,
                     additional_data: vec![],
                 },
                 height: 0,

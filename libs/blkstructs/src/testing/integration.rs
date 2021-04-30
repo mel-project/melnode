@@ -1,11 +1,14 @@
 // use rand::prelude::SliceRandom;
 
 // use crate::testing::factory::*;
-use crate::testing::fixtures::{genesis_state, tx_send_mel_from_seed_coin, SEND_MEL_AMOUNT};
 use crate::testing::utils::{
     filter_tx_outputs_by_pk, random_valid_txx, tx_create_token, tx_deposit, tx_send_mels_to,
 };
-use crate::{melvm, CoinData, CoinID, SmtMapping, State, Transaction, DENOM_TMEL, MICRO_CONVERTER};
+use crate::{melvm, CoinData, CoinID, SmtMapping, State, Transaction, MICRO_CONVERTER};
+use crate::{
+    testing::fixtures::{genesis_state, tx_send_mel_from_seed_coin, SEND_MEL_AMOUNT},
+    Denom,
+};
 use rstest::*;
 use tmelcrypt::{Ed25519PK, Ed25519SK};
 
@@ -170,7 +173,7 @@ fn state_simple_order_independence() {
         CoinData {
             covhash: scr.hash(),
             value: MICRO_CONVERTER * 1000,
-            denom: DENOM_TMEL.to_owned(),
+            denom: Denom::Mel,
             additional_data: vec![],
         },
         sk,

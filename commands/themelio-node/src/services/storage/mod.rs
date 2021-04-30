@@ -3,7 +3,7 @@
 mod sled_tree;
 use std::sync::Arc;
 
-use blkdb::{backends::InMemoryBackend, traits::DbBackend, BlockTree};
+use blkdb::{traits::DbBackend, BlockTree};
 use blkstructs::{ConsensusProof, GenesisConfig, SealedState, State, StateError, Transaction};
 use lru::LruCache;
 use parking_lot::RwLock;

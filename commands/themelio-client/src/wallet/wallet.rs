@@ -1,9 +1,7 @@
 use crate::utils::context::ExecutionContext;
 use crate::wallet::data::WalletData;
 use anyhow::Context;
-use blkstructs::{
-    CoinData, CoinDataHeight, CoinID, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
-};
+use blkstructs::{CoinData, CoinDataHeight, CoinID, Denom, Transaction, TxKind, MICRO_CONVERTER};
 use tmelcrypt::Ed25519SK;
 /// Representation of an open wallet. Automatically keeps storage in sync.
 pub struct ActiveWallet {
@@ -38,7 +36,7 @@ impl ActiveWallet {
             kind: TxKind::Faucet,
             inputs: vec![],
             outputs: vec![CoinData {
-                denom: DENOM_TMEL.to_owned(),
+                denom: Denom::Mel,
                 covhash: self.data.my_covenant().hash(),
                 value: value * MICRO_CONVERTER,
                 additional_data: vec![],

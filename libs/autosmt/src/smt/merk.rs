@@ -1,10 +1,8 @@
 use crate::smt::*;
 use bitvec::prelude::*;
-use once_cell::sync::Lazy;
-use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 use std::io::Read;
-use std::{collections::HashMap, fmt::Debug};
 
 pub(crate) const MSB_SET: u8 = 0b1000_0000;
 

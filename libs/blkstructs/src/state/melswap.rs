@@ -1,10 +1,10 @@
-use crate::{SmtMapping, MICRO_CONVERTER};
+use crate::{Denom, SmtMapping, MICRO_CONVERTER};
 use num::{rational::Ratio, BigInt, BigRational, BigUint};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 
 /// A pool
-pub type PoolMapping = SmtMapping<Vec<u8>, PoolState>;
+pub type PoolMapping = SmtMapping<Denom, PoolState>;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct PoolState {

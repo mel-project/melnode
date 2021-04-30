@@ -121,14 +121,14 @@ impl fmt::Debug for HashVal {
 }
 
 /// Hashes a single value.
-pub fn hash_single(val: &[u8]) -> HashVal {
-    let b3h = blake3::hash(val);
+pub fn hash_single(val: impl AsRef<[u8]>) -> HashVal {
+    let b3h = blake3::hash(val.as_ref());
     HashVal((*b3h.as_bytes().as_ref()).try_into().unwrap())
 }
 
 /// Hashes a value with the given key.
-pub fn hash_keyed(key: &[u8], val: &[u8]) -> HashVal {
-    let b3h = blake3::keyed_hash(&hash_single(key).0, val);
+pub fn hash_keyed(key: impl AsRef<[u8]>, val: impl AsRef<[u8]>) -> HashVal {
+    let b3h = blake3::keyed_hash(&hash_single(key).0, val.as_ref());
     HashVal((*b3h.as_bytes().as_ref()).try_into().unwrap())
 }
 
