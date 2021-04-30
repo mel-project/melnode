@@ -72,13 +72,61 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                     amount,
                     unit,
                 } => executor.faucet(&wallet_name, &secret, &amount, &unit).await,
-                // WalletUtilsCommand::SendCoins { wallet_name, secret, address, amount, unit } => {
-                //     executor.send_coins(&wallet_name, &secret, &address, &amount, &unit).await
-                // }
-                // WalletUtilsCommand::AddCoins { .. } => {}
-                // WalletUtilsCommand::ShowBalance { .. } => {}
-                // WalletUtilsCommand::ShowWallets => {}
-                _ => todo!("not impl"),
+                WalletUtilsCommand::SendCoins {
+                    wallet_name,
+                    secret,
+                    address,
+                    amount,
+                    unit,
+                } => {
+                    executor
+                        .send_coins(&wallet_name, &secret, &address, &amount, &unit)
+                        .await
+                }
+                WalletUtilsCommand::AddCoins {
+                    wallet_name,
+                    secret,
+                    coin_id,
+                } => {
+                    todo!("impl");
+                }
+                WalletUtilsCommand::ShowBalance {
+                    wallet_name,
+                    secret,
+                } => {
+                    todo!("impl");
+                }
+                WalletUtilsCommand::ShowWallets => {
+                    todo!("impl");
+                }
+                WalletUtilsCommand::DepositCoins {
+                    wallet_name,
+                    secret,
+                    cov_hash_a,
+                    amount_a,
+                    cov_hash_b,
+                    amount_b,
+                } => {
+                    todo!("impl");
+                }
+                WalletUtilsCommand::WithdrawCoins {
+                    wallet_name,
+                    secret,
+                    cov_hash_a,
+                    amount_a,
+                    cov_hash_b,
+                    amount_b,
+                } => {
+                    todo!("impl");
+                }
+                WalletUtilsCommand::SwapCoins {
+                    wallet_name,
+                    secret,
+                    cov_hash,
+                    amount,
+                } => {
+                    todo!("impl");
+                }
             }?;
 
             // Show results serialized as JSON

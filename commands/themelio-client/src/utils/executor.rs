@@ -28,7 +28,7 @@ impl CommandExecutor {
         // Get created wallet info from the active wallet
         let name = wallet.name().to_string();
         let address = wallet.data().my_covenant().hash().to_addr();
-        let secret = hex::encode(wallet.secret().0);
+        let secret = hex::encode(wallet.secret().clone().0);
         let info = CreatedWalletInfo {
             name,
             address,
@@ -83,7 +83,7 @@ impl CommandExecutor {
         _address: &str,
         _amount: &str,
         _unit: &str,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Box<dyn Serialize>> {
         // Load wallet from wallet manager using name and secret
         let manager = WalletManager::new(self.context.clone());
         let _wallet = manager.load_wallet(wallet_name, secret).await?;
@@ -115,19 +115,23 @@ impl CommandExecutor {
         _wallet_name: &str,
         _secret: &str,
         _coin_id: &str,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Box<dyn Serialize>> {
         unimplemented!();
         // Ok(())
     }
 
     /// Shows the total known wallet balance.
-    pub async fn show_balance(&self, _wallet_name: &str, _secret: &str) -> anyhow::Result<()> {
+    pub async fn show_balance(
+        &self,
+        _wallet_name: &str,
+        _secret: &str,
+    ) -> anyhow::Result<Box<dyn Serialize>> {
         unimplemented!();
         // Ok(())
     }
 
     /// Shows all the wallets by name that are stored in the db.
-    pub async fn show_wallets(&self) -> anyhow::Result<()> {
+    pub async fn show_wallets(&self) -> anyhow::Result<Box<dyn Serialize>> {
         unimplemented!();
         // Ok(())
     }
