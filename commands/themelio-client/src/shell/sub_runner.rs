@@ -1,11 +1,9 @@
 use crate::context::ExecutionContext;
 use crate::executor::CommandExecutor;
 use crate::shell::command::SubShellCommand;
-use crate::shell::io::{format_named_prompt, read_sub_shell_command};
-use crate::shell::io::{
-    print_dispatch_error, print_readline_error, print_subshell_exit, print_subshell_help,
-};
+use crate::shell::io::{common_read_line, print_readline_error};
 use crate::wallet::manager::WalletManager;
+use std::convert::TryFrom;
 
 /// A sub-wallet_shell runner executed within the higher-level wallet_shell.
 /// This wallet_shell unlocks a wallet, transacts with the network and shows balances.
@@ -39,17 +37,17 @@ impl WalletSubShellRunner {
     /// Read and execute sub-wallet_shell commands from user until user exits.
     pub(crate) async fn run(&self) -> anyhow::Result<()> {
         // Format user prompt.
-        let formatted_prompt = format_named_prompt(&self.context.version, &self.name);
+        let formatted_prompt = self.format_prompt(&self.context.version, &self.name);
 
         loop {
             // Get command from user input.
 
-            let prompt_input = read_sub_shell_command(&formatted_prompt).await;
+            let prompt_input = self.read_command(&formatted_prompt).await;
             match prompt_input {
                 Ok(open_cmd) => {
                     // Exit if the user chooses to exit.
                     if open_cmd == SubShellCommand::Exit {
-                        print_subshell_exit();
+                        self.exit();
                         return Ok(());
                     }
 
@@ -128,59 +126,47 @@ impl WalletSubShellRunner {
         Ok(())
     }
 
-    /// Show available sub wallet_shell command args & inputs to user
-    async fn help(&self) -> anyhow::Result<()> {
-        print_subshell_help();
-        Ok(())
+    /// Read input to prompt and parse it into a sub shell command
+    async fn read_command(prompt: &str) -> anyhow::Result<SubShellCommand> {
+        let input = common_read_line(prompt.to_string()).await?;
+        let open_wallet_cmd = SubShellCommand::try_from(input)?;
+        Ok(open_wallet_cmd)
+    }
+
+    /// Show available input commands for the sub shell
+    fn print_help(&self) {
+        eprintln!("\nAvailable commands are: ");
+        eprintln!(">> faucet <amount> <unit>");
+        eprintln!(">> send-coins <address> <amount> <unit>");
+        eprintln!(">> add-coins <coin-id>");
+        // eprintln!(">> deposit args");
+        // eprintln!(">> swap args");
+        // eprintln!(">> withdraw args");
+        eprintln!(">> balance");
+        eprintln!(">> help");
+        eprintln!(">> exit");
+        eprintln!(">> ");
     }
 
     /// Show exit message
-    async fn exit(&self) -> anyhow::Result<()> {
-        print_subshell_exit();
-        Ok(())
+    fn print_exit(&self) {
+        eprintln!("\nExiting Themelio Client active wallet");
     }
-}
 
-/// Read input to prompt and parse it into a sub shell command
-pub(crate) async fn read_sub_shell_command(prompt: &str) -> anyhow::Result<SubShellCommand> {
-    let input = common_read_line(prompt.to_string()).await?;
-    let open_wallet_cmd = SubShellCommand::try_from(input)?;
-    Ok(open_wallet_cmd)
-}
+    /// Create a named prompt for sub shell mode to show wallet name.
+    fn format_named_prompt(&self, version: &str, name: &str) -> String {
+        let prompt_stack: Vec<String> = vec![
+            "themelio-client".to_string().cyan().bold().to_string(),
+            format!("(v{})", version).magenta().to_string(),
+            "➜ ".to_string().cyan().bold().to_string(),
+            format!("({})", name).cyan().to_string(),
+            "➜ ".to_string().cyan().bold().to_string(),
+        ];
+        prompt_stack.join(" ")
+    }
 
-/// Show available input commands for the sub shell
-pub(crate) fn print_subshell_help() {
-    eprintln!("\nAvailable commands are: ");
-    eprintln!(">> faucet <amount> <unit>");
-    eprintln!(">> send-coins <address> <amount> <unit>");
-    eprintln!(">> add-coins <coin-id>");
-    // eprintln!(">> deposit args");
-    // eprintln!(">> swap args");
-    // eprintln!(">> withdraw args");
-    eprintln!(">> balance");
-    eprintln!(">> help");
-    eprintln!(">> exit");
-    eprintln!(">> ");
-}
-
-/// Show exit message
-pub(crate) fn print_subshell_exit() {
-    eprintln!("\nExiting Themelio Client active wallet");
-}
-
-/// Create a named prompt for sub shell mode to show wallet name.
-pub(crate) fn format_named_prompt(version: &str, name: &str) -> String {
-    let prompt_stack: Vec<String> = vec![
-        "themelio-client".to_string().cyan().bold().to_string(),
-        format!("(v{})", version).magenta().to_string(),
-        "➜ ".to_string().cyan().bold().to_string(),
-        format!("({})", name).cyan().to_string(),
-        "➜ ".to_string().cyan().bold().to_string(),
-    ];
-    prompt_stack.join(" ")
-}
-
-/// Output the error when dispatching command
-pub(crate) fn print_dispatch_error(err: &Error, sub_cmd: &SubShellCommand) {
-    eprintln!("ERROR: {} when dispatching {:?}", err, sub_cmd);
+    /// Output the error when dispatching command
+    fn print_dispatch_error(&self, err: &Error, sub_cmd: &SubShellCommand) {
+        eprintln!("ERROR: {} when dispatching {:?}", err, sub_cmd);
+    }
 }
