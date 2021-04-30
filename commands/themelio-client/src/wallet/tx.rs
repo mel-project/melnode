@@ -1,4 +1,5 @@
-use crate::config::BALLAST;
+use crate::config::{BALLAST, FEE_MULTIPLIER};
+use crate::wallet::error::WalletError;
 use blkstructs::{CoinData, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER};
 use tmelcrypt::HashVal;
 
@@ -6,15 +7,14 @@ pub struct TxBuilder;
 
 impl TxBuilder {
     /// Create a faucet transaction given inputs as strings amount, unit and a value for fee.
-    /// TODO: fix fees
+    /// TODO: units variable is not yet used.
     pub async fn create_faucet_tx(
         amount: &str,
         _unit: &str,
         cov_hash: HashVal,
-    ) -> anyhow::Result<Option<Transaction>> {
-        // TODO: units
+    ) -> anyhow::Result<Transaction> {
         let value: u128 = amount.parse()?;
-        let fee_multiplier: u128 = 1000;
+        let fee_multiplier: u128 = FEE_MULTIPLIER;
 
         let tx = Transaction {
             kind: TxKind::Faucet,
@@ -25,14 +25,19 @@ impl TxBuilder {
                 value: value * MICRO_CONVERTER,
                 additional_data: vec![],
             }],
-            fee: 105975,
+            fee: 0,
             scripts: vec![],
             sigs: vec![],
             data: vec![],
-        };
-        // .applied_fee(fee_multiplier, BALLAST, 0);
+        }
+        .applied_fee(fee_multiplier, BALLAST, 0);
 
-        Ok(Some(tx))
+        if tx.is_none() {
+            anyhow::bail!(WalletError::InvalidTransactionArgs(
+                "create faucet tx failed".to_string()
+            ))
+        }
+        Ok(tx.unwrap())
     }
 
     pub async fn create_send_mel_tx(
