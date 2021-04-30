@@ -14,8 +14,8 @@ pub struct CreatedWalletInfo {
 
 #[derive(Serialize, Debug)]
 pub struct FaucetTxConfirmedInfo {
-    tx: Transaction,
-    coin_data_height: CoinDataHeight,
+    pub tx: Transaction,
+    pub coin_data_height: CoinDataHeight,
 }
 
 trait Printable {
@@ -41,7 +41,7 @@ impl Printable for CreatedWalletInfo {
 impl Printable for FaucetTxConfirmedInfo {
     fn print(&self, w: &mut dyn Write) {
         let mut tw = TabWriter::new(vec![]);
-        let coin_data_height = self.coin_data_height;
+        let coin_data_height = self.coin_data_height.clone();
         let tx = self.tx.clone();
     }
 }

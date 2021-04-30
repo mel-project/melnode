@@ -1,8 +1,8 @@
 use crate::shell::command::SubShellCommand;
-use crate::shell::output::{
+use crate::shell::io::{format_named_prompt, read_sub_shell_command};
+use crate::shell::io::{
     print_dispatch_error, print_readline_error, print_subshell_exit, print_subshell_help,
 };
-use crate::shell::prompt::{format_named_prompt, read_sub_shell_command};
 use crate::utils::context::ExecutionContext;
 use crate::utils::executor::CommandExecutor;
 use crate::wallet::manager::WalletManager;
