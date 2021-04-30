@@ -39,6 +39,9 @@ impl<B: DbBackend> BlockTree<B> {
         let next_state = previous
             .apply_block(block)
             .map_err(ApplyBlockErr::CannotValidate)?;
+        if next_state.header() != block.header {
+            return Err(ApplyBlockErr::HeaderMismatch);
+        }
         self.inner.insert_block(next_state, init_metadata);
         Ok(())
     }
@@ -188,6 +191,15 @@ pub struct Cursor<'a, B: DbBackend> {
     internal: InternalValue,
 }
 
+impl<'a, B: DbBackend> Clone for Cursor<'a, B> {
+    fn clone(&self) -> Self {
+        Self {
+            tree: self.tree,
+            internal: self.internal.clone(),
+        }
+    }
+}
+
 impl<'a, B: DbBackend> Cursor<'a, B> {
     /// Converts to a SealedState.
     pub fn to_state(&self) -> SealedState {
@@ -272,6 +284,8 @@ pub enum ApplyBlockErr {
     ParentNotFound(HashVal),
     #[error("validation error: `{0}`")]
     CannotValidate(blkstructs::StateError),
+    #[error("header mismatch")]
+    HeaderMismatch,
 }
 
 /// Lower-level helper struct that provides fail-safe basic operations.

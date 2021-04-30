@@ -2035,6 +2035,34 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "44a1290799eababa63ea60af0cbc3f03363e328e58f32fb0294798ed3e85f444"
 
 [[package]]
+name = "novasymph"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-oneshot",
+ "async-trait",
+ "autosmt",
+ "blkdb",
+ "blkstructs",
+ "broadcaster",
+ "bytes",
+ "env_logger 0.8.3",
+ "fastrand",
+ "im",
+ "log",
+ "melnet",
+ "once_cell",
+ "parking_lot 0.11.1",
+ "serde",
+ "smol",
+ "smol-timeout",
+ "smolscale",
+ "stdcode",
+ "thiserror",
+ "tmelcrypt",
+]
+
+[[package]]
 name = "num"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

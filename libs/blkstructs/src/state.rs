@@ -9,9 +9,9 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use arbitrary::Arbitrary;
 use serde::{Deserialize, Serialize};
-use std::io::Read;
 use std::sync::Arc;
 use std::{collections::BTreeMap, convert::TryInto};
+use std::{collections::BTreeSet, io::Read};
 use std::{collections::HashMap, fmt::Debug};
 use thiserror::Error;
 use tmelcrypt::{Ed25519PK, HashVal};
@@ -584,7 +584,7 @@ impl Block {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AbbrBlock {
     pub header: Header,
-    pub txhashes: im::OrdSet<HashVal>,
+    pub txhashes: BTreeSet<HashVal>,
     pub proposer_action: Option<ProposerAction>,
 }
 

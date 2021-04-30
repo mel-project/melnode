@@ -3,7 +3,7 @@
 mod sled_tree;
 use std::sync::Arc;
 
-use blkdb::{backends::InMemoryBackend, BlockTree};
+use blkdb::{backends::InMemoryBackend, traits::DbBackend, BlockTree};
 use blkstructs::{ConsensusProof, GenesisConfig, SealedState, State, StateError, Transaction};
 use lru::LruCache;
 use parking_lot::RwLock;
@@ -19,7 +19,7 @@ pub type SharedStorage = Arc<RwLock<NodeStorage>>;
 pub struct NodeStorage {
     mempool: Mempool,
 
-    history: BlockTree<InMemoryBackend>,
+    history: BlockTree<SledBackend>,
     forest: autosmt::Forest,
 }
 
@@ -37,7 +37,10 @@ impl NodeStorage {
     /// Opens a NodeStorage, given a sled database.
     pub fn new(db: sled::Db, genesis: GenesisConfig) -> Self {
         let forest = autosmt::Forest::load(SledTreeDB::new(db.open_tree("autosmt").unwrap()));
-        let mut history = BlockTree::new(InMemoryBackend::default(), forest.clone());
+        let blktree_backend = SledBackend {
+            inner: db.open_tree("node_blktree").unwrap(),
+        };
+        let mut history = BlockTree::new(blktree_backend, forest.clone());
 
         // initialize stuff
         if history.get_tips().is_empty() {
@@ -114,6 +117,31 @@ impl NodeStorage {
     /// Convenience method to "share" storage.
     pub fn share(self) -> SharedStorage {
         Arc::new(RwLock::new(self))
+    }
+}
+
+struct SledBackend {
+    inner: sled::Tree,
+}
+
+impl DbBackend for SledBackend {
+    fn insert(&mut self, key: &[u8], value: &[u8]) -> Option<Vec<u8>> {
+        self.inner.insert(key, value).unwrap().map(|v| v.to_vec())
+    }
+
+    fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
+        self.inner.get(key).unwrap().map(|v| v.to_vec())
+    }
+
+    fn remove(&mut self, key: &[u8]) -> Option<Vec<u8>> {
+        self.inner.remove(key).unwrap().map(|v| v.to_vec())
+    }
+
+    fn key_range(&self, start: &[u8], end: &[u8]) -> Vec<Vec<u8>> {
+        self.inner
+            .range(start..=end)
+            .map(|v| v.unwrap().0.to_vec())
+            .collect()
     }
 }
 

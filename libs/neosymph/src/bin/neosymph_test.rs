@@ -1,4 +1,7 @@
-use std::time::{Duration, SystemTime};
+use std::{
+    collections::BTreeSet,
+    time::{Duration, SystemTime},
+};
 
 use blkstructs::{melvm, AbbrBlock, ProposerAction, Transaction, STAKE_EPOCH};
 use neosymph::{
@@ -67,7 +70,7 @@ async fn run_instance(net: MockNet, idx: usize) {
                     .send(ProposalMsg {
                         proposal: AbbrBlock {
                             header: next.header(),
-                            txhashes: im::OrdSet::new(),
+                            txhashes: BTreeSet::new(),
                             proposer_action: action,
                         },
                         last_nonempty,

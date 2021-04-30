@@ -1,0 +1,46 @@
+use std::collections::BTreeSet;
+
+use blkstructs::{AbbrBlock, Block, Transaction};
+use serde::{Deserialize, Serialize};
+use tmelcrypt::HashVal;
+
+use super::helpers::StreamletMetadata;
+
+/// A gossip request that contains the info needed to solicit some newer info from a peer.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct BlockRequest {
+    /// Contains the LNC tips.
+    pub lnc_tips: BTreeSet<HashVal>,
+    /// Known tip descendants of the LNC tips.
+    pub lnc_leaves: BTreeSet<HashVal>,
+}
+
+/// A gossip response that contains information for *one* block.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AbbrBlockResponse {
+    pub abbr_block: AbbrBlock,
+    pub metadata: StreamletMetadata,
+}
+
+/// A gossip response that contains information for one block, that has all the information needed
+#[derive(Clone, Debug)]
+pub struct FullBlockResponse {
+    pub block: Block,
+    pub metadata: StreamletMetadata,
+}
+
+/// A gossip request that solicits information about transactions.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TransactionRequest {
+    /// Which block to search in
+    pub block_hash: HashVal,
+    /// Transaction hashes
+    pub hashes: Vec<HashVal>,
+}
+
+/// A gossip response that contains information about transactions.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TransactionResponse {
+    /// Just the transactions. Hash these transactions to check the txhash validity.
+    pub transactions: Vec<Transaction>,
+}
