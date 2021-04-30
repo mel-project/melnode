@@ -87,18 +87,12 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                     wallet_name,
                     secret,
                     coin_id,
-                } => {
-                    todo!("impl");
-                }
+                } => executor.add_coins(&wallet_name, &secret, &coin_id).await,
                 WalletUtilsCommand::ShowBalance {
                     wallet_name,
                     secret,
-                } => {
-                    todo!("impl");
-                }
-                WalletUtilsCommand::ShowWallets => {
-                    todo!("impl");
-                }
+                } => executor.show_balance(&wallet_name, &secret).await,
+                WalletUtilsCommand::ShowWallets => executor.show_wallets().await,
                 WalletUtilsCommand::DepositCoins {
                     wallet_name,
                     secret,
@@ -107,7 +101,16 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                     cov_hash_b,
                     amount_b,
                 } => {
-                    todo!("impl");
+                    executor
+                        .deposit(
+                            &wallet_name,
+                            &secret,
+                            &cov_hash_a,
+                            &amount_a,
+                            &cov_hash_b,
+                            &amount_b,
+                        )
+                        .await
                 }
                 WalletUtilsCommand::WithdrawCoins {
                     wallet_name,
@@ -117,7 +120,16 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                     cov_hash_b,
                     amount_b,
                 } => {
-                    todo!("impl");
+                    executor
+                        .withdraw(
+                            &wallet_name,
+                            &secret,
+                            &cov_hash_a,
+                            &amount_a,
+                            &cov_hash_b,
+                            &amount_b,
+                        )
+                        .await
                 }
                 WalletUtilsCommand::SwapCoins {
                     wallet_name,
@@ -125,7 +137,9 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                     cov_hash,
                     amount,
                 } => {
-                    todo!("impl");
+                    executor
+                        .swap(&wallet_name, &secret, &cov_hash, &amount)
+                        .await
                 }
             }?;
 

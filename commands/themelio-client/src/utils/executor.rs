@@ -136,6 +136,44 @@ impl CommandExecutor {
         // Ok(())
     }
 
+    /// Liq. Deposit a token pair into melswap
+    pub async fn deposit(
+        &self,
+        wallet_name: &str,
+        secret: &str,
+        cov_hash_a: &str,
+        amount_a: &str,
+        cov_hash_b: &str,
+        amount_b: &str,
+    ) -> anyhow::Result<Box<dyn Serialize>> {
+        unimplemented!();
+        // Ok(())
+    }
+    /// Liq. Deposit a token pair into melswap
+    pub async fn withdraw(
+        &self,
+        wallet_name: &str,
+        secret: &str,
+        cov_hash_a: &str,
+        amount_a: &str,
+        cov_hash_b: &str,
+        amount_b: &str,
+    ) -> anyhow::Result<Box<dyn Serialize>> {
+        unimplemented!();
+        // Ok(())
+    }
+    /// Swap to and from mel
+    pub async fn swap(
+        &self,
+        wallet_name: &str,
+        secret: &str,
+        cov_hash: &str,
+        amount: &str,
+    ) -> anyhow::Result<Box<dyn Serialize>> {
+        unimplemented!();
+        // Ok(())
+    }
+
     /// Check transaction until it is confirmed.
     pub async fn confirm_tx(
         &self,
