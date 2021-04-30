@@ -1,7 +1,10 @@
 use blkstructs::{CoinDataHeight, CoinID, Transaction};
 
 use crate::context::ExecutionContext;
-use crate::wallet::info::{CreatedWalletInfo, FaucetInfo, Printable};
+use crate::wallet::info::{
+    BalanceInfo, CoinsInfo, CreatedWalletInfo, DepositInfo, FaucetInfo, Printable, SendCoinsInfo,
+    SwapInfo, WalletsInfo, WithdrawInfo,
+};
 use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::ActiveWallet;
 
@@ -71,7 +74,7 @@ impl CommandExecutor {
         _address: &str,
         _amount: &str,
         _unit: &str,
-    ) -> anyhow::Result<Box<dyn Serialize>> {
+    ) -> anyhow::Result<SendCoinsInfo> {
         // Load wallet from wallet manager using name and secret
         let manager = WalletManager::new(self.context.clone());
         let _wallet = manager.load_wallet(wallet_name, secret).await?;
@@ -93,7 +96,8 @@ impl CommandExecutor {
         // print confirmation results for send mel tx
         // println!("confirmed at height {:?}! ", coin_data_height);
         // CommandOutput::print_confirmed_send_mel_tx(&coin_data_height).await?;
-        todo!("")
+        // todo!("")
+        Ok(SendCoinsInfo)
     }
 
     /// Adds coins by coin id to wallet.
@@ -102,18 +106,22 @@ impl CommandExecutor {
         _wallet_name: &str,
         _secret: &str,
         _coin_id: &str,
-    ) -> anyhow::Result<()> {
-        Ok(())
+    ) -> anyhow::Result<CoinsInfo> {
+        Ok(CoinsInfo)
     }
 
     /// Shows the total known wallet balance.
-    pub async fn show_balance(&self, _wallet_name: &str, _secret: &str) -> anyhow::Result<()> {
-        Ok(())
+    pub async fn show_balance(
+        &self,
+        _wallet_name: &str,
+        _secret: &str,
+    ) -> anyhow::Result<BalanceInfo> {
+        Ok(BalanceInfo)
     }
 
     /// Shows all the wallets by name that are stored in the db.
-    pub async fn show_wallets(&self) -> anyhow::Result<()> {
-        Ok(())
+    pub async fn show_wallets(&self) -> anyhow::Result<WalletsInfo> {
+        Ok(WalletsInfo)
     }
 
     /// Liq. Deposit a token pair into melswap
@@ -125,9 +133,8 @@ impl CommandExecutor {
         amount_a: &str,
         cov_hash_b: &str,
         amount_b: &str,
-    ) -> anyhow::Result<Box<dyn Serialize>> {
-        unimplemented!();
-        // Ok(())
+    ) -> anyhow::Result<DepositInfo> {
+        Ok(DepositInfo)
     }
     /// Liq. Deposit a token pair into melswap
     pub async fn withdraw(
@@ -138,9 +145,8 @@ impl CommandExecutor {
         amount_a: &str,
         cov_hash_b: &str,
         amount_b: &str,
-    ) -> anyhow::Result<Box<dyn Serialize>> {
-        unimplemented!();
-        // Ok(())
+    ) -> anyhow::Result<WithdrawInfo> {
+        Ok(WithdrawInfo)
     }
     /// Swap to and from mel
     pub async fn swap(
@@ -149,12 +155,12 @@ impl CommandExecutor {
         secret: &str,
         cov_hash: &str,
         amount: &str,
-    ) -> anyhow::Result<Box<dyn Serialize>> {
-        unimplemented!();
-        // Ok(())
+    ) -> anyhow::Result<SwapInfo> {
+        Ok(SwapInfo)
     }
 
     /// Check transaction until it is confirmed.
+    /// TODO: move to active wallet
     pub async fn confirm_tx(
         &self,
         tx: &Transaction,

@@ -30,6 +30,15 @@ pub struct WithdrawInfo;
 #[derive(Serialize, Debug)]
 pub struct SwapInfo;
 
+#[derive(Serialize, Debug)]
+pub struct CoinsInfo;
+
+#[derive(Serialize, Debug)]
+pub struct BalanceInfo;
+
+#[derive(Serialize, Debug)]
+pub struct WalletsInfo;
+
 pub trait Printable {
     fn print(&self, w: &mut dyn std::io::Write);
 }
