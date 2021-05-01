@@ -2,7 +2,7 @@ use colored::Colorize;
 use std::io::Write;
 use tabwriter::TabWriter;
 
-use blkstructs::{CoinDataHeight, Transaction};
+use blkstructs::{CoinDataHeight, CoinID, Transaction};
 use serde::Serialize;
 use std::collections::BTreeMap;
 
@@ -44,7 +44,7 @@ impl Printable for CreatedWalletInfo {
 
 #[derive(Serialize, Debug)]
 pub struct FaucetInfo {
-    pub tx: Transaction,
+    pub coin_id: CoinID,
     pub coin_data_height: CoinDataHeight,
 }
 

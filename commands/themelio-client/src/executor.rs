@@ -1,4 +1,4 @@
-use blkstructs::{CoinDataHeight, Transaction};
+use blkstructs::{CoinDataHeight, CoinID, Transaction};
 
 use crate::context::ExecutionContext;
 use crate::wallet::info::{
@@ -9,6 +9,7 @@ use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::ActiveWallet;
 
 use crate::wallet::tx::TxBuilder;
+use colored::Colorize;
 use std::collections::BTreeMap;
 
 /// Responsible for executing a single client CLI command given all the inputs and returning a result.
@@ -53,17 +54,38 @@ impl CommandExecutor {
         // Create the faucet transaction and send it.
         let cov_hash = wallet.data().my_covenant().hash();
         let tx = TxBuilder::create_faucet_tx(amount, unit, cov_hash).await?;
-        println!("{:?}", tx);
+        eprintln!(
+            "Created faucet transaction for {} mels with {} fee",
+            amount.bold(),
+            unit
+        );
+
         wallet.send_tx(&tx).await?;
+        eprintln!("Sent transaction.");
 
         // Wait for confirmation of the transaction.
         let coin_data_height = self.confirm_tx(&tx, &wallet).await?;
+        eprintln!(
+            "Transaction confirmed at height: {}",
+            coin_data_height.height
+        );
+
+        // Output the coin identifier after confirmation.
+        let coin_id = CoinID {
+            txhash: tx.hash_nosigs(),
+            index: 0,
+        };
+        eprintln!(
+            ">> CID = {}",
+            hex::encode(stdcode::serialize(&coin_id).unwrap()).bold()
+        );
 
         // Return information about the confirmed faucet transaction.
         let info = FaucetInfo {
-            tx,
+            coin_id,
             coin_data_height,
         };
+
         Ok(info)
     }
 
@@ -179,16 +201,17 @@ impl CommandExecutor {
         tx: &Transaction,
         wallet: &ActiveWallet,
     ) -> anyhow::Result<CoinDataHeight> {
+        eprintln!("Waiting for transaction confirmation.");
         loop {
             let (coin_data_height, coin_id) = wallet.check_sent_tx(tx).await?;
-            // Move this logic to wallet
-            // self.context
-            //     .formatter
-            //     .check_coin(coin_data_height.clone(), coin_id)
-            //     .await?;
-            if let Some(cdh) = coin_data_height {
+            if let Some(cd_height) = coin_data_height {
+                eprintln!(
+                    ">>> Coin is confirmed at current height {}",
+                    cd_height.height
+                );
                 return Ok(cdh);
             }
+            eprint!(".");
             self.context.sleep(self.context.sleep_sec).await?;
         }
     }
