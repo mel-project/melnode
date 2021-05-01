@@ -70,8 +70,17 @@ impl WalletManager {
         Ok(wallet)
     }
 
-    /// Get all wallet data in storage by name.
-    pub async fn get_all_wallets(&self) -> anyhow::Result<BTreeMap<String, WalletData>> {
-        Ok(self.context.database.get_all().collect())
+    /// Get all wallets in storage by name and return a map from name to address.
+    pub async fn wallet_addresses_by_name(&self) -> anyhow::Result<BTreeMap<String, String>> {
+        // Get all wallet data for all wallets by name.
+        let wallets: BTreeMap<String, WalletData> = self.context.database.get_all().collect();
+
+        // Filter out the wallet data into an address for each wallet.
+        let wallet_addrs_by_name = wallets
+            .into_iter()
+            .map(|(k, v)| (k, v.my_covenant().hash().to_addr()))
+            .collect::<BTreeMap<String, String>>();
+
+        Ok(wallet_addrs_by_name)
     }
 }

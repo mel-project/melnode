@@ -1,4 +1,4 @@
-use blkstructs::{CoinDataHeight, CoinID, Transaction};
+use blkstructs::{CoinID, Transaction};
 
 use crate::context::ExecutionContext;
 use crate::wallet::info::{
@@ -6,12 +6,6 @@ use crate::wallet::info::{
     SwapInfo, WalletsInfo, WithdrawInfo,
 };
 use crate::wallet::manager::WalletManager;
-use crate::wallet::wallet::ActiveWallet;
-
-use crate::config::FEE_MULTIPLIER;
-use crate::wallet::utils::{create_faucet_tx, create_send_mel_tx_outputs, get_secret_key};
-use colored::Colorize;
-use std::collections::BTreeMap;
 
 /// Responsible for executing a single client CLI command given all the inputs and returning a result.
 pub struct CommandExecutor {
@@ -53,36 +47,33 @@ impl CommandExecutor {
         let wallet = manager.load_wallet(wallet_name, secret).await?;
 
         // Create the faucet transaction and send it.
-        let cov_hash = wallet.data().my_covenant().hash();
-        let tx = create_faucet_tx(amount, unit, cov_hash)?;
-        eprintln!(
-            "Created faucet transaction for {} mels with fee of {}",
-            amount.bold(),
-            tx.fee
-        );
-
-        wallet.send_tx(&tx).await?;
-        eprintln!("Sent transaction.");
-
-        // Wait for confirmation of the transaction.
-        let (coin_data_height, coin_id) = self.confirm_tx(&tx, &wallet).await?;
+        let (coin_data_height, coin_id) = wallet.send_faucet_tx(amount, unit).await?;
 
         // Return information about the confirmed faucet transaction.
         let info = FaucetInfo {
             coin_id,
             coin_data_height,
         };
-
         Ok(info)
     }
 
     /// Adds coins by coin id to a wallet.
     pub async fn add_coins(
         &self,
-        _wallet_name: &str,
-        _secret: &str,
-        _coin_id: &str,
+        wallet_name: &str,
+        secret: &str,
+        coin_id: &str,
     ) -> anyhow::Result<CoinsInfo> {
+        // Load wallet from wallet manager using name and secret
+        let manager = WalletManager::new(self.context.clone());
+        let wallet = manager.load_wallet(wallet_name, secret).await?;
+
+        // wallet.get_coin_data_by_id(id)
+
+        // wallet.add_coin
+
+        // wallet.add_coins(coin_id);
+
         Ok(CoinsInfo)
     }
 
@@ -101,23 +92,7 @@ impl CommandExecutor {
         let wallet = manager.load_wallet(wallet_name, secret).await?;
 
         // Create send mel tx.
-        let secret = get_secret_key(secret)?;
-        let outputs = create_send_mel_tx_outputs(address, amount, unit)?;
-        let tx = wallet
-            .data()
-            .pre_spend(outputs, FEE_MULTIPLIER)?
-            .signed_ed25519(secret);
-        eprintln!(
-            "Created send mel transaction for {} mels with fee of {}",
-            amount.bold(),
-            tx.fee
-        );
-
-        wallet.send_tx(&tx).await?;
-        eprintln!("Sent transaction.");
-
-        // Wait for confirmation of the transaction.
-        let (coin_data_height, coin_id) = self.confirm_tx(&tx, &wallet).await?;
+        let (coin_data_height, coin_id) = wallet.send_mel(address, amount, unit).await?;
 
         let info = SendCoinsInfo {
             coin_data_height,
@@ -137,19 +112,14 @@ impl CommandExecutor {
 
     /// Shows all the wallets by name that are stored in the db.
     pub async fn show_wallets(&self) -> anyhow::Result<WalletsInfo> {
-        // Get all wallets in storage by name
+        // Get all wallet addresses in storage by wallet name name
         let manager = WalletManager::new(self.context.clone());
-        let wallets = manager.get_all_wallets().await?;
+        let wallet_addresses_by_name = manager.wallet_addresses_by_name().await?;
 
-        // Create info on wallets and return it
-        let wallet_addrs_by_name = wallets
-            .into_iter()
-            .map(|(k, v)| (k, v.my_covenant().hash().to_addr()))
-            .collect::<BTreeMap<String, String>>();
+        // Return information on stored wallets
         let info = WalletsInfo {
-            wallet_addrs_by_name,
+            wallet_addrs_by_name: wallet_addresses_by_name,
         };
-
         Ok(info)
     }
 
@@ -186,27 +156,5 @@ impl CommandExecutor {
         amount: &str,
     ) -> anyhow::Result<SwapInfo> {
         Ok(SwapInfo)
-    }
-
-    /// Check transaction until it is confirmed and output progress to std err.
-    pub async fn confirm_tx(
-        &self,
-        tx: &Transaction,
-        wallet: &ActiveWallet,
-    ) -> anyhow::Result<(CoinDataHeight, CoinID)> {
-        eprint!("Waiting for transaction confirmation.");
-        loop {
-            let (coin_data_height, coin_id) = wallet.check_sent_tx(tx).await?;
-            if let Some(cd_height) = coin_data_height {
-                eprintln!();
-                eprintln!(
-                    ">>> Coin is confirmed at current height {}",
-                    cd_height.height
-                );
-                return Ok((cd_height, coin_id));
-            }
-            eprint!(".");
-            self.context.sleep(self.context.sleep_sec).await?;
-        }
     }
 }
