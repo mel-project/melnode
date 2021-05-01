@@ -58,7 +58,7 @@ impl Printable for CreatedWalletInfo {
         writeln!(tw, ">> Secret:\t{}", secret.dimmed()).unwrap();
 
         let info = String::from_utf8(tw.into_inner().unwrap()).unwrap();
-        write!(w, "{}", &info);
+        write!(w, "{}", &info).unwrap();
     }
 }
 

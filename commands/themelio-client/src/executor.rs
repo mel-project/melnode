@@ -33,6 +33,9 @@ impl CommandExecutor {
             address: wallet.data().my_covenant().hash().to_addr(),
             secret: hex::encode(wallet.secret().clone().0),
         };
+
+        info.print(&mut std::io::stderr());
+
         Ok(info)
     }
 
@@ -129,10 +132,11 @@ impl CommandExecutor {
             .into_iter()
             .map(|(k, v)| (k, v.my_covenant().hash().to_addr()))
             .collect::<BTreeMap<String, String>>();
-        let wallets_info = WalletsInfo {
+        let info = WalletsInfo {
             wallet_addrs_by_name,
         };
-        Ok(wallets_info)
+
+        Ok(info)
     }
 
     /// Liq. Deposit a token pair into melswap
