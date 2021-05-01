@@ -35,9 +35,9 @@ type CoinIdentifier = String;
 #[serde(rename_all = "kebab-case")]
 pub enum SubShellCommand {
     Faucet(Amount, Denom),
-    // Deposit(String, String, String, String),
-    // Withdraw(String, String, String, String),
-    // Swap(String, String),
+    Deposit(String, String, String, String),
+    Withdraw(String, String, String, String),
+    Swap(String, String),
     SendCoins(Dest, Amount, Denom),
     AddCoins(CoinIdentifier),
     ShowBalance,

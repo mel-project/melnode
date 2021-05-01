@@ -97,6 +97,9 @@ impl WalletSubShellRunner {
             SubShellCommand::Exit => {
                 self.print_exit();
             }
+            SubShellCommand::Deposit(_, _, _, _) => {}
+            SubShellCommand::Withdraw(_, _, _, _) => {}
+            SubShellCommand::Swap(_, _) => {}
         }
         Ok(())
     }
@@ -117,7 +120,7 @@ impl WalletSubShellRunner {
         eprintln!(">> deposit args");
         eprintln!(">> swap args");
         eprintln!(">> withdraw args");
-        eprintln!(">> balance");
+        eprintln!(">> show-balance");
         eprintln!(">> help");
         eprintln!(">> exit");
         eprintln!(">> ");
