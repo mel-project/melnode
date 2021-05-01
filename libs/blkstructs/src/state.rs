@@ -59,23 +59,59 @@ pub enum StateError {
 pub struct GenesisConfig {
     /// What kind of network?
     pub network: NetID,
-    /// Initial supply of free mels. This will be put at the zero-zero coin ID.
-    pub init_micromels: u128,
-    /// The covenant hash of the owner of the initial free mels.
-    pub init_covhash: HashVal,
+    /// Initial supply of free money. This will be put at the zero-zero coin ID.
+    pub init_coindata: CoinData,
     /// Mapping of initial stakeholders.
     pub stakes: HashMap<HashVal, StakeDoc>,
-    /// Initial fee pool, in micromels.
+    /// Initial fee pool, in micromels. Half-life is approximately 15 days.
     pub init_fee_pool: u128,
 }
 
 impl GenesisConfig {
+    /// The "standard" mainnet genesis.
+    pub fn std_mainnet() -> Self {
+        Self {
+            network: NetID::Mainnet,
+            init_coindata: CoinData {
+                covhash: Covenant::std_ed25519_pk(Ed25519PK(
+                    hex::decode("7323dcb65513b84470a76339cdf0062d47d82e205e834f2d7159684a0cb3b5ba")
+                        .unwrap()
+                        .try_into()
+                        .unwrap(),
+                ))
+                .hash(),
+                value: 1000000 * MICRO_CONVERTER, // 1 million SYM
+                denom: Denom::Sym,
+                additional_data: vec![],
+            },
+            stakes: ["7323dcb65513b84470a76339cdf0062d47d82e205e834f2d7159684a0cb3b5ba"]
+                .iter()
+                .map(|v| Ed25519PK(hex::decode(v).unwrap().try_into().unwrap()))
+                .map(|pubkey| {
+                    (
+                        tmelcrypt::hash_single(&pubkey.0), // A nonexistent hash
+                        StakeDoc {
+                            pubkey,
+                            e_start: 0,
+                            e_post_end: 3, // for the first two epochs (140 days)
+                            syms_staked: 1,
+                        },
+                    )
+                })
+                .collect(),
+            init_fee_pool: 6553600 * MICRO_CONVERTER, // 100 mel/day subsidy, decreasing rapidly
+        }
+    }
     /// The "standard" testnet genesis.
     pub fn std_testnet() -> Self {
         Self {
             network: NetID::Testnet,
-            init_micromels: 1 << 32,
-            init_covhash: Covenant::always_true().hash(),
+            init_coindata: CoinData {
+                covhash: Covenant::always_true().hash(),
+                value: 1 << 32,
+                denom: Denom::Mel,
+                additional_data: vec![],
+            },
             stakes: [
                 "fae1ff56a62639c7959bf200465f4e06291e4e4dbd751cf4d2c13a8a6bea537c",
                 "2ae54755b2e98a3059c68334af97b38603032be53bb2a1a3a183ae0f9d3bdaaf",
@@ -176,12 +212,7 @@ impl State {
             CoinID::zero_zero(),
             CoinDataHeight {
                 height: 0,
-                coin_data: CoinData {
-                    denom: Denom::Mel,
-                    value: cfg.init_micromels,
-                    covhash: cfg.init_covhash,
-                    additional_data: vec![],
-                },
+                coin_data: cfg.init_coindata,
             },
         );
         new_state
@@ -405,7 +436,7 @@ impl SealedState {
         let inner = &self.0;
         // panic!()
         Header {
-            network: NetID::Testnet,
+            network: inner.network,
             previous: (inner.height.checked_sub(1))
                 .map(|height| inner.history.get(&height).0.unwrap().hash())
                 .unwrap_or_default(),

@@ -9,16 +9,17 @@ use tmelcrypt::HashVal;
 /// This cancellable async function synchronizes the block state with some other node. If the other node has the next few blocks, those are returned.
 #[tracing::instrument(skip(get_cached_tx))]
 pub async fn sync_state(
+    netid: NetID,
     remote: SocketAddr,
     starting_height: u64,
     get_cached_tx: impl Fn(HashVal) -> Option<Transaction> + Send + Sync,
 ) -> anyhow::Result<Vec<(Block, ConsensusProof)>> {
-    const BLKSIZE: u64 = 64;
+    const BLKSIZE: u64 = 100;
     let exec = smol::Executor::new();
     let tasks = {
         let mut toret = Vec::new();
         for height in starting_height..starting_height + BLKSIZE {
-            let task = exec.spawn(get_one_block(remote, height, &get_cached_tx));
+            let task = exec.spawn(get_one_block(netid, remote, height, &get_cached_tx));
             toret.push(task);
         }
         toret
@@ -41,12 +42,13 @@ pub async fn sync_state(
 
 /// Obtains *one* block
 async fn get_one_block(
+    netid: NetID,
     remote: SocketAddr,
     height: u64,
     get_cached_tx: &(impl Sync + Fn(HashVal) -> Option<Transaction>),
 ) -> anyhow::Result<(Block, ConsensusProof)> {
     log::trace!("get_one_block({})", height);
-    let client = NodeClient::new(NetID::Testnet, remote);
+    let client = NodeClient::new(netid, remote);
     let remote_state: (AbbreviatedBlock, ConsensusProof) = client
         .get_abbr_block(height)
         .timeout(Duration::from_secs(5))
