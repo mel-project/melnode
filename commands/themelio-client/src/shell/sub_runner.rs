@@ -2,6 +2,7 @@ use crate::context::ExecutionContext;
 use crate::executor::CommandExecutor;
 use crate::shell::command::SubShellCommand;
 use crate::shell::common::{print_error, read_line};
+use crate::wallet::info::Printable;
 use crate::wallet::manager::WalletManager;
 use anyhow::Error;
 use colored::Colorize;
@@ -63,27 +64,32 @@ impl WalletSubShellRunner {
         }
     }
 
-    /// Dispatch and process a single sub shell command.
+    /// Dispatch and process a single sub shell command and print info to stderr.
     async fn dispatch(&self, interactive_cmd: &SubShellCommand) -> anyhow::Result<()> {
         let executor = CommandExecutor::new(self.context.clone());
+        let std_err = &mut std::io::stderr();
 
         // Dispatch a command and return a command result
         match &interactive_cmd {
             SubShellCommand::Faucet(amt, unit) => {
                 let info = executor.faucet(&self.name, &self.secret, amt, unit).await?;
+                info.print(std_err);
             }
             SubShellCommand::SendCoins(dest, amt, unit) => {
                 let info = executor
                     .send_coins(&self.name, &self.secret, dest, amt, unit)
                     .await?;
+                info.print(std_err);
             }
             SubShellCommand::AddCoins(coin_id) => {
                 let info = executor
                     .add_coins(&self.name, &self.secret, coin_id)
                     .await?;
+                info.print(std_err);
             }
             SubShellCommand::ShowBalance => {
                 let info = executor.show_balance(&self.name, &self.secret).await?;
+                info.print(std_err);
             }
             SubShellCommand::Help => {
                 self.print_help();

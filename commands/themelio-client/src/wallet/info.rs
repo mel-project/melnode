@@ -6,44 +6,24 @@ use blkstructs::{CoinDataHeight, Transaction};
 use serde::Serialize;
 use std::collections::BTreeMap;
 
+pub trait Printable {
+    fn print(&self, w: &mut dyn std::io::Write);
+}
+
+fn test_print(w: &mut dyn Write) {
+    let mut tw = TabWriter::new(vec![]);
+
+    writeln!(tw, ">> test").unwrap();
+
+    let info = String::from_utf8(tw.into_inner().unwrap()).unwrap();
+    write!(w, "{}", &info).unwrap();
+}
+
 #[derive(Serialize, Debug)]
 pub struct CreatedWalletInfo {
     pub name: String,
     pub address: String,
     pub secret: String,
-}
-
-#[derive(Serialize, Debug)]
-pub struct FaucetInfo {
-    pub tx: Transaction,
-    pub coin_data_height: CoinDataHeight,
-}
-
-#[derive(Serialize, Debug)]
-pub struct SendCoinsInfo;
-
-#[derive(Serialize, Debug)]
-pub struct DepositInfo;
-
-#[derive(Serialize, Debug)]
-pub struct WithdrawInfo;
-
-#[derive(Serialize, Debug)]
-pub struct SwapInfo;
-
-#[derive(Serialize, Debug)]
-pub struct CoinsInfo;
-
-#[derive(Serialize, Debug)]
-pub struct BalanceInfo;
-
-#[derive(Serialize, Debug)]
-pub struct WalletsInfo {
-    pub wallet_addrs_by_name: BTreeMap<String, String>,
-}
-
-pub trait Printable {
-    fn print(&self, w: &mut dyn std::io::Write);
 }
 
 impl Printable for CreatedWalletInfo {
@@ -62,6 +42,77 @@ impl Printable for CreatedWalletInfo {
     }
 }
 
+#[derive(Serialize, Debug)]
+pub struct FaucetInfo {
+    pub tx: Transaction,
+    pub coin_data_height: CoinDataHeight,
+}
+
+impl Printable for FaucetInfo {
+    fn print(&self, w: &mut dyn Write) {
+        test_print(w);
+    }
+}
+
+#[derive(Serialize, Debug)]
+pub struct SendCoinsInfo;
+
+impl Printable for SendCoinsInfo {
+    fn print(&self, w: &mut dyn Write) {
+        test_print(w);
+    }
+}
+
+#[derive(Serialize, Debug)]
+pub struct DepositInfo;
+
+impl Printable for DepositInfo {
+    fn print(&self, w: &mut dyn Write) {
+        test_print(w);
+    }
+}
+
+#[derive(Serialize, Debug)]
+pub struct WithdrawInfo;
+
+impl Printable for WithdrawInfo {
+    fn print(&self, w: &mut dyn Write) {
+        test_print(w);
+    }
+}
+
+#[derive(Serialize, Debug)]
+pub struct SwapInfo;
+
+impl Printable for SwapInfo {
+    fn print(&self, w: &mut dyn Write) {
+        test_print(w);
+    }
+}
+
+#[derive(Serialize, Debug)]
+pub struct CoinsInfo;
+
+impl Printable for CoinsInfo {
+    fn print(&self, w: &mut dyn Write) {
+        test_print(w);
+    }
+}
+
+#[derive(Serialize, Debug)]
+pub struct BalanceInfo;
+
+impl Printable for BalanceInfo {
+    fn print(&self, w: &mut dyn Write) {
+        test_print(w);
+    }
+}
+
+#[derive(Serialize, Debug)]
+pub struct WalletsInfo {
+    pub wallet_addrs_by_name: BTreeMap<String, String>,
+}
+
 impl Printable for WalletsInfo {
     fn print(&self, w: &mut dyn Write) {
         let mut tw = TabWriter::new(vec![]);
@@ -77,13 +128,5 @@ impl Printable for WalletsInfo {
 
         let info = String::from_utf8(tw.into_inner().unwrap()).unwrap();
         write!(w, "{}", &info).unwrap();
-    }
-}
-
-impl Printable for FaucetInfo {
-    fn print(&self, w: &mut dyn Write) {
-        let mut tw = TabWriter::new(vec![]);
-        let coin_data_height = self.coin_data_height.clone();
-        let tx = self.tx.clone();
     }
 }
