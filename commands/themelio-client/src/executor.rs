@@ -76,7 +76,18 @@ impl CommandExecutor {
         Ok(info)
     }
 
+    /// Adds coins by coin id to a wallet.
+    pub async fn add_coins(
+        &self,
+        _wallet_name: &str,
+        _secret: &str,
+        _coin_id: &str,
+    ) -> anyhow::Result<CoinsInfo> {
+        Ok(CoinsInfo)
+    }
+
     /// Sends coins from a wallet to an address.
+    /// TODO: consider an optional fee arg for testing tips
     pub async fn send_coins(
         &self,
         wallet_name: &str,
@@ -88,9 +99,6 @@ impl CommandExecutor {
         // Load wallet from wallet manager using name and secret
         let manager = WalletManager::new(self.context.clone());
         let wallet = manager.load_wallet(wallet_name, secret).await?;
-
-        // TODO: while we don't ask for fee prompt in command mode we should do so in wallet_shell mode
-        // and an option type should be used somewhere here.
 
         // Create send mel tx.
         let secret = get_secret_key(secret)?;
@@ -116,16 +124,6 @@ impl CommandExecutor {
             coin_id,
         };
         Ok(info)
-    }
-
-    /// Adds coins by coin id to a wallet.
-    pub async fn add_coins(
-        &self,
-        _wallet_name: &str,
-        _secret: &str,
-        _coin_id: &str,
-    ) -> anyhow::Result<CoinsInfo> {
-        Ok(CoinsInfo)
     }
 
     /// Shows the total known wallet balance.
