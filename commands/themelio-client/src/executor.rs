@@ -34,8 +34,6 @@ impl CommandExecutor {
             secret: hex::encode(wallet.secret().clone().0),
         };
 
-        info.print(&mut std::io::stderr());
-
         Ok(info)
     }
 
@@ -98,7 +96,7 @@ impl CommandExecutor {
         // print confirmation results for send mel tx
         // println!("confirmed at height {:?}! ", coin_data_height);
         // CommandOutput::print_confirmed_send_mel_tx(&coin_data_height).await?;
-        // todo!("")
+
         Ok(SendCoinsInfo)
     }
 
@@ -127,7 +125,7 @@ impl CommandExecutor {
         let manager = WalletManager::new(self.context.clone());
         let wallets = manager.get_all_wallets().await?;
 
-        // Create wallet info and return it
+        // Create info on wallets and return it
         let wallet_addrs_by_name = wallets
             .into_iter()
             .map(|(k, v)| (k, v.my_covenant().hash().to_addr()))
@@ -174,8 +172,7 @@ impl CommandExecutor {
         Ok(SwapInfo)
     }
 
-    /// Check transaction until it is confirmed.
-    /// TODO: move to active wallet
+    /// Check transaction until it is confirmed and output progress to std err.
     pub async fn confirm_tx(
         &self,
         tx: &Transaction,

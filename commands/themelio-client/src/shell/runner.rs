@@ -8,6 +8,7 @@ use crate::wallet::error::WalletError;
 use anyhow::Error;
 use colored::Colorize;
 use std::convert::TryFrom;
+use crate::wallet::info::Printable;
 
 /// Run an wallet_shell command given an execution context
 /// This is for end users to create and show wallets
@@ -58,7 +59,8 @@ impl WalletShellRunner {
                 ce.create_wallet(wallet_name).await?;
             }
             ShellCommand::ShowWallets => {
-                ce.show_wallets().await?;
+                let info = ce.show_wallets().await?;
+                info.print(&mut std::io::stderr());
             }
             ShellCommand::OpenWallet(wallet_name, secret) => {
                 self.open_wallet(wallet_name, secret).await?;

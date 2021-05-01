@@ -62,6 +62,24 @@ impl Printable for CreatedWalletInfo {
     }
 }
 
+impl Printable for WalletsInfo {
+    fn print(&self, w: &mut dyn Write) {
+        let mut tw = TabWriter::new(vec![]);
+        let wallet_addrs_by_name = self.wallet_addrs_by_name.clone();
+
+        // Write header
+        writeln!(tw, ">> [NAME]\t[ADDRESS]").unwrap();
+
+        // Write rows
+        for (name, address) in wallet_addrs_by_name {
+            writeln!(tw, ">> {}\t{}", name, address).unwrap();
+        }
+
+        let info = String::from_utf8(tw.into_inner().unwrap()).unwrap();
+        write!(w, "{}", &info).unwrap();
+    }
+}
+
 impl Printable for FaucetInfo {
     fn print(&self, w: &mut dyn Write) {
         let mut tw = TabWriter::new(vec![]);
