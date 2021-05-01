@@ -50,7 +50,31 @@ pub struct FaucetInfo {
 
 impl Printable for FaucetInfo {
     fn print(&self, w: &mut dyn Write) {
-        test_print(w);
+        let mut tw = TabWriter::new(vec![]);
+
+        let coin_data_height = self.coin_data_height.clone();
+        let coin_id = self.coin_id;
+        writeln!(
+            tw,
+            ">> Transaction confirmed at height: {}",
+            coin_data_height.height
+        )
+        .unwrap();
+        writeln!(
+            tw,
+            ">> (Covenant hash, amount): ({},  {})",
+            coin_data_height.coin_data.covhash, coin_data_height.coin_data.value,
+        )
+        .unwrap();
+        writeln!(
+            tw,
+            ">> Coin ID: = {}",
+            hex::encode(stdcode::serialize(&coin_id).unwrap()).bold()
+        )
+        .unwrap();
+
+        let info = String::from_utf8(tw.into_inner().unwrap()).unwrap();
+        write!(w, "{}", &info).unwrap();
     }
 }
 

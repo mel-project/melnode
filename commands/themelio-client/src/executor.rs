@@ -55,30 +55,16 @@ impl CommandExecutor {
         let cov_hash = wallet.data().my_covenant().hash();
         let tx = TxBuilder::create_faucet_tx(amount, unit, cov_hash).await?;
         eprintln!(
-            "Created faucet transaction for {} mels with {} fee",
+            "Created faucet transaction for {} mels with fee of {}",
             amount.bold(),
-            unit
+            tx.fee
         );
 
         wallet.send_tx(&tx).await?;
         eprintln!("Sent transaction.");
 
         // Wait for confirmation of the transaction.
-        let coin_data_height = self.confirm_tx(&tx, &wallet).await?;
-        eprintln!(
-            "Transaction confirmed at height: {}",
-            coin_data_height.height
-        );
-
-        // Output the coin identifier after confirmation.
-        let coin_id = CoinID {
-            txhash: tx.hash_nosigs(),
-            index: 0,
-        };
-        eprintln!(
-            ">> CID = {}",
-            hex::encode(stdcode::serialize(&coin_id).unwrap()).bold()
-        );
+        let (coin_data_height, coin_id) = self.confirm_tx(&tx, &wallet).await?;
 
         // Return information about the confirmed faucet transaction.
         let info = FaucetInfo {
@@ -200,16 +186,17 @@ impl CommandExecutor {
         &self,
         tx: &Transaction,
         wallet: &ActiveWallet,
-    ) -> anyhow::Result<CoinDataHeight> {
-        eprintln!("Waiting for transaction confirmation.");
+    ) -> anyhow::Result<(CoinDataHeight, CoinID)> {
+        eprint!("Waiting for transaction confirmation.");
         loop {
             let (coin_data_height, coin_id) = wallet.check_sent_tx(tx).await?;
             if let Some(cd_height) = coin_data_height {
+                eprintln!();
                 eprintln!(
                     ">>> Coin is confirmed at current height {}",
                     cd_height.height
                 );
-                return Ok(cdh);
+                return Ok((cd_height, coin_id));
             }
             eprint!(".");
             self.context.sleep(self.context.sleep_sec).await?;
