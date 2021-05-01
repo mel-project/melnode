@@ -67,6 +67,32 @@ impl ActiveWallet {
         Ok((coin_data_height, coin_id))
     }
 
+    pub async fn add_coins(&mut self, coin_id: CoinID) -> anyhow::Result<(CoinDataHeight, CoinID)> {
+        let snapshot = self.context.client.snapshot().await?;
+        let coin_data_height = snapshot.get_coin(coin_id).await?;
+
+        match coin_data_height {
+            None => {
+                eprintln!("Coin not found");
+                anyhow::bail!(WalletError::CoinNotFound("".to_string()))
+            }
+            Some(coin_data_height) => {
+                eprintln!(
+                    ">> Coin found at height {}! Added {} {} to data",
+                    coin_data_height.height,
+                    coin_data_height.coin_data.value,
+                    {
+                        let val = coin_data_height.coin_data.denom.as_slice();
+                        format!("X-{}", hex::encode(val))
+                    }
+                );
+                self.data.insert_coin(coin_id, coin_data_height.clone());
+                eprintln!("Added coin to wallet");
+                Ok((coin_data_height, coin_id))
+            }
+        }
+    }
+
     /// Send an amount of mel to a destination address, wait for confirmation and return results.
     pub async fn send_mel(
         &self,

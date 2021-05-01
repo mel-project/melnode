@@ -68,11 +68,7 @@ impl CommandExecutor {
         let manager = WalletManager::new(self.context.clone());
         let wallet = manager.load_wallet(wallet_name, secret).await?;
 
-        // wallet.get_coin_data_by_id(id)
-
-        // wallet.add_coin
-
-        // wallet.add_coins(coin_id);
+        wallet.add_coins(coin_id);
 
         Ok(CoinsInfo)
     }
