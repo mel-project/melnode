@@ -50,17 +50,18 @@ impl WalletShellRunner {
         }
     }
 
-    /// Dispatch and process a single shell command.
+    /// Dispatch and process a single shell command and print result to std error.
     async fn dispatch(&self, cmd: &ShellCommand) -> anyhow::Result<()> {
         let ce = CommandExecutor::new(self.context.clone());
-
+        let std_err = &mut std::io::stderr();
         match &cmd {
             ShellCommand::CreateWallet(wallet_name) => {
-                ce.create_wallet(wallet_name).await?;
+                let info = ce.create_wallet(wallet_name).await?;
+                info.print(std_err);
             }
             ShellCommand::ShowWallets => {
                 let info = ce.show_wallets().await?;
-                info.print(&mut std::io::stderr());
+                info.print(std_err);
             }
             ShellCommand::OpenWallet(wallet_name, secret) => {
                 self.open_wallet(wallet_name, secret).await?;
