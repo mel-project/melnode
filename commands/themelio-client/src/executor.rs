@@ -9,6 +9,7 @@ use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::ActiveWallet;
 
 use crate::wallet::tx::TxBuilder;
+use std::collections::BTreeMap;
 
 /// Responsible for executing a single client CLI command given all the inputs and returning a result.
 pub struct CommandExecutor {
@@ -119,7 +120,19 @@ impl CommandExecutor {
 
     /// Shows all the wallets by name that are stored in the db.
     pub async fn show_wallets(&self) -> anyhow::Result<WalletsInfo> {
-        Ok(WalletsInfo)
+        // Get all wallets in storage by name
+        let manager = WalletManager::new(self.context.clone());
+        let wallets = manager.get_all_wallets().await?;
+
+        // Create wallet info and return it
+        let wallet_addrs_by_name = wallets
+            .into_iter()
+            .map(|(k, v)| (k, v.my_covenant().hash().to_addr()))
+            .collect::<BTreeMap<String, String>>();
+        let wallets_info = WalletsInfo {
+            wallet_addrs_by_name,
+        };
+        Ok(wallets_info)
     }
 
     /// Liq. Deposit a token pair into melswap

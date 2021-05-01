@@ -4,6 +4,7 @@ use tabwriter::TabWriter;
 
 use blkstructs::{CoinDataHeight, Transaction};
 use serde::Serialize;
+use std::collections::BTreeMap;
 
 #[derive(Serialize, Debug)]
 pub struct CreatedWalletInfo {
@@ -37,7 +38,9 @@ pub struct CoinsInfo;
 pub struct BalanceInfo;
 
 #[derive(Serialize, Debug)]
-pub struct WalletsInfo;
+pub struct WalletsInfo {
+    pub wallet_addrs_by_name: BTreeMap<String, String>,
+}
 
 pub trait Printable {
     fn print(&self, w: &mut dyn std::io::Write);

@@ -1,8 +1,6 @@
 use crate::context::ExecutionContext;
 use crate::wallet::data::WalletData;
-use blkstructs::{
-    CoinDataHeight, CoinID, Transaction,
-};
+use blkstructs::{CoinDataHeight, CoinID, Transaction};
 use tmelcrypt::Ed25519SK;
 
 /// Representation of an open wallet. Automatically keeps storage in sync.
