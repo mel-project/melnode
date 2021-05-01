@@ -118,7 +118,10 @@ impl Printable for SwapInfo {
 }
 
 #[derive(Serialize, Debug)]
-pub struct CoinsInfo;
+pub struct CoinsInfo {
+    pub coin_id: CoinID,
+    pub coin_data_height: CoinDataHeight,
+}
 
 impl Printable for CoinsInfo {
     fn print(&self, w: &mut dyn Write) {

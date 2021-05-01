@@ -66,11 +66,17 @@ impl CommandExecutor {
     ) -> anyhow::Result<CoinsInfo> {
         // Load wallet from wallet manager using name and secret
         let manager = WalletManager::new(self.context.clone());
-        let wallet = manager.load_wallet(wallet_name, secret).await?;
+        let mut wallet = manager.load_wallet(wallet_name, secret).await?;
 
-        wallet.add_coins(coin_id);
+        // Add the coins
+        let (coin_data_height, coin_id) = wallet.add_coins(coin_id).await?;
 
-        Ok(CoinsInfo)
+        // Return the information about the added coins
+        let info = CoinsInfo {
+            coin_data_height,
+            coin_id,
+        };
+        Ok(info)
     }
 
     /// Sends coins from a wallet to an address.

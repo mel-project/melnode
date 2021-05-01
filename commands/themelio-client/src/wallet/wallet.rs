@@ -5,6 +5,7 @@ use tmelcrypt::Ed25519SK;
 
 use crate::config::{BALLAST, FEE_MULTIPLIER};
 use crate::wallet::error::WalletError;
+use anyhow::Context;
 use blkstructs::{CoinData, TxKind, DENOM_TMEL, MICRO_CONVERTER};
 use colored::Colorize;
 use tmelcrypt::HashVal;
@@ -67,7 +68,9 @@ impl ActiveWallet {
         Ok((coin_data_height, coin_id))
     }
 
-    pub async fn add_coins(&mut self, coin_id: CoinID) -> anyhow::Result<(CoinDataHeight, CoinID)> {
+    pub async fn add_coins(&mut self, coin_id: &str) -> anyhow::Result<(CoinDataHeight, CoinID)> {
+        let coin_id: CoinID = stdcode::deserialize(&hex::decode(coin_id)?)
+            .context("cannot deserialize hex coin id")?;
         let snapshot = self.context.client.snapshot().await?;
         let coin_data_height = snapshot.get_coin(coin_id).await?;
 
