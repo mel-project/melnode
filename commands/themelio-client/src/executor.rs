@@ -53,6 +53,7 @@ impl CommandExecutor {
         // Create the faucet transaction and send it.
         let cov_hash = wallet.data().my_covenant().hash();
         let tx = TxBuilder::create_faucet_tx(amount, unit, cov_hash).await?;
+        println!("{:?}", tx);
         wallet.send_tx(&tx).await?;
 
         // Wait for confirmation of the transaction.
