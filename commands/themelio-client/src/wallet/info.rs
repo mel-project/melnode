@@ -79,7 +79,10 @@ impl Printable for FaucetInfo {
 }
 
 #[derive(Serialize, Debug)]
-pub struct SendCoinsInfo;
+pub struct SendCoinsInfo {
+    pub coin_id: CoinID,
+    pub coin_data_height: CoinDataHeight,
+}
 
 impl Printable for SendCoinsInfo {
     fn print(&self, w: &mut dyn Write) {

@@ -8,7 +8,8 @@ use crate::wallet::info::{
 use crate::wallet::manager::WalletManager;
 use crate::wallet::wallet::ActiveWallet;
 
-use crate::wallet::tx::TxBuilder;
+use crate::config::FEE_MULTIPLIER;
+use crate::wallet::utils::{create_faucet_tx, create_send_mel_tx_outputs, get_secret_key};
 use colored::Colorize;
 use std::collections::BTreeMap;
 
@@ -53,7 +54,7 @@ impl CommandExecutor {
 
         // Create the faucet transaction and send it.
         let cov_hash = wallet.data().my_covenant().hash();
-        let tx = TxBuilder::create_faucet_tx(amount, unit, cov_hash).await?;
+        let tx = create_faucet_tx(amount, unit, cov_hash)?;
         eprintln!(
             "Created faucet transaction for {} mels with fee of {}",
             amount.bold(),
@@ -91,23 +92,30 @@ impl CommandExecutor {
         // TODO: while we don't ask for fee prompt in command mode we should do so in wallet_shell mode
         // and an option type should be used somewhere here.
 
-        // // Create send mel tx.
-        // let fee = 2050000000;
-        let tx = TxBuilder::create_send_mel_tx(address, amount, unit).await?;
-        // let tx = wallet.create_send_mel_tx(address, amount, unit, fee).await?;
-        //
-        // // Send the mel payment tx.
-        // wallet.send_tx(&tx).await?;
-        //
-        // // Wait for tx confirmation with a sleep time in seconds between polling.
-        // let sleep_sec = 2;
-        // let coin_data_height = self.confirm_tx(&tx, &wallet, sleep_sec).await?;
+        // Create send mel tx.
+        let secret = get_secret_key(secret)?;
+        let outputs = create_send_mel_tx_outputs(address, amount, unit)?;
+        let tx = wallet
+            .data()
+            .pre_spend(outputs, FEE_MULTIPLIER)?
+            .signed_ed25519(secret);
+        eprintln!(
+            "Created send mel transaction for {} mels with fee of {}",
+            amount.bold(),
+            tx.fee
+        );
 
-        // print confirmation results for send mel tx
-        // println!("confirmed at height {:?}! ", coin_data_height);
-        // CommandOutput::print_confirmed_send_mel_tx(&coin_data_height).await?;
+        wallet.send_tx(&tx).await?;
+        eprintln!("Sent transaction.");
 
-        Ok(SendCoinsInfo)
+        // Wait for confirmation of the transaction.
+        let (coin_data_height, coin_id) = self.confirm_tx(&tx, &wallet).await?;
+
+        let info = SendCoinsInfo {
+            coin_data_height,
+            coin_id,
+        };
+        Ok(info)
     }
 
     /// Adds coins by coin id to a wallet.
