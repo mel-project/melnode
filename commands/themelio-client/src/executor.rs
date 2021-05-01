@@ -80,19 +80,20 @@ impl CommandExecutor {
         &self,
         wallet_name: &str,
         secret: &str,
-        _address: &str,
-        _amount: &str,
-        _unit: &str,
+        address: &str,
+        amount: &str,
+        unit: &str,
     ) -> anyhow::Result<SendCoinsInfo> {
         // Load wallet from wallet manager using name and secret
         let manager = WalletManager::new(self.context.clone());
-        let _wallet = manager.load_wallet(wallet_name, secret).await?;
+        let wallet = manager.load_wallet(wallet_name, secret).await?;
 
         // TODO: while we don't ask for fee prompt in command mode we should do so in wallet_shell mode
         // and an option type should be used somewhere here.
 
         // // Create send mel tx.
         // let fee = 2050000000;
+        let tx = TxBuilder::create_send_mel_tx(address, amount, unit).await?;
         // let tx = wallet.create_send_mel_tx(address, amount, unit, fee).await?;
         //
         // // Send the mel payment tx.

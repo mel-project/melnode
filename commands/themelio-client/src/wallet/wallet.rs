@@ -43,11 +43,6 @@ impl ActiveWallet {
         Ok((snapshot.get_coin(coin).await?, coin))
     }
 
-    //     /// Send coins to a recipient.
-    //     pub async fn send_coins(&self, mut wallet_data: &WalletData, dest: HashVal, amt: u128, denom: &[u8]) -> anyhow::Result<CoinID> {
-    //         Ok(CoinID{ txhash: Default::default(), index: 0 })
-    //     }
-    //
     //     /// Add coins to this wallet
     //     pub async fn add_coins(&self, wallet_data: &WalletData, ) -> anyhow::Result<CoinID> {
     //         Ok(CoinID{ txhash: Default::default(), index: 0 })

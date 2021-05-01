@@ -14,7 +14,6 @@ impl TxBuilder {
         cov_hash: HashVal,
     ) -> anyhow::Result<Transaction> {
         let value: u128 = amount.parse()?;
-        let fee_multiplier: u128 = FEE_MULTIPLIER;
 
         let tx = Transaction {
             kind: TxKind::Faucet,
@@ -30,7 +29,7 @@ impl TxBuilder {
             sigs: vec![],
             data: vec![],
         }
-        .applied_fee(fee_multiplier, BALLAST, 0);
+        .applied_fee(FEE_MULTIPLIER, BALLAST, 0);
 
         if tx.is_none() {
             anyhow::bail!(WalletError::InvalidTransactionArgs(
@@ -40,31 +39,42 @@ impl TxBuilder {
         Ok(tx.unwrap())
     }
 
+    /// Create a send mel tx
+    /// TODO: add in optional fee as input arg
     pub async fn create_send_mel_tx(
-        addr: &str,
+        dest_addr: &str,
         amount: &str,
-        unit: &str,
-        fee: u128,
+        _unit: &str,
     ) -> anyhow::Result<Transaction> {
-        unimplemented!()
-        // let value: u128 = amount.parse()?;
-        // let tx = Transaction {
-        //     kind: TxKind::Faucet,
-        //     inputs: vec![],
-        //     outputs: vec![CoinData {
-        //         denom: DENOM_TMEL.to_owned(),
-        //         covhash: self.data.my_script.hash(),
-        //         value: value * MICRO_CONVERTER,
-        //     }],
-        //     fee,
-        //     scripts: vec![],
-        //     sigs: vec![],
-        //     data: vec![],
-        // };
-        // Ok(tx)
+        let value: u128 = amount.parse()?;
+        let dest_addr = tmelcrypt::HashVal::from_addr(dest_addr)
+            .ok_or_else(|| anyhow::anyhow!("can't decode as address"))?;
+
+        let output = CoinData {
+            denom: DENOM_TMEL.to_owned(),
+            value: value * MICRO_CONVERTER,
+            covhash: dest_addr,
+            additional_data: vec![],
+        };
+
+        let tx = Transaction {
+            kind: TxKind::Normal,
+            inputs: vec![],
+            outputs: vec![output],
+            fee: 0,
+            scripts: vec![],
+            sigs: vec![],
+            data: vec![],
+        }
+        .applied_fee(FEE_MULTIPLIER, BALLAST, 0);
+
+        if tx.is_none() {
+            anyhow::bail!(WalletError::InvalidTransactionArgs(
+                "create send mel tx failed".to_string()
+            ))
+        }
+        Ok(tx.unwrap())
     }
 
     // Create deposit, withdraw, swap tx
-
-    // create doscmint, stake tx
 }
