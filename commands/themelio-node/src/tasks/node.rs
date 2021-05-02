@@ -41,6 +41,10 @@ pub struct NodeConfig {
     /// If given, uses this TOML file to configure the genesis state rather than the default mainnet.
     #[structopt(long)]
     genesis_config: Option<PathBuf>,
+
+    /// If set to true, default to the testnet
+    #[structopt(long)]
+    testnet: bool,
 }
 
 /// Runs the main function for a node.
@@ -54,6 +58,8 @@ pub async fn run_node(opt: NodeConfig) -> anyhow::Result<()> {
             .await
             .context("cannot read genesis config")?;
         toml::from_slice(&genesis_toml)?
+    } else if opt.testnet {
+        GenesisConfig::std_testnet()
     } else {
         GenesisConfig::std_mainnet()
     };

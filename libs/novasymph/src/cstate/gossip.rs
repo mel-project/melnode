@@ -11,22 +11,20 @@ use super::helpers::StreamletMetadata;
 pub struct BlockRequest {
     /// Contains the LNC tips.
     pub lnc_tips: BTreeSet<HashVal>,
-    /// Known tip descendants of the LNC tips.
-    pub lnc_leaves: BTreeSet<HashVal>,
 }
 
 /// A gossip response that contains information for *one* block.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AbbrBlockResponse {
     pub abbr_block: AbbrBlock,
-    pub metadata: StreamletMetadata,
+    pub metadata: Option<StreamletMetadata>,
 }
 
 /// A gossip response that contains information for one block, that has all the information needed
 #[derive(Clone, Debug)]
 pub struct FullBlockResponse {
     pub block: Block,
-    pub metadata: StreamletMetadata,
+    pub metadata: Option<StreamletMetadata>,
 }
 
 /// A gossip request that solicits information about transactions.

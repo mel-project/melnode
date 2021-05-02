@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use blkdb::{backends::InMemoryBackend, Cursor};
-use blkstructs::StakeMapping;
+use blkstructs::{AbbrBlock, StakeMapping};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tmelcrypt::Ed25519PK;
@@ -81,5 +81,18 @@ impl StreamletMetadata {
         assert!(total_stake >= voting_stake);
         // is this enough?
         voting_stake >= 2 * total_stake / 3
+    }
+
+    /// Checks that the proposal and votes actually belong to the given block.
+    pub fn is_signed_correctly(&self, voting_for: &AbbrBlock) -> bool {
+        if !self.proposal_sig.verify(self.proposer, voting_for) {
+            return false;
+        }
+        for (voter, vote) in self.votes.iter() {
+            if !vote.verify(*voter, voting_for) {
+                return false;
+            }
+        }
+        true
     }
 }

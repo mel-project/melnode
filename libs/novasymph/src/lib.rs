@@ -1,5 +1,7 @@
 mod cstate;
 mod msg;
+mod protocol;
+pub use protocol::*;
 
 #[cfg(test)]
 mod tests {

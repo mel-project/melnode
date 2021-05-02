@@ -139,7 +139,7 @@ impl<B: DbBackend> BlockTree<B> {
     }
 
     /// Creates a GraphViz string that represents all the blocks in the tree.
-    pub fn debug_graphviz(&self) -> String {
+    pub fn debug_graphviz(&self, visitor: impl Fn(&Cursor<'_, B>) -> String) -> String {
         let mut stack = self.get_tips();
         let tips = self
             .get_tips()
@@ -154,7 +154,7 @@ impl<B: DbBackend> BlockTree<B> {
                 if tips.contains(&top.header()) {
                     writeln!(
                         &mut output,
-                        "\"{}\" [label={}, color=red];",
+                        "\"{}\" [label={}, shape=rectangle, style=filled, fillcolor=red];",
                         top.header().hash(),
                         top.header().height
                     )
@@ -162,9 +162,10 @@ impl<B: DbBackend> BlockTree<B> {
                 } else {
                     writeln!(
                         &mut output,
-                        "\"{}\" [label={}];",
+                        "\"{}\" [label={}, shape=rectangle, style=filled, fillcolor=\"{}\"];",
                         top.header().hash(),
-                        top.header().height
+                        top.header().height,
+                        visitor(&top),
                     )
                     .unwrap();
                 }
