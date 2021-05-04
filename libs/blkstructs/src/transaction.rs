@@ -1,9 +1,10 @@
 use crate::{constants::*, melvm};
 use arbitrary::Arbitrary;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-use std::{collections::HashMap, fmt::Display};
+use std::{collections::HashMap, convert::TryInto, fmt::Display};
+use tmelcrypt::HashVal;
 
 #[derive(
     Clone,
@@ -100,14 +101,14 @@ impl Transaction {
         self
     }
     /// total_outputs returns a HashMap mapping each type of coin to its total value. Fees will be included in COINTYPE_TMEL.
-    pub fn total_outputs(&self) -> HashMap<Vec<u8>, u128> {
+    pub fn total_outputs(&self) -> HashMap<Denom, u128> {
         let mut toret = HashMap::new();
         for output in self.outputs.iter() {
             let old = *toret.get(&output.denom).unwrap_or(&0);
-            toret.insert(output.denom.clone(), old + output.value);
+            toret.insert(output.denom, old + output.value);
         }
-        let old = *toret.get(DENOM_TMEL).unwrap_or(&0);
-        toret.insert(DENOM_TMEL.to_vec(), old + self.fee);
+        let old = *toret.get(&Denom::Mel).unwrap_or(&0);
+        toret.insert(Denom::Mel, old + self.fee);
         toret
     }
     /// scripts_as_map returns a HashMap mapping the hash of each script in the transaction to the script itself.
@@ -208,8 +209,8 @@ impl CoinID {
 pub struct CoinData {
     pub covhash: tmelcrypt::HashVal,
     pub value: u128,
-    #[serde(with = "stdcode::hex")]
-    pub denom: Vec<u8>,
+    // #[serde(with = "stdcode::hex")]
+    pub denom: Denom,
     #[serde(with = "stdcode::hex")]
     pub additional_data: Vec<u8>,
 }
@@ -220,6 +221,63 @@ impl CoinData {
     }
 }
 
+#[derive(Clone, Arbitrary, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Copy)]
+pub enum Denom {
+    Mel,
+    Sym,
+    NomDosc,
+
+    NewCoin,
+    Custom(HashVal),
+}
+
+impl Denom {
+    pub fn to_bytes(&self) -> Vec<u8> {
+        match self {
+            Self::Mel => b"m".to_vec(),
+            Self::Sym => b"s".to_vec(),
+            Self::NomDosc => b"d".to_vec(),
+            Self::NewCoin => b"".to_vec(),
+            Self::Custom(hash) => hash.to_vec(),
+        }
+    }
+
+    pub fn from_bytes(vec: &[u8]) -> Option<Self> {
+        Some(match vec {
+            b"m" => Self::Mel,
+            b"s" => Self::Sym,
+            b"d" => Self::NomDosc,
+
+            b"" => Self::NewCoin,
+            other => Self::Custom(HashVal(other.try_into().ok()?)),
+        })
+    }
+}
+
+impl Serialize for Denom {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        DenomInner(self.to_bytes()).serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Denom {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let inner = <DenomInner>::deserialize(deserializer)?;
+        Denom::from_bytes(&inner.0)
+            .ok_or_else(|| serde::de::Error::custom("not the right format for a Denom"))
+    }
+}
+
+/// A coin denomination, like mel, sym, etc.
+#[derive(Serialize, Deserialize, Clone, Arbitrary, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
+struct DenomInner(#[serde(with = "stdcode::hex")] Vec<u8>);
+
 #[derive(Serialize, Deserialize, Clone, Arbitrary, Debug, Eq, PartialEq, Hash)]
 /// A `CoinData` but coupled with a block height. This is what actually gets stored in the global state, allowing constraints and the validity-checking algorithm to easily access the age of a coin.
 pub struct CoinDataHeight {
@@ -229,8 +287,8 @@ pub struct CoinDataHeight {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::testing::fixtures::valid_txx;
     use crate::{melvm, CoinData, Transaction, MAX_COINVAL};
+    use crate::{testing::fixtures::valid_txx, Denom};
     use rstest::*;
 
     #[rstest]
@@ -398,13 +456,13 @@ pub(crate) mod tests {
             CoinData {
                 covhash: scr.hash(),
                 value: val1,
-                denom: vec![],
+                denom: Denom::NewCoin,
                 additional_data: vec![],
             },
             CoinData {
                 covhash: scr.hash(),
                 value: val2,
-                denom: vec![],
+                denom: Denom::NewCoin,
                 additional_data: vec![],
             },
         ];

@@ -4,13 +4,13 @@ use rstest::*;
 
 use tmelcrypt::{Ed25519PK, Ed25519SK};
 
-use crate::melvm::Covenant;
 use crate::testing::factory::{CoinDataFactory, CoinDataHeightFactory, TransactionFactory};
 use crate::testing::utils::*;
 use crate::{
-    melvm, CoinData, CoinDataHeight, CoinID, StakeDoc, State, Transaction, DENOM_TMEL, MAX_COINVAL,
+    melvm, CoinData, CoinDataHeight, CoinID, StakeDoc, State, Transaction, MAX_COINVAL,
     MICRO_CONVERTER,
 };
+use crate::{melvm::Covenant, Denom};
 
 const GENESIS_MEL_SUPPLY: u128 = 21_000_000;
 const GENESIS_NUM_STAKERS: u64 = 10;
@@ -168,7 +168,7 @@ pub fn valid_txx(keypair: (Ed25519PK, Ed25519SK)) -> Vec<Transaction> {
         CoinData {
             covhash: scr.hash(),
             value: MICRO_CONVERTER * 1000,
-            denom: DENOM_TMEL.to_owned(),
+            denom: Denom::Mel,
             additional_data: vec![],
         },
         sk,

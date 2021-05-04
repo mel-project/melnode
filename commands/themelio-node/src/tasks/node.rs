@@ -23,7 +23,7 @@ pub struct NodeConfig {
     test_spam: bool,
 
     /// Database path
-    #[structopt(long, default_value = "/tmp/testnet")]
+    #[structopt(long, default_value = "/tmp/themelio-mainnet")]
     database: String,
 
     /// Testnet type
@@ -38,9 +38,13 @@ pub struct NodeConfig {
     #[structopt(long)]
     staker_listen: Option<SocketAddr>,
 
-    /// If given, uses this TOML file to configure the genesis state rather than the default testnet.
+    /// If given, uses this TOML file to configure the genesis state rather than the default mainnet.
     #[structopt(long)]
     genesis_config: Option<PathBuf>,
+
+    /// If set to true, default to the testnet
+    #[structopt(long)]
+    testnet: bool,
 }
 
 /// Runs the main function for a node.
@@ -49,21 +53,23 @@ pub async fn run_node(opt: NodeConfig) -> anyhow::Result<()> {
     let _ = std::fs::create_dir_all(&opt.database);
     log::info!("themelio-core v{} initializing...", VERSION);
     log::info!("bootstrapping with {:?}", opt.bootstrap);
-    // TODO: make this configurable rather than hardcoding the testnet
     let genesis = if let Some(path) = opt.genesis_config {
         let genesis_toml = smol::fs::read(&path)
             .await
             .context("cannot read genesis config")?;
         toml::from_slice(&genesis_toml)?
-    } else {
+    } else if opt.testnet {
         GenesisConfig::std_testnet()
+    } else {
+        GenesisConfig::std_mainnet()
     };
+    let netid = genesis.network;
     let storage = NodeStorage::new(
         sled::open(&opt.database).context("cannot open database")?,
         genesis,
     )
     .share();
-    let _node_prot = NodeProtocol::new(opt.listen, opt.bootstrap.clone(), storage.clone());
+    let _node_prot = NodeProtocol::new(netid, opt.listen, opt.bootstrap.clone(), storage.clone());
     let _staker_prot = if let Some(my_sk) = opt.staker_sk {
         Some(
             StakerProtocol::new(

@@ -5,8 +5,8 @@
 use std::collections::HashMap;
 
 use crate::{
-    melvm, Block, CoinData, CoinDataHeight, CoinID, GenesisConfig, Header, NetID, ProposerAction,
-    StakeDoc, Transaction, TxKind, DENOM_TMEL,
+    melvm, Block, CoinData, CoinDataHeight, CoinID, Denom, GenesisConfig, Header, NetID,
+    ProposerAction, StakeDoc, Transaction, TxKind,
 };
 
 beaver::define! {
@@ -20,7 +20,7 @@ beaver::define! {
     pub CoinDataFactory (CoinData) {
         covhash -> |_| tmelcrypt::HashVal::random(),
         value -> |n| n as u128,
-        denom -> |_| DENOM_TMEL.to_vec(),
+        denom -> |_| Denom::Mel,
         additional_data -> |_| vec![],
     }
 }

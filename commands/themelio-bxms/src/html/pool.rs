@@ -1,16 +1,16 @@
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 
 use crate::{notfound, to_badgateway, to_badreq};
 use anyhow::Context;
 use askama::Template;
-use blkstructs::{DENOM_DOSC, DENOM_TMEL, DENOM_TSYM, MICRO_CONVERTER};
+use blkstructs::{Denom, MICRO_CONVERTER};
 use futures_util::stream::FuturesUnordered;
 use nodeprot::ValClient;
 use num_traits::ToPrimitive;
 use serde::Serialize;
 use smol::prelude::*;
 
-use super::RenderTimeTracer;
+use super::{friendly_denom, RenderTimeTracer};
 
 #[derive(Template)]
 #[template(path = "pool.html")]
@@ -25,17 +25,13 @@ struct PoolTemplate {
 pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::Body> {
     let _render = RenderTimeTracer::new("poolpage");
     let denom = req.param("denom").map(|v| v.to_string())?;
-    let denom = hex::decode(&denom).map_err(to_badreq)?;
+    let denom = Denom::from_bytes(&hex::decode(&denom).map_err(to_badreq)?)
+        .ok_or_else(|| to_badreq(anyhow::anyhow!("bad")))?;
 
-    let last_week = pool_items(req.state(), &denom, 20160).await?;
-    let last_month = pool_items(req.state(), &denom, 86400).await?;
+    let last_week = pool_items(req.state(), denom, 20160).await?;
+    let last_month = pool_items(req.state(), denom, 86400).await?;
     let mut body: tide::Body = PoolTemplate {
-        denom: match &denom {
-            x if x == DENOM_TMEL => "TMEL".into(),
-            x if x == DENOM_TSYM => "TSYM".into(),
-            x if x == DENOM_DOSC => "nDOSC".into(),
-            other => format!("Other ({})", hex::encode(&other)),
-        },
+        denom: friendly_denom(denom),
         last_month_json: serde_json::to_string(&last_month).unwrap(),
         last_week_json: serde_json::to_string(&last_week).unwrap(),
         last_item: last_week.last().context("no last")?.clone(),
@@ -49,7 +45,7 @@ pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::B
 
 async fn pool_items(
     client: &ValClient,
-    denom: &[u8],
+    denom: Denom,
     blocks: u64,
 ) -> tide::Result<Vec<PoolDataItem>> {
     let snapshot = client.snapshot().await.map_err(to_badgateway)?;

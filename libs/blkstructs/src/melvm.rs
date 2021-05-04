@@ -1,13 +1,11 @@
 pub use crate::{CoinData, CoinID, Transaction};
-use crate::{CoinDataHeight, Header};
+use crate::{CoinDataHeight, Denom, Header};
 use arbitrary::Arbitrary;
-use primitive_types::U256;
+use ethnum::U256;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryInto;
 use tmelcrypt::HashVal;
-
-mod lexer;
 
 /// Heap address where the transaction trying to spend the coin encumbered by this covenant (spender) is put
 pub const ADDR_SPENDER_TX: u16 = 0;
@@ -100,31 +98,8 @@ impl Covenant {
 
     pub fn std_ed25519_pk(pk: tmelcrypt::Ed25519PK) -> Self {
         Covenant::from_ops(&[
-            OpCode::PushI(0.into()),
-            OpCode::PushI(6.into()),
-            OpCode::LoadImm(0),
-            OpCode::VRef,
-            OpCode::VRef,
-            OpCode::PushB(pk.0.to_vec()),
-            OpCode::LoadImm(1),
-            OpCode::SigEOk(32),
-        ])
-        .unwrap()
-    }
-
-    pub fn std_ed25519_pk_4(pk: tmelcrypt::Ed25519PK) -> Self {
-        Covenant::from_ops(&[
-            OpCode::PushI(0.into()),
-            OpCode::PushI(6.into()),
-            OpCode::LoadImm(0),
-            OpCode::VRef,
-            OpCode::VRef,
-            OpCode::PushB(pk.0.to_vec()),
-            OpCode::LoadImm(1),
-            OpCode::SigEOk(32),
-            OpCode::Bnz(8),
-            OpCode::PushI(0.into()),
-            OpCode::PushI(6.into()),
+            OpCode::PushI(0u32.into()),
+            OpCode::PushI(6u32.into()),
             OpCode::LoadImm(0),
             OpCode::VRef,
             OpCode::VRef,
@@ -145,7 +120,7 @@ impl Covenant {
     }
 
     pub fn always_true() -> Self {
-        Covenant::from_ops(&[OpCode::PushI(1.into())]).unwrap()
+        Covenant::from_ops(&[OpCode::PushI(1u32.into())]).unwrap()
     }
 
     fn disassemble_one(
@@ -235,7 +210,7 @@ impl Covenant {
                 for r in buf.iter_mut() {
                     *r = bcode.pop()?
                 }
-                output.push(OpCode::PushI(U256::from_big_endian(&buf)))
+                output.push(OpCode::PushI(U256::from_be_bytes(buf)))
             }
             _ => return None,
         }
@@ -340,6 +315,8 @@ impl Covenant {
             OpCode::ItoB => output.push(0xc0),
             OpCode::BtoI => output.push(0xc1),
 
+            OpCode::TypeQ => output.push(0xcf),
+
             // literals
             OpCode::PushB(bts) => {
                 output.push(0xf0);
@@ -351,9 +328,12 @@ impl Covenant {
             }
             OpCode::PushI(num) => {
                 output.push(0xf1);
-                let mut out = [0; 32];
-                num.to_big_endian(&mut out);
+                let out = num.to_be_bytes();
                 output.extend_from_slice(&out);
+            }
+
+            OpCode::Dup => {
+                output.push(0xff);
             }
         }
         Some(())
@@ -452,9 +432,9 @@ impl Executor {
             OpCode::Eql => self.do_binop(|x, y| match (x, y) {
                 (Value::Int(x), Value::Int(y)) => {
                     if x == y {
-                        Some(Value::Int(U256::one()))
+                        Some(Value::Int(1u32.into()))
                     } else {
-                        Some(Value::Int(U256::zero()))
+                        Some(Value::Int(0u32.into()))
                     }
                 }
                 _ => None,
@@ -463,18 +443,18 @@ impl Executor {
                 let x = x.into_int()?;
                 let y = y.into_int()?;
                 if x < y {
-                    Some(Value::Int(U256::one()))
+                    Some(Value::Int(1u32.into()))
                 } else {
-                    Some(Value::Int(U256::zero()))
+                    Some(Value::Int(0u32.into()))
                 }
             })?,
             OpCode::Gt => self.do_binop(|x, y| {
                 let x = x.into_int()?;
                 let y = y.into_int()?;
                 if !x > y {
-                    Some(Value::Int(U256::one()))
+                    Some(Value::Int(1u32.into()))
                 } else {
-                    Some(Value::Int(U256::zero()))
+                    Some(Value::Int(0u32.into()))
                 }
             })?,
             OpCode::Shl => self.do_binop(|x, offset| {
@@ -561,7 +541,7 @@ impl Executor {
                 }
             })?,
             OpCode::VLength => self.do_monop(|vec| match vec {
-                Value::Vector(vec) => Some(Value::Int(U256::from(vec.len()))),
+                Value::Vector(vec) => Some(Value::Int(U256::from(vec.len() as u64))),
                 _ => None,
             })?,
             OpCode::VEmpty => self.stack.push(Value::Vector(im::Vector::new())),
@@ -580,7 +560,7 @@ impl Executor {
             OpCode::BPush => self.do_binop(|vec, val| {
                 let mut vec = vec.into_bytes()?;
                 let val = val.into_int()?;
-                vec.push_back(val.low_u32() as u8);
+                vec.push_back(*val.low() as u8);
                 Some(Value::Bytes(vec))
             })?,
             OpCode::BCons => self.do_binop(|item, vec| {
@@ -613,19 +593,19 @@ impl Executor {
                 }
             })?,
             OpCode::BLength => self.do_monop(|vec| match vec {
-                Value::Bytes(vec) => Some(Value::Int(U256::from(vec.len()))),
+                Value::Bytes(vec) => Some(Value::Int(U256::from(vec.len() as u64))),
                 _ => None,
             })?,
             // control flow
             OpCode::Bez(jgap) => {
                 let top = self.stack.pop()?;
-                if top == Value::Int(U256::zero()) {
+                if top == Value::Int(1u32.into()) {
                     return Some(pc + 1 + *jgap as u32);
                 }
             }
             OpCode::Bnz(jgap) => {
                 let top = self.stack.pop()?;
-                if top != Value::Int(U256::zero()) {
+                if top != Value::Int(0u32.into()) {
                     return Some(pc + 1 + *jgap as u32);
                 }
             }
@@ -637,25 +617,14 @@ impl Executor {
             }
             // Conversions
             OpCode::BtoI => self.do_monop(|x| {
-                let mut bytes = x.into_bytes()?;
-                if bytes.len() < 32 {
-                    return None;
-                }
+                let bytes = x.into_bytes()?;
+                let bytes: [u8; 32] = bytes.into_iter().collect::<Vec<_>>().try_into().ok()?;
 
-                Some(Value::Int(
-                    bytes
-                        .slice(..32)
-                        .iter()
-                        .fold(U256::zero(), |acc, b| (acc * 256) + *b),
-                ))
+                Some(Value::Int(U256::from_be_bytes(bytes)))
             })?,
             OpCode::ItoB => self.do_monop(|x| {
                 let n = x.into_int()?;
-                let mut bytes = im::vector![];
-                for i in 0..32 {
-                    bytes.push_back(n.byte(i));
-                }
-                Some(Value::Bytes(bytes))
+                Some(Value::Bytes(n.to_be_bytes().iter().copied().collect()))
             })?,
             // literals
             OpCode::PushB(bts) => {
@@ -663,6 +632,17 @@ impl Executor {
                 self.stack.push(bts);
             }
             OpCode::PushI(num) => self.stack.push(Value::Int(*num)),
+            OpCode::TypeQ => self.do_monop(|x| match x {
+                Value::Int(_) => Some(Value::Int(0u32.into())),
+                Value::Bytes(_) => Some(Value::Int(1u32.into())),
+                Value::Vector(_) => Some(Value::Int(2u32.into())),
+            })?,
+            // dup
+            OpCode::Dup => {
+                let val = self.stack.pop()?;
+                self.stack.push(val.clone());
+                self.stack.push(val);
+            }
         }
         Some(pc + 1)
     }
@@ -678,7 +658,7 @@ impl Executor {
         self.run_bare(ops);
         match self.stack.pop()? {
             Value::Int(b) => {
-                if b == U256::zero() {
+                if b == U256::from(0u32) {
                     None
                 } else {
                     Some(())
@@ -746,11 +726,15 @@ pub enum OpCode {
     // type conversions
     ItoB,
     BtoI,
+    TypeQ,
     // SERIAL(u16),
 
     // literals
     PushB(Vec<u8>),
     PushI(U256),
+
+    // duplication
+    Dup,
 }
 
 impl OpCode {
@@ -797,6 +781,8 @@ impl OpCode {
             OpCode::BSet => 20,
             OpCode::BCons => 10,
 
+            OpCode::TypeQ => 4,
+
             OpCode::ItoB => 50,
             OpCode::BtoI => 50,
 
@@ -810,6 +796,8 @@ impl OpCode {
 
             OpCode::PushB(_) => 1,
             OpCode::PushI(_) => 1,
+
+            OpCode::Dup => 4,
         }
     }
 }
@@ -830,15 +818,15 @@ impl Value {
     }
     fn into_u16(self) -> Option<u16> {
         let num = self.into_int()?;
-        if num > U256::from(65535) {
+        if num > U256::from(65535u32) {
             None
         } else {
-            Some(num.low_u32() as u16)
+            Some(*num.low() as u16)
         }
     }
     fn into_truncated_u8(self) -> Option<u8> {
         let num = self.into_int()?;
-        Some(num.low_u32() as u8)
+        Some(*num.low() as u8)
     }
     pub fn from_bytes(bts: &[u8]) -> Self {
         let mut new = im::Vector::new();
@@ -849,9 +837,9 @@ impl Value {
     }
     fn from_bool(b: bool) -> Self {
         if b {
-            Value::Int(U256::one())
+            Value::Int(1u32.into())
         } else {
-            Value::Int(U256::zero())
+            Value::Int(0u32.into())
         }
     }
 
@@ -944,6 +932,12 @@ impl From<HashVal> for Value {
     }
 }
 
+impl From<Denom> for Value {
+    fn from(v: Denom) -> Self {
+        Value::Bytes(v.to_bytes().into_iter().collect::<im::Vector<u8>>())
+    }
+}
+
 impl From<Vec<u8>> for Value {
     fn from(v: Vec<u8>) -> Self {
         Value::Bytes(v.into_iter().collect::<im::Vector<u8>>())
@@ -1009,8 +1003,8 @@ mod tests {
         let check_sig_script = Covenant::from_ops(&[OpCode::Loop(
             5,
             vec![
-                OpCode::PushI(0.into()),
-                OpCode::PushI(6.into()),
+                OpCode::PushI(0u32.into()),
+                OpCode::PushI(6u32.into()),
                 OpCode::LoadImm(0),
                 OpCode::VRef,
                 OpCode::VRef,

@@ -3,8 +3,8 @@
 mod sled_tree;
 use std::sync::Arc;
 
+use blkdb::{traits::DbBackend, BlockTree};
 use blkstructs::{ConsensusProof, GenesisConfig, SealedState, State, StateError, Transaction};
-use dashmap::DashMap;
 use lru::LruCache;
 use parking_lot::RwLock;
 pub use sled_tree::*;
@@ -19,10 +19,7 @@ pub type SharedStorage = Arc<RwLock<NodeStorage>>;
 pub struct NodeStorage {
     mempool: Mempool,
 
-    highest_height: SledMap<u8, u64>,
-    history: SledMap<u64, Vec<u8>>,
-    proofs: SledMap<u64, ConsensusProof>,
-    history_cache: DashMap<u64, SealedState>,
+    history: BlockTree<SledBackend>,
     forest: autosmt::Forest,
 }
 
@@ -39,37 +36,24 @@ impl NodeStorage {
 
     /// Opens a NodeStorage, given a sled database.
     pub fn new(db: sled::Db, genesis: GenesisConfig) -> Self {
-        let highest_height = SledMap::new(db.open_tree("height").unwrap());
-        let history: SledMap<u64, Vec<u8>> = SledMap::new(db.open_tree("history").unwrap());
-        let proofs = SledMap::new(db.open_tree("proofs").unwrap());
-        let history_cache = DashMap::new();
         let forest = autosmt::Forest::load(SledTreeDB::new(db.open_tree("autosmt").unwrap()));
+        let blktree_backend = SledBackend {
+            inner: db.open_tree("node_blktree").unwrap(),
+        };
+        let mut history = BlockTree::new(blktree_backend, forest.clone());
 
         // initialize stuff
-        if history.get(&0).is_none() {
-            history.insert(
-                0,
-                State::genesis(&forest, genesis)
-                    .seal(None)
-                    .partial_encoding(),
-            );
-            highest_height.insert(0, 0);
+        if history.get_tips().is_empty() {
+            history.set_genesis(State::genesis(&forest, genesis).seal(None), &[]);
         }
 
-        let mempool_state = SealedState::from_partial_encoding_infallible(
-            &history.get(&highest_height.get(&0).unwrap()).unwrap(),
-            &forest,
-        )
-        .next_state();
+        let mempool_state = history.get_tips()[0].to_state().next_state();
         Self {
             mempool: Mempool {
                 provisional_state: mempool_state,
                 seen: LruCache::new(100000),
             },
-            highest_height,
             history,
-            proofs,
-            history_cache,
             forest,
         }
     }
@@ -81,24 +65,26 @@ impl NodeStorage {
 
     /// Obtain the highest height.
     pub fn highest_height(&self) -> u64 {
-        self.highest_height.get(&0).unwrap_or_default()
+        self.history.get_tips()[0].header().height
     }
 
     /// Obtain a historical SealedState.
     pub fn get_state(&self, height: u64) -> Option<SealedState> {
-        if let Some(val) = self.history_cache.get(&height) {
-            Some(val.clone())
-        } else {
-            let raw_value = self.history.get(&height)?;
-            let state = SealedState::from_partial_encoding_infallible(&raw_value, &self.forest);
-            self.history_cache.insert(height, state.clone());
-            Some(state)
-        }
+        self.history
+            .get_at_height(height)
+            .get(0)
+            .map(|v| v.to_state())
     }
 
     /// Obtain a historical ConsensusProof.
     pub fn get_consensus(&self, height: u64) -> Option<ConsensusProof> {
-        self.proofs.get(&height)
+        let height = self
+            .history
+            .get_at_height(height)
+            .into_iter()
+            .next()
+            .unwrap();
+        Some(stdcode::deserialize(height.metadata()).unwrap())
     }
 
     /// Consumes a block, applying it to the current state.
@@ -115,32 +101,13 @@ impl NodeStorage {
                 highest_height
             );
         }
-        let mut last_state = self
-            .get_state(highest_height)
-            .expect("database corruption: no state at the stated highest height")
-            .next_state();
-        last_state.apply_tx_batch(&blk.transactions.iter().cloned().collect::<Vec<_>>())?;
-        let new_state = last_state.seal(blk.proposer_action);
-        if new_state.header() != blk.header {
-            anyhow::bail!(
-                "header mismatch! got {:#?}, expected {:#?}, after applying block {:#?}",
-                new_state.header(),
-                blk.header,
-                blk
-            );
-        }
-        let new_height = new_state.inner_ref().height;
-        self.history
-            .insert(new_height, new_state.partial_encoding());
-        // TODO: check consensus proof
-        self.proofs.insert(new_height, cproof);
 
-        // save highest height last to prevent inconsistencies
-        self.highest_height.insert(0, new_height);
+        self.history
+            .apply_block(&blk, &stdcode::serialize(&cproof).unwrap())?;
 
         log::debug!(
             "block {}, txcount={}, hash={:?} APPLIED",
-            new_height,
+            highest_height + 1,
             blk.transactions.len(),
             blk.header.hash()
         );
@@ -150,6 +117,31 @@ impl NodeStorage {
     /// Convenience method to "share" storage.
     pub fn share(self) -> SharedStorage {
         Arc::new(RwLock::new(self))
+    }
+}
+
+struct SledBackend {
+    inner: sled::Tree,
+}
+
+impl DbBackend for SledBackend {
+    fn insert(&mut self, key: &[u8], value: &[u8]) -> Option<Vec<u8>> {
+        self.inner.insert(key, value).unwrap().map(|v| v.to_vec())
+    }
+
+    fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
+        self.inner.get(key).unwrap().map(|v| v.to_vec())
+    }
+
+    fn remove(&mut self, key: &[u8]) -> Option<Vec<u8>> {
+        self.inner.remove(key).unwrap().map(|v| v.to_vec())
+    }
+
+    fn key_range(&self, start: &[u8], end: &[u8]) -> Vec<Vec<u8>> {
+        self.inner
+            .range(start..=end)
+            .map(|v| v.unwrap().0.to_vec())
+            .collect()
     }
 }
 

@@ -1,8 +1,6 @@
 use std::collections::BinaryHeap;
 
-use blkstructs::{
-    melvm, CoinData, CoinID, State, Transaction, TxKind, DENOM_TMEL, MICRO_CONVERTER,
-};
+use blkstructs::{melvm, CoinData, CoinID, Denom, State, Transaction, TxKind, MICRO_CONVERTER};
 use once_cell::sync::Lazy;
 use tmelcrypt::{Ed25519PK, Ed25519SK};
 
@@ -26,7 +24,7 @@ fn random_valid_txx(
             outputs: vec![CoinData {
                 covhash: cons.hash(),
                 value: to_spend_data.value,
-                denom: DENOM_TMEL.to_owned(),
+                denom: Denom::Mel,
                 additional_data: vec![],
             }],
             fee: 0,
@@ -62,7 +60,7 @@ fn main() {
     let kmel_cd = CoinData {
         covhash: cov.hash(),
         value: MICRO_CONVERTER * 1000,
-        denom: DENOM_TMEL.to_owned(),
+        denom: Denom::Mel,
         additional_data: vec![],
     };
     let mut start_coin = CoinID::zero_zero();

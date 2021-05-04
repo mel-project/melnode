@@ -4,10 +4,16 @@ use blkstructs::{
     melvm, AbbrBlock, ProposerAction, SealedState, StakeMapping, Transaction, STAKE_EPOCH,
 };
 use dashmap::DashMap;
-use futures_util::stream::{FuturesOrdered, FuturesUnordered};
+use futures_util::stream::FuturesOrdered;
 use neosymph::{msg::ProposalMsg, StreamletCfg, StreamletEvt, SymphGossip};
-use smol::{lock::Semaphore, prelude::*};
-use std::{collections::BTreeMap, convert::TryInto, net::SocketAddr, sync::Arc, time::Duration};
+use smol::prelude::*;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    convert::TryInto,
+    net::SocketAddr,
+    sync::Arc,
+    time::Duration,
+};
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 use tracing::instrument;
 
@@ -162,7 +168,7 @@ async fn staker_loop(
         genesis: genesis.clone(),
         stakes: stakes.clone(),
         epoch,
-        start_time: std::time::UNIX_EPOCH + Duration::from_secs(1619280000), // Apr 25 2021
+        start_time: std::time::UNIX_EPOCH + Duration::from_secs(1619758800), // Apr 30 2021
         my_sk,
         interval: Duration::from_secs(30),
         get_proposer: Box::new(gen_get_proposer(genesis.clone(), stakes.clone())),
@@ -224,7 +230,7 @@ async fn staker_loop(
                     .send(ProposalMsg {
                         proposal: AbbrBlock {
                             header: next.header(),
-                            txhashes: im::OrdSet::new(),
+                            txhashes: BTreeSet::new(),
                             proposer_action: action,
                         },
                         last_nonempty,

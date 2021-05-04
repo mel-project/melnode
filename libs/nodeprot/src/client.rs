@@ -6,8 +6,8 @@ use std::{
 
 use autosmt::{CompressedProof, FullProof};
 use blkstructs::{
-    Block, CoinDataHeight, CoinID, ConsensusProof, Header, NetID, PoolState, SmtMapping, StakeDoc,
-    StakeMapping, Transaction, STAKE_EPOCH,
+    Block, CoinDataHeight, CoinID, ConsensusProof, Denom, Header, NetID, PoolState, SmtMapping,
+    StakeDoc, StakeMapping, Transaction, STAKE_EPOCH,
 };
 use futures_util::stream::FuturesUnordered;
 use melnet::MelnetError;
@@ -212,7 +212,7 @@ impl ValClientSnapshot {
     }
 
     /// Gets a pool info.
-    pub async fn get_pool(&self, denom: &[u8]) -> melnet::Result<Option<PoolState>> {
+    pub async fn get_pool(&self, denom: Denom) -> melnet::Result<Option<PoolState>> {
         self.get_smt_value_serde(Substate::Pools, denom).await
     }
 

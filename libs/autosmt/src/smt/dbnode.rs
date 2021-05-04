@@ -94,9 +94,6 @@ impl DBNode {
         data: &[u8],
         db: &Forest,
     ) -> Self {
-        if data.is_empty() {
-            eprintln!("SET BY PATH EMPTY AT {:#?}", self);
-        }
         match self {
             Internal(int) => int.set_by_path(path, key, data, db),
             Data(dat) => dat.set_by_path(path, key, data, db),

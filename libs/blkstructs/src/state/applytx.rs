@@ -5,8 +5,8 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use tmelcrypt::HashVal;
 
 use crate::{
-    melvm::CovenantEnv, CoinDataHeight, CoinID, StakeDoc, State, StateError, Transaction, TxKind,
-    COVHASH_DESTROY, DENOM_DOSC, DENOM_NEWCOIN, DENOM_TSYM, STAKE_EPOCH,
+    melvm::CovenantEnv, CoinDataHeight, CoinID, Denom, StakeDoc, State, StateError, Transaction,
+    TxKind, COVHASH_DESTROY, STAKE_EPOCH,
 };
 
 use super::melmint;
@@ -92,7 +92,7 @@ impl<'a> StateHandle<'a> {
     fn apply_tx_inputs(&self, tx: &Transaction) -> Result<(), StateError> {
         let scripts = tx.script_as_map();
         // build a map of input coins
-        let mut in_coins: im::HashMap<Vec<u8>, u128> = im::HashMap::new();
+        let mut in_coins: im::HashMap<Denom, u128> = im::HashMap::new();
         // get last header
         let last_header = self
             .state
@@ -131,7 +131,7 @@ impl<'a> StateHandle<'a> {
                     }
                     self.del_coin(*coin_id);
                     in_coins.insert(
-                        coin_data.coin_data.denom.clone(),
+                        coin_data.coin_data.denom,
                         in_coins.get(&coin_data.coin_data.denom).unwrap_or(&0)
                             + coin_data.coin_data.value,
                     );
@@ -143,10 +143,12 @@ impl<'a> StateHandle<'a> {
         if tx.kind != TxKind::Faucet {
             for (currency, value) in out_coins.iter() {
                 // we skip the created doscs for a DoscMint transaction
-                if tx.kind == TxKind::DoscMint && currency == DENOM_DOSC {
+                if tx.kind == TxKind::DoscMint && *currency == Denom::NomDosc {
                     continue;
                 }
-                if !currency.is_empty() && *value != *in_coins.get(currency).unwrap_or(&u128::MAX) {
+                if *currency != Denom::NewCoin
+                    && *value != *in_coins.get(currency).unwrap_or(&u128::MAX)
+                {
                     return Err(StateError::UnbalancedInOut);
                 }
             }
@@ -170,8 +172,8 @@ impl<'a> StateHandle<'a> {
         let height = self.state.height;
         for (index, coin_data) in tx.outputs.iter().enumerate() {
             let mut coin_data = coin_data.clone();
-            if coin_data.denom == DENOM_NEWCOIN {
-                coin_data.denom = tx.hash_nosigs().to_vec();
+            if coin_data.denom == Denom::NewCoin {
+                coin_data.denom = Denom::Custom(tx.hash_nosigs());
             }
             // if covenant hash is zero, this destroys the coins permanently
             if coin_data.covhash != COVHASH_DESTROY {
@@ -220,7 +222,7 @@ impl<'a> StateHandle<'a> {
         // ensure that the total output of DOSCs is correct
         let total_dosc_output = tx
             .total_outputs()
-            .get(DENOM_DOSC)
+            .get(&Denom::NomDosc)
             .cloned()
             .unwrap_or_default();
         if total_dosc_output > reward_nom {
@@ -235,7 +237,7 @@ impl<'a> StateHandle<'a> {
         let curr_epoch = self.state.height / STAKE_EPOCH;
         // then we check that the first coin is valid
         let first_coin = tx.outputs.get(0).ok_or(StateError::MalformedTx)?;
-        if first_coin.denom != DENOM_TSYM.to_vec() {
+        if first_coin.denom != Denom::Sym {
             return Err(StateError::MalformedTx);
         }
         // then we check consistency

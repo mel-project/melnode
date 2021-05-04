@@ -1,7 +1,7 @@
 mod homepage;
 use std::{fmt::Display, time::Instant};
 
-use blkstructs::MICRO_CONVERTER;
+use blkstructs::{Denom, MICRO_CONVERTER};
 mod block;
 mod pool;
 mod transaction;
@@ -48,5 +48,14 @@ impl<'a> RenderTimeTracer<'a> {
             start_time: Instant::now(),
             label,
         }
+    }
+}
+fn friendly_denom(denom: Denom) -> String {
+    match denom {
+        Denom::Mel => "MEL".into(),
+        Denom::Sym => "SYM".into(),
+        Denom::NomDosc => "nDOSC".into(),
+        Denom::Custom(hash) => format!("Custom ({}..)", hex::encode(&hash[..5])),
+        Denom::NewCoin => "(new denom)".into(),
     }
 }

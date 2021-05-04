@@ -3,8 +3,7 @@ use std::convert::TryInto;
 
 use super::melswap::PoolState;
 use crate::{
-    CoinData, CoinDataHeight, State, Transaction, TxKind, DENOM_DOSC, DENOM_TMEL, DENOM_TSYM,
-    MAX_COINVAL, MICRO_CONVERTER,
+    CoinData, CoinDataHeight, Denom, State, Transaction, TxKind, MAX_COINVAL, MICRO_CONVERTER,
 };
 use cached::proc_macro::cached;
 
@@ -68,11 +67,11 @@ pub fn preseal_melmint(state: State) -> State {
 fn create_builtins(mut state: State) -> State {
     let mut def = PoolState::new_empty();
     let _ = def.deposit(MICRO_CONVERTER * 1000, MICRO_CONVERTER * 1000);
-    if state.pools.get(&DENOM_TSYM.to_vec()).0.is_none() {
-        state.pools.insert(DENOM_TSYM.to_vec(), def)
+    if state.pools.get(&Denom::Sym).0.is_none() {
+        state.pools.insert(Denom::Sym, def)
     }
-    if state.pools.get(&DENOM_DOSC.to_vec()).0.is_none() {
-        state.pools.insert(DENOM_DOSC.to_vec(), def)
+    if state.pools.get(&Denom::NomDosc).0.is_none() {
+        state.pools.insert(Denom::NomDosc, def)
     }
     state
 }
@@ -87,14 +86,18 @@ fn process_swaps(mut state: State) -> State {
             tx.kind == TxKind::Swap
                 && !tx.outputs.is_empty()
                 && state.coins.get(&tx.get_coinid(0)).0.is_some()
-                && state.pools.get(&tx.data).0.is_some()
-                && (tx.outputs[0].denom == DENOM_TMEL || tx.outputs[0].denom == tx.data)
+                && state
+                    .pools
+                    .get(&Denom::from_bytes(&tx.data).unwrap_or(Denom::NewCoin)) // Newcoin is something that never should appear
+                    .0
+                    .is_some()
+                && (tx.outputs[0].denom == Denom::Mel || tx.outputs[0].denom.to_bytes() == tx.data)
         })
         .collect::<Vec<_>>();
     // find the pools mentioned
     let mut pools = swap_reqs
         .iter()
-        .map(|tx| tx.data.clone())
+        .filter_map(|tx| Denom::from_bytes(&tx.data))
         .collect::<Vec<_>>();
     pools.sort_unstable();
     pools.dedup();
@@ -102,7 +105,7 @@ fn process_swaps(mut state: State) -> State {
     for pool in pools {
         let relevant_swaps: Vec<Transaction> = swap_reqs
             .iter()
-            .filter(|tx| tx.data == pool)
+            .filter(|tx| Denom::from_bytes(&tx.data) == Some(pool))
             .cloned()
             .collect();
         let mut pool_state = state.pools.get(&pool).0.unwrap();
@@ -110,7 +113,7 @@ fn process_swaps(mut state: State) -> State {
         let total_mels = relevant_swaps
             .iter()
             .map(|tx| {
-                if tx.outputs[0].denom == DENOM_TMEL {
+                if tx.outputs[0].denom == Denom::Mel {
                     tx.outputs[0].value
                 } else {
                     0
@@ -120,7 +123,7 @@ fn process_swaps(mut state: State) -> State {
         let total_toks = relevant_swaps
             .iter()
             .map(|tx| {
-                if tx.outputs[0].denom == DENOM_TMEL {
+                if tx.outputs[0].denom == Denom::Mel {
                     0
                 } else {
                     tx.outputs[0].value
@@ -130,13 +133,13 @@ fn process_swaps(mut state: State) -> State {
         // transmute coins
         let (mel_withdrawn, tok_withdrawn) = pool_state.swap_many(total_mels, total_toks);
         for mut swap in relevant_swaps {
-            if swap.outputs[0].denom == DENOM_TMEL {
-                swap.outputs[0].denom = pool.clone();
+            if swap.outputs[0].denom == Denom::Mel {
+                swap.outputs[0].denom = pool;
                 swap.outputs[0].value =
                     multiply_frac(tok_withdrawn, Ratio::new(swap.outputs[0].value, total_mels))
                         .min(MAX_COINVAL);
             } else {
-                swap.outputs[0].denom = DENOM_TMEL.to_vec();
+                swap.outputs[0].denom = Denom::Mel;
                 swap.outputs[0].value =
                     multiply_frac(mel_withdrawn, Ratio::new(swap.outputs[0].value, total_toks))
                         .min(MAX_COINVAL);
@@ -165,19 +168,19 @@ fn process_deposits(mut state: State) -> State {
                 && tx.outputs.len() >= 2
                 && state.coins.get(&tx.get_coinid(0)).0.is_some()
                 && state.coins.get(&tx.get_coinid(1)).0.is_some()
-                && (tx.outputs[0].denom == DENOM_TMEL && tx.outputs[1].denom == tx.data)
+                && (tx.outputs[0].denom == Denom::Mel && tx.outputs[1].denom.to_bytes() == tx.data)
         })
         .collect::<Vec<_>>();
     // eprintln!("{} deposit reqs", deposit_reqs.len());
     // find the pools mentioned
     let pools = deposit_reqs
         .iter()
-        .map(|tx| tx.data.clone())
+        .filter_map(|tx| Denom::from_bytes(&tx.data))
         .collect::<Vec<_>>();
     for pool in pools {
         let relevant_txx: Vec<Transaction> = deposit_reqs
             .iter()
-            .filter(|tx| tx.data == pool)
+            .filter(|tx| Denom::from_bytes(&tx.data) == Some(pool))
             .cloned()
             .collect();
         // sum up total mels and toks
@@ -193,12 +196,12 @@ fn process_deposits(mut state: State) -> State {
         // main logic here
         let total_liqs = if let Some(mut pool_state) = state.pools.get(&pool).0 {
             let liq = pool_state.deposit(total_mels, total_toks);
-            state.pools.insert(pool.clone(), pool_state);
+            state.pools.insert(pool, pool_state);
             liq
         } else {
             let mut pool_state = PoolState::new_empty();
             let liq = pool_state.deposit(total_mels, total_toks);
-            state.pools.insert(pool.clone(), pool_state);
+            state.pools.insert(pool, pool_state);
             liq
         };
         // divvy up the liqs
@@ -207,7 +210,7 @@ fn process_deposits(mut state: State) -> State {
                 .value
                 .sqrt()
                 .saturating_mul(deposit.outputs[1].value.sqrt());
-            deposit.outputs[0].denom = liq_token_denom(&pool);
+            deposit.outputs[0].denom = liq_token_denom(pool);
             deposit.outputs[0].value =
                 multiply_frac(total_liqs, Ratio::new(my_mtsqrt, total_mtsqrt));
             state.coins.insert(
@@ -233,19 +236,24 @@ fn process_withdrawals(mut state: State) -> State {
             tx.kind == TxKind::LiqWithdraw
                 && tx.outputs.len() == 1
                 && state.coins.get(&tx.get_coinid(0)).0.is_some()
-                && state.pools.get(&tx.data).0.is_some()
-                && (tx.outputs[0].denom == liq_token_denom(&tx.data))
+                && state
+                    .pools
+                    .get(&Denom::from_bytes(&tx.data).unwrap_or(Denom::NewCoin))
+                    .0
+                    .is_some()
+                && (tx.outputs[0].denom
+                    == liq_token_denom(Denom::from_bytes(&tx.data).unwrap_or(Denom::NewCoin)))
         })
         .collect::<Vec<_>>();
     // find the pools mentioned
     let pools = withdraw_reqs
         .iter()
-        .map(|tx| tx.data.clone())
+        .filter_map(|tx| Denom::from_bytes(&tx.data))
         .collect::<Vec<_>>();
     for pool in pools {
         let relevant_txx: Vec<Transaction> = withdraw_reqs
             .iter()
-            .filter(|tx| tx.data == pool)
+            .filter(|tx| tx.data == pool.to_bytes())
             .cloned()
             .collect();
         // sum up total liqs
@@ -256,14 +264,14 @@ fn process_withdrawals(mut state: State) -> State {
         // get the state
         let mut pool_state = state.pools.get(&pool).0.unwrap();
         let (total_mel, total_tok) = pool_state.withdraw(total_liqs);
-        state.pools.insert(pool.clone(), pool_state);
+        state.pools.insert(pool, pool_state);
         // divvy up the mel and tok
         for mut deposit in relevant_txx {
             let my_liqs = deposit.outputs[0].value;
-            deposit.outputs[0].denom = DENOM_TMEL.to_vec();
+            deposit.outputs[0].denom = Denom::Mel;
             deposit.outputs[0].value = multiply_frac(total_mel, Ratio::new(my_liqs, total_liqs));
             let synth = CoinData {
-                denom: pool.clone(),
+                denom: pool,
                 value: multiply_frac(total_tok, Ratio::new(my_liqs, total_liqs)),
                 covhash: deposit.outputs[0].covhash,
                 additional_data: deposit.outputs[0].additional_data.clone(),
@@ -293,14 +301,14 @@ fn process_pegging(mut state: State) -> State {
     // first calculate the implied sym/nomDOSC exchange rate
     let x_s = state
         .pools
-        .get(&DENOM_TSYM.to_vec())
+        .get(&Denom::Sym)
         .0
         .unwrap()
         .implied_price()
         .recip();
     let x_d = state
         .pools
-        .get(&DENOM_DOSC.to_vec())
+        .get(&Denom::NomDosc)
         .0
         .unwrap()
         .implied_price()
@@ -308,7 +316,7 @@ fn process_pegging(mut state: State) -> State {
     let r_sd = x_s / x_d;
 
     // get the right pool
-    let mut sm_pool = state.pools.get(&DENOM_TSYM.to_vec()).0.unwrap();
+    let mut sm_pool = state.pools.get(&Denom::Sym).0.unwrap();
     let konstant = BigInt::from(sm_pool.mels) * BigInt::from(sm_pool.tokens);
     // desired mel and sym
     let desired_r_sm = dosc_inflator(state.height) * r_sd;
@@ -337,14 +345,14 @@ fn process_pegging(mut state: State) -> State {
         let delta = (desired_sym - sm_pool.tokens) / 1000;
         let _ = sm_pool.swap_many(0, delta);
     }
-    state.pools.insert(DENOM_TSYM.to_vec(), sm_pool);
+    state.pools.insert(Denom::Sym, sm_pool);
     // return the state now
     state
 }
 
 /// Denomination for a particular liquidity token
-pub fn liq_token_denom(pool: &[u8]) -> Vec<u8> {
-    tmelcrypt::hash_keyed(b"liq", pool).to_vec()
+pub fn liq_token_denom(pool: Denom) -> Denom {
+    Denom::Custom(tmelcrypt::hash_keyed(b"liq", pool.to_bytes()))
 }
 
 fn multiply_frac(x: u128, frac: Ratio<u128>) -> u128 {
@@ -358,7 +366,7 @@ mod tests {
     use crate::{
         melvm,
         testing::fixtures::{genesis_mel_coin_id, genesis_state},
-        CoinID, DENOM_NEWCOIN,
+        CoinID, Denom,
     };
 
     use super::*;
@@ -373,7 +381,7 @@ mod tests {
             CoinDataHeight {
                 coin_data: CoinData {
                     value: 1 << 64,
-                    denom: DENOM_TMEL.to_vec(),
+                    denom: Denom::Mel,
                     covhash: my_covhash,
                     additional_data: vec![],
                 },
@@ -391,13 +399,13 @@ mod tests {
                 CoinData {
                     covhash: my_covhash,
                     value: (1 << 64) - 2000000,
-                    denom: DENOM_TMEL.into(),
+                    denom: Denom::Mel,
                     additional_data: vec![],
                 },
                 CoinData {
                     covhash: my_covhash,
                     value: 1 << 64,
-                    denom: DENOM_NEWCOIN.into(),
+                    denom: Denom::NewCoin,
                     additional_data: vec![],
                 },
             ],
@@ -415,13 +423,13 @@ mod tests {
                 CoinData {
                     covhash: my_covhash,
                     value: (1 << 64) - 2000000 - 2000000,
-                    denom: DENOM_TMEL.into(),
+                    denom: Denom::Mel,
                     additional_data: vec![],
                 },
                 CoinData {
                     covhash: my_covhash,
                     value: 1 << 64,
-                    denom: newcoin_tx.hash_nosigs().to_vec(),
+                    denom: Denom::Custom(newcoin_tx.hash_nosigs()),
                     additional_data: vec![],
                 },
             ],

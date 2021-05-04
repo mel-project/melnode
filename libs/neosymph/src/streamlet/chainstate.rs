@@ -265,13 +265,15 @@ impl ChainState {
 
     /// Length of the chain, minus empty blocks, minus some pruning constant
     fn get_weight(&self, hash: HashVal) -> u64 {
-        match self.blocks.get(&hash) {
-            None => 0,
-            Some(csb) => {
-                let curr = if csb.state.is_empty() { 0 } else { 1 };
-                curr + self.get_weight(csb.parent())
+        let mut ptr = hash;
+        let mut accum = 0;
+        while let Some(val) = self.blocks.get(&ptr) {
+            if !val.state.is_empty() {
+                accum += 1
             }
+            ptr = val.parent();
         }
+        accum
     }
 
     /// Notarized tips

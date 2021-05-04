@@ -34,9 +34,9 @@ async fn main_inner() -> anyhow::Result<()> {
     let client = ValClient::new(NetID::Testnet, args.connect);
     // TODO read this from an argument
     client.trust(
-        3360,
+        2550,
         HashVal(
-            hex::decode("6846b28b1e65a3b775290874f1ddd13036b7c1fa6e3d897b53dd5178d1ea5033")?
+            hex::decode("2b2133e34779c4043278a5d084671a7a801022605dba2721e2d164d9c1096c13")?
                 .try_into()
                 .unwrap(),
         ),

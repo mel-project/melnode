@@ -1,5 +1,6 @@
 use std::marker::PhantomData;
 
+use blkdb::traits::DbBackend;
 use serde::{de::DeserializeOwned, Serialize};
 
 /// A sled-backed mapping.
