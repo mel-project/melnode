@@ -2,6 +2,7 @@ use std::collections;
 
 use serde::{Deserialize, Serialize};
 
+use crate::config::BALLAST;
 use blkstructs::{melvm, CoinData, CoinDataHeight, CoinID, Denom, Transaction, TxKind};
 use melvm::Covenant;
 use tmelcrypt::HashVal;
@@ -66,10 +67,12 @@ impl WalletData {
             scripts: vec![self.my_covenant.clone()],
             data: vec![],
             sigs: vec![],
-        };
-        txn.fee = fee_multiplier.saturating_mul(txn.weight());
+        }
+        .applied_fee(fee_multiplier, BALLAST, 0)
+        .unwrap();
 
         let output_sum = txn.total_outputs();
+
         let mut input_sum: collections::HashMap<Denom, u128> = collections::HashMap::new();
         for (coin, data) in self.unspent_coins.iter() {
             let existing_val = input_sum.get(&data.coin_data.denom).cloned().unwrap_or(0);
@@ -78,6 +81,7 @@ impl WalletData {
                 input_sum.insert(data.coin_data.denom, existing_val + data.coin_data.value);
             }
         }
+
         // create change outputs
         let change = {
             let mut change = Vec::new();
