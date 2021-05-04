@@ -89,8 +89,12 @@ impl ActiveWallet {
                         format!("X-{}", hex::encode(val))
                     }
                 );
-                self.data.insert_coin(coin_id, coin_data_height.clone());
-                eprintln!("Added coin to wallet");
+                let coin_exists = self.data.insert_coin(coin_id, coin_data_height.clone());
+                if coin_exists {
+                    eprintln!("Coin already in wallet.");
+                } else {
+                    eprintln!("Added coin to wallet");
+                }
                 Ok((coin_data_height, coin_id))
             }
         }
@@ -104,6 +108,7 @@ impl ActiveWallet {
         unit: &str,
     ) -> anyhow::Result<(CoinDataHeight, CoinID)> {
         let outputs = self.create_send_mel_tx_outputs(dest_addr, amount, unit)?;
+        eprintln!("Created outputs");
         let tx = self
             .data()
             .pre_spend(outputs, FEE_MULTIPLIER)?

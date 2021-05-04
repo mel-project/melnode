@@ -101,6 +101,12 @@ impl CommandExecutor {
         // Create send mel tx.
         let (coin_data_height, coin_id) = wallet.send_mel(address, amount, unit).await?;
 
+        // Save the wallet state
+        manager
+            .save_wallet(wallet_name, wallet.data().clone())
+            .await?;
+
+        // Return info about sent coins
         let info = SendCoinsInfo {
             coin_data_height,
             coin_id,
