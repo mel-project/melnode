@@ -71,6 +71,11 @@ impl CommandExecutor {
         // Add the coins
         let (coin_data_height, coin_id) = wallet.add_coins(coin_id).await?;
 
+        // Save the wallet state
+        manager
+            .save_wallet(wallet_name, wallet.data().clone())
+            .await?;
+
         // Return the information about the added coins
         let info = CoinsInfo {
             coin_data_height,

@@ -70,6 +70,14 @@ impl WalletManager {
         Ok(wallet)
     }
 
+    /// Remove key value pair and then insert the updated data
+    pub async fn save_wallet(&self, name: &str, new_data: WalletData) -> anyhow::Result<()> {
+        let name = name.to_string();
+        self.context.database.remove(&name);
+        self.context.database.insert(name, new_data.clone());
+        Ok(())
+    }
+
     /// Get all wallets in storage by name and return a map from name to address.
     pub async fn wallet_addresses_by_name(&self) -> anyhow::Result<BTreeMap<String, String>> {
         // Get all wallet data for all wallets by name.
