@@ -6,7 +6,7 @@ use tmelcrypt::Ed25519SK;
 use crate::config::{BALLAST, FEE_MULTIPLIER};
 use crate::wallet::error::WalletError;
 use anyhow::Context;
-use blkstructs::{CoinData, TxKind, DENOM_TMEL, MICRO_CONVERTER};
+use blkstructs::{CoinData, Denom, TxKind, MICRO_CONVERTER};
 use colored::Colorize;
 use tmelcrypt::HashVal;
 
@@ -85,7 +85,7 @@ impl ActiveWallet {
                     coin_data_height.height,
                     coin_data_height.coin_data.value,
                     {
-                        let val = coin_data_height.coin_data.denom.as_slice();
+                        let val = coin_data_height.coin_data.denom.to_bytes();
                         format!("X-{}", hex::encode(val))
                     }
                 );
@@ -185,7 +185,7 @@ impl ActiveWallet {
             kind: TxKind::Faucet,
             inputs: vec![],
             outputs: vec![CoinData {
-                denom: DENOM_TMEL.to_owned(),
+                denom: Denom::Mel,
                 covhash: cov_hash,
                 value: value * MICRO_CONVERTER,
                 additional_data: vec![],
@@ -218,7 +218,7 @@ impl ActiveWallet {
             .ok_or_else(|| anyhow::anyhow!("can't decode as address"))?;
 
         let output = CoinData {
-            denom: DENOM_TMEL.to_owned(),
+            denom: Denom::Mel,
             value: value * MICRO_CONVERTER,
             covhash: dest_addr,
             additional_data: vec![],
