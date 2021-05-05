@@ -24,7 +24,7 @@ fn main() {
     let genesis = State::genesis(
         &forest,
         GenesisConfig {
-            network: NetID::Testnet,
+            network: NetID::Testnet, 
             init_coindata: CoinData {
                 denom: Denom::Mel,
                 value: 1 << 64,
@@ -62,19 +62,23 @@ fn idx_to_addr(idx: usize) -> SocketAddr {
 }
 
 async fn run_staker(idx: usize, genesis: SealedState, forest: autosmt::Forest) {
-    let _protocol = EpochProtocol::new(EpochConfig {
+    let mut protocol = EpochProtocol::new(EpochConfig {
         listen: idx_to_addr(idx),
         bootstrap: (0..COUNT).map(idx_to_addr).collect(),
         genesis,
         forest,
-        start_time: SystemTime::now(),
-        interval: Duration::from_secs(1),
+        start_time: SystemTime::now() - Duration::from_secs(100000),
+        interval: Duration::from_secs(5),
         signing_sk: TEST_SKK[idx],
         builder: TrivialBlockBuilder {
             pk: TEST_SKK[idx].to_public(),
         },
+        get_confirmed: Box::new(|_| None),
     });
-    smol::future::pending().await
+    loop {
+        let blk = protocol.next_confirmed().await;
+        log::warn!("CONFIRMED {:?}", blk.inner().header().height)
+    }
 }
 
 struct TrivialBlockBuilder {

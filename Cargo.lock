@@ -2011,6 +2011,7 @@ dependencies = [
  "bytes",
  "env_logger 0.8.3",
  "fastrand",
+ "futures-util",
  "im",
  "log",
  "melnet",

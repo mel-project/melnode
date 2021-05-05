@@ -252,6 +252,11 @@ impl ChainState {
         self.inner.get_cursor(lowest_lnc_hash).unwrap().to_state()
     }
 
+    /// Gets the stake mapping.
+    pub fn stakes(&self) -> &StakeMapping {
+        &self.stakes
+    }
+
     /// Dump the entire chainstate as a GraphViz graph.
     pub fn debug_graphviz(&self) -> String {
         let lnc_tips = self.get_lnc_tips();

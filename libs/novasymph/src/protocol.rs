@@ -1,9 +1,13 @@
-use blkstructs::{Block, ConsensusProof, SealedState, Transaction, STAKE_EPOCH};
+use blkstructs::{
+    Block, ConfirmedState, ConsensusProof, SealedState, StakeMapping, Transaction, STAKE_EPOCH,
+};
+use futures_util::stream::FuturesOrdered;
 use melnet::Request;
 use parking_lot::RwLock;
-use smol::{channel::Receiver, stream::StreamExt};
+use smol::{channel::Receiver, future::Boxed};
 use smol::{channel::Sender, prelude::*};
 use std::{
+    collections::BTreeMap,
     convert::TryInto,
     net::SocketAddr,
     sync::Arc,
@@ -48,36 +52,39 @@ pub struct EpochConfig<B: BlockBuilder> {
     pub interval: Duration,
     pub signing_sk: Ed25519SK,
     pub builder: B,
+    pub get_confirmed: Box<dyn Fn(u64) -> Option<ConfirmedState> + Sync + Send + 'static>,
 }
 
 /// Represents a running instance of the Symphonia protocol for a particular epoch.
 pub struct EpochProtocol {
     _task: smol::Task<()>,
-    recv_finalized: Receiver<SealedState>,
+    recv_confirmed: Receiver<ConfirmedState>,
 }
 
 impl EpochProtocol {
     /// Create a new instance of the protocol over melnet.
     pub fn new<B: BlockBuilder>(cfg: EpochConfig<B>) -> Self {
-        let (send_finalized, recv_finalized) = smol::channel::unbounded();
+        let (send_confirmed, recv_confirmed) = smol::channel::unbounded();
         Self {
             _task: smolscale::spawn(async move {
-                protocol_loop(cfg, send_finalized).await;
+                protocol_loop(cfg, send_confirmed).await;
             }),
-            recv_finalized,
+            recv_confirmed,
         }
     }
 
-    /// Waits for the next finalized block to come out of the protocol.
-    pub async fn next_finalized(&self) -> SealedState {
-        self.recv_finalized.recv().await.unwrap()
+    /// Receives the next fully-confirmed state.
+    pub async fn next_confirmed(&mut self) -> ConfirmedState {
+        self.recv_confirmed.recv().await.unwrap()
     }
 }
 
 async fn protocol_loop<B: BlockBuilder>(
     cfg: EpochConfig<B>,
-    send_finalized: Sender<SealedState>,
+    send_confirmed: Sender<ConfirmedState>,
 ) -> ! {
+    let (send_finalized, recv_finalized) = smol::channel::unbounded();
+
     let cfg = Arc::new(cfg);
     let height_to_proposer = gen_get_proposer(cfg.genesis.clone());
     let cstate = Arc::new(RwLock::new(ChainState::new(
@@ -110,6 +117,13 @@ async fn protocol_loop<B: BlockBuilder>(
     }
     // melnet client
     let _gossiper = smolscale::spawn(gossiper_loop(network.clone(), cstate.clone(), cfg.clone()));
+    let _confirmer = smolscale::spawn(confirmer_loop(
+        cfg.signing_sk,
+        network.clone(),
+        cstate.clone(),
+        recv_finalized,
+        send_confirmed,
+    ));
 
     // actually run off into the background
     let listener = smol::net::TcpListener::bind(cfg.listen)
@@ -117,21 +131,18 @@ async fn protocol_loop<B: BlockBuilder>(
         .expect("could not start to listen");
     let net_inner = network.clone();
     let _server = smolscale::spawn(async move { net_inner.run_server(listener).await });
-
     loop {
         let vote_loop = async {
-            let mut interv = smol::Timer::interval(Duration::from_millis(100));
             loop {
-                interv.next().await;
                 cstate.write().vote_all(cfg.signing_sk);
+                for block in cstate.write().drain_finalized() {
+                    let _ = send_finalized.try_send(block);
+                }
+                smol::Timer::after(Duration::from_secs(1)).await;
             }
         };
         let (height, height_time) = next_height_time(cfg.start_time, cfg.interval);
         wait_until_sys(height_time).or(vote_loop).await;
-
-        for block in cstate.write().drain_finalized() {
-            let _ = send_finalized.try_send(block);
-        }
 
         log::debug!("entering height {}", height);
 
@@ -284,6 +295,132 @@ async fn gossiper_loop<B: BlockBuilder>(
                 }
             }
         }
+    }
+}
+
+// "gossiper" thread
+async fn confirmer_loop(
+    signing_sk: Ed25519SK,
+    network: melnet::NetState,
+    cstate: Arc<RwLock<ChainState>>,
+    recv_finalized: Receiver<SealedState>,
+    send_confirmed: Sender<ConfirmedState>,
+) -> Option<()> {
+    let known_votes = Arc::new(RwLock::new(BTreeMap::new()));
+    network.listen("confirm_block", {
+        let known_votes = known_votes.clone();
+        move |req: Request<u64, BTreeMap<Ed25519PK, Vec<u8>>>| {
+            let height = req.body;
+            let res = known_votes
+                .read()
+                .get(&height)
+                .cloned()
+                .map(|v: UnconfirmedBlock| v.signatures)
+                .unwrap_or_default();
+            req.response.send(Ok(res))
+        }
+    });
+
+    let (send_fut, recv_fut) = smol::channel::bounded(128);
+    let mut confirmed_generator = FuturesOrdered::<Boxed<ConfirmedState>>::new();
+    let _piper = smolscale::spawn(async move {
+        loop {
+            let start_evt = async {
+                let fut = recv_fut.recv().await.unwrap();
+                Some(fut)
+            };
+            let end_evt = async {
+                if let Some(res) = confirmed_generator.next().await {
+                    send_confirmed.send(res).await.unwrap();
+                }
+                None
+            };
+
+            if let Some(fut) = start_evt.or(end_evt).await {
+                confirmed_generator.push(fut);
+            }
+        }
+    });
+
+    loop {
+        let finalized = recv_finalized.recv().await.ok()?;
+        let own_signature = signing_sk.sign(&finalized.header().hash());
+        let sigs = UnconfirmedBlock {
+            state: finalized,
+            signatures: [(signing_sk.to_public(), own_signature)]
+                .iter()
+                .cloned()
+                .collect(),
+        };
+        let my_height = sigs.state.inner_ref().height;
+        known_votes.write().insert(my_height, sigs);
+        let known_votes = known_votes.clone();
+        let cstate = cstate.clone();
+        let network = network.clone();
+        let confirm_fut = async move {
+            while !known_votes
+                .read()
+                .get(&my_height)
+                .unwrap()
+                .is_confirmed(cstate.read().stakes())
+            {
+                if let Some(random_peer) = network.routes().into_iter().next() {
+                    log::debug!("confirming block {} with {}", my_height, random_peer);
+                    let their_sigs = melnet::request::<_, BTreeMap<Ed25519PK, Vec<u8>>>(
+                        random_peer,
+                        "symphgossip",
+                        "confirm_block",
+                        my_height,
+                    )
+                    .await;
+                    let mut known_votes = known_votes.write();
+                    let sigs = known_votes.get_mut(&my_height).unwrap();
+                    match their_sigs {
+                        Ok(their_sigs) => {
+                            for (key, signature) in their_sigs {
+                                if cstate
+                                    .read()
+                                    .stakes()
+                                    .vote_power(sigs.state.inner_ref().height / STAKE_EPOCH, key)
+                                    > 0.0
+                                    && key.verify(&sigs.state.header().hash(), &signature)
+                                {
+                                    sigs.signatures.insert(key, signature);
+                                }
+                            }
+                        }
+                        Err(err) => log::warn!(
+                            "confirming block {} with {} failed: {:?}",
+                            sigs.state.inner_ref().height,
+                            random_peer,
+                            err
+                        ),
+                    }
+                }
+                smol::Timer::after(Duration::from_millis(100)).await;
+            }
+
+            let sigs = known_votes.read().get(&my_height).cloned().unwrap();
+            sigs.state.confirm(sigs.signatures, None).unwrap()
+        };
+        send_fut.send(confirm_fut.boxed()).await.unwrap();
+    }
+}
+
+#[derive(Clone, Debug)]
+struct UnconfirmedBlock {
+    state: SealedState,
+    signatures: ConsensusProof,
+}
+
+impl UnconfirmedBlock {
+    fn is_confirmed(&self, stakes: &StakeMapping) -> bool {
+        let mut sum_weights = 0.0;
+        for (k, v) in self.signatures.iter() {
+            assert!(k.verify(&self.state.header().hash(), v));
+            sum_weights += stakes.vote_power(self.state.inner_ref().height / STAKE_EPOCH, *k);
+        }
+        sum_weights > 0.67
     }
 }
 

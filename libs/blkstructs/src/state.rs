@@ -509,7 +509,7 @@ impl SealedState {
         Ok(basis)
     }
 
-    /// Confirms a state with a given consensus proof. This function is supposed to be called to *verify* the consensus proof; `ConfirmedState`s cannot be constructed without checking the consensus proof as a result.
+    /// Confirms a state with a given consensus proof. If called with a second argument, this function is supposed to be called to *verify* the consensus proof.
     ///
     /// **TODO**: Right now it DOES NOT check the consensus proof!
     pub fn confirm(
@@ -517,9 +517,6 @@ impl SealedState {
         cproof: ConsensusProof,
         previous_state: Option<&State>,
     ) -> Option<ConfirmedState> {
-        if previous_state.is_none() {
-            assert_eq!(self.inner_ref().height, 0);
-        }
         Some(ConfirmedState {
             state: self,
             cproof,
