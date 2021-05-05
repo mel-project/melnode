@@ -22,6 +22,10 @@ pub struct Args {
     #[structopt(long)]
     /// A full node to connect to
     connect: SocketAddr,
+
+    #[structopt(long)]
+    /// Whether or not the block explorer is connected to a testnet node.
+    testnet: bool,
 }
 
 #[tracing::instrument]
@@ -31,16 +35,34 @@ async fn main_inner() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
     let args = Args::from_args();
-    let client = ValClient::new(NetID::Testnet, args.connect);
-    // TODO read this from an argument
-    client.trust(
-        2550,
-        HashVal(
-            hex::decode("2b2133e34779c4043278a5d084671a7a801022605dba2721e2d164d9c1096c13")?
-                .try_into()
-                .unwrap(),
-        ),
+    let client = ValClient::new(
+        if args.testnet {
+            NetID::Testnet
+        } else {
+            NetID::Mainnet
+        },
+        args.connect,
     );
+    // TODO read this from an argument
+    if args.testnet {
+        client.trust(
+            2550,
+            HashVal(
+                hex::decode("2b2133e34779c4043278a5d084671a7a801022605dba2721e2d164d9c1096c13")?
+                    .try_into()
+                    .unwrap(),
+            ),
+        );
+    } else {
+        client.trust(
+            14146,
+            HashVal(
+                hex::decode("50f5a41c6e996d36bc05b1272a59c8adb3fe3f98de70965abd2eed0c115d2108")?
+                    .try_into()
+                    .unwrap(),
+            ),
+        );
+    }
     let mut app = tide::with_state(client);
     // Rendered paths
     app.at("/").get(html::get_homepage);

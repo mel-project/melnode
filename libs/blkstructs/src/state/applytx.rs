@@ -5,8 +5,8 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use tmelcrypt::HashVal;
 
 use crate::{
-    melvm::CovenantEnv, CoinDataHeight, CoinID, Denom, StakeDoc, State, StateError, Transaction,
-    TxKind, COVHASH_DESTROY, STAKE_EPOCH,
+    melvm::CovenantEnv, CoinDataHeight, CoinID, Denom, NetID, StakeDoc, State, StateError,
+    Transaction, TxKind, COVHASH_DESTROY, STAKE_EPOCH,
 };
 
 use super::melmint;
@@ -48,6 +48,9 @@ impl<'a> StateHandle<'a> {
         for tx in txx {
             if !tx.is_well_formed() {
                 return Err(StateError::MalformedTx);
+            }
+            if tx.kind == TxKind::Faucet && self.state.network == NetID::Mainnet {
+                return Err(StateError::UnbalancedInOut);
             }
             self.transactions_cache.insert(tx.hash_nosigs(), tx.clone());
             self.apply_tx_fees(tx)?;
