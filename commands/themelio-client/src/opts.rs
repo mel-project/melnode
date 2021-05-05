@@ -1,12 +1,4 @@
-use std::str::FromStr;
-
-use serde::{Deserialize, Serialize};
-use serde_scan::ScanError;
 use structopt::StructOpt;
-
-use crate::utils::formatter::formatter::OutputFormatter;
-use crate::utils::formatter::json::JsonOutputFormatter;
-use crate::utils::formatter::plain::PlainOutputFormatter;
 
 #[derive(Debug, Clone, StructOpt)]
 #[structopt(name = "Themelio Client CLI")]
@@ -38,50 +30,7 @@ pub struct ClientOpts {
 /// Contains the wallet-shell and wallet_utils mode.
 pub enum ClientSubOpts {
     WalletShell,
-    WalletUtils(WalletUtilsOpts),
-}
-
-/// Represents how to format formatter.
-#[derive(StructOpt, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum OutputFormat {
-    Plain,
-    Json,
-}
-
-impl OutputFormat {
-    pub fn default() -> Box<dyn OutputFormatter + Sync + Send + 'static> {
-        Box::new(PlainOutputFormatter {})
-    }
-
-    pub fn make(&self) -> Box<dyn OutputFormatter + Sync + Send + 'static> {
-        match self {
-            OutputFormat::Plain => Box::new(PlainOutputFormatter {}),
-            OutputFormat::Json => Box::new(JsonOutputFormatter {}),
-        }
-    }
-}
-
-/// Uses serde scan to parse a string into an formatter format enum.
-impl FromStr for OutputFormat {
-    type Err = ScanError;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        let cmd: Result<OutputFormat, _> = serde_scan::from_str(value);
-        cmd
-    }
-}
-
-#[derive(StructOpt, Clone, Debug)]
-/// Allows end user to select an formatter format on a specific util command.
-pub struct WalletUtilsOpts {
-    /// Select how to format the formatter of a utility command.
-    #[structopt(long, short)]
-    pub output_format: OutputFormat,
-
-    /// Automation-centric commands to executed with the exception of the wallet_shell 'wallet_shell' command.
-    #[structopt(subcommand)]
-    pub cmd: WalletUtilsCommand,
+    WalletUtils(WalletUtilsCommand),
 }
 
 #[derive(StructOpt, Clone, Debug)]
@@ -97,8 +46,6 @@ pub enum WalletUtilsCommand {
         amount: String,
         unit: String,
     },
-    // TODO: determine how to handle fee input for wallet_shell and non-wallet_shell case
-    // ie... do we add in optional field for handling fee input?
     SendCoins {
         wallet_name: String,
         secret: String,
@@ -111,29 +58,28 @@ pub enum WalletUtilsCommand {
         secret: String,
         coin_id: String,
     },
-    // TODO: Add in correct fields for deposit, withdraw and swap
-    // DepositCoins {
-    //     wallet_name: String,
-    //     secret: String,
-    //     covhash_a: String,
-    //     amount_a: String,
-    //     covhash_b: String,
-    //     amount_b: String,
-    // },
-    // WithdrawCoins {
-    //     wallet_name: String,
-    //     secret: String,
-    //     covhash_a: String,
-    //     amount_a: String,
-    //     covhash_b: String,
-    //     amount_b: String,
-    // },
-    // SwapCoins {
-    //     wallet_name: String,
-    //     secret: String,
-    //     covhash: String,
-    //     amount: String,
-    // },
+    DepositCoins {
+        wallet_name: String,
+        secret: String,
+        cov_hash_a: String,
+        amount_a: String,
+        cov_hash_b: String,
+        amount_b: String,
+    },
+    WithdrawCoins {
+        wallet_name: String,
+        secret: String,
+        cov_hash_a: String,
+        amount_a: String,
+        cov_hash_b: String,
+        amount_b: String,
+    },
+    SwapCoins {
+        wallet_name: String,
+        secret: String,
+        cov_hash: String,
+        amount: String,
+    },
     ShowBalance {
         wallet_name: String,
         secret: String,

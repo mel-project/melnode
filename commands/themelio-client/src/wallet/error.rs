@@ -13,4 +13,8 @@ pub enum WalletError {
     NotFound(String),
     #[error("provided invalid input arguments to client {:?} ", .0)]
     InvalidInputArgs(String),
+    #[error("invalid transaction arguments for client {:?} ", .0)]
+    InvalidTransactionArgs(String),
+    #[error("coin with coin id {:?} not found", .0)]
+    CoinNotFound(String),
 }
