@@ -3,7 +3,7 @@ use std::time::Duration;
 use crate::{notfound, to_badgateway, to_badreq};
 use anyhow::Context;
 use askama::Template;
-use blkstructs::{Denom, MICRO_CONVERTER};
+use blkstructs::{Denom, NetID, MICRO_CONVERTER};
 use futures_util::stream::FuturesUnordered;
 use nodeprot::ValClient;
 use num_traits::ToPrimitive;
@@ -15,9 +15,12 @@ use super::{friendly_denom, RenderTimeTracer};
 #[derive(Template)]
 #[template(path = "pool.html")]
 struct PoolTemplate {
+    testnet: bool,
     denom: String,
+    last_day_json: String,
     last_week_json: String,
     last_month_json: String,
+    all_time_json: String,
     last_item: PoolDataItem,
 }
 
@@ -27,13 +30,19 @@ pub async fn get_poolpage(req: tide::Request<ValClient>) -> tide::Result<tide::B
     let denom = req.param("denom").map(|v| v.to_string())?;
     let denom = Denom::from_bytes(&hex::decode(&denom).map_err(to_badreq)?)
         .ok_or_else(|| to_badreq(anyhow::anyhow!("bad")))?;
-
+    let snapshot = req.state().snapshot().await.map_err(to_badgateway)?;
+    let last_height = snapshot.current_header().height;
+    let last_day = pool_items(req.state(), denom, 2880).await?;
     let last_week = pool_items(req.state(), denom, 20160).await?;
     let last_month = pool_items(req.state(), denom, 86400).await?;
+    let all_time = pool_items(req.state(), denom, last_height).await?;
     let mut body: tide::Body = PoolTemplate {
+        testnet: req.state().netid() == NetID::Testnet,
         denom: friendly_denom(denom),
+        last_day_json: serde_json::to_string(&last_day).unwrap(),
         last_month_json: serde_json::to_string(&last_month).unwrap(),
         last_week_json: serde_json::to_string(&last_week).unwrap(),
+        all_time_json: serde_json::to_string(&all_time).unwrap(),
         last_item: last_week.last().context("no last")?.clone(),
     }
     .render()

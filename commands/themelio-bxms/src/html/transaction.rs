@@ -6,7 +6,7 @@ use std::{
 use crate::{notfound, to_badgateway, to_badreq};
 use anyhow::Context;
 use askama::Template;
-use blkstructs::{CoinData, CoinDataHeight, CoinID, Transaction};
+use blkstructs::{CoinData, CoinDataHeight, CoinID, NetID, Transaction};
 use nodeprot::ValClient;
 use tmelcrypt::HashVal;
 
@@ -15,6 +15,7 @@ use super::{friendly_denom, MicroUnit, RenderTimeTracer};
 #[derive(Template)]
 #[template(path = "transaction.html")]
 struct TransactionTemplate {
+    testnet: bool,
     txhash: HashVal,
     txhash_abbr: String,
     height: u64,
@@ -130,6 +131,7 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
     }
 
     let mut body: tide::Body = TransactionTemplate {
+        testnet: req.state().netid() == NetID::Testnet,
         txhash,
         txhash_abbr: hex::encode(&txhash[..5]),
         height,

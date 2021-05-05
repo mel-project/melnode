@@ -1,6 +1,6 @@
 use crate::to_badgateway;
 use askama::Template;
-use blkstructs::{CoinID, Denom, Header};
+use blkstructs::{CoinID, Denom, Header, NetID};
 use futures_util::stream::FuturesOrdered;
 use futures_util::StreamExt;
 use nodeprot::ValClient;
@@ -12,6 +12,7 @@ use super::{MicroUnit, RenderTimeTracer};
 #[derive(Template)]
 #[template(path = "homepage.html")]
 struct HomepageTemplate {
+    testnet: bool,
     blocks: Vec<BlockSummary>,
     transactions: Vec<TransactionSummary>,
     pool: PoolSummary,
@@ -118,6 +119,7 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
     };
 
     let mut body: Body = HomepageTemplate {
+        testnet: req.state().netid() == NetID::Testnet,
         blocks,
         transactions,
         pool,

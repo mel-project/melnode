@@ -20,6 +20,7 @@ use crate::{AbbreviatedBlock, NodeRequest, StateSummary, Substate};
 /// A higher-level client that validates all information.
 #[derive(Debug, Clone)]
 pub struct ValClient {
+    netid: NetID,
     raw: NodeClient,
     trusted_height: Arc<Mutex<Option<(u64, HashVal)>>>,
 }
@@ -29,9 +30,15 @@ impl ValClient {
     pub fn new(netid: NetID, remote: SocketAddr) -> Self {
         let raw = NodeClient::new(netid, remote);
         Self {
+            netid,
             raw,
             trusted_height: Default::default(),
         }
+    }
+
+    /// Gets the netid.
+    pub fn netid(&self) -> NetID {
+        self.netid
     }
 
     /// Trust a height.
