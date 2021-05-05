@@ -24,7 +24,7 @@ fn main() {
     let genesis = State::genesis(
         &forest,
         GenesisConfig {
-            network: NetID::Testnet, 
+            network: NetID::Testnet,
             init_coindata: CoinData {
                 denom: Denom::Mel,
                 value: 1 << 64,
