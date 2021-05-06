@@ -51,6 +51,7 @@ impl ActiveWallet {
         amount: &str,
         unit: &str,
     ) -> anyhow::Result<(CoinDataHeight, CoinID)> {
+        // Create tx
         let cov_hash = self.data().my_covenant().hash();
         let tx = self.create_faucet_tx(amount, unit, cov_hash)?;
         eprintln!(
@@ -59,8 +60,10 @@ impl ActiveWallet {
             tx.fee
         );
 
-        self.send_tx(&tx).await?;
-        eprintln!("Sent transaction.");
+        // Send tx
+        let snapshot = self.context.client.snapshot().await?;
+        snapshot.get_raw().send_tx(tx.clone()).await?;
+        eprintln!(">> Transaction {:?} broadcast!", tx.hash_nosigs());
 
         // Wait for confirmation of the transaction.
         let (coin_data_height, coin_id) = self.confirm_tx(&tx).await?;
