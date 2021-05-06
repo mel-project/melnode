@@ -26,31 +26,11 @@ pub const ADDR_PARENT_DENOM: u16 = 6;
 /// Heap address where the additional data of the coin being spent is put.
 pub const ADDR_PARENT_ADDITIONAL_DATA: u16 = 7;
 /// Heap address where the height of the parent is put.
-pub const ADDR_PARENT_HEIGHT: u16 = 7;
+pub const ADDR_PARENT_HEIGHT: u16 = 8;
 /// Heap address where the "spender index" is put. For example, if this coin is spent as the first input of the spender, then `Heap[ADDR_SPENDER_INDEX] = 0`.
-pub const ADDR_SPENDER_INDEX: u16 = 8;
+pub const ADDR_SPENDER_INDEX: u16 = 9;
 /// Heap address where the header of the last block is put. If the covenant is being evaluated for a transaction in block N, this is the header of block N-1.
-pub const ADDR_LAST_HEADER: u16 = 9;
-
-// hm.insert(2, txhash.0.into());
-// hm.insert(3, Value::Int(U256::from(*index)));
-
-// let CoinDataHeight {
-//     coin_data:
-//         CoinData {
-//             covhash,
-//             value,
-//             denom,
-//             additional_data,
-//         },
-//     height,
-// } = &env.spending_cdh;
-
-// hm.insert(4, covhash.0.into());
-// hm.insert(5, value.clone().into());
-// hm.insert(6, denom.clone().into());
-// hm.insert(7, additional_data.clone().into());
-// hm.insert(8, height.clone().into());
+pub const ADDR_LAST_HEADER: u16 = 10;
 
 #[derive(Clone, Eq, PartialEq, Debug, Arbitrary, Serialize, Deserialize, Hash)]
 /// A MelVM covenant. Essentially, given a transaction that attempts to spend it, it either allows the transaction through or doesn't.
