@@ -47,7 +47,7 @@ impl ActiveWallet {
 
     /// Send a faucet tx to this wallet, wait for confirmation and return results.
     pub async fn send_faucet_tx(
-        &self,
+        &mut self,
         amount: &str,
         unit: &str,
     ) -> anyhow::Result<(CoinDataHeight, CoinID)> {
