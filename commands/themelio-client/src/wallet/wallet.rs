@@ -92,12 +92,12 @@ impl ActiveWallet {
                         format!("X-{}", hex::encode(val))
                     }
                 );
-                let coin_exists = self.data.insert_coin(coin_id, coin_data_height.clone());
-                if coin_exists {
-                    eprintln!("Coin already in wallet.");
-                } else {
+                if self.data().insert_coin(coin_id, coin_data_height.clone()) {
                     eprintln!("Added coin to wallet");
+                } else {
+                    eprintln!("Coin already in wallet.");
                 }
+
                 Ok((coin_data_height, coin_id))
             }
         }
@@ -126,8 +126,9 @@ impl ActiveWallet {
         self.send_tx(&tx).await?;
         eprintln!("Sent transaction.");
 
-        // Wait for confirmation of the transaction.
         let (coin_data_height, coin_id) = self.confirm_tx(&tx).await?;
+        eprintln!("Confirmed transaction.");
+
         Ok((coin_data_height, coin_id))
     }
 

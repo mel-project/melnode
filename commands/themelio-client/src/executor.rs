@@ -126,6 +126,11 @@ impl CommandExecutor {
 
         wallet.balance().await?;
 
+        // Save the wallet state
+        manager
+            .save_wallet(wallet_name, wallet.data().clone())
+            .await?;
+
         Ok(BalanceInfo)
     }
 
