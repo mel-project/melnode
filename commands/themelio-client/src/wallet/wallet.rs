@@ -153,15 +153,19 @@ impl ActiveWallet {
         Ok((snapshot.get_coin(coin).await?, coin))
     }
 
-    //     /// Add coins to this wallet
-    //     pub async fn add_coins(&self, wallet_data: &WalletData, ) -> anyhow::Result<CoinID> {
-    //         Ok(CoinID{ txhash: Default::default(), index: 0 })
-    //     }
-    //
-    //     /// Check the balance for this wallet.
-    //     pub async fn balance(&self, wallet_data: &WalletData, ) -> anyhow::Result<CoinID> {
-    //         Ok(CoinID{ txhash: Default::default(), index: 0 })
-    //     }
+    /// Check the balance for this wallet.
+    pub async fn balance(&mut self) -> anyhow::Result<()> {
+        let unspent = self.data().unspent_coins();
+        let mut total = 0;
+        for (_coin_id, coin_height) in unspent.iter() {
+            total += coin_height.coin_data.value;
+        }
+
+        eprintln!(">> **** BALANCE ****");
+        eprintln!(">> {}", total);
+
+        Ok(())
+    }
 
     /// Check transaction until it is confirmed and output progress to std err.
     async fn confirm_tx(&self, tx: &Transaction) -> anyhow::Result<(CoinDataHeight, CoinID)> {

@@ -117,9 +117,15 @@ impl CommandExecutor {
     /// Shows the total known wallet balance.
     pub async fn show_balance(
         &self,
-        _wallet_name: &str,
-        _secret: &str,
+        wallet_name: &str,
+        secret: &str,
     ) -> anyhow::Result<BalanceInfo> {
+        // Load wallet from wallet manager using name and secret
+        let manager = WalletManager::new(self.context.clone());
+        let mut wallet = manager.load_wallet(wallet_name, secret).await?;
+
+        wallet.balance().await?;
+
         Ok(BalanceInfo)
     }
 
