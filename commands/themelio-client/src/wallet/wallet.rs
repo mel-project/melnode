@@ -36,8 +36,8 @@ impl ActiveWallet {
     }
 
     /// Get the inner data of the wallet
-    pub fn data(&self) -> &WalletData {
-        &self.data
+    pub fn data(&mut self) -> &mut WalletData {
+        &mut self.data
     }
 
     /// Get the secret key of the wallet
@@ -102,7 +102,7 @@ impl ActiveWallet {
 
     /// Send an amount of mel to a destination address, wait for confirmation and return results.
     pub async fn send_mel(
-        &self,
+        &mut self,
         dest_addr: &str,
         amount: &str,
         unit: &str,
@@ -129,9 +129,11 @@ impl ActiveWallet {
     }
 
     /// Update snapshot and send a transaction.
-    async fn send_tx(&self, tx: &Transaction) -> anyhow::Result<()> {
+    async fn send_tx(&mut self, tx: &Transaction) -> anyhow::Result<()> {
         let snapshot = self.context.client.snapshot().await?;
         snapshot.get_raw().send_tx(tx.clone()).await?;
+        eprintln!(">> Transaction {:?} broadcast!", tx.hash_nosigs());
+        self.data().spend(tx.clone())?;
         Ok(())
     }
 
