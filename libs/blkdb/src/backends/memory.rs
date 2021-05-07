@@ -1,9 +1,11 @@
+use std::collections::BTreeMap;
+
 use crate::traits::DbBackend;
 
 /// An in-memory DbBackend.
 #[derive(Default, Debug)]
 pub struct InMemoryBackend {
-    inner: im::OrdMap<Vec<u8>, Vec<u8>>,
+    inner: BTreeMap<Vec<u8>, Vec<u8>>,
 }
 
 impl DbBackend for InMemoryBackend {

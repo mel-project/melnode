@@ -8,16 +8,13 @@ use autosmt::CompressedProof;
 use blkstructs::{ConsensusProof, NetID, Transaction};
 
 use melnet::MelnetError;
-use neosymph::TxLookup;
 use nodeprot::{AbbreviatedBlock, NodeClient, NodeResponder, NodeServer, StateSummary, Substate};
-use smol::{channel::Receiver, net::TcpListener};
+use smol::net::TcpListener;
 use tmelcrypt::HashVal;
 
 use crate::services::storage::SharedStorage;
 
 use super::blksync;
-
-mod fastsync;
 
 /// This encapsulates the node peer-to-peer for both auditors and stakers..
 pub struct NodeProtocol {
@@ -25,17 +22,27 @@ pub struct NodeProtocol {
     _blksync_task: smol::Task<()>,
 }
 
-pub const NODE_NETNAME: &str = "testnet-node";
+fn netname(network: NetID) -> &'static str {
+    match network {
+        NetID::Mainnet => "mainnet-node",
+        NetID::Testnet => "testnet-node",
+    }
+}
 
 impl NodeProtocol {
     /// Creates a new AuditorProtocol listening on the given address with the given AuditorState.
-    pub fn new(addr: SocketAddr, bootstrap: Vec<SocketAddr>, storage: SharedStorage) -> Self {
-        let network = melnet::NetState::new_with_name(NODE_NETNAME);
+    pub fn new(
+        netid: NetID,
+        addr: SocketAddr,
+        bootstrap: Vec<SocketAddr>,
+        storage: SharedStorage,
+    ) -> Self {
+        let network = melnet::NetState::new_with_name(netname(netid));
         for addr in bootstrap {
             network.add_route(addr);
         }
         network.add_route(addr);
-        let responder = AuditorResponder::new(storage.clone());
+        let responder = AuditorResponder::new(netid, storage.clone());
         network.listen("node", NodeResponder::new(responder));
         let _network_task = smolscale::spawn({
             let network = network.clone();
@@ -44,7 +51,7 @@ impl NodeProtocol {
                 network.run_server(listener).await;
             }
         });
-        let _blksync_task = smolscale::spawn(blksync_loop(network, storage));
+        let _blksync_task = smolscale::spawn(blksync_loop(netid, network, storage));
         Self {
             _network_task,
             _blksync_task,
@@ -53,14 +60,14 @@ impl NodeProtocol {
 }
 
 #[tracing::instrument(skip(network, state))]
-async fn blksync_loop(network: melnet::NetState, state: SharedStorage) {
+async fn blksync_loop(netid: NetID, network: melnet::NetState, state: SharedStorage) {
     let tag = || format!("blksync@{:?}", state.read().highest_state().header().height);
     loop {
         let random_peer = network.routes().first().cloned();
         if let Some(peer) = random_peer {
             log::trace!("{}: picked random peer {} for blksync", tag(), peer);
             let last_state = state.read().highest_state();
-            let res = blksync::sync_state(peer, last_state.inner_ref().height + 1, |tx| {
+            let res = blksync::sync_state(netid, peer, last_state.inner_ref().height + 1, |tx| {
                 state.read().mempool().lookup(tx)
             })
             .await;
@@ -69,6 +76,7 @@ async fn blksync_loop(network: melnet::NetState, state: SharedStorage) {
                     log::trace!("{}: failed to blksync with {}: {:?}", tag(), peer, e);
                 }
                 Ok(blocks) => {
+                    log::debug!("got {} blocks from other side", blocks.len());
                     for (blk, cproof) in blocks {
                         let res = state.write().apply_block(blk.clone(), cproof);
                         if res.is_err() {
@@ -83,11 +91,12 @@ async fn blksync_loop(network: melnet::NetState, state: SharedStorage) {
                 }
             }
         }
-        smol::Timer::after(Duration::from_millis(1000)).await;
+        smol::Timer::after(Duration::from_millis(100)).await;
     }
 }
 
 struct AuditorResponder {
+    network: NetID,
     storage: SharedStorage,
 }
 
@@ -97,19 +106,21 @@ impl NodeServer for AuditorResponder {
             .write()
             .mempool_mut()
             .apply_transaction(&tx)
-            .map_err(|e| MelnetError::Custom(e.to_string()))?;
+            .map_err(|e| {
+                log::warn!("cannot apply tx: {:?}", e);
+                MelnetError::Custom(e.to_string())
+            })?;
         log::debug!(
             "txhash {:?} successfully inserted, gonna propagate now",
             tx.hash_nosigs()
         );
-        log::debug!("about to broadcast txhash {:?}", tx.hash_nosigs());
+        // log::debug!("about to broadcast txhash {:?}", tx.hash_nosigs());
         for neigh in state.routes().iter().take(4).cloned() {
             let tx = tx.clone();
-            log::debug!("bcast {:?} => {:?}", tx.hash_nosigs(), neigh);
-            smolscale::spawn(
-                async move { NodeClient::new(NetID::Testnet, neigh).send_tx(tx).await },
-            )
-            .detach();
+            let network = self.network;
+            // log::debug!("bcast {:?} => {:?}", tx.hash_nosigs(), neigh);
+            smolscale::spawn(async move { NodeClient::new(network, neigh).send_tx(tx).await })
+                .detach();
         }
         Ok(())
     }
@@ -134,7 +145,7 @@ impl NodeServer for AuditorResponder {
             .unwrap_or_default();
         dbg!(start.elapsed());
         Ok(StateSummary {
-            netid: NetID::Testnet,
+            netid: self.network,
             height: self.storage.read().highest_height(),
             header: highest.header(),
             proof,
@@ -185,26 +196,7 @@ impl NodeServer for AuditorResponder {
 }
 
 impl AuditorResponder {
-    fn new(storage: SharedStorage) -> Self {
-        Self { storage }
-    }
-}
-
-/// CSP process that processes transaction broadcasts sequentially. Many are spawned to increase concurrency.
-#[tracing::instrument(skip(network, recv_tx_bcast))]
-async fn tx_bcast(network: melnet::NetState, recv_tx_bcast: Receiver<Transaction>) -> Option<()> {
-    loop {
-        let to_cast = recv_tx_bcast.recv().await.ok()?;
-        log::debug!("about to broadcast txhash {:?}", to_cast.hash_nosigs());
-        for neigh in network.routes().iter().take(4).cloned() {
-            log::debug!("bcast {:?} => {:?}", to_cast.hash_nosigs(), neigh);
-            smolscale::spawn(melnet::request::<_, ()>(
-                neigh,
-                NODE_NETNAME,
-                "send_tx",
-                to_cast.clone(),
-            ))
-            .detach();
-        }
+    fn new(network: NetID, storage: SharedStorage) -> Self {
+        Self { network, storage }
     }
 }

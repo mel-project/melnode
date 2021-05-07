@@ -1,25 +1,26 @@
 use std::{convert::TryInto, io, sync::Arc};
 
-use erased_serde::Serializer;
+use erased_serde::{Serialize, Serializer};
+use executor::CommandExecutor;
 use nodeprot::ValClient;
 use storage::SledMap;
 use structopt::StructOpt;
 use tmelcrypt::HashVal;
-use utils::executor::CommandExecutor;
 
 use crate::config::{DEFAULT_TRUST_HEADER_HASH, DEFAULT_TRUST_HEIGHT};
+use crate::context::ExecutionContext;
 use crate::opts::{ClientOpts, ClientSubOpts, WalletUtilsCommand};
 use crate::shell::runner::WalletShellRunner;
-use crate::utils::context::ExecutionContext;
 use crate::wallet::data::WalletData;
 
 mod config;
+mod context;
+mod executor;
 mod opts;
 mod shell;
-mod utils;
 mod wallet;
 
-/// Parse options from input arguments and asynchronously dispatch them.
+/// Parse options from input arguments and asynchronously dispatch associated command.
 fn main() {
     smolscale::block_on(async move {
         let opts: ClientOpts = ClientOpts::from_args();
@@ -27,7 +28,7 @@ fn main() {
     });
 }
 
-/// Either start the wallet shell or execute a wallet utils command.
+/// Open an interactive wallet shell or execute a wallet utils command using input options.
 async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
     // Initialize execution context
     let version = env!("CARGO_PKG_VERSION").to_string();
@@ -62,24 +63,105 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
             let executor = CommandExecutor::new(context);
 
             // Execute command and get serializable results
-            let ser = match cmd {
+            let ser: Box<dyn Serialize> = match cmd {
                 WalletUtilsCommand::CreateWallet { wallet_name } => {
-                    executor.create_wallet(&wallet_name).await
+                    let info = executor.create_wallet(&wallet_name).await?;
+                    Box::new(info) as Box<dyn Serialize>
                 }
                 WalletUtilsCommand::Faucet {
                     wallet_name,
                     secret,
                     amount,
                     unit,
-                } => executor.faucet(&wallet_name, &secret, &amount, &unit).await,
-                // WalletUtilsCommand::SendCoins { wallet_name, secret, address, amount, unit } => {
-                //     executor.send_coins(&wallet_name, &secret, &address, &amount, &unit).await
-                // }
-                // WalletUtilsCommand::AddCoins { .. } => {}
-                // WalletUtilsCommand::ShowBalance { .. } => {}
-                // WalletUtilsCommand::ShowWallets => {}
-                _ => todo!("not impl"),
-            }?;
+                } => {
+                    let info = executor
+                        .faucet(&wallet_name, &secret, &amount, &unit)
+                        .await?;
+                    Box::new(info) as Box<dyn Serialize>
+                }
+                WalletUtilsCommand::SendCoins {
+                    wallet_name,
+                    secret,
+                    address,
+                    amount,
+                    unit,
+                } => {
+                    let info = executor
+                        .send_coins(&wallet_name, &secret, &address, &amount, &unit)
+                        .await?;
+                    Box::new(info) as Box<dyn Serialize>
+                }
+                WalletUtilsCommand::AddCoins {
+                    wallet_name,
+                    secret,
+                    coin_id,
+                } => {
+                    let info = executor.add_coins(&wallet_name, &secret, &coin_id).await?;
+                    Box::new(info) as Box<dyn Serialize>
+                }
+                WalletUtilsCommand::ShowBalance {
+                    wallet_name,
+                    secret,
+                } => {
+                    let info = executor.show_balance(&wallet_name, &secret).await?;
+                    Box::new(info) as Box<dyn Serialize>
+                }
+                WalletUtilsCommand::ShowWallets => {
+                    let info = executor.show_wallets().await?;
+                    Box::new(info) as Box<dyn Serialize>
+                }
+                WalletUtilsCommand::DepositCoins {
+                    wallet_name,
+                    secret,
+                    cov_hash_a,
+                    amount_a,
+                    cov_hash_b,
+                    amount_b,
+                } => {
+                    let info = executor
+                        .deposit(
+                            &wallet_name,
+                            &secret,
+                            &cov_hash_a,
+                            &amount_a,
+                            &cov_hash_b,
+                            &amount_b,
+                        )
+                        .await?;
+                    Box::new(info) as Box<dyn Serialize>
+                }
+                WalletUtilsCommand::WithdrawCoins {
+                    wallet_name,
+                    secret,
+                    cov_hash_a,
+                    amount_a,
+                    cov_hash_b,
+                    amount_b,
+                } => {
+                    let info = executor
+                        .withdraw(
+                            &wallet_name,
+                            &secret,
+                            &cov_hash_a,
+                            &amount_a,
+                            &cov_hash_b,
+                            &amount_b,
+                        )
+                        .await?;
+                    Box::new(info) as Box<dyn Serialize>
+                }
+                WalletUtilsCommand::SwapCoins {
+                    wallet_name,
+                    secret,
+                    cov_hash,
+                    amount,
+                } => {
+                    let info = executor
+                        .swap(&wallet_name, &secret, &cov_hash, &amount)
+                        .await?;
+                    Box::new(info) as Box<dyn Serialize>
+                }
+            };
 
             // Show results serialized as JSON
             let json = &mut serde_json::Serializer::new(io::stdout());

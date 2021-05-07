@@ -6,7 +6,7 @@ use anyhow::Context;
 use blkstructs::GenesisConfig;
 use smol::net::SocketAddr;
 use structopt::StructOpt;
-use tmelcrypt::Ed25519SK;
+use tmelcrypt::{Ed25519SK, HashVal};
 use tracing::instrument;
 #[derive(Debug, StructOpt)]
 pub struct NodeConfig {
@@ -14,19 +14,15 @@ pub struct NodeConfig {
     #[structopt(long)]
     listen: SocketAddr,
 
-    /// Bootstrap addresses
-    #[structopt(long)]
-    bootstrap: Vec<SocketAddr>,
-
-    /// Test spam
-    #[structopt(long)]
-    test_spam: bool,
+    /// Bootstrap addresses. May be given as a DNS name.
+    #[structopt(long, default_value = "mainnet-bootstrap.themelio.org:11814")]
+    bootstrap: Vec<String>,
 
     /// Database path
-    #[structopt(long, default_value = "/tmp/testnet")]
+    #[structopt(long, default_value = "/tmp/themelio-mainnet")]
     database: String,
 
-    /// Testnet type
+    /// Specifies the secret key for staking.
     #[structopt(long)]
     staker_sk: Option<Ed25519SK>,
 
@@ -38,9 +34,17 @@ pub struct NodeConfig {
     #[structopt(long)]
     staker_listen: Option<SocketAddr>,
 
-    /// If given, uses this TOML file to configure the genesis state rather than the default testnet.
+    /// Payout address for staker rewards.
     #[structopt(long)]
-    genesis_config: Option<PathBuf>,
+    staker_payout_addr: Option<String>,
+
+    /// If given, uses this TOML file to configure the network genesis rather than following the known testnet/mainnet genesis.
+    #[structopt(long)]
+    override_genesis: Option<PathBuf>,
+
+    /// If set to true, default to the testnet. Otherwise, mainnet validation rules are used.
+    #[structopt(long)]
+    testnet: bool,
 }
 
 /// Runs the main function for a node.
@@ -48,22 +52,31 @@ pub struct NodeConfig {
 pub async fn run_node(opt: NodeConfig) -> anyhow::Result<()> {
     let _ = std::fs::create_dir_all(&opt.database);
     log::info!("themelio-core v{} initializing...", VERSION);
-    log::info!("bootstrapping with {:?}", opt.bootstrap);
-    // TODO: make this configurable rather than hardcoding the testnet
-    let genesis = if let Some(path) = opt.genesis_config {
+    let genesis = if let Some(path) = opt.override_genesis {
         let genesis_toml = smol::fs::read(&path)
             .await
             .context("cannot read genesis config")?;
         toml::from_slice(&genesis_toml)?
-    } else {
+    } else if opt.testnet {
         GenesisConfig::std_testnet()
+    } else {
+        GenesisConfig::std_mainnet()
     };
+    let netid = genesis.network;
     let storage = NodeStorage::new(
         sled::open(&opt.database).context("cannot open database")?,
         genesis,
     )
     .share();
-    let _node_prot = NodeProtocol::new(opt.listen, opt.bootstrap.clone(), storage.clone());
+    let mut bootstrap = vec![];
+    for name in opt.bootstrap.iter() {
+        let addrs = smol::net::resolve(&name)
+            .await
+            .context("cannot resolve DNS bootstrap")?;
+        bootstrap.extend(addrs);
+    }
+    log::info!("bootstrapping with {:?}", bootstrap);
+    let _node_prot = NodeProtocol::new(netid, opt.listen, bootstrap, storage.clone());
     let _staker_prot = if let Some(my_sk) = opt.staker_sk {
         Some(
             StakerProtocol::new(
@@ -71,6 +84,8 @@ pub async fn run_node(opt: NodeConfig) -> anyhow::Result<()> {
                 opt.staker_bootstrap.clone(),
                 storage.clone(),
                 my_sk,
+                HashVal::from_addr(&opt.staker_payout_addr.unwrap())
+                    .context("cannot parse payout address")?,
             )
             .unwrap(),
         )

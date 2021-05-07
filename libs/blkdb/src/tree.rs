@@ -23,7 +23,11 @@ impl<B: DbBackend> BlockTree<B> {
     }
 
     /// Attempts to apply a block.
-    pub fn apply_block(&mut self, block: &Block) -> Result<(), ApplyBlockErr> {
+    pub fn apply_block(
+        &mut self,
+        block: &Block,
+        init_metadata: &[u8],
+    ) -> Result<(), ApplyBlockErr> {
         let previous = self
             .inner
             .get_block(
@@ -35,7 +39,10 @@ impl<B: DbBackend> BlockTree<B> {
         let next_state = previous
             .apply_block(block)
             .map_err(ApplyBlockErr::CannotValidate)?;
-        self.inner.insert_block(next_state, block.proposer_action);
+        if next_state.header() != block.header {
+            return Err(ApplyBlockErr::HeaderMismatch);
+        }
+        self.inner.insert_block(next_state, init_metadata);
         Ok(())
     }
 
@@ -79,11 +86,11 @@ impl<B: DbBackend> BlockTree<B> {
     }
 
     /// Sets the genesis block of the tree. This also prunes all elements that do not belong to the given genesis block.
-    pub fn set_genesis(&mut self, state: SealedState, action: Option<ProposerAction>) {
+    pub fn set_genesis(&mut self, state: SealedState, init_metadata: &[u8]) {
         let state_hash = state.header().hash();
         if self.get_cursor(state_hash).is_none() {
             // directly insert the block now
-            assert!(self.inner.insert_block(state, action).is_none());
+            assert!(self.inner.insert_block(state, init_metadata).is_none());
         }
 
         let old_genesis = self.get_tips().into_iter().next().map(|v| {
@@ -132,7 +139,7 @@ impl<B: DbBackend> BlockTree<B> {
     }
 
     /// Creates a GraphViz string that represents all the blocks in the tree.
-    pub fn debug_graphviz(&self) -> String {
+    pub fn debug_graphviz(&self, visitor: impl Fn(&Cursor<'_, B>) -> String) -> String {
         let mut stack = self.get_tips();
         let tips = self
             .get_tips()
@@ -147,7 +154,7 @@ impl<B: DbBackend> BlockTree<B> {
                 if tips.contains(&top.header()) {
                     writeln!(
                         &mut output,
-                        "\"{}\" [label={}, color=red];",
+                        "\"{}\" [label={}, shape=rectangle, style=filled, fillcolor=red];",
                         top.header().hash(),
                         top.header().height
                     )
@@ -155,9 +162,10 @@ impl<B: DbBackend> BlockTree<B> {
                 } else {
                     writeln!(
                         &mut output,
-                        "\"{}\" [label={}];",
+                        "\"{}\" [label={}, shape=rectangle, style=filled, fillcolor=\"{}\"];",
                         top.header().hash(),
-                        top.header().height
+                        top.header().height,
+                        visitor(&top),
                     )
                     .unwrap();
                 }
@@ -182,6 +190,15 @@ impl<B: DbBackend> BlockTree<B> {
 pub struct Cursor<'a, B: DbBackend> {
     tree: &'a BlockTree<B>,
     internal: InternalValue,
+}
+
+impl<'a, B: DbBackend> Clone for Cursor<'a, B> {
+    fn clone(&self) -> Self {
+        Self {
+            tree: self.tree,
+            internal: self.internal.clone(),
+        }
+    }
 }
 
 impl<'a, B: DbBackend> Cursor<'a, B> {
@@ -268,6 +285,8 @@ pub enum ApplyBlockErr {
     ParentNotFound(HashVal),
     #[error("validation error: `{0}`")]
     CannotValidate(blkstructs::StateError),
+    #[error("header mismatch")]
+    HeaderMismatch,
 }
 
 /// Lower-level helper struct that provides fail-safe basic operations.
@@ -298,14 +317,11 @@ impl<B: DbBackend> Inner<B> {
     }
 
     /// Inserts a block into the database
-    fn insert_block(
-        &mut self,
-        state: SealedState,
-        action: Option<ProposerAction>,
-    ) -> Option<InternalValue> {
-        if let Some(val) = self.get_block(state.header().hash(), Some(state.inner_ref().height)) {
-            return Some(val);
-        }
+    fn insert_block(&mut self, state: SealedState, init_metadata: &[u8]) -> Option<InternalValue> {
+        // if let Some(val) = self.get_block(state.header().hash(), Some(state.inner_ref().height)) {
+        //     return Some(val);
+        // }
+        let action = state.proposer_action().cloned();
         // we carefully insert the block to avoid inconsistency:
         // - first we insert the block itself
         // - then we point the parent to it
@@ -317,7 +333,7 @@ impl<B: DbBackend> Inner<B> {
         self.internal_insert(
             blkhash,
             header.height,
-            InternalValue::from_state(state, action),
+            InternalValue::from_state(state, action, init_metadata.to_vec()),
         );
         // insert into parent
         if let Some(mut parent) =
@@ -407,13 +423,13 @@ struct InternalValue {
 }
 
 impl InternalValue {
-    fn from_state(state: SealedState, action: Option<ProposerAction>) -> Self {
+    fn from_state(state: SealedState, action: Option<ProposerAction>, metadata: Vec<u8>) -> Self {
         Self {
             header: state.header(),
             partial_state: state.partial_encoding(),
             action,
             next: Default::default(),
-            metadata: vec![],
+            metadata,
         }
     }
 

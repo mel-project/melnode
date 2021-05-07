@@ -9,9 +9,7 @@ use std::{
 };
 
 use anyhow::Context;
-use blkstructs::{
-    melvm::Covenant, CoinData, CoinID, Transaction, TxKind, DENOM_DOSC, DENOM_TMEL, MICRO_CONVERTER,
-};
+use blkstructs::{melvm::Covenant, CoinData, CoinID, Denom, Transaction, TxKind, MICRO_CONVERTER};
 use governor::{
     clock::QuantaClock,
     state::{InMemoryState, NotKeyed},
@@ -44,12 +42,20 @@ async fn main_async() -> anyhow::Result<()> {
     let args = Args::from_args();
     let lim = Arc::new(RateLimiter::direct(
         Quota::per_second(NonZeroU32::new(args.tps).unwrap())
-            .allow_burst(NonZeroU32::new(2).unwrap()),
+            .allow_burst(NonZeroU32::new(1).unwrap()),
     ));
-    for _ in 0..args.tps.min(100) {
+    for wkr in 0..args.tps.max(100) {
         let client = NodeClient::new(blkstructs::NetID::Testnet, args.connect);
         let lim = lim.clone();
-        smol::spawn(async move { spammer(&client, lim).await.unwrap() }).detach();
+        smol::spawn(async move {
+            loop {
+                let lim = lim.clone();
+                if let Err(err) = spammer(&client, lim).await {
+                    eprintln!("restarting worker {}: {:?}", wkr, err)
+                }
+            }
+        })
+        .detach();
     }
     smol::future::pending().await
 }
@@ -67,14 +73,14 @@ async fn spammer(
 ) -> anyhow::Result<()> {
     let first_queue_entry = {
         let (pk, sk) = tmelcrypt::ed25519_keygen();
-        let my_covenant = Covenant::std_ed25519_pk_4(pk);
+        let my_covenant = Covenant::std_ed25519_pk_new(pk);
         let mut buf = vec![0u8; 32];
         rand::thread_rng().fill_bytes(&mut buf);
         let first_tx = Transaction {
             kind: TxKind::Faucet,
             inputs: vec![],
             outputs: vec![CoinData {
-                denom: DENOM_TMEL.into(),
+                denom: Denom::Mel,
                 value: 1 << 40,
                 additional_data: vec![],
                 covhash: my_covenant.hash(),
@@ -107,13 +113,12 @@ async fn spammer(
             ITERS.fetch_add(1, Ordering::Relaxed)
         );
         lim.until_ready().await;
-        eprintln!("gonna spam...");
 
-        let num_to_gather = (rand::random::<usize>() % 3).max(1).min(coin_queue.len());
+        let num_to_gather = (rand::random::<usize>() % 64).max(1).min(coin_queue.len());
         let inputs = (0..num_to_gather)
             .map(|_| coin_queue.pop().unwrap().0)
             .collect::<Vec<_>>();
-        let num_outputs = (rand::random::<usize>() % 3).max(1);
+        let num_outputs = (rand::random::<usize>() % 64).max(1);
         let total_input = inputs.iter().map(|v| v.value).sum::<u128>();
         let outputs = (0..num_outputs)
             .map(|_| (total_input - MICRO_CONVERTER) / (num_outputs as u128))
@@ -122,8 +127,8 @@ async fn spammer(
                 (
                     CoinData {
                         value,
-                        denom: DENOM_TMEL.into(),
-                        covhash: Covenant::std_ed25519_pk_4(pk).hash(),
+                        denom: Denom::Mel,
+                        covhash: Covenant::std_ed25519_pk_new(pk).hash(),
                         additional_data: vec![],
                     },
                     sk,
@@ -131,8 +136,6 @@ async fn spammer(
             })
             .collect::<Vec<_>>();
         let fee = total_input - outputs.iter().map(|v| v.0.value).sum::<u128>();
-        dbg!(total_input);
-        dbg!(outputs.iter().map(|v| v.0.value).sum::<u128>() + fee);
 
         let mut new_tx = Transaction {
             kind: TxKind::Normal,
@@ -141,7 +144,7 @@ async fn spammer(
             fee,
             scripts: inputs
                 .iter()
-                .map(|v| Covenant::std_ed25519_pk_4(v.unlock_key.to_public()))
+                .map(|v| Covenant::std_ed25519_pk_new(v.unlock_key.to_public()))
                 .collect(),
             sigs: vec![],
             data: vec![],

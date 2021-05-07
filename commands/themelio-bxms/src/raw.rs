@@ -1,6 +1,7 @@
 use std::convert::TryInto;
 
-use blkstructs::CoinID;
+use anyhow::Context;
+use blkstructs::{CoinID, Denom};
 use nodeprot::ValClient;
 
 use tide::Body;
@@ -70,11 +71,12 @@ pub async fn get_coin(req: tide::Request<ValClient>) -> tide::Result<Body> {
 pub async fn get_pool(req: tide::Request<ValClient>) -> tide::Result<Body> {
     let height: u64 = req.param("height")?.parse()?;
     let denom_string: String = req.param("denom")?.into();
-    let denom = hex::decode(&denom_string).map_err(to_badreq)?;
+    let denom =
+        Denom::from_bytes(&hex::decode(&denom_string).map_err(to_badreq)?).context("oh no")?;
 
     let last_snap = req.state().snapshot().await?;
     let older = last_snap.get_older(height).await?;
-    let cdh = older.get_pool(&denom).await.map_err(to_badgateway)?;
+    let cdh = older.get_pool(denom).await.map_err(to_badgateway)?;
     Ok(Body::from_json(&cdh.ok_or_else(notfound)?)?)
 }
 

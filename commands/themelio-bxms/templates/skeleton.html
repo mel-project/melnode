@@ -54,7 +54,7 @@
 
 <body style="padding-left: 20px; padding-right: 20px">
     <!-- Header -->
-    <nav class="mx-auto max-w-screen-lg mt-8 text-xl" }>{% block nav %}{% endblock %}</nav>
+    <nav class="mx-auto max-w-screen-lg mt-8 text-xl" }>{% if testnet %}<span class="font-bold text-black italic text-opacity-50">Testnet </span>{% else %}{% endif %}{% block nav %}{% endblock %}</nav>
 
     {% block body %}{% endblock %}
 

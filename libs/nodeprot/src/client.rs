@@ -6,8 +6,8 @@ use std::{
 
 use autosmt::{CompressedProof, FullProof};
 use blkstructs::{
-    Block, CoinDataHeight, CoinID, ConsensusProof, Header, NetID, PoolState, SmtMapping, StakeDoc,
-    StakeMapping, Transaction, STAKE_EPOCH,
+    Block, CoinDataHeight, CoinID, ConsensusProof, Denom, Header, NetID, PoolState, SmtMapping,
+    StakeDoc, StakeMapping, Transaction, STAKE_EPOCH,
 };
 use futures_util::stream::FuturesUnordered;
 use melnet::MelnetError;
@@ -20,6 +20,7 @@ use crate::{AbbreviatedBlock, NodeRequest, StateSummary, Substate};
 /// A higher-level client that validates all information.
 #[derive(Debug, Clone)]
 pub struct ValClient {
+    netid: NetID,
     raw: NodeClient,
     trusted_height: Arc<Mutex<Option<(u64, HashVal)>>>,
 }
@@ -29,9 +30,15 @@ impl ValClient {
     pub fn new(netid: NetID, remote: SocketAddr) -> Self {
         let raw = NodeClient::new(netid, remote);
         Self {
+            netid,
             raw,
             trusted_height: Default::default(),
         }
+    }
+
+    /// Gets the netid.
+    pub fn netid(&self) -> NetID {
+        self.netid
     }
 
     /// Trust a height.
@@ -212,7 +219,7 @@ impl ValClientSnapshot {
     }
 
     /// Gets a pool info.
-    pub async fn get_pool(&self, denom: &[u8]) -> melnet::Result<Option<PoolState>> {
+    pub async fn get_pool(&self, denom: Denom) -> melnet::Result<Option<PoolState>> {
         self.get_smt_value_serde(Substate::Pools, denom).await
     }
 

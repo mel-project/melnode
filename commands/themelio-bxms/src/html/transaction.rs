@@ -6,17 +6,16 @@ use std::{
 use crate::{notfound, to_badgateway, to_badreq};
 use anyhow::Context;
 use askama::Template;
-use blkstructs::{
-    CoinData, CoinDataHeight, CoinID, Transaction, DENOM_DOSC, DENOM_TMEL, DENOM_TSYM,
-};
+use blkstructs::{CoinData, CoinDataHeight, CoinID, NetID, Transaction};
 use nodeprot::ValClient;
 use tmelcrypt::HashVal;
 
-use super::{MicroUnit, RenderTimeTracer};
+use super::{friendly_denom, MicroUnit, RenderTimeTracer};
 
 #[derive(Template)]
 #[template(path = "transaction.html")]
 struct TransactionTemplate {
+    testnet: bool,
     txhash: HashVal,
     txhash_abbr: String,
     height: u64,
@@ -56,7 +55,7 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
     let denoms: BTreeSet<_> = transaction
         .outputs
         .iter()
-        .map(|v| v.denom.clone())
+        .map(|v| -> blkstructs::Denom { v.denom })
         .collect();
     let mut net_loss: BTreeMap<String, Vec<MicroUnit>> = BTreeMap::new();
     let mut net_gain: BTreeMap<String, Vec<MicroUnit>> = BTreeMap::new();
@@ -96,12 +95,12 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
                 net_loss
                     .entry(addr.to_addr())
                     .or_default()
-                    .push(MicroUnit((-balance) as u128, friendly_denom(&denom)));
+                    .push(MicroUnit((-balance) as u128, friendly_denom(denom)));
             } else if balance > 0 {
                 net_gain
                     .entry(addr.to_addr())
                     .or_default()
-                    .push(MicroUnit(balance as u128, friendly_denom(&denom)));
+                    .push(MicroUnit(balance as u128, friendly_denom(denom)));
             }
         }
     }
@@ -127,11 +126,12 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
             index,
             input,
             cdh.clone(),
-            MicroUnit(cdh.coin_data.value, friendly_denom(&cdh.coin_data.denom)),
+            MicroUnit(cdh.coin_data.value, friendly_denom(cdh.coin_data.denom)),
         ));
     }
 
     let mut body: tide::Body = TransactionTemplate {
+        testnet: req.state().netid() == NetID::Testnet,
         txhash,
         txhash_abbr: hex::encode(&txhash[..5]),
         height,
@@ -143,21 +143,15 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
             .outputs
             .iter()
             .enumerate()
-            .map(|(i, cd)| {
-                (
-                    i,
-                    cd.clone(),
-                    MicroUnit(cd.value, friendly_denom(&cd.denom)),
-                )
-            })
+            .map(|(i, cd)| (i, cd.clone(), MicroUnit(cd.value, friendly_denom(cd.denom))))
             .collect(),
-        fee: MicroUnit(fee, "mel".into()),
-        base_fee: MicroUnit(base_fee, "mel".into()),
-        tips: MicroUnit(tips, "mel".into()),
+        fee: MicroUnit(fee, "MEL".into()),
+        base_fee: MicroUnit(base_fee, "MEL".into()),
+        tips: MicroUnit(tips, "MEL".into()),
         gross_gain: transaction
             .total_outputs()
             .iter()
-            .map(|(denom, val)| MicroUnit(*val, friendly_denom(denom)))
+            .map(|(denom, val)| MicroUnit(*val, friendly_denom(*denom)))
             .collect(),
     }
     .render()
@@ -165,16 +159,4 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
     .into();
     body.set_mime("text/html");
     Ok(body)
-}
-
-fn friendly_denom(denom: &[u8]) -> String {
-    if denom == DENOM_TMEL {
-        "mel".to_string()
-    } else if denom == DENOM_TSYM {
-        "sym".to_string()
-    } else if denom == DENOM_DOSC {
-        "nDOSC".to_string()
-    } else {
-        format!("Custom ({}..)", hex::encode(&denom[..5]))
-    }
 }

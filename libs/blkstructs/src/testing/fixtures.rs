@@ -4,13 +4,13 @@ use rstest::*;
 
 use tmelcrypt::{Ed25519PK, Ed25519SK};
 
-use crate::melvm::Covenant;
 use crate::testing::factory::{CoinDataFactory, CoinDataHeightFactory, TransactionFactory};
 use crate::testing::utils::*;
 use crate::{
-    melvm, CoinData, CoinDataHeight, CoinID, StakeDoc, State, Transaction, DENOM_TMEL, MAX_COINVAL,
+    melvm, CoinData, CoinDataHeight, CoinID, StakeDoc, State, Transaction, MAX_COINVAL,
     MICRO_CONVERTER,
 };
+use crate::{melvm::Covenant, Denom};
 
 const GENESIS_MEL_SUPPLY: u128 = 21_000_000;
 const GENESIS_NUM_STAKERS: u64 = 10;
@@ -43,7 +43,7 @@ pub fn genesis_covenant_keypair() -> (Ed25519PK, Ed25519SK) {
 
 #[fixture]
 pub fn genesis_covenant(genesis_covenant_keypair: (Ed25519PK, Ed25519SK)) -> Covenant {
-    melvm::Covenant::std_ed25519_pk(genesis_covenant_keypair.0).clone()
+    melvm::Covenant::std_ed25519_pk_legacy(genesis_covenant_keypair.0).clone()
 }
 
 #[fixture]
@@ -125,7 +125,7 @@ pub fn tx_send_mel_from_seed_coin(
     let coin_data_factory = CoinDataFactory::new();
     let coin_data_receiver = coin_data_factory.build(|coin_data| {
         coin_data.value = mel_value_to_receiver;
-        coin_data.covhash = melvm::Covenant::std_ed25519_pk(dest_pk).hash();
+        coin_data.covhash = melvm::Covenant::std_ed25519_pk_legacy(dest_pk).hash();
     });
 
     // Generate change transaction back to sender
@@ -133,7 +133,7 @@ pub fn tx_send_mel_from_seed_coin(
     let sender_pk = genesis_covenant_keypair.0;
     let coin_data_change = coin_data_factory.build(|coin_data| {
         coin_data.value = change;
-        coin_data.covhash = melvm::Covenant::std_ed25519_pk(sender_pk).hash();
+        coin_data.covhash = melvm::Covenant::std_ed25519_pk_legacy(sender_pk).hash();
     });
 
     // Add coin data to new tx from genesis UTXO
@@ -157,7 +157,7 @@ pub fn tx_send_mel_from_seed_coin(
 #[fixture]
 pub fn valid_txx(keypair: (Ed25519PK, Ed25519SK)) -> Vec<Transaction> {
     let (pk, sk) = keypair;
-    let scr = melvm::Covenant::std_ed25519_pk(pk);
+    let scr = melvm::Covenant::std_ed25519_pk_legacy(pk);
     let mut trng = rand::thread_rng();
     let txx = random_valid_txx(
         &mut trng,
@@ -168,7 +168,7 @@ pub fn valid_txx(keypair: (Ed25519PK, Ed25519SK)) -> Vec<Transaction> {
         CoinData {
             covhash: scr.hash(),
             value: MICRO_CONVERTER * 1000,
-            denom: DENOM_TMEL.to_owned(),
+            denom: Denom::Mel,
             additional_data: vec![],
         },
         sk,

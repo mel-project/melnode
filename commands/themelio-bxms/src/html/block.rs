@@ -1,6 +1,6 @@
 use crate::{to_badgateway, to_badreq};
 use askama::Template;
-use blkstructs::{CoinID, Header};
+use blkstructs::{CoinID, Header, NetID};
 use nodeprot::ValClient;
 use tmelcrypt::HashVal;
 
@@ -9,6 +9,7 @@ use super::{MicroUnit, RenderTimeTracer};
 #[derive(Template)]
 #[template(path = "block.html")]
 struct BlockTemplate {
+    testnet: bool,
     header: Header,
     txcount: usize,
     txweight: u128,
@@ -23,7 +24,6 @@ struct BlockTemplate {
 #[tracing::instrument(skip(req))]
 pub async fn get_blockpage(req: tide::Request<ValClient>) -> tide::Result<tide::Body> {
     let _render = RenderTimeTracer::new("blockpage");
-
     let height: u64 = req.param("height").unwrap().parse().map_err(to_badreq)?;
     let last_snap = req.state().snapshot().await.map_err(to_badgateway)?;
     let block = last_snap
@@ -42,6 +42,7 @@ pub async fn get_blockpage(req: tide::Request<ValClient>) -> tide::Result<tide::
     let reward_amount = reward_coin.map(|v| v.coin_data.value).unwrap_or_default();
 
     let mut body: tide::Body = BlockTemplate {
+        testnet: req.state().netid() == NetID::Testnet,
         header: block.header,
         txcount: block.transactions.len(),
         txweight: block.transactions.iter().map(|v| v.weight()).sum(),

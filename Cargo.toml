@@ -12,7 +12,7 @@ members = [
     "libs/nodeprot",
     "libs/melnet",
     "libs/melpow",
-    "libs/neosymph",
+    "libs/novasymph",
     "libs/stdcode",
     "libs/storage",
     "libs/tmelcrypt",
@@ -21,7 +21,7 @@ members = [
 
 [profile.dev]
 panic = "abort"
-opt-level = 1 
+opt-level = 1
 overflow-checks = true
 
 [profile.release]

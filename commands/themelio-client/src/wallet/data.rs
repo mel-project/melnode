@@ -2,7 +2,8 @@ use std::collections;
 
 use serde::{Deserialize, Serialize};
 
-use blkstructs::{melvm, CoinData, CoinDataHeight, CoinID, Transaction, TxKind};
+use crate::config::BALLAST;
+use blkstructs::{melvm, CoinData, CoinDataHeight, CoinID, Denom, Transaction, TxKind};
 use melvm::Covenant;
 use tmelcrypt::HashVal;
 
@@ -66,21 +67,21 @@ impl WalletData {
             scripts: vec![self.my_covenant.clone()],
             data: vec![],
             sigs: vec![],
-        };
-        txn.fee = fee_multiplier.saturating_mul(txn.weight());
+        }
+        .applied_fee(fee_multiplier, BALLAST, 0)
+        .unwrap();
 
         let output_sum = txn.total_outputs();
-        let mut input_sum: collections::HashMap<Vec<u8>, u128> = collections::HashMap::new();
+
+        let mut input_sum: collections::HashMap<Denom, u128> = collections::HashMap::new();
         for (coin, data) in self.unspent_coins.iter() {
             let existing_val = input_sum.get(&data.coin_data.denom).cloned().unwrap_or(0);
             if existing_val < output_sum.get(&data.coin_data.denom).cloned().unwrap_or(0) {
                 txn.inputs.push(*coin);
-                input_sum.insert(
-                    data.coin_data.denom.clone(),
-                    existing_val + data.coin_data.value,
-                );
+                input_sum.insert(data.coin_data.denom, existing_val + data.coin_data.value);
             }
         }
+
         // create change outputs
         let change = {
             let mut change = Vec::new();
@@ -94,7 +95,7 @@ impl WalletData {
                     change.push(CoinData {
                         covhash: self.my_covenant.hash(),
                         value: difference,
-                        denom: cointype.clone(),
+                        denom: *cointype,
                         additional_data: vec![],
                     })
                 }

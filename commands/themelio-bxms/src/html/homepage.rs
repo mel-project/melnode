@@ -1,6 +1,6 @@
 use crate::to_badgateway;
 use askama::Template;
-use blkstructs::{CoinID, Header, DENOM_DOSC, DENOM_TMEL, DENOM_TSYM};
+use blkstructs::{CoinID, Denom, Header, NetID};
 use futures_util::stream::FuturesOrdered;
 use futures_util::StreamExt;
 use nodeprot::ValClient;
@@ -12,6 +12,7 @@ use super::{MicroUnit, RenderTimeTracer};
 #[derive(Template)]
 #[template(path = "homepage.html")]
 struct HomepageTemplate {
+    testnet: bool,
     blocks: Vec<BlockSummary>,
     transactions: Vec<TransactionSummary>,
     pool: PoolSummary,
@@ -84,7 +85,7 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
                             transaction
                                 .outputs
                                 .iter()
-                                .map(|v| if v.denom == DENOM_TMEL { v.value } else { 0 })
+                                .map(|v| if v.denom == Denom::Mel { v.value } else { 0 })
                                 .sum::<u128>()
                                 + transaction.fee,
                             "mel".into(),
@@ -96,7 +97,7 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
     }
 
     let mel_per_dosc = (last_snap
-        .get_pool(&DENOM_DOSC)
+        .get_pool(Denom::NomDosc)
         .await
         .map_err(to_badgateway)?
         .unwrap()
@@ -107,7 +108,7 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
 
     let pool = PoolSummary {
         mel_per_sym: last_snap
-            .get_pool(&DENOM_TSYM)
+            .get_pool(Denom::Sym)
             .await
             .map_err(to_badgateway)?
             .unwrap()
@@ -118,6 +119,7 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
     };
 
     let mut body: Body = HomepageTemplate {
+        testnet: req.state().netid() == NetID::Testnet,
         blocks,
         transactions,
         pool,

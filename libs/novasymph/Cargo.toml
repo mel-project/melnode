@@ -1,5 +1,5 @@
 [package]
-name = "neosymph"
+name = "novasymph"
 version = "0.1.0"
 authors = ["nullchinchilla <nullchinchilla@pm.me>"]
 edition = "2018"
@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 tmelcrypt={path="../tmelcrypt"}
 blkstructs={path="../blkstructs"}
+blkdb={path="../blkdb"}
 bytes={version="1", features=["serde"]}
 serde={version="1", features=["derive"]}
 stdcode={path="../stdcode"}
@@ -23,10 +24,12 @@ smol-timeout="0.6"
 once_cell="1"
 autosmt={path="../autosmt"}
 env_logger="0.8"
-smolscale="0.1"
-
+smolscale="0.2"
+futures-util="0.3"
 melnet={path="../melnet"}
 
 broadcaster={version="1"}
 
 fastrand="1"
+
+thiserror="1"

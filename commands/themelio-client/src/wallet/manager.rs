@@ -4,7 +4,7 @@ use std::str::FromStr;
 use blkstructs::melvm::Covenant;
 use tmelcrypt::Ed25519SK;
 
-use crate::utils::context::ExecutionContext;
+use crate::context::ExecutionContext;
 use crate::wallet::data::WalletData;
 use crate::wallet::error::WalletError;
 use crate::wallet::wallet::ActiveWallet;
@@ -33,7 +33,7 @@ impl WalletManager {
 
         // Generate wallet data and store it.
         let (pk, sk) = tmelcrypt::ed25519_keygen();
-        let script = Covenant::std_ed25519_pk(pk);
+        let script = Covenant::std_ed25519_pk_legacy(pk);
         let wallet_data = WalletData::new(script);
 
         // Insert wallet data and return sk & wallet data.
@@ -70,8 +70,25 @@ impl WalletManager {
         Ok(wallet)
     }
 
-    /// Get all wallet data in storage by name.
-    pub async fn get_all_wallets(&self) -> anyhow::Result<BTreeMap<String, WalletData>> {
-        Ok(self.context.database.get_all().collect())
+    /// Remove key value pair and then insert the updated data
+    pub async fn save_wallet(&self, name: &str, new_data: WalletData) -> anyhow::Result<()> {
+        let name = name.to_string();
+        self.context.database.remove(&name);
+        self.context.database.insert(name, new_data.clone());
+        Ok(())
+    }
+
+    /// Get all wallets in storage by name and return a map from name to address.
+    pub async fn wallet_addresses_by_name(&self) -> anyhow::Result<BTreeMap<String, String>> {
+        // Get all wallet data for all wallets by name.
+        let wallets: BTreeMap<String, WalletData> = self.context.database.get_all().collect();
+
+        // Filter out the wallet data into an address for each wallet.
+        let wallet_addrs_by_name = wallets
+            .into_iter()
+            .map(|(k, v)| (k, v.my_covenant().hash().to_addr()))
+            .collect::<BTreeMap<String, String>>();
+
+        Ok(wallet_addrs_by_name)
     }
 }
