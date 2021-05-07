@@ -96,11 +96,27 @@ impl Covenant {
         Executor::new_from_env(tx.clone(), env).run_return(&ops)
     }
 
-    pub fn std_ed25519_pk(pk: tmelcrypt::Ed25519PK) -> Self {
+    /// Returns a legacy ed25519 signature checking covenant, which checks the *first* signature.
+    pub fn std_ed25519_pk_legacy(pk: tmelcrypt::Ed25519PK) -> Self {
         Covenant::from_ops(&[
             OpCode::PushI(0u32.into()),
             OpCode::PushI(6u32.into()),
-            OpCode::LoadImm(0),
+            OpCode::LoadImm(ADDR_SPENDER_TX),
+            OpCode::VRef,
+            OpCode::VRef,
+            OpCode::PushB(pk.0.to_vec()),
+            OpCode::LoadImm(1),
+            OpCode::SigEOk(32),
+        ])
+        .unwrap()
+    }
+
+    /// Returns a new ed25519 signature checking covenant, which checks the *nth* signature when spent as the nth input.
+    pub fn std_ed25519_pk_new(pk: tmelcrypt::Ed25519PK) -> Self {
+        Covenant::from_ops(&[
+            OpCode::LoadImm(ADDR_SPENDER_INDEX),
+            OpCode::PushI(6u32.into()),
+            OpCode::LoadImm(ADDR_SPENDER_TX),
             OpCode::VRef,
             OpCode::VRef,
             OpCode::PushB(pk.0.to_vec()),

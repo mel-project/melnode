@@ -33,7 +33,7 @@ impl WalletManager {
 
         // Generate wallet data and store it.
         let (pk, sk) = tmelcrypt::ed25519_keygen();
-        let script = Covenant::std_ed25519_pk(pk);
+        let script = Covenant::std_ed25519_pk_legacy(pk);
         let wallet_data = WalletData::new(script);
 
         // Insert wallet data and return sk & wallet data.

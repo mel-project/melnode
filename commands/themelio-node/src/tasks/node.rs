@@ -6,7 +6,7 @@ use anyhow::Context;
 use blkstructs::GenesisConfig;
 use smol::net::SocketAddr;
 use structopt::StructOpt;
-use tmelcrypt::Ed25519SK;
+use tmelcrypt::{Ed25519SK, HashVal};
 use tracing::instrument;
 #[derive(Debug, StructOpt)]
 pub struct NodeConfig {
@@ -33,6 +33,10 @@ pub struct NodeConfig {
     /// Listen address for the staker network.
     #[structopt(long)]
     staker_listen: Option<SocketAddr>,
+
+    /// Payout address for staker rewards.
+    #[structopt(long)]
+    staker_payout_addr: Option<String>,
 
     /// If given, uses this TOML file to configure the network genesis rather than following the known testnet/mainnet genesis.
     #[structopt(long)]
@@ -80,6 +84,8 @@ pub async fn run_node(opt: NodeConfig) -> anyhow::Result<()> {
                 opt.staker_bootstrap.clone(),
                 storage.clone(),
                 my_sk,
+                HashVal::from_addr(&opt.staker_payout_addr.unwrap())
+                    .context("cannot parse payout address")?,
             )
             .unwrap(),
         )

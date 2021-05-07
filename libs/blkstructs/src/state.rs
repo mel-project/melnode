@@ -73,7 +73,7 @@ impl GenesisConfig {
         Self {
             network: NetID::Mainnet,
             init_coindata: CoinData {
-                covhash: Covenant::std_ed25519_pk(Ed25519PK(
+                covhash: Covenant::std_ed25519_pk_legacy(Ed25519PK(
                     hex::decode("7323dcb65513b84470a76339cdf0062d47d82e205e834f2d7159684a0cb3b5ba")
                         .unwrap()
                         .try_into()

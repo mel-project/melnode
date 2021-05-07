@@ -22,5 +22,5 @@ lazy_static="1"
 async-net="1"
 anyhow="1"
 serde = {version="1.0.116", features=["derive"]}
-smolscale="0.1.2"
+smolscale="0.2"
 stdcode={path="../stdcode"}

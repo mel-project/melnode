@@ -50,7 +50,6 @@ impl ChainState {
             proposed_block.header.hash(),
             last_nonempty
         );
-        log::debug!("{}", self.debug_graphviz());
         let lnc_tips = self.get_lnc_tips();
         if !lnc_tips.contains(&last_nonempty) {
             log::warn!("tips: {:?}", lnc_tips);
@@ -127,14 +126,33 @@ impl ChainState {
     /// Votes for all "appropriate" proposals.
     pub fn vote_all(&mut self, voter_sk: Ed25519SK) {
         let mut metadata_map = BTreeMap::new();
-        for tip in self.inner.get_tips() {
-            if let Some(mut metadata) = tip.get_streamlet() {
-                let abbr_block = tip.to_state().to_block().abbreviate();
-                metadata.votes.insert(
-                    voter_sk.to_public(),
-                    VoteSig::generate(voter_sk, &abbr_block),
-                );
-                metadata_map.insert(tip.header().hash(), metadata);
+        let lnc_cursor = self
+            .get_lnc_tips()
+            .into_iter()
+            .next()
+            .map(|v| self.inner.get_cursor(v).unwrap())
+            .unwrap();
+        let mut stack = lnc_cursor.children();
+        while let Some(child) = stack.pop() {
+            if let Some(mut metadata) = child.get_streamlet() {
+                let abbr_block = child.to_state().to_block().abbreviate();
+                if metadata
+                    .votes
+                    .insert(
+                        voter_sk.to_public(),
+                        VoteSig::generate(voter_sk, &abbr_block),
+                    )
+                    .is_none()
+                {
+                    log::warn!(
+                        "voting for {} at height {}",
+                        child.header().hash(),
+                        child.header().height
+                    );
+                    metadata_map.insert(child.header().hash(), metadata);
+                }
+            } else {
+                stack.extend(child.children())
             }
         }
         for (hash, metadata) in metadata_map {
@@ -192,6 +210,18 @@ impl ChainState {
             TransactionResponse {
                 transactions: vec![],
             }
+        }
+    }
+
+    /// Forcibly resets the genesis to something with the given HashVal.
+    pub fn reset_genesis(&mut self, genesis: SealedState) {
+        if let Some(cursor) = self.inner.get_cursor(genesis.header().hash()) {
+            let state = cursor.to_state();
+            let metadata = cursor.metadata().to_vec();
+            drop(cursor);
+            self.inner.set_genesis(state, &metadata);
+        } else {
+            self.inner.set_genesis(genesis, &[]);
         }
     }
 

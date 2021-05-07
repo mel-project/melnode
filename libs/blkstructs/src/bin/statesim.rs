@@ -53,10 +53,10 @@ fn main() {
     let mut genesis = State::test_genesis(
         db,
         MICRO_CONVERTER * 1000,
-        melvm::Covenant::std_ed25519_pk(KEYPAIR.0).hash(),
+        melvm::Covenant::std_ed25519_pk_legacy(KEYPAIR.0).hash(),
         &[],
     );
-    let cov = melvm::Covenant::std_ed25519_pk(KEYPAIR.0);
+    let cov = melvm::Covenant::std_ed25519_pk_legacy(KEYPAIR.0);
     let kmel_cd = CoinData {
         covhash: cov.hash(),
         value: MICRO_CONVERTER * 1000,

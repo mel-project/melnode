@@ -8,7 +8,6 @@ use autosmt::CompressedProof;
 use blkstructs::{ConsensusProof, NetID, Transaction};
 
 use melnet::MelnetError;
-use neosymph::TxLookup;
 use nodeprot::{AbbreviatedBlock, NodeClient, NodeResponder, NodeServer, StateSummary, Substate};
 use smol::{channel::Receiver, net::TcpListener};
 use tmelcrypt::HashVal;
@@ -16,8 +15,6 @@ use tmelcrypt::HashVal;
 use crate::services::storage::SharedStorage;
 
 use super::blksync;
-
-mod fastsync;
 
 /// This encapsulates the node peer-to-peer for both auditors and stakers..
 pub struct NodeProtocol {
@@ -109,16 +106,19 @@ impl NodeServer for AuditorResponder {
             .write()
             .mempool_mut()
             .apply_transaction(&tx)
-            .map_err(|e| MelnetError::Custom(e.to_string()))?;
+            .map_err(|e| {
+                log::warn!("cannot apply tx: {:?}", e);
+                MelnetError::Custom(e.to_string())
+            })?;
         log::debug!(
             "txhash {:?} successfully inserted, gonna propagate now",
             tx.hash_nosigs()
         );
-        log::debug!("about to broadcast txhash {:?}", tx.hash_nosigs());
+        // log::debug!("about to broadcast txhash {:?}", tx.hash_nosigs());
         for neigh in state.routes().iter().take(4).cloned() {
             let tx = tx.clone();
             let network = self.network;
-            log::debug!("bcast {:?} => {:?}", tx.hash_nosigs(), neigh);
+            // log::debug!("bcast {:?} => {:?}", tx.hash_nosigs(), neigh);
             smolscale::spawn(async move { NodeClient::new(network, neigh).send_tx(tx).await })
                 .detach();
         }
@@ -198,28 +198,5 @@ impl NodeServer for AuditorResponder {
 impl AuditorResponder {
     fn new(network: NetID, storage: SharedStorage) -> Self {
         Self { network, storage }
-    }
-}
-
-/// CSP process that processes transaction broadcasts sequentially. Many are spawned to increase concurrency.
-#[tracing::instrument(skip(network, recv_tx_bcast))]
-async fn tx_bcast(
-    netid: NetID,
-    network: melnet::NetState,
-    recv_tx_bcast: Receiver<Transaction>,
-) -> Option<()> {
-    loop {
-        let to_cast = recv_tx_bcast.recv().await.ok()?;
-        log::debug!("about to broadcast txhash {:?}", to_cast.hash_nosigs());
-        for neigh in network.routes().iter().take(4).cloned() {
-            log::debug!("bcast {:?} => {:?}", to_cast.hash_nosigs(), neigh);
-            smolscale::spawn(melnet::request::<_, ()>(
-                neigh,
-                netname(netid),
-                "send_tx",
-                to_cast.clone(),
-            ))
-            .detach();
-        }
     }
 }

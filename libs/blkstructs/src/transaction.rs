@@ -447,7 +447,7 @@ pub(crate) mod tests {
         // create transaction
         let mut valid_tx = valid_txx.iter().next().unwrap().clone();
         let (pk, _sk) = tmelcrypt::ed25519_keygen();
-        let scr = melvm::Covenant::std_ed25519_pk(pk);
+        let scr = melvm::Covenant::std_ed25519_pk_legacy(pk);
 
         // insert coins
         let val1 = 100;
@@ -480,7 +480,7 @@ pub(crate) mod tests {
         // create transaction
         let valid_tx = valid_txx.iter().next().unwrap().clone();
         let (pk, _sk) = tmelcrypt::ed25519_keygen();
-        let _scr = melvm::Covenant::std_ed25519_pk(pk);
+        let _scr = melvm::Covenant::std_ed25519_pk_legacy(pk);
 
         // add scripts
 

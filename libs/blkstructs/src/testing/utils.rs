@@ -93,13 +93,13 @@ pub fn tx_create_token(
                 CoinDataFactory::new().build(|cd| {
                     cd.value = *val;
                     cd.denom = denom.clone();
-                    cd.covhash = melvm::Covenant::std_ed25519_pk(signer_keypair.0).hash();
+                    cd.covhash = melvm::Covenant::std_ed25519_pk_legacy(signer_keypair.0).hash();
                 })
             })
             .collect::<Vec<_>>();
 
         // Create tx covenant hashees
-        let tx_scripts = vec![melvm::Covenant::std_ed25519_pk(signer_keypair.0)].to_vec();
+        let tx_scripts = vec![melvm::Covenant::std_ed25519_pk_legacy(signer_keypair.0)].to_vec();
 
         tx.inputs = vec![coin_id.clone()].to_vec();
         tx.outputs = tx_outputs;
@@ -130,7 +130,7 @@ pub fn tx_deposit(
     let fee = fee_estimate();
     let factory = TransactionFactory::new();
     let (pk, _sk) = keypair;
-    let cov_hash = melvm::Covenant::std_ed25519_pk(pk.clone()).hash();
+    let cov_hash = melvm::Covenant::std_ed25519_pk_legacy(pk.clone()).hash();
 
     let tx = factory.build(|tx| {
         tx.kind = TxKind::LiqDeposit;
@@ -149,7 +149,7 @@ pub fn tx_deposit(
                 additional_data: vec![],
             },
         ];
-        tx.scripts = vec![melvm::Covenant::std_ed25519_pk(pk.clone())];
+        tx.scripts = vec![melvm::Covenant::std_ed25519_pk_legacy(pk.clone())];
         tx.fee = fee;
     });
     tx.signed_ed25519(keypair.1)
@@ -158,7 +158,7 @@ pub fn tx_deposit(
 // Filter tx outputs by PK
 // TODO: convert this to hash map?
 pub fn filter_tx_outputs_by_pk(pk: &Ed25519PK, outputs: &Vec<CoinData>) -> Vec<(u8, CoinData)> {
-    let cov_hash = melvm::Covenant::std_ed25519_pk(pk.clone()).hash();
+    let cov_hash = melvm::Covenant::std_ed25519_pk_legacy(pk.clone()).hash();
     let outputs: Vec<(u8, CoinData)> = outputs
         .iter()
         .filter(|&cd| cd.clone().covhash == cov_hash)
@@ -179,13 +179,13 @@ pub fn tx_send_mels_to(
 
     let cd_factory = CoinDataFactory::new();
     let cd1 = cd_factory.build(|cd| {
-        let covhash = melvm::Covenant::std_ed25519_pk(receiver_pk).hash();
+        let covhash = melvm::Covenant::std_ed25519_pk_legacy(receiver_pk).hash();
         cd.covhash = covhash;
         cd.value = total_mel_balance - fee;
         cd.denom = Denom::Mel;
     });
     let cd2 = cd_factory.build(|cd| {
-        let covhash = melvm::Covenant::std_ed25519_pk(receiver_pk).hash();
+        let covhash = melvm::Covenant::std_ed25519_pk_legacy(receiver_pk).hash();
         cd.covhash = covhash;
         cd.value = mel_send_amount;
         cd.denom = Denom::Mel;
