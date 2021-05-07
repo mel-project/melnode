@@ -375,7 +375,7 @@ mod tests {
     // test a simple deposit flow
     fn simple_deposit() {
         let (my_pk, my_sk) = tmelcrypt::ed25519_keygen();
-        let my_covhash = melvm::Covenant::std_ed25519_pk(my_pk).hash();
+        let my_covhash = melvm::Covenant::std_ed25519_pk_legacy(my_pk).hash();
         let start_state = genesis_state(
             CoinID::zero_zero(),
             CoinDataHeight {
@@ -410,7 +410,7 @@ mod tests {
                 },
             ],
             fee: 2000000,
-            scripts: vec![melvm::Covenant::std_ed25519_pk(my_pk)],
+            scripts: vec![melvm::Covenant::std_ed25519_pk_legacy(my_pk)],
             data: vec![],
             sigs: vec![],
         }
@@ -434,7 +434,7 @@ mod tests {
                 },
             ],
             fee: 2000000,
-            scripts: vec![melvm::Covenant::std_ed25519_pk(my_pk)],
+            scripts: vec![melvm::Covenant::std_ed25519_pk_legacy(my_pk)],
             data: newcoin_tx.hash_nosigs().to_vec(), // this is important, since it "points" to the pool
             sigs: vec![],
         }

@@ -62,12 +62,12 @@ fn idx_to_addr(idx: usize) -> SocketAddr {
 }
 
 async fn run_staker(idx: usize, genesis: SealedState, forest: autosmt::Forest) {
-    let mut protocol = EpochProtocol::new(EpochConfig {
+    let protocol = EpochProtocol::new(EpochConfig {
         listen: idx_to_addr(idx),
         bootstrap: (0..COUNT).map(idx_to_addr).collect(),
         genesis,
         forest,
-        start_time: SystemTime::now() - Duration::from_secs(100000),
+        start_time: SystemTime::now(),
         interval: Duration::from_secs(5),
         signing_sk: TEST_SKK[idx],
         builder: TrivialBlockBuilder {
@@ -90,7 +90,7 @@ impl BlockBuilder for TrivialBlockBuilder {
         tip.next_state()
             .seal(Some(ProposerAction {
                 fee_multiplier_delta: 0,
-                reward_dest: Covenant::std_ed25519_pk(self.pk).hash(),
+                reward_dest: Covenant::std_ed25519_pk_legacy(self.pk).hash(),
             }))
             .to_block()
     }

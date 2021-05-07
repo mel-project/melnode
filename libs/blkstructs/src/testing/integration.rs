@@ -159,7 +159,7 @@ fn test_melswap_v2_simple(
 fn state_simple_order_independence() {
     let db = autosmt::Forest::load(autosmt::MemDB::default());
     let (pk, sk) = tmelcrypt::ed25519_keygen();
-    let scr = melvm::Covenant::std_ed25519_pk(pk);
+    let scr = melvm::Covenant::std_ed25519_pk_legacy(pk);
     let mut genesis = State::test_genesis(db, MICRO_CONVERTER * 1000, scr.hash(), &[]);
     genesis.fee_multiplier = 0;
     let first_block = genesis.seal(None);

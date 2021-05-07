@@ -1,5 +1,6 @@
 use blkstructs::{
-    Block, ConfirmedState, ConsensusProof, SealedState, StakeMapping, Transaction, STAKE_EPOCH,
+    Block, ConfirmedState, ConsensusProof, ProposerAction, SealedState, StakeMapping, Transaction,
+    STAKE_EPOCH,
 };
 use futures_util::stream::FuturesOrdered;
 use melnet::Request;
@@ -58,6 +59,7 @@ pub struct EpochConfig<B: BlockBuilder> {
 /// Represents a running instance of the Symphonia protocol for a particular epoch.
 pub struct EpochProtocol {
     _task: smol::Task<()>,
+    cstate: Arc<RwLock<ChainState>>,
     recv_confirmed: Receiver<ConfirmedState>,
 }
 
@@ -65,36 +67,48 @@ impl EpochProtocol {
     /// Create a new instance of the protocol over melnet.
     pub fn new<B: BlockBuilder>(cfg: EpochConfig<B>) -> Self {
         let (send_confirmed, recv_confirmed) = smol::channel::unbounded();
+        let cstate = Arc::new(RwLock::new(ChainState::new(
+            cfg.genesis.clone(),
+            cfg.forest.clone(),
+        )));
         Self {
-            _task: smolscale::spawn(async move {
-                protocol_loop(cfg, send_confirmed).await;
-            }),
+            _task: {
+                let cstate = cstate.clone();
+                smolscale::spawn(async move {
+                    protocol_loop(cfg, cstate, send_confirmed).await;
+                })
+            },
+            cstate,
             recv_confirmed,
         }
     }
 
     /// Receives the next fully-confirmed state.
-    pub async fn next_confirmed(&mut self) -> ConfirmedState {
+    pub async fn next_confirmed(&self) -> ConfirmedState {
         self.recv_confirmed.recv().await.unwrap()
+    }
+
+    /// Forces the given state to be genesis.
+    pub fn reset_genesis(&self, genesis: SealedState) {
+        self.cstate.write().reset_genesis(genesis)
     }
 }
 
 async fn protocol_loop<B: BlockBuilder>(
     cfg: EpochConfig<B>,
+    cstate: Arc<RwLock<ChainState>>,
     send_confirmed: Sender<ConfirmedState>,
 ) -> ! {
     let (send_finalized, recv_finalized) = smol::channel::unbounded();
 
     let cfg = Arc::new(cfg);
     let height_to_proposer = gen_get_proposer(cfg.genesis.clone());
-    let cstate = Arc::new(RwLock::new(ChainState::new(
-        cfg.genesis.clone(),
-        cfg.forest.clone(),
-    )));
     let network = melnet::NetState::new_with_name("symphgossip");
     for addr in &cfg.bootstrap {
         network.add_route(*addr);
     }
+
+    let my_epoch = cfg.genesis.inner_ref().height / STAKE_EPOCH;
 
     // melnet server
     {
@@ -118,6 +132,7 @@ async fn protocol_loop<B: BlockBuilder>(
     // melnet client
     let _gossiper = smolscale::spawn(gossiper_loop(network.clone(), cstate.clone(), cfg.clone()));
     let _confirmer = smolscale::spawn(confirmer_loop(
+        my_epoch,
         cfg.signing_sk,
         network.clone(),
         cstate.clone(),
@@ -126,6 +141,7 @@ async fn protocol_loop<B: BlockBuilder>(
     ));
 
     // actually run off into the background
+    network.add_route(cfg.listen);
     let listener = smol::net::TcpListener::bind(cfg.listen)
         .await
         .expect("could not start to listen");
@@ -138,6 +154,8 @@ async fn protocol_loop<B: BlockBuilder>(
                 for block in cstate.write().drain_finalized() {
                     let _ = send_finalized.try_send(block);
                 }
+                let hint_tip = cstate.read().get_lnc_state();
+                cfg.builder.hint_next_build(hint_tip);
                 smol::Timer::after(Duration::from_secs(1)).await;
             }
         };
@@ -162,7 +180,28 @@ async fn protocol_loop<B: BlockBuilder>(
             while build_upon.inner_ref().height + 1 < height {
                 build_upon = build_upon.next_state().seal(None);
             }
-            let proposed_block = cfg.builder.build_block(build_upon);
+
+            // am i out of bounds?
+            let out_of_bounds = (build_upon.inner_ref().height + 1) / STAKE_EPOCH > my_epoch;
+            if out_of_bounds {
+                log::warn!(
+                    "novasymph running out of bounds: {} is out of epoch {}",
+                    build_upon.inner_ref().height + 1,
+                    my_epoch
+                )
+            };
+
+            let proposed_block = if out_of_bounds {
+                build_upon
+                    .next_state()
+                    .seal(Some(ProposerAction {
+                        fee_multiplier_delta: 0,
+                        reward_dest: HashVal::default(),
+                    }))
+                    .to_block()
+            } else {
+                cfg.builder.build_block(build_upon)
+            };
             // inject proposal
             cstate
                 .inject_proposal(
@@ -173,13 +212,7 @@ async fn protocol_loop<B: BlockBuilder>(
                 )
                 .expect("failed to inject a self-created proposal");
             // vote for it myself
-            cstate
-                .inject_vote(
-                    proposed_block.header.hash(),
-                    cfg.signing_sk.to_public(),
-                    VoteSig::generate(cfg.signing_sk, &proposed_block.abbreviate()),
-                )
-                .expect("failed to inject my own vote");
+            cstate.vote_all(cfg.signing_sk);
         }
     }
 }
@@ -300,6 +333,7 @@ async fn gossiper_loop<B: BlockBuilder>(
 
 // "gossiper" thread
 async fn confirmer_loop(
+    my_epoch: u64,
     signing_sk: Ed25519SK,
     network: melnet::NetState,
     cstate: Arc<RwLock<ChainState>>,
@@ -323,27 +357,37 @@ async fn confirmer_loop(
 
     let (send_fut, recv_fut) = smol::channel::bounded(128);
     let mut confirmed_generator = FuturesOrdered::<Boxed<ConfirmedState>>::new();
-    let _piper = smolscale::spawn(async move {
-        loop {
-            let start_evt = async {
-                let fut = recv_fut.recv().await.unwrap();
-                Some(fut)
-            };
-            let end_evt = async {
-                if let Some(res) = confirmed_generator.next().await {
-                    send_confirmed.send(res).await.unwrap();
-                }
-                None
-            };
+    let _piper = {
+        // let cstate = cstate.clone();
+        // let known_votes = known_votes.clone();
+        smolscale::spawn(async move {
+            loop {
+                let start_evt = async {
+                    let fut = recv_fut.recv().await.unwrap();
+                    Some(fut)
+                };
+                let end_evt = async {
+                    if let Some(res) = confirmed_generator.next().await {
+                        send_confirmed.send(res).await.unwrap();
+                        None
+                    } else {
+                        smol::future::pending().await
+                    }
+                };
 
-            if let Some(fut) = start_evt.or(end_evt).await {
-                confirmed_generator.push(fut);
+                if let Some(fut) = start_evt.or(end_evt).await {
+                    confirmed_generator.push(fut);
+                }
             }
-        }
-    });
+        })
+    };
 
     loop {
         let finalized = recv_finalized.recv().await.ok()?;
+        if finalized.inner_ref().height / STAKE_EPOCH > my_epoch {
+            log::warn!("skipping out-of-bounds finalized block");
+            continue;
+        }
         let own_signature = signing_sk.sign(&finalized.header().hash());
         let sigs = UnconfirmedBlock {
             state: finalized,
@@ -397,7 +441,7 @@ async fn confirmer_loop(
                         ),
                     }
                 }
-                smol::Timer::after(Duration::from_millis(100)).await;
+                smol::Timer::after(Duration::from_millis(1000)).await;
             }
 
             let sigs = known_votes.read().get(&my_height).cloned().unwrap();

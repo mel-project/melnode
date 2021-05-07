@@ -8,8 +8,6 @@ use blkstructs::{ConsensusProof, GenesisConfig, SealedState, State, StateError, 
 use lru::LruCache;
 use parking_lot::RwLock;
 pub use sled_tree::*;
-mod sled_map;
-pub use sled_map::*;
 use tmelcrypt::HashVal;
 
 /// An alias for a shared NodeStorage.
@@ -118,6 +116,11 @@ impl NodeStorage {
     pub fn share(self) -> SharedStorage {
         Arc::new(RwLock::new(self))
     }
+
+    /// Gets the forest.
+    pub fn forest(&self) -> autosmt::Forest {
+        self.forest.clone()
+    }
 }
 
 struct SledBackend {
@@ -151,15 +154,6 @@ pub struct Mempool {
     seen: LruCache<HashVal, Transaction>, // TODO: caches if benchmarks prove them helpful
 }
 
-impl neosymph::TxLookup for Mempool {
-    fn lookup(&self, hash: HashVal) -> Option<Transaction> {
-        self.seen
-            .peek(&hash)
-            .cloned()
-            .or_else(|| self.provisional_state.transactions.get(&hash).0)
-    }
-}
-
 impl Mempool {
     /// Creates a State based on the present state of the mempool.
     pub fn to_state(&self) -> State {
@@ -174,8 +168,26 @@ impl Mempool {
         self.provisional_state.apply_tx(tx)
     }
 
-    /// Forcibly replaces the internal state of the mempool with the given state, returning the previous state.
-    pub fn rebase(&mut self, state: State) -> State {
-        std::mem::replace(&mut self.provisional_state, state)
+    /// Forcibly replaces the internal state of the mempool with the given state.
+    pub fn rebase(&mut self, state: State) {
+        if state.height > self.provisional_state.height {
+            log::debug!(
+                "rebasing mempool {} => {}",
+                self.provisional_state.height,
+                state.height
+            );
+            if self.provisional_state.transactions.root_hash() != HashVal::default() {
+                let count = self.provisional_state.transactions.val_iter().count();
+                log::warn!("*** THROWING AWAY {} MEMPOOL TXX ***", count);
+            }
+            self.provisional_state = state;
+        }
+    }
+
+    pub fn lookup(&self, hash: HashVal) -> Option<Transaction> {
+        self.seen
+            .peek(&hash)
+            .cloned()
+            .or_else(|| self.provisional_state.transactions.get(&hash).0)
     }
 }
