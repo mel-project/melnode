@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryInto;
 use tmelcrypt::HashVal;
+use genawaiter::{yield_, rc::gen};
+use genawaiter::sync::{Gen, GenBoxed};
 
 mod lexer;
 
@@ -406,251 +408,304 @@ impl Executor {
         stack.push(op(x)?);
         Some(())
     }
-    pub fn do_op(&mut self, op: &OpCode, pc: u32) -> Option<u32> {
-        match op {
-            // arithmetic
-            OpCode::Add => self.do_binop(|x, y| {
-                Some(Value::Int(x.into_int()?.overflowing_add(y.into_int()?).0))
-            })?,
-            OpCode::Sub => self.do_binop(|x, y| {
-                Some(Value::Int(x.into_int()?.overflowing_sub(y.into_int()?).0))
-            })?,
-            OpCode::Mul => self.do_binop(|x, y| {
-                Some(Value::Int(x.into_int()?.overflowing_mul(y.into_int()?).0))
-            })?,
-            OpCode::Div => {
-                self.do_binop(|x, y| Some(Value::Int(x.into_int()?.checked_div(y.into_int()?)?)))?
-            }
-            OpCode::Rem => {
-                self.do_binop(|x, y| Some(Value::Int(x.into_int()?.checked_rem(y.into_int()?)?)))?
-            }
-            // logic
-            OpCode::And => self.do_binop(|x, y| Some(Value::Int(x.into_int()? & y.into_int()?)))?,
-            OpCode::Or => self.do_binop(|x, y| Some(Value::Int(x.into_int()? | y.into_int()?)))?,
-            OpCode::Xor => self.do_binop(|x, y| Some(Value::Int(x.into_int()? ^ y.into_int()?)))?,
-            OpCode::Not => self.do_monop(|x| Some(Value::Int(!x.into_int()?)))?,
-            OpCode::Eql => self.do_binop(|x, y| match (x, y) {
-                (Value::Int(x), Value::Int(y)) => {
-                    if x == y {
-                        Some(Value::Int(U256::one()))
-                    } else {
-                        Some(Value::Int(U256::zero()))
-                    }
-                }
-                _ => None,
-            })?,
-            OpCode::Lt => self.do_binop(|x, y| {
-                let x = x.into_int()?;
-                let y = y.into_int()?;
-                if x < y {
-                    Some(Value::Int(U256::one()))
-                } else {
-                    Some(Value::Int(U256::zero()))
-                }
-            })?,
-            OpCode::Gt => self.do_binop(|x, y| {
-                let x = x.into_int()?;
-                let y = y.into_int()?;
-                if !x > y {
-                    Some(Value::Int(U256::one()))
-                } else {
-                    Some(Value::Int(U256::zero()))
-                }
-            })?,
-            OpCode::Shl => self.do_binop(|x, offset| {
-                let x = x.into_int()?;
-                let offset = offset.into_int()?;
-                Some(Value::Int(x << offset))
-            })?,
-            OpCode::Shr => self.do_binop(|x, offset| {
-                let x = x.into_int()?;
-                let offset = offset.into_int()?;
-                Some(Value::Int(x >> offset))
-            })?,
-            // cryptography
-            OpCode::Hash(n) => self.do_monop(|to_hash| {
-                let to_hash = to_hash.into_bytes()?;
-                if to_hash.len() > *n as usize {
-                    return None;
-                }
-                let hash = tmelcrypt::hash_single(&to_hash.iter().cloned().collect::<Vec<_>>());
-                Some(Value::from_bytes(&hash.0))
-            })?,
-            OpCode::SigEOk(n) => self.do_triop(|message, public_key, signature| {
-                //println!("SIGEOK({:?}, {:?}, {:?})", message, public_key, signature);
-                let pk = public_key.into_bytes()?;
-                if pk.len() > 32 {
-                    return Some(Value::from_bool(false));
-                }
-                let pk_b: Vec<u8> = pk.iter().cloned().collect();
-                let public_key = tmelcrypt::Ed25519PK::from_bytes(&pk_b)?;
-                let message = message.into_bytes()?;
-                if message.len() > *n as usize {
-                    return None;
-                }
-                let message: Vec<u8> = message.iter().cloned().collect();
-                let signature = signature.into_bytes()?;
-                if signature.len() > 64 {
-                    return Some(Value::from_bool(false));
-                }
-                let signature: Vec<u8> = signature.iter().cloned().collect();
-                Some(Value::from_bool(public_key.verify(&message, &signature)))
-            })?,
-            // storage access
-            OpCode::Store => {
-                let addr = self.stack.pop()?.into_u16()?;
-                let val = self.stack.pop()?;
-                self.heap.insert(addr, val);
-            }
-            OpCode::Load => {
-                let addr = self.stack.pop()?.into_u16()?;
-                let res = self.heap.get(&addr)?.clone();
-                self.stack.push(res)
-            }
-            OpCode::StoreImm(idx) => {
-                let val = self.stack.pop()?;
-                self.heap.insert(*idx, val);
-            }
-            OpCode::LoadImm(idx) => {
-                let res = self.heap.get(idx)?.clone();
-                self.stack.push(res)
-            }
-            // vector operations
-            OpCode::VRef => self.do_binop(|vec, idx| {
-                let idx = idx.into_u16()? as usize;
-                Some(vec.into_vector()?.get(idx)?.clone())
-            })?,
-            OpCode::VSet => self.do_triop(|vec, idx, value| {
-                let idx = idx.into_u16()? as usize;
-                let mut vec = vec.into_vector()?;
-                vec.set(idx, value);
-                Some(Value::Vector(vec))
-            })?,
-            OpCode::VAppend => self.do_binop(|v1, v2| {
-                let mut v1 = v1.into_vector()?;
-                let v2 = v2.into_vector()?;
-                v1.append(v2);
-                Some(Value::Vector(v1))
-            })?,
-            OpCode::VSlice => self.do_triop(|vec, i, j| {
-                let i = i.into_u16()? as usize;
-                let j = j.into_u16()? as usize;
-                match vec {
-                    Value::Vector(mut vec) => Some(Value::Vector(vec.slice(i..j))),
-                    _ => None,
-                }
-            })?,
-            OpCode::VLength => self.do_monop(|vec| match vec {
-                Value::Vector(vec) => Some(Value::Int(U256::from(vec.len()))),
-                _ => None,
-            })?,
-            OpCode::VEmpty => self.stack.push(Value::Vector(im::Vector::new())),
-            OpCode::VPush => self.do_binop(|vec, item| {
-                let mut vec = vec.into_vector()?;
-                vec.push_back(item);
-                Some(Value::Vector(vec))
-            })?,
-            OpCode::VCons => self.do_binop(|item, vec| {
-                let mut vec = vec.into_vector()?;
-                vec.push_front(item);
-                Some(Value::Vector(vec))
-            })?,
-            // bit stuff
-            OpCode::BEmpty => self.stack.push(Value::Bytes(im::Vector::new())),
-            OpCode::BPush => self.do_binop(|vec, val| {
-                let mut vec = vec.into_bytes()?;
-                let val = val.into_int()?;
-                vec.push_back(val.low_u32() as u8);
-                Some(Value::Bytes(vec))
-            })?,
-            OpCode::BCons => self.do_binop(|item, vec| {
-                let mut vec = vec.into_bytes()?;
-                vec.push_front(item.into_truncated_u8()?);
-                Some(Value::Bytes(vec))
-            })?,
-            OpCode::BRef => self.do_binop(|vec, idx| {
-                let idx = idx.into_u16()? as usize;
-                Some(Value::Int(vec.into_bytes()?.get(idx)?.clone().into()))
-            })?,
-            OpCode::BSet => self.do_triop(|vec, idx, value| {
-                let idx = idx.into_u16()? as usize;
-                let mut vec = vec.into_bytes()?;
-                vec.set(idx, value.into_truncated_u8()?);
-                Some(Value::Bytes(vec))
-            })?,
-            OpCode::BAppend => self.do_binop(|v1, v2| {
-                let mut v1 = v1.into_bytes()?;
-                let v2 = v2.into_bytes()?;
-                v1.append(v2);
-                Some(Value::Bytes(v1))
-            })?,
-            OpCode::BSlice => self.do_triop(|vec, i, j| {
-                let i = i.into_u16()? as usize;
-                let j = j.into_u16()? as usize;
-                match vec {
-                    Value::Bytes(mut vec) => Some(Value::Bytes(vec.slice(i..j))),
-                    _ => None,
-                }
-            })?,
-            OpCode::BLength => self.do_monop(|vec| match vec {
-                Value::Bytes(vec) => Some(Value::Int(U256::from(vec.len()))),
-                _ => None,
-            })?,
-            // control flow
-            OpCode::Bez(jgap) => {
-                let top = self.stack.pop()?;
-                if top == Value::Int(U256::zero()) {
-                    return Some(pc + 1 + *jgap as u32);
-                }
-            }
-            OpCode::Bnz(jgap) => {
-                let top = self.stack.pop()?;
-                if top != Value::Int(U256::zero()) {
-                    return Some(pc + 1 + *jgap as u32);
-                }
-            }
-            OpCode::Jmp(jgap) => return Some(pc + 1 + *jgap as u32),
-            OpCode::Loop(iterations, ops) => {
-                for _ in 0..*iterations {
-                    self.run_bare(&ops)?
-                }
-            }
-            // Conversions
-            OpCode::BtoI => self.do_monop(|x| {
-                let mut bytes = x.into_bytes()?;
-                if bytes.len() < 32 {
-                    return None;
-                }
+    //pub fn iter_ops(&mut self, ops: &[OpCode]) -> Gen<Option<u32>> {
+    pub fn iter_ops<'a>(&'a mut self, ops: &'a [OpCode]) -> impl Iterator<Item=Option<u32>> + 'a {
+        // TODO would using an async closure rather than block allow me to use '?' correctly?
+        //Gen::new_boxed(|mut co| { async move {
+        gen!({
+            for op in ops.iter() {
+                match op {
+                    OpCode::Loop(iterations, ops) => {
+                        // Loop itself is an instruction
+                        //co.yield_(Some(pc + 1)).await;
 
-                Some(Value::Int(
-                    bytes
-                        .slice(..32)
-                        .iter()
-                        .fold(U256::zero(), |acc, b| (acc * 256) + *b),
-                ))
-            })?,
-            OpCode::ItoB => self.do_monop(|x| {
-                let n = x.into_int()?;
-                let mut bytes = im::vector![];
-                for i in 0..32 {
-                    bytes.push_back(n.byte(i));
+                        for _ in 0..*iterations {
+                            for res in self.iter_ops(ops) {
+                                //co.yield_(res).await;
+                                yield_!(res)
+                            }
+                        }
+                    },
+                    // TODO: Maybe loop can also be left in do_op, and leave old api as is.
+                    // iter_ops will work on top of it.
+                    // TODO: fix program counter from 0
+                    //_ => co.yield_(self.do_op(&op, 0)).await,
+                    _ => yield_!(self.do_op(&op, 0)),
                 }
-                Some(Value::Bytes(bytes))
-            })?,
-            // literals
-            OpCode::PushB(bts) => {
-                let bts = Value::from_bytes(bts);
-                self.stack.push(bts);
             }
-            OpCode::PushI(num) => self.stack.push(Value::Int(*num)),
-        }
-        Some(pc + 1)
+        })
+        .into_iter()
+    }
+    pub fn do_op(&mut self, op: &OpCode, pc: u32) -> Option<u32> {
+        //Gen::new_boxed(|mut co| {
+            //async move {
+                //let op = ops.pop();
+        /*
+                let op = match ops.pop() {
+                    Some(op) => op,
+                    None => co.yield_(None),
+                };
+        */
+
+                match op {
+                    // arithmetic
+                    OpCode::Add => self.do_binop(|x, y| {
+                        Some(Value::Int(x.into_int()?.overflowing_add(y.into_int()?).0))
+                    })?,
+                    OpCode::Sub => self.do_binop(|x, y| {
+                        Some(Value::Int(x.into_int()?.overflowing_sub(y.into_int()?).0))
+                    })?,
+                    OpCode::Mul => self.do_binop(|x, y| {
+                        Some(Value::Int(x.into_int()?.overflowing_mul(y.into_int()?).0))
+                    })?,
+                    OpCode::Div => {
+                        self.do_binop(|x, y| Some(Value::Int(x.into_int()?.checked_div(y.into_int()?)?)))?
+                    }
+                    OpCode::Rem => {
+                        self.do_binop(|x, y| Some(Value::Int(x.into_int()?.checked_rem(y.into_int()?)?)))?
+                    }
+                    // logic
+                    OpCode::And => self.do_binop(|x, y| Some(Value::Int(x.into_int()? & y.into_int()?)))?,
+                    OpCode::Or => self.do_binop(|x, y| Some(Value::Int(x.into_int()? | y.into_int()?)))?,
+                    OpCode::Xor => self.do_binop(|x, y| Some(Value::Int(x.into_int()? ^ y.into_int()?)))?,
+                    OpCode::Not => self.do_monop(|x| Some(Value::Int(!x.into_int()?)))?,
+                    OpCode::Eql => self.do_binop(|x, y| match (x, y) {
+                        (Value::Int(x), Value::Int(y)) => {
+                            if x == y {
+                                Some(Value::Int(U256::one()))
+                            } else {
+                                Some(Value::Int(U256::zero()))
+                            }
+                        }
+                        _ => None,
+                    })?,
+                    OpCode::Lt => self.do_binop(|x, y| {
+                        let x = x.into_int()?;
+                        let y = y.into_int()?;
+                        if x < y {
+                            Some(Value::Int(U256::one()))
+                        } else {
+                            Some(Value::Int(U256::zero()))
+                        }
+                    })?,
+                    OpCode::Gt => self.do_binop(|x, y| {
+                        let x = x.into_int()?;
+                        let y = y.into_int()?;
+                        if !x > y {
+                            Some(Value::Int(U256::one()))
+                        } else {
+                            Some(Value::Int(U256::zero()))
+                        }
+                    })?,
+                    OpCode::Shl => self.do_binop(|x, offset| {
+                        let x = x.into_int()?;
+                        let offset = offset.into_int()?;
+                        Some(Value::Int(x << offset))
+                    })?,
+                    OpCode::Shr => self.do_binop(|x, offset| {
+                        let x = x.into_int()?;
+                        let offset = offset.into_int()?;
+                        Some(Value::Int(x >> offset))
+                    })?,
+                    // cryptography
+                    OpCode::Hash(n) => self.do_monop(|to_hash| {
+                        let to_hash = to_hash.into_bytes()?;
+                        if to_hash.len() > *n as usize {
+                            return None;
+                        }
+                        let hash = tmelcrypt::hash_single(&to_hash.iter().cloned().collect::<Vec<_>>());
+                        Some(Value::from_bytes(&hash.0))
+                    })?,
+                    OpCode::SigEOk(n) => self.do_triop(|message, public_key, signature| {
+                        //println!("SIGEOK({:?}, {:?}, {:?})", message, public_key, signature);
+                        let pk = public_key.into_bytes()?;
+                        if pk.len() > 32 {
+                            return Some(Value::from_bool(false));
+                        }
+                        let pk_b: Vec<u8> = pk.iter().cloned().collect();
+                        let public_key = tmelcrypt::Ed25519PK::from_bytes(&pk_b)?;
+                        let message = message.into_bytes()?;
+                        if message.len() > *n as usize {
+                            return None;
+                        }
+                        let message: Vec<u8> = message.iter().cloned().collect();
+                        let signature = signature.into_bytes()?;
+                        if signature.len() > 64 {
+                            return Some(Value::from_bool(false));
+                        }
+                        let signature: Vec<u8> = signature.iter().cloned().collect();
+                        Some(Value::from_bool(public_key.verify(&message, &signature)))
+                    })?,
+                    // storage access
+                    OpCode::Store => {
+                        let addr = self.stack.pop()?.into_u16()?;
+                        let val = self.stack.pop()?;
+                        self.heap.insert(addr, val);
+                    }
+                    OpCode::Load => {
+                        let addr = self.stack.pop()?.into_u16()?;
+                        let res = self.heap.get(&addr)?.clone();
+                        self.stack.push(res)
+                    }
+                    OpCode::StoreImm(idx) => {
+                        let val = self.stack.pop()?;
+                        self.heap.insert(*idx, val);
+                    }
+                    OpCode::LoadImm(idx) => {
+                        let res = self.heap.get(idx)?.clone();
+                        self.stack.push(res)
+                    }
+                    // vector operations
+                    OpCode::VRef => self.do_binop(|vec, idx| {
+                        let idx = idx.into_u16()? as usize;
+                        Some(vec.into_vector()?.get(idx)?.clone())
+                    })?,
+                    OpCode::VSet => self.do_triop(|vec, idx, value| {
+                        let idx = idx.into_u16()? as usize;
+                        let mut vec = vec.into_vector()?;
+                        vec.set(idx, value);
+                        Some(Value::Vector(vec))
+                    })?,
+                    OpCode::VAppend => self.do_binop(|v1, v2| {
+                        let mut v1 = v1.into_vector()?;
+                        let v2 = v2.into_vector()?;
+                        v1.append(v2);
+                        Some(Value::Vector(v1))
+                    })?,
+                    OpCode::VSlice => self.do_triop(|vec, i, j| {
+                        let i = i.into_u16()? as usize;
+                        let j = j.into_u16()? as usize;
+                        match vec {
+                            Value::Vector(mut vec) => Some(Value::Vector(vec.slice(i..j))),
+                            _ => None,
+                        }
+                    })?,
+                    OpCode::VLength => self.do_monop(|vec| match vec {
+                        Value::Vector(vec) => Some(Value::Int(U256::from(vec.len()))),
+                        _ => None,
+                    })?,
+                    OpCode::VEmpty => self.stack.push(Value::Vector(im::Vector::new())),
+                    OpCode::VPush => self.do_binop(|vec, item| {
+                        let mut vec = vec.into_vector()?;
+                        vec.push_back(item);
+                        Some(Value::Vector(vec))
+                    })?,
+                    OpCode::VCons => self.do_binop(|item, vec| {
+                        let mut vec = vec.into_vector()?;
+                        vec.push_front(item);
+                        Some(Value::Vector(vec))
+                    })?,
+                    // bit stuff
+                    OpCode::BEmpty => self.stack.push(Value::Bytes(im::Vector::new())),
+                    OpCode::BPush => self.do_binop(|vec, val| {
+                        let mut vec = vec.into_bytes()?;
+                        let val = val.into_int()?;
+                        vec.push_back(val.low_u32() as u8);
+                        Some(Value::Bytes(vec))
+                    })?,
+                    OpCode::BCons => self.do_binop(|item, vec| {
+                        let mut vec = vec.into_bytes()?;
+                        vec.push_front(item.into_truncated_u8()?);
+                        Some(Value::Bytes(vec))
+                    })?,
+                    OpCode::BRef => self.do_binop(|vec, idx| {
+                        let idx = idx.into_u16()? as usize;
+                        Some(Value::Int(vec.into_bytes()?.get(idx)?.clone().into()))
+                    })?,
+                    OpCode::BSet => self.do_triop(|vec, idx, value| {
+                        let idx = idx.into_u16()? as usize;
+                        let mut vec = vec.into_bytes()?;
+                        vec.set(idx, value.into_truncated_u8()?);
+                        Some(Value::Bytes(vec))
+                    })?,
+                    OpCode::BAppend => self.do_binop(|v1, v2| {
+                        let mut v1 = v1.into_bytes()?;
+                        let v2 = v2.into_bytes()?;
+                        v1.append(v2);
+                        Some(Value::Bytes(v1))
+                    })?,
+                    OpCode::BSlice => self.do_triop(|vec, i, j| {
+                        let i = i.into_u16()? as usize;
+                        let j = j.into_u16()? as usize;
+                        match vec {
+                            Value::Bytes(mut vec) => Some(Value::Bytes(vec.slice(i..j))),
+                            _ => None,
+                        }
+                    })?,
+                    OpCode::BLength => self.do_monop(|vec| match vec {
+                        Value::Bytes(vec) => Some(Value::Int(U256::from(vec.len()))),
+                        _ => None,
+                    })?,
+                    // control flow
+                    OpCode::Bez(jgap) => {
+                        let top = self.stack.pop()?;
+                        if top == Value::Int(U256::zero()) {
+                            return Some(pc + 1 + *jgap as u32);
+                        }
+                    }
+                    OpCode::Bnz(jgap) => {
+                        let top = self.stack.pop()?;
+                        if top != Value::Int(U256::zero()) {
+                            return Some(pc + 1 + *jgap as u32);
+                        }
+                    }
+                    OpCode::Jmp(jgap) => return Some(pc + 1 + *jgap as u32),
+                    /*
+                    OpCode::Loop(iterations, ops) => {
+                        for _ in 0..*iterations {
+                            self.run_bare(&ops)?
+                        }
+                    }
+                    */
+                    // Conversions
+                    OpCode::BtoI => self.do_monop(|x| {
+                        let mut bytes = x.into_bytes()?;
+                        if bytes.len() < 32 {
+                            return None;
+                        }
+
+                        Some(Value::Int(
+                            bytes
+                                .slice(..32)
+                                .iter()
+                                .fold(U256::zero(), |acc, b| (acc * 256) + *b),
+                        ))
+                    })?,
+                    OpCode::ItoB => self.do_monop(|x| {
+                        let n = x.into_int()?;
+                        let mut bytes = im::vector![];
+                        for i in 0..32 {
+                            bytes.push_back(n.byte(i));
+                        }
+                        Some(Value::Bytes(bytes))
+                    })?,
+                    // literals
+                    OpCode::PushB(bts) => {
+                        let bts = Value::from_bytes(bts);
+                        self.stack.push(bts);
+                    }
+                    OpCode::PushI(num) => self.stack.push(Value::Int(*num)),
+                    // Opcode should not be a loop
+                    _ => unreachable!(),
+                }
+                Some(pc + 1)
+                //co.yield_(Some(pc + 1)).await
+            //}
+        //})
     }
     fn run_bare(&mut self, ops: &[OpCode]) -> Option<()> {
         assert!(ops.len() < 512 * 1024);
         let mut pc = 0;
+        /*
         while pc < ops.len() {
             pc = self.do_op(ops.get(pc)?, pc as u32)? as usize;
+        }
+        */
+        for res in self.iter_ops(ops) {
+            if res.is_none() {
+                // Execution failed
+                return None
+            }
         }
         Some(())
     }
