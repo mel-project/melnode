@@ -9,7 +9,7 @@ use blkstructs::{ConsensusProof, NetID, Transaction};
 
 use melnet::MelnetError;
 use nodeprot::{AbbreviatedBlock, NodeClient, NodeResponder, NodeServer, StateSummary, Substate};
-use smol::{channel::Receiver, net::TcpListener};
+use smol::net::TcpListener;
 use tmelcrypt::HashVal;
 
 use crate::services::storage::SharedStorage;
