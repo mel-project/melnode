@@ -1,6 +1,7 @@
 use std::convert::TryInto;
 
 use dashmap::DashMap;
+use parking_lot::Mutex;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use tmelcrypt::HashVal;
 
@@ -21,6 +22,8 @@ pub(crate) struct StateHandle<'a> {
     fee_pool_cache: u128,
     tips_cache: u128,
 
+    dosc_speed_cache: Mutex<u128>,
+
     stakes_cache: DashMap<HashVal, StakeDoc>,
 }
 
@@ -29,7 +32,7 @@ impl<'a> StateHandle<'a> {
     pub fn new(state: &'a mut State) -> Self {
         let fee_pool_cache = state.fee_pool;
         let tips_cache = state.tips;
-
+        let dosc_speed = state.dosc_speed;
         StateHandle {
             state,
 
@@ -38,6 +41,8 @@ impl<'a> StateHandle<'a> {
 
             fee_pool_cache,
             tips_cache,
+
+            dosc_speed_cache: Mutex::new(dosc_speed),
 
             stakes_cache: DashMap::new(),
         }
@@ -55,16 +60,16 @@ impl<'a> StateHandle<'a> {
             self.transactions_cache.insert(tx.hash_nosigs(), tx.clone());
             self.apply_tx_fees(tx)?;
         }
+        // apply specials in parallel
+        txx.par_iter()
+            .filter(|tx| tx.kind != TxKind::Normal && tx.kind != TxKind::Faucet)
+            .map(|tx| self.apply_tx_special(tx))
+            .collect::<Result<_, _>>()?;
         // apply outputs in parallel
         txx.par_iter().for_each(|tx| self.apply_tx_outputs(tx));
         // apply inputs in parallel
         txx.par_iter()
             .map(|tx| self.apply_tx_inputs(tx))
-            .collect::<Result<_, _>>()?;
-        // apply specials in parallel
-        txx.par_iter()
-            .filter(|tx| tx.kind != TxKind::Normal && tx.kind != TxKind::Faucet)
-            .map(|tx| self.apply_tx_special(tx))
             .collect::<Result<_, _>>()?;
         Ok(self)
     }
@@ -90,6 +95,7 @@ impl<'a> StateHandle<'a> {
         for (k, v) in self.stakes_cache {
             self.state.stakes.insert(k, v);
         }
+        self.state.dosc_speed = *self.dosc_speed_cache.lock()
     }
 
     fn apply_tx_inputs(&self, tx: &Transaction) -> Result<(), StateError> {
@@ -204,23 +210,44 @@ impl<'a> StateHandle<'a> {
         let coin_data = self.get_coin(coin_id).ok_or(StateError::MalformedTx)?;
         // make sure the time is long enough that we can easily measure it
         if self.state.height - coin_data.height < 100 {
+            log::warn!("too recent");
             return Err(StateError::InvalidMelPoW);
         }
         // construct puzzle seed
         let chi = tmelcrypt::hash_keyed(
             &self.state.history.get(&coin_data.height).0.unwrap().hash(),
-            &stdcode::serialize(tx.inputs.get(0).ok_or(StateError::MalformedTx)?).unwrap(),
+            &stdcode::serialize(tx.inputs.get(0).ok_or(StateError::MalformedTx).unwrap()).unwrap(),
         );
         // get difficulty and proof
-        let (difficulty, proof): (u32, Vec<u8>) =
-            stdcode::deserialize(&tx.data).map_err(|_| StateError::MalformedTx)?;
-        let proof = melpow::Proof::from_bytes(&proof).ok_or(StateError::MalformedTx)?;
+        let (difficulty, proof): (u32, Vec<u8>) = stdcode::deserialize(&tx.data)
+            .map_err(|_| StateError::MalformedTx)
+            .unwrap();
+        dbg!(proof.len());
+        let proof = melpow::Proof::from_bytes(&proof)
+            .ok_or(StateError::MalformedTx)
+            .unwrap();
         if !proof.verify(&chi, difficulty as _) {
+            log::warn!("chi = {}", chi);
+            log::warn!("proof = {} ({:?})", hex::encode(&proof.to_bytes()), proof);
+            log::warn!("proof verification failed");
             return Err(StateError::InvalidMelPoW);
         }
         // compute speeds
-        let my_speed = 2u128.pow(difficulty);
-        let reward_real = melmint::calculate_reward(my_speed, self.state.dosc_speed, difficulty);
+        let my_speed = 2u128.pow(difficulty) / (self.state.height - coin_data.height) as u128;
+        let reward_real = melmint::calculate_reward(
+            my_speed,
+            self.state
+                .history
+                .get(&(self.state.height - 1))
+                .0
+                .unwrap()
+                .dosc_speed,
+            difficulty,
+        );
+        {
+            let mut dosc_speed = self.dosc_speed_cache.lock();
+            *dosc_speed = dosc_speed.max(my_speed);
+        }
         let reward_nom = melmint::dosc_inflate_r2n(self.state.height, reward_real);
         // ensure that the total output of DOSCs is correct
         let total_dosc_output = tx
@@ -228,7 +255,7 @@ impl<'a> StateHandle<'a> {
             .get(&Denom::NomDosc)
             .cloned()
             .unwrap_or_default();
-        if total_dosc_output > reward_nom {
+        if dbg!(total_dosc_output) > dbg!(reward_nom) {
             return Err(StateError::InvalidMelPoW);
         }
         Ok(())

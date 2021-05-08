@@ -1,4 +1,4 @@
-//! `melpow` is the crate that implements MelPoW, Themelio's version of interactive proofs of sequential work, which are just "Interactive Proofs of Sequential Work" by Cohen and Pietrzak subjected to a Fiat-Shamir transformation. MelPoW is used as the core mechanism behind Melmint, the algorithmic monetary policy system that stabilizes the mel.
+//! `melpow` is the crate that implements MelPoW, Themelio's version of non-interactive proofs of sequential work, which are just "Interactive Proofs of Sequential Work" by Cohen and Pietrzak subjected to a Fiat-Shamir transformation. MelPoW is used as the core mechanism behind Melmint, the algorithmic monetary policy system that stabilizes the mel.
 //!
 //! `Proof` is the main interface to MelPoW. It represents a proof that a certain amount of sequential work, represented by a **difficulty**, has been done starting from a **puzzle**. The difficulty is exponential: a difficulty of N represents that `O(2^N)` work has been done.
 
@@ -8,7 +8,7 @@ use std::convert::TryInto;
 
 const PROOF_CERTAINTY: usize = 200;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 /// A MelPoW proof with an opaque representation that is guaranteed to be stable. It can be cloned relatively cheaply because it's internally reference counted.
 pub struct Proof(im::HashMap<node::Node, Vec<u8>>);
 
@@ -139,6 +139,7 @@ mod tests {
         assert!(proof.verify(&puzzle, difficulty));
         assert!(!proof.verify(&puzzle, difficulty + 1));
         assert!(!proof.verify(b"hello", difficulty));
+        assert_eq!(Proof::from_bytes(&proof.to_bytes()).unwrap(), proof);
         println!("proof length is {}", proof.to_bytes().len())
     }
 }

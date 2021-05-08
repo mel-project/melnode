@@ -1,4 +1,4 @@
-use blkstructs::Transaction;
+use blkstructs::{melvm::Covenant, CoinID, Transaction};
 use structopt::StructOpt;
 #[derive(Debug, StructOpt)]
 enum Args {
@@ -6,6 +6,8 @@ enum Args {
     GenerateEd25519,
     /// Hash tool
     Hash(HashOpts),
+    /// Generate a CoinID for a reward
+    RewardCoin(RewardOpts),
 }
 
 #[derive(Debug, StructOpt)]
@@ -16,6 +18,12 @@ struct HashOpts {
 
     /// Input to be hashed.
     to_hash: String,
+}
+
+#[derive(Debug, StructOpt)]
+struct RewardOpts {
+    /// Block height
+    height: u64,
 }
 
 fn print_header(hdr: &str) {
@@ -30,6 +38,8 @@ fn main() {
             let (pk, sk) = tmelcrypt::ed25519_keygen();
             eprintln!("PK = {}", hex::encode(pk.0));
             eprintln!("SK = {}", hex::encode(sk.0));
+            let cov = Covenant::std_ed25519_pk_new(pk);
+            eprintln!("Address (new covenant): {}", cov.hash().to_addr());
         }
         Args::Hash(opts) => {
             let h = if opts.json_transaction {
@@ -41,6 +51,10 @@ fn main() {
             };
             print_header("HASH OUTPUT");
             eprintln!("{}", hex::encode(&h))
+        }
+        Args::RewardCoin(opts) => {
+            print_header("REWARD PSEUDO-COINID");
+            eprintln!("{}", CoinID::proposer_reward(opts.height))
         }
     }
 }

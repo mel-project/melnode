@@ -477,24 +477,6 @@ impl SealedState {
         new.height += 1;
         new.stakes.remove_stale(new.height / STAKE_EPOCH);
         new.transactions.clear();
-        // melmint variables
-        new.dosc_speed = self
-            .0
-            .transactions
-            .val_iter()
-            .map(|tx| {
-                if tx.kind == TxKind::DoscMint {
-                    let (difficulty, _): (u32, Vec<u8>) = stdcode::deserialize(&tx.data)
-                        .map_err(|_| StateError::MalformedTx)
-                        .expect("should not see a bad DoscMint here");
-                    2u128.pow(difficulty)
-                } else {
-                    0
-                }
-            })
-            .min()
-            .unwrap_or_default()
-            .max(new.dosc_speed);
         new
     }
 

@@ -3,7 +3,14 @@ use arbitrary::Arbitrary;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-use std::{collections::HashMap, convert::TryInto, fmt::Display};
+use std::{
+    collections::HashMap,
+    convert::TryInto,
+    fmt::{Display, Formatter},
+    num::ParseIntError,
+    str::FromStr,
+};
+use thiserror::Error;
 use tmelcrypt::HashVal;
 
 #[derive(
@@ -184,6 +191,37 @@ impl Transaction {
 pub struct CoinID {
     pub txhash: tmelcrypt::HashVal,
     pub index: u8,
+}
+
+#[derive(Error, Debug, Clone)]
+pub enum ParseCoinIDError {
+    #[error("could not split into txhash-index")]
+    CannotSplit,
+    #[error("hex error ({0})")]
+    HexError(#[from] hex::FromHexError),
+    #[error("parse int error ({0})")]
+    ParseIntError(#[from] ParseIntError),
+}
+
+impl FromStr for CoinID {
+    type Err = ParseCoinIDError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let splitted = s.split('-').collect::<Vec<_>>();
+        if splitted.len() != 2 {
+            return Err(ParseCoinIDError::CannotSplit);
+        }
+        let txhash: HashVal = splitted[0].parse()?;
+        let index: u8 = splitted[1].parse()?;
+        Ok(CoinID { txhash, index })
+    }
+}
+
+impl Display for CoinID {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.txhash.fmt(f)?;
+        '-'.fmt(f)?;
+        self.index.fmt(f)
+    }
 }
 
 impl CoinID {

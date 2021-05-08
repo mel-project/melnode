@@ -48,9 +48,10 @@ pub fn dosc_inflate_r2n(height: u64, real: u128) -> u128 {
 
 /// Reward calculator. Returns the value in real DOSC.
 pub fn calculate_reward(my_speed: u128, dosc_speed: u128, difficulty: u32) -> u128 {
-    let exp_difficulty = 2u128.pow(difficulty as _);
+    let work_done = 2u128.pow(difficulty as _);
     // correct calculation with bigints
-    let result = (BigInt::from(exp_difficulty) * BigInt::from(my_speed)) / BigInt::from(dosc_speed);
+    let result = (BigInt::from(work_done) * BigInt::from(my_speed) * BigInt::from(MICRO_CONVERTER))
+        / (BigInt::from(dosc_speed).pow(2) * BigInt::from(2880));
     result.try_into().unwrap_or(u128::MAX)
 }
 
