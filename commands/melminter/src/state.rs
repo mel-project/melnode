@@ -30,7 +30,7 @@ impl MintState {
             &stdcode::serialize(&self.chain_tip_id).unwrap(),
         );
         log::warn!("chi = {}", chi);
-        let proof = melpow::Proof::generate(&chi, difficulty);
+        let proof = smol::unblock(move || melpow::Proof::generate(&chi, difficulty)).await;
         log::warn!("proof = {}", hex::encode(&proof.to_bytes()));
         let difficulty = difficulty as u32;
         Transaction {
