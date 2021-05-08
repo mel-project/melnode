@@ -1,5 +1,6 @@
+use rustc_hash::FxHashMap;
+
 use crate::hash;
-use std::collections::HashMap;
 use std::convert::TryInto;
 use std::fmt;
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
@@ -99,7 +100,7 @@ impl fmt::Debug for Node {
 }
 
 pub fn calc_labels(chi: &[u8], n: usize, f: &mut impl FnMut(Node, &[u8])) {
-    calc_labels_helper(chi, n, Node::new_zero(), f, &mut HashMap::new());
+    calc_labels_helper(chi, n, Node::new_zero(), f, &mut FxHashMap::default());
 }
 
 fn calc_labels_helper(
@@ -107,7 +108,7 @@ fn calc_labels_helper(
     n: usize,
     nd: Node,
     f: &mut impl FnMut(Node, &[u8]),
-    ell: &mut HashMap<Node, Vec<u8>>,
+    ell: &mut FxHashMap<Node, Vec<u8>>,
 ) -> Vec<u8> {
     if nd.len == n {
         let mut lab_gen = hash::Accumulator::new(chi);

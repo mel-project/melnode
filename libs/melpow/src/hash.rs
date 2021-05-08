@@ -11,7 +11,7 @@ pub struct Accumulator {
 impl Accumulator {
     pub fn new(key: &[u8]) -> Self {
         Accumulator {
-            buff: Vec::new(),
+            buff: Vec::with_capacity(1024),
             key: key.to_vec(),
         }
     }

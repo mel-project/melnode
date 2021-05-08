@@ -6,6 +6,8 @@ mod hash;
 mod node;
 use std::convert::TryInto;
 
+use rustc_hash::FxHashMap;
+
 const PROOF_CERTAINTY: usize = 200;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -15,7 +17,7 @@ pub struct Proof(im::HashMap<node::Node, Vec<u8>>);
 impl Proof {
     /// Generates a MelPoW proof with respect to the given starting puzzle and a difficulty.
     pub fn generate(puzzle: &[u8], difficulty: usize) -> Self {
-        let mut proof_map = im::HashMap::new();
+        let mut proof_map = FxHashMap::default();
         let chi = hash::bts_key(puzzle, b"chi");
         let gammas = gen_gammas(puzzle, difficulty);
         for g in gammas {
@@ -29,7 +31,7 @@ impl Proof {
                 proof_map.insert(nd, lab.to_vec());
             }
         });
-        Proof(proof_map)
+        Proof(proof_map.into_iter().collect())
     }
     /// Verifies a MelPoW proof.
     #[must_use]
