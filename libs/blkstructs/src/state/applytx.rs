@@ -206,7 +206,7 @@ impl<'a> StateHandle<'a> {
     }
 
     fn apply_tx_special_doscmint(&self, tx: &Transaction) -> Result<(), StateError> {
-        let coin_id = *tx.inputs.get(0).ok_or(StateError::MalformedTx)?;
+        let coin_id = *tx.inputs.get(0).ok_or(StateError::MalformedTx).unwrap();
         let coin_data = self.get_coin(coin_id).ok_or(StateError::MalformedTx)?;
         // make sure the time is long enough that we can easily measure it
         if self.state.height - coin_data.height < 100 {
@@ -219,16 +219,19 @@ impl<'a> StateHandle<'a> {
             &stdcode::serialize(tx.inputs.get(0).ok_or(StateError::MalformedTx).unwrap()).unwrap(),
         );
         // get difficulty and proof
-        let (difficulty, proof): (u32, Vec<u8>) = stdcode::deserialize(&tx.data)
-            .map_err(|_| StateError::MalformedTx)
-            .unwrap();
-        dbg!(proof.len());
-        let proof = melpow::Proof::from_bytes(&proof)
+        let (difficulty, proof_bytes): (u32, Vec<u8>) =
+            stdcode::deserialize(&tx.data).map_err(|_| StateError::MalformedTx)?;
+        dbg!(proof_bytes.len());
+        let proof = melpow::Proof::from_bytes(&proof_bytes)
             .ok_or(StateError::MalformedTx)
             .unwrap();
         if !proof.verify(&chi, difficulty as _) {
             log::warn!("chi = {}", chi);
-            log::warn!("proof = {} ({:?})", hex::encode(&proof.to_bytes()), proof);
+            log::warn!(
+                "proof = {} ({:?})",
+                tmelcrypt::hash_single(&proof_bytes),
+                difficulty
+            );
             log::warn!("proof verification failed");
             return Err(StateError::InvalidMelPoW);
         }

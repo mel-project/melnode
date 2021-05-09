@@ -32,15 +32,19 @@ async fn main_mint(opts: MintCmdOpts) -> anyhow::Result<()> {
     let mut mint_state = MintState::read_from_file(&opts.common.persist).await?;
     let my_speed = compute_speed().await;
     let snap = get_snapshot(opts.common.testnet, opts.common.connect).await?;
-    let max_speed = dbg!(snap.current_header()).dosc_speed as f64 / 30.0;
+    let max_speed = snap.current_header().dosc_speed as f64 / 30.0;
     log::info!("** My speed: {:.3} kH/s", my_speed / 1000.0);
     log::info!("** Max speed: {:.3} kH/s", max_speed / 1000.0);
     log::info!(
         "** Estimated return: {:.2} rDOSC/day",
         my_speed * max_speed / max_speed.powi(2)
     );
+    assert_eq!(
+        snap.get_coin(mint_state.chain_tip_id).await?.unwrap(),
+        mint_state.chain_tip_cdh
+    );
 
-    let my_difficulty = (my_speed * 3100.0).log2().ceil() as usize;
+    let my_difficulty = (my_speed * 31.0).log2().ceil() as usize;
     let approx_iter = Duration::from_secs_f64(2.0f64.powi(my_difficulty as _) / my_speed);
     log::info!(
         "** Selected difficulty: {} (approx. {:?} / tx)",
@@ -62,13 +66,12 @@ async fn main_mint(opts: MintCmdOpts) -> anyhow::Result<()> {
                 }
             })
             .await;
-
         let snap = repeat_fallible(|| async {
             get_snapshot(opts.common.testnet, opts.common.connect).await
         })
         .await;
         let my_speed = 2u128.pow(my_difficulty as u32)
-            / (snap.current_header().height - mint_state.chain_tip_cdh.height) as u128;
+            / (snap.current_header().height + 5 - mint_state.chain_tip_cdh.height) as u128;
         let reward = blkstructs::calculate_reward(
             my_speed,
             snap.current_header().dosc_speed,
@@ -87,17 +90,22 @@ async fn main_mint(opts: MintCmdOpts) -> anyhow::Result<()> {
             .applied_fee(snap.current_header().fee_multiplier, 100, 0)
             .unwrap()
             .signed_ed25519(opts.secret_key);
-        log::debug!("created tx: {:?}", tx);
         // broadcast and wait
         let (coin_id, cdh, hash): (CoinID, CoinDataHeight, HashVal) = repeat_fallible(|| async {
             loop {
                 let snap = get_snapshot(opts.common.testnet, opts.common.connect).await?;
                 let cdh = snap.get_coin(tx.get_coinid(0)).await?;
                 if let Some(cdh) = cdh {
+                    log::info!(
+                        "***** MINTED {} DOSC => {} @ {} *****",
+                        tx.outputs[1].value,
+                        tx.outputs[1].covhash.to_addr(),
+                        tx.get_coinid(1)
+                    );
                     return Ok::<_, anyhow::Error>((
                         tx.get_coinid(0),
-                        cdh,
-                        snap.current_header().hash(),
+                        cdh.clone(),
+                        snap.get_history(cdh.height).await?.unwrap().hash(),
                     ));
                 } else {
                     if let Err(err) = snap.get_raw().send_tx(tx.clone()).await {

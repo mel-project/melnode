@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use blkstructs::{CoinData, CoinDataHeight, CoinID, Transaction, TxKind};
+use blkstructs::{CoinDataHeight, CoinID, Transaction, TxKind};
 use serde::{Deserialize, Serialize};
 use tmelcrypt::HashVal;
 
@@ -29,14 +29,18 @@ impl MintState {
             &self.chain_tip_hash,
             &stdcode::serialize(&self.chain_tip_id).unwrap(),
         );
-        log::warn!("chi = {}", chi);
         let proof = smol::unblock(move || melpow::Proof::generate(&chi, difficulty)).await;
-        log::warn!("proof = {}", hex::encode(&proof.to_bytes()));
         let difficulty = difficulty as u32;
+        let proof_bytes = proof.to_bytes();
+        assert!(melpow::Proof::from_bytes(&proof_bytes)
+            .unwrap()
+            .verify(&chi, difficulty as usize));
+        dbg!(chi);
+        dbg!(tmelcrypt::hash_single(&proof_bytes));
         Transaction {
             kind: TxKind::DoscMint,
             inputs: vec![self.chain_tip_id],
-            data: stdcode::serialize(&(difficulty, proof.to_bytes())).unwrap(),
+            data: stdcode::serialize(&(difficulty, proof_bytes)).unwrap(),
             outputs: vec![self.chain_tip_cdh.coin_data.clone()],
             fee: 0,
             scripts: vec![],
