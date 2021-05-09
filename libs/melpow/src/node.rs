@@ -1,8 +1,12 @@
 use rustc_hash::FxHashMap;
+use smallvec::SmallVec;
+use tmelcrypt::HashVal;
 
 use crate::hash;
 use std::convert::TryInto;
 use std::fmt;
+
+pub type SVec<T> = SmallVec<[T; 32]>;
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Node {
     pub bv: u64,
@@ -36,8 +40,8 @@ impl Node {
         self.bv >> n & 1
     }
 
-    pub fn get_parents(self, n: usize) -> Vec<Node> {
-        let mut parents = Vec::new();
+    pub fn get_parents(self, n: usize) -> SVec<Node> {
+        let mut parents = SVec::new();
         if self.len == n {
             for i in 0..n {
                 if (self.bv >> i) & 1 != 0 {
@@ -108,14 +112,14 @@ fn calc_labels_helper(
     n: usize,
     nd: Node,
     f: &mut impl FnMut(Node, &[u8]),
-    ell: &mut FxHashMap<Node, Vec<u8>>,
-) -> Vec<u8> {
+    ell: &mut FxHashMap<Node, SVec<u8>>,
+) -> SVec<u8> {
     if nd.len == n {
         let mut lab_gen = hash::Accumulator::new(chi);
-        lab_gen = lab_gen.add(&nd.to_bytes());
+        lab_gen.add(&nd.to_bytes());
         let parents = nd.get_parents(n);
         for p in parents.iter() {
-            lab_gen = lab_gen.add(&ell[p]);
+            lab_gen.add(&ell[p]);
         }
         let lab = lab_gen.hash();
         f(nd, &lab);

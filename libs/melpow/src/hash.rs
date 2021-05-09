@@ -1,27 +1,35 @@
-pub fn bts_key(bts: &[u8], key: &[u8]) -> Vec<u8> {
-    tmelcrypt::hash_keyed(key, bts).0.to_vec()
+use smallvec::SmallVec;
+
+use crate::node::SVec;
+
+pub fn bts_key(bts: &[u8], key: &[u8]) -> SVec<u8> {
+    SVec::from_slice(&tmelcrypt::hash_keyed(key, bts))
 }
 
 #[derive(Default)]
 pub struct Accumulator {
-    buff: Vec<u8>,
+    buff: SmallVec<[u8; 512]>,
     key: Vec<u8>,
 }
 
 impl Accumulator {
     pub fn new(key: &[u8]) -> Self {
         Accumulator {
-            buff: Vec::with_capacity(1024),
+            buff: SmallVec::new(),
             key: key.to_vec(),
         }
     }
-    pub fn add(mut self, bts: &[u8]) -> Self {
+
+    #[inline]
+    pub fn add(&mut self, bts: &[u8]) -> &mut Self {
         let blen = (bts.len() as u64).to_be_bytes();
         self.buff.extend_from_slice(&blen);
         self.buff.extend_from_slice(bts);
         self
     }
-    pub fn hash(self) -> Vec<u8> {
+
+    #[inline]
+    pub fn hash(&self) -> SVec<u8> {
         bts_key(&self.buff, &self.key)
     }
 }

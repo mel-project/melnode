@@ -1878,8 +1878,10 @@ dependencies = [
 name = "melpow"
 version = "0.1.0"
 dependencies = [
+ "blake3",
  "im",
  "rustc-hash",
+ "smallvec",
  "tmelcrypt",
 ]
 

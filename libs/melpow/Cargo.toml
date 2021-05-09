@@ -10,3 +10,5 @@ edition = "2018"
 tmelcrypt={path="../tmelcrypt"}
 im = "15"
 rustc-hash="1"
+smallvec="1"   
+blake3="0.3"

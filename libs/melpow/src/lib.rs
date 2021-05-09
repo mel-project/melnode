@@ -6,13 +6,14 @@ mod hash;
 mod node;
 use std::convert::TryInto;
 
+use node::SVec;
 use rustc_hash::FxHashMap;
 
 const PROOF_CERTAINTY: usize = 200;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// A MelPoW proof with an opaque representation that is guaranteed to be stable. It can be cloned relatively cheaply because it's internally reference counted.
-pub struct Proof(im::HashMap<node::Node, Vec<u8>>);
+pub struct Proof(im::HashMap<node::Node, SVec<u8>>);
 
 impl Proof {
     /// Generates a MelPoW proof with respect to the given starting puzzle and a difficulty.
@@ -22,13 +23,13 @@ impl Proof {
         let gammas = gen_gammas(puzzle, difficulty);
         for g in gammas {
             for pn in gamma_to_path(g) {
-                proof_map.insert(pn, Vec::new());
+                proof_map.insert(pn, SVec::new());
             }
-            proof_map.insert(g, Vec::new());
+            proof_map.insert(g, SVec::new());
         }
         node::calc_labels(&chi, difficulty, &mut |nd, lab| {
             if proof_map.get(&nd).is_some() || nd.len == 0 {
-                proof_map.insert(nd, lab.to_vec());
+                proof_map.insert(nd, SVec::from_slice(lab));
             }
         });
         Proof(proof_map.into_iter().collect())
@@ -50,12 +51,13 @@ impl Proof {
                 }
                 Some(label) => {
                     // verify that the label is correctly calculated from parents
-                    let mut hasher = hash::Accumulator::new(&chi).add(&gamma.to_bytes());
+                    let mut hasher = hash::Accumulator::new(&chi);
+                    hasher.add(&gamma.to_bytes());
                     for parent in gamma.get_parents(difficulty) {
                         match self.0.get(&parent) {
                             None => return false,
                             Some(parlab) => {
-                                hasher = hasher.add(&parlab);
+                                hasher.add(&parlab);
                             }
                         }
                     }
@@ -64,7 +66,8 @@ impl Proof {
                     }
                     // check "merkle-like" commitment
                     for i in (0..difficulty).rev() {
-                        let h = hash::Accumulator::new(&chi).add(&gamma.take(i).to_bytes());
+                        let mut h = hash::Accumulator::new(&chi);
+                        h.add(&gamma.take(i).to_bytes());
                         let g_l_0 = gamma.take(i).append(0);
                         let g_l_1 = gamma.take(i).append(1);
                         let g_l = gamma.take(i);
@@ -101,7 +104,7 @@ impl Proof {
         let mut omap = im::HashMap::new();
         while !bts.is_empty() {
             let nd = node::Node::from_bytes(&bts[0..8])?;
-            let lab = (&bts[8..32 + 8]).to_owned();
+            let lab = SVec::from_slice(&bts[8..32 + 8]);
             omap.insert(nd, lab);
             bts = &bts[unit_size..]
         }

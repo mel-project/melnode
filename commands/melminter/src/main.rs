@@ -44,7 +44,7 @@ async fn main_mint(opts: MintCmdOpts) -> anyhow::Result<()> {
         mint_state.chain_tip_cdh
     );
 
-    let my_difficulty = (my_speed * 31.0).log2().ceil() as usize;
+    let my_difficulty = (my_speed * 3100.0).log2().ceil() as usize;
     let approx_iter = Duration::from_secs_f64(2.0f64.powi(my_difficulty as _) / my_speed);
     log::info!(
         "** Selected difficulty: {} (approx. {:?} / tx)",
@@ -105,7 +105,10 @@ async fn main_mint(opts: MintCmdOpts) -> anyhow::Result<()> {
                     return Ok::<_, anyhow::Error>((
                         tx.get_coinid(0),
                         cdh.clone(),
-                        snap.get_history(cdh.height).await?.unwrap().hash(),
+                        snap.get_history(cdh.height)
+                            .await?
+                            .unwrap_or_else(|| snap.current_header())
+                            .hash(),
                     ));
                 } else {
                     if let Err(err) = snap.get_raw().send_tx(tx.clone()).await {
@@ -142,7 +145,7 @@ async fn compute_speed() -> f64 {
         smol::unblock(move || melpow::Proof::generate(&[], difficulty)).await;
         let elapsed = start.elapsed();
         let speed = 2.0f64.powi(difficulty as _) / elapsed.as_secs_f64();
-        if elapsed.as_secs_f64() > 0.2 {
+        if elapsed.as_secs_f64() > 1.0 {
             return speed;
         }
     }

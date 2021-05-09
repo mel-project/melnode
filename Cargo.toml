@@ -22,10 +22,12 @@ members = [
 
 [profile.dev]
 panic = "abort"
-opt-level = 1
+opt-level = 2
 overflow-checks = true
 
 [profile.release]
 panic = "abort"
 opt-level = 3
 overflow-checks = true
+lto=true
+codegen-units=1
