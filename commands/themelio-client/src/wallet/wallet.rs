@@ -36,8 +36,8 @@ impl ActiveWallet {
     }
 
     /// Get the inner data of the wallet
-    pub fn data(&self) -> &WalletData {
-        &self.data
+    pub fn data(&mut self) -> &mut WalletData {
+        &mut self.data
     }
 
     /// Get the secret key of the wallet
@@ -47,10 +47,11 @@ impl ActiveWallet {
 
     /// Send a faucet tx to this wallet, wait for confirmation and return results.
     pub async fn send_faucet_tx(
-        &self,
+        &mut self,
         amount: &str,
         unit: &str,
     ) -> anyhow::Result<(CoinDataHeight, CoinID)> {
+        // Create tx
         let cov_hash = self.data().my_covenant().hash();
         let tx = self.create_faucet_tx(amount, unit, cov_hash)?;
         eprintln!(
@@ -59,8 +60,10 @@ impl ActiveWallet {
             tx.fee
         );
 
-        self.send_tx(&tx).await?;
-        eprintln!("Sent transaction.");
+        // Send tx
+        let snapshot = self.context.client.snapshot().await?;
+        snapshot.get_raw().send_tx(tx.clone()).await?;
+        eprintln!(">> Transaction {:?} broadcast!", tx.hash_nosigs());
 
         // Wait for confirmation of the transaction.
         let (coin_data_height, coin_id) = self.confirm_tx(&tx).await?;
@@ -89,12 +92,12 @@ impl ActiveWallet {
                         format!("X-{}", hex::encode(val))
                     }
                 );
-                let coin_exists = self.data.insert_coin(coin_id, coin_data_height.clone());
-                if coin_exists {
-                    eprintln!("Coin already in wallet.");
-                } else {
+                if self.data().insert_coin(coin_id, coin_data_height.clone()) {
                     eprintln!("Added coin to wallet");
+                } else {
+                    eprintln!("Coin already in wallet.");
                 }
+
                 Ok((coin_data_height, coin_id))
             }
         }
@@ -102,7 +105,7 @@ impl ActiveWallet {
 
     /// Send an amount of mel to a destination address, wait for confirmation and return results.
     pub async fn send_mel(
-        &self,
+        &mut self,
         dest_addr: &str,
         amount: &str,
         unit: &str,
@@ -123,15 +126,18 @@ impl ActiveWallet {
         self.send_tx(&tx).await?;
         eprintln!("Sent transaction.");
 
-        // Wait for confirmation of the transaction.
         let (coin_data_height, coin_id) = self.confirm_tx(&tx).await?;
+        eprintln!("Confirmed transaction.");
+
         Ok((coin_data_height, coin_id))
     }
 
     /// Update snapshot and send a transaction.
-    async fn send_tx(&self, tx: &Transaction) -> anyhow::Result<()> {
+    async fn send_tx(&mut self, tx: &Transaction) -> anyhow::Result<()> {
         let snapshot = self.context.client.snapshot().await?;
         snapshot.get_raw().send_tx(tx.clone()).await?;
+        eprintln!(">> Transaction {:?} broadcast!", tx.hash_nosigs());
+        self.data().spend(tx.clone())?;
         Ok(())
     }
 
@@ -148,15 +154,19 @@ impl ActiveWallet {
         Ok((snapshot.get_coin(coin).await?, coin))
     }
 
-    //     /// Add coins to this wallet
-    //     pub async fn add_coins(&self, wallet_data: &WalletData, ) -> anyhow::Result<CoinID> {
-    //         Ok(CoinID{ txhash: Default::default(), index: 0 })
-    //     }
-    //
-    //     /// Check the balance for this wallet.
-    //     pub async fn balance(&self, wallet_data: &WalletData, ) -> anyhow::Result<CoinID> {
-    //         Ok(CoinID{ txhash: Default::default(), index: 0 })
-    //     }
+    /// Check the balance for this wallet.
+    pub async fn balance(&mut self) -> anyhow::Result<()> {
+        let unspent = self.data().unspent_coins();
+        let mut total = 0;
+        for (_coin_id, coin_height) in unspent.iter() {
+            total += coin_height.coin_data.value;
+        }
+
+        eprintln!(">> **** BALANCE ****");
+        eprintln!(">> {}", total);
+
+        Ok(())
+    }
 
     /// Check transaction until it is confirmed and output progress to std err.
     async fn confirm_tx(&self, tx: &Transaction) -> anyhow::Result<(CoinDataHeight, CoinID)> {

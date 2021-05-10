@@ -10,14 +10,14 @@ pub trait Printable {
     fn print(&self, w: &mut dyn std::io::Write);
 }
 
-fn test_print(w: &mut dyn Write) {
-    let mut tw = TabWriter::new(vec![]);
-
-    writeln!(tw, ">> test").unwrap();
-
-    let info = String::from_utf8(tw.into_inner().unwrap()).unwrap();
-    write!(w, "{}", &info).unwrap();
-}
+// fn test_print(w: &mut dyn Write) {
+//     let mut tw = TabWriter::new(vec![]);
+//
+//     writeln!(tw, ">> test").unwrap();
+//
+//     let info = String::from_utf8(tw.into_inner().unwrap()).unwrap();
+//     write!(w, "{}", &info).unwrap();
+// }
 
 #[derive(Serialize, Debug)]
 pub struct CreatedWalletInfo {
@@ -86,7 +86,31 @@ pub struct SendCoinsInfo {
 
 impl Printable for SendCoinsInfo {
     fn print(&self, w: &mut dyn Write) {
-        test_print(w);
+        let mut tw = TabWriter::new(vec![]);
+
+        let coin_data_height = self.coin_data_height.clone();
+        let coin_id = self.coin_id;
+        writeln!(
+            tw,
+            ">> Transaction confirmed at height: {}",
+            coin_data_height.height
+        )
+        .unwrap();
+        writeln!(
+            tw,
+            ">> (Covenant hash, amount): ({},  {})",
+            coin_data_height.coin_data.covhash, coin_data_height.coin_data.value,
+        )
+        .unwrap();
+        writeln!(
+            tw,
+            ">> Coin ID: = {}",
+            hex::encode(stdcode::serialize(&coin_id).unwrap()).bold()
+        )
+        .unwrap();
+
+        let info = String::from_utf8(tw.into_inner().unwrap()).unwrap();
+        write!(w, "{}", &info).unwrap();
     }
 }
 
@@ -94,27 +118,21 @@ impl Printable for SendCoinsInfo {
 pub struct DepositInfo;
 
 impl Printable for DepositInfo {
-    fn print(&self, w: &mut dyn Write) {
-        test_print(w);
-    }
+    fn print(&self, w: &mut dyn Write) {}
 }
 
 #[derive(Serialize, Debug)]
 pub struct WithdrawInfo;
 
 impl Printable for WithdrawInfo {
-    fn print(&self, w: &mut dyn Write) {
-        test_print(w);
-    }
+    fn print(&self, w: &mut dyn Write) {}
 }
 
 #[derive(Serialize, Debug)]
 pub struct SwapInfo;
 
 impl Printable for SwapInfo {
-    fn print(&self, w: &mut dyn Write) {
-        test_print(w);
-    }
+    fn print(&self, w: &mut dyn Write) {}
 }
 
 #[derive(Serialize, Debug)]
@@ -124,18 +142,14 @@ pub struct CoinsInfo {
 }
 
 impl Printable for CoinsInfo {
-    fn print(&self, w: &mut dyn Write) {
-        test_print(w);
-    }
+    fn print(&self, w: &mut dyn Write) {}
 }
 
 #[derive(Serialize, Debug)]
 pub struct BalanceInfo;
 
 impl Printable for BalanceInfo {
-    fn print(&self, w: &mut dyn Write) {
-        test_print(w);
-    }
+    fn print(&self, w: &mut dyn Write) {}
 }
 
 #[derive(Serialize, Debug)]

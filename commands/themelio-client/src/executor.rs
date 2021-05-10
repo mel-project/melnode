@@ -21,7 +21,7 @@ impl CommandExecutor {
     pub async fn create_wallet(&self, wallet_name: &str) -> anyhow::Result<CreatedWalletInfo> {
         // Create a wallet in storage and retrieve the active wallet
         let manager = WalletManager::new(self.context.clone());
-        let wallet = manager.create_wallet(wallet_name).await?;
+        let mut wallet = manager.create_wallet(wallet_name).await?;
 
         // Return info on the created wallet.
         let info = CreatedWalletInfo {
@@ -44,7 +44,7 @@ impl CommandExecutor {
     ) -> anyhow::Result<FaucetInfo> {
         // Load wallet from wallet manager using name and secret
         let manager = WalletManager::new(self.context.clone());
-        let wallet = manager.load_wallet(wallet_name, secret).await?;
+        let mut wallet = manager.load_wallet(wallet_name, secret).await?;
 
         // Create the faucet transaction and send it.
         let (coin_data_height, coin_id) = wallet.send_faucet_tx(amount, unit).await?;
@@ -96,7 +96,7 @@ impl CommandExecutor {
     ) -> anyhow::Result<SendCoinsInfo> {
         // Load wallet from wallet manager using name and secret
         let manager = WalletManager::new(self.context.clone());
-        let wallet = manager.load_wallet(wallet_name, secret).await?;
+        let mut wallet = manager.load_wallet(wallet_name, secret).await?;
 
         // Create send mel tx.
         let (coin_data_height, coin_id) = wallet.send_mel(address, amount, unit).await?;
@@ -117,9 +117,20 @@ impl CommandExecutor {
     /// Shows the total known wallet balance.
     pub async fn show_balance(
         &self,
-        _wallet_name: &str,
-        _secret: &str,
+        wallet_name: &str,
+        secret: &str,
     ) -> anyhow::Result<BalanceInfo> {
+        // Load wallet from wallet manager using name and secret
+        let manager = WalletManager::new(self.context.clone());
+        let mut wallet = manager.load_wallet(wallet_name, secret).await?;
+
+        wallet.balance().await?;
+
+        // Save the wallet state
+        manager
+            .save_wallet(wallet_name, wallet.data().clone())
+            .await?;
+
         Ok(BalanceInfo)
     }
 
