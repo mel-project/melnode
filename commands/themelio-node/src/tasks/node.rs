@@ -63,11 +63,12 @@ pub async fn run_node(opt: NodeConfig) -> anyhow::Result<()> {
         GenesisConfig::std_mainnet()
     };
     let netid = genesis.network;
-    let storage = NodeStorage::new(
-        sled::open(&opt.database).context("cannot open database")?,
-        genesis,
-    )
-    .share();
+    let database = sled::Config::default()
+        .path(&opt.database)
+        .cache_capacity(1024 * 1024 * 100)
+        .open()
+        .context("can't open database")?;
+    let storage = NodeStorage::new(database, genesis).share();
     let mut bootstrap = vec![];
     for name in opt.bootstrap.iter() {
         let addrs = smol::net::resolve(&name)
