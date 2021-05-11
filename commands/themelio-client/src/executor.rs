@@ -157,6 +157,15 @@ impl CommandExecutor {
         cov_hash_b: &str,
         amount_b: &str,
     ) -> anyhow::Result<DepositInfo> {
+        // Load wallet from wallet manager using name and secret
+        let manager = WalletManager::new(self.context.clone());
+        let mut wallet = manager.load_wallet(wallet_name, secret).await?;
+
+        // Create the faucet transaction and send it.
+        let (coin_data_height, coin_id) = wallet
+            .deposit_tx(cov_hash_a, amount_a, cov_hash_b, amount_b)
+            .await?;
+
         Ok(DepositInfo)
     }
     /// Liq. Deposit a token pair into melswap
@@ -169,6 +178,10 @@ impl CommandExecutor {
         cov_hash_b: &str,
         amount_b: &str,
     ) -> anyhow::Result<WithdrawInfo> {
+        // Load wallet from wallet manager using name and secret
+        let manager = WalletManager::new(self.context.clone());
+        let mut wallet = manager.load_wallet(wallet_name, secret).await?;
+
         Ok(WithdrawInfo)
     }
     /// Swap to and from mel
@@ -179,6 +192,10 @@ impl CommandExecutor {
         cov_hash: &str,
         amount: &str,
     ) -> anyhow::Result<SwapInfo> {
+        // Load wallet from wallet manager using name and secret
+        let manager = WalletManager::new(self.context.clone());
+        let mut wallet = manager.load_wallet(wallet_name, secret).await?;
+
         Ok(SwapInfo)
     }
 }
