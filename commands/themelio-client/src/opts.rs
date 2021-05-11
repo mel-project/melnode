@@ -61,17 +61,17 @@ pub enum WalletUtilsCommand {
     DepositCoins {
         wallet_name: String,
         secret: String,
-        cov_hash_a: String,
+        coin_id_a: String,
         amount_a: String,
-        cov_hash_b: String,
+        coin_id_b: String,
         amount_b: String,
     },
     WithdrawCoins {
         wallet_name: String,
         secret: String,
-        cov_hash_a: String,
+        coin_id_a: String,
         amount_a: String,
-        cov_hash_b: String,
+        coin_id_b: String,
         amount_b: String,
     },
     SwapCoins {
