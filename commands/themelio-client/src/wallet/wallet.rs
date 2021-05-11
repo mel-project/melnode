@@ -244,11 +244,76 @@ impl ActiveWallet {
     }
 
     pub async fn withdraw_tx(
-        cov_hash_a: &str,
+        &mut self,
+        coin_id_a: &str,
         amount_a: &str,
-        cov_hash_b: &str,
+        coin_id_b: &str,
         amount_b: &str,
     ) -> anyhow::Result<()> {
+        let coin_id_a: CoinID = stdcode::deserialize(&hex::decode(coin_id_a)?)
+            .context("cannot deserialize hex coin id")?;
+        let coin_id_b: CoinID = stdcode::deserialize(&hex::decode(coin_id_b)?)
+            .context("cannot deserialize hex coin id")?;
+
+        let snapshot = self.context.client.snapshot().await?;
+        let coin_data_height_a = snapshot.get_coin(coin_id_a).await?;
+        let coin_data_height_b = snapshot.get_coin(coin_id_b).await?;
+
+        if coin_data_height_a.is_none() || coin_data_height_b.is_none() {
+            anyhow::bail!(WalletError::InvalidTransactionArgs(
+                "coin id does not exist".to_string()
+            ))
+        }
+
+        let coin_data_height_a = coin_data_height_a.unwrap();
+        let coin_data_height_b = coin_data_height_b.unwrap();
+
+        let value_a: u128 = amount_a.parse()?;
+        let value_b: u128 = amount_b.parse()?;
+
+        let hash = coin_data_height_a.coin_data.covhash;
+
+        let pk = self.sk.to_public();
+
+        let cov = Covenant::std_ed25519_pk_legacy(pk);
+        let cov_hash = cov.hash();
+
+        let withdraw_tx = Transaction {
+            kind: TxKind::LiqWithdraw,
+            inputs: vec![coin_id_a, coin_id_b],
+            outputs: vec![
+                CoinData {
+                    covhash: cov_hash,
+                    value: value_a,
+                    denom: coin_data_height_a.coin_data.denom,
+                    additional_data: vec![],
+                },
+                CoinData {
+                    covhash: cov_hash,
+                    value: value_b,
+                    denom: coin_data_height_b.coin_data.denom,
+                    additional_data: vec![],
+                },
+            ],
+            fee: 0,
+            scripts: vec![Covenant::std_ed25519_pk_legacy(pk)],
+            data: hash.to_vec(),
+            sigs: vec![],
+        }
+        .applied_fee(FEE_MULTIPLIER, BALLAST, 0);
+
+        let tx = match withdraw_tx {
+            None => {
+                anyhow::bail!(WalletError::InvalidTransactionArgs(
+                    "Invalid tx".to_string()
+                ))
+            }
+            Some(tx) => tx,
+        }
+        .signed_ed25519(self.sk);
+
+        self.send_tx(&tx).await?;
+
         Ok(())
     }
 
