@@ -152,18 +152,18 @@ impl CommandExecutor {
         &self,
         wallet_name: &str,
         secret: &str,
-        cov_hash_a: &str,
+        coin_id_a: &str,
         amount_a: &str,
-        cov_hash_b: &str,
+        coin_id_b: &str,
         amount_b: &str,
     ) -> anyhow::Result<DepositInfo> {
         // Load wallet from wallet manager using name and secret
         let manager = WalletManager::new(self.context.clone());
         let mut wallet = manager.load_wallet(wallet_name, secret).await?;
 
-        // Create the faucet transaction and send it.
-        let (coin_data_height, coin_id) = wallet
-            .deposit_tx(cov_hash_a, amount_a, cov_hash_b, amount_b)
+        // Create the deposit transaction and send it.
+        wallet
+            .deposit_tx(coin_id_a, amount_a, coin_id_b, amount_b)
             .await?;
 
         Ok(DepositInfo)
@@ -173,14 +173,19 @@ impl CommandExecutor {
         &self,
         wallet_name: &str,
         secret: &str,
-        cov_hash_a: &str,
+        coin_id_a: &str,
         amount_a: &str,
-        cov_hash_b: &str,
+        coin_id_b: &str,
         amount_b: &str,
     ) -> anyhow::Result<WithdrawInfo> {
         // Load wallet from wallet manager using name and secret
         let manager = WalletManager::new(self.context.clone());
         let mut wallet = manager.load_wallet(wallet_name, secret).await?;
+
+        // Create the withdraw transaction and send it.
+        wallet
+            .withdraw_tx(coin_id_a, amount_a, coin_id_b, amount_b)
+            .await?;
 
         Ok(WithdrawInfo)
     }
