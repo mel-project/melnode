@@ -437,8 +437,8 @@ impl Executor {
         self.pc += pc_diff;
 
         if let Some(ref mut state) = self.loop_state {
-            if self.pc >= state.end {
-                if state.cur_iteration > state.iterations {
+            if self.pc > state.end {
+                if state.cur_iteration >= state.iterations-1 {
                     // continue past the loop
                     self.loop_state = None;
                 } else {
