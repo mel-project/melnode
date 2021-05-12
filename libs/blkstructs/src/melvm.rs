@@ -34,6 +34,9 @@ pub const ADDR_LAST_HEADER: u16 = 10;
 /// A MelVM covenant. Essentially, given a transaction that attempts to spend it, it either allows the transaction through or doesn't.
 pub struct Covenant(pub Vec<u8>);
 
+/// A pointer to the currently executing instruction.
+type ProgramCounter = usize;
+
 #[derive(Clone, Eq, PartialEq, Debug, Hash)]
 /// The execution environment of a covenant.
 pub struct CovenantEnv<'a> {
@@ -48,11 +51,20 @@ impl Covenant {
     ///
     /// The caller must also pass in the [CoinID] and [CoinDataHeight] corresponding to the coin that's being spent, as well as the [Header] of the *previous* block (if this transaction is trying to go into block N, then the header of block N-1). This allows the covenant to access (a committment to) its execution environment, allowing constructs like timelock contracts and colored-coin-like systems.
     pub fn check(&self, tx: &Transaction, env: CovenantEnv) -> bool {
-        self.check_opt(tx, Some(env)).is_some()
+        self.check_opt_env(tx, Some(env))
     }
 
     pub(crate) fn check_no_env(&self, tx: &Transaction) -> bool {
-        self.check_opt(tx, None).is_some()
+        self.check_opt_env(tx, None)
+    }
+
+    /// Execute a transaction in a [CovenantEnv] to completion and return the 
+    fn check_opt_env(&self, tx: &Transaction, env: Option<CovenantEnv>) -> bool {
+        if let Some(ops) = self.to_ops() {
+            Executor::new_from_env(tx.clone(), env).run_return(&ops)
+        } else {
+            false
+        }
     }
 
     pub fn check_raw(&self, args: &[Value]) -> bool {
@@ -61,7 +73,7 @@ impl Covenant {
             hm.insert(i as u16, v.clone());
         }
         if let Some(ops) = self.to_ops() {
-            Executor::new(hm).run_return(&ops).is_some()
+            Executor::new(hm).run_return(&ops)
         } else {
             false
         }
@@ -69,11 +81,6 @@ impl Covenant {
 
     pub fn hash(&self) -> tmelcrypt::HashVal {
         tmelcrypt::hash_single(&self.0)
-    }
-
-    fn check_opt(&self, tx: &Transaction, env: Option<CovenantEnv>) -> Option<()> {
-        let ops = self.to_ops()?;
-        Executor::new_from_env(tx.clone(), env).run_return(&ops)
     }
 
     /// Returns a legacy ed25519 signature checking covenant, which checks the *first* signature.
@@ -183,12 +190,8 @@ impl Covenant {
             0xa2 => output.push(OpCode::Bnz(u16arg(bcode)?)),
             0xb0 => {
                 let iterations = u16arg(bcode)?;
-                let count = u16arg(bcode)?;
-                let mut rec_output = Vec::new();
-                for _ in 0..count {
-                    Covenant::disassemble_one(bcode, &mut rec_output, rec_depth + 1)?;
-                }
-                output.push(OpCode::Loop(iterations, rec_output));
+                let count      = u16arg(bcode)?;
+                output.push(OpCode::Loop(iterations, count));
             }
             0xc0 => output.push(OpCode::ItoB),
             0xc1 => output.push(OpCode::BtoI),
@@ -298,14 +301,10 @@ impl Covenant {
                 output.push(0xa2);
                 output.extend_from_slice(&val.to_be_bytes());
             }
-            OpCode::Loop(iterations, ops) => {
+            OpCode::Loop(iterations, op_count) => {
                 output.push(0xb0);
                 output.extend_from_slice(&iterations.to_be_bytes());
-                let op_cnt: u16 = ops.len().try_into().ok()?;
-                output.extend_from_slice(&op_cnt.to_be_bytes());
-                for op in ops {
-                    Covenant::assemble_one(op, output)?
-                }
+                output.extend_from_slice(&op_count.to_be_bytes());
             }
             // type conversions
             OpCode::ItoB => output.push(0xc0),
@@ -336,9 +335,25 @@ impl Covenant {
     }
 }
 
+/// Internal tracking of state during a loop in [Executor].
+struct LoopState {
+    /// Pointer to first op in loop
+    begin: ProgramCounter,
+    /// Pointer to last op in loop (inclusive)
+    end: ProgramCounter,
+    /// Total number of iterations
+    iterations: u16,
+    /// Current iteration of the loop
+    cur_iteration: u16,
+}
+
 pub struct Executor {
     pub stack: Vec<Value>,
     pub heap: HashMap<u16, Value>,
+    /// Program counter
+    pc: ProgramCounter,
+    /// Marks the (begin, end) of the loop if currently in one
+    loop_state: Option<LoopState>,
 }
 
 impl Executor {
@@ -346,6 +361,8 @@ impl Executor {
         Executor {
             stack: Vec::new(),
             heap: heap_init,
+            pc: 0,
+            loop_state: None,
         }
     }
     pub fn new_from_env(tx: Transaction, env: Option<CovenantEnv>) -> Self {
@@ -402,7 +419,38 @@ impl Executor {
         stack.push(op(x)?);
         Some(())
     }
-    pub fn do_op(&mut self, op: &OpCode, pc: u32) -> Option<u32> {
+    pub fn pc(&self) -> ProgramCounter {
+        self.pc
+    }
+    /// Execute one instruction and update internal VM state
+    pub fn step(&mut self, op: &OpCode) -> Option<()> {
+        if let Some(pc_diff) = self.do_op(op) {
+            self.update_pc_state(pc_diff);
+            Some(())
+        } else {
+            None
+        }
+    }
+    /// Update program pointer state (to be called after a step)
+    fn update_pc_state(&mut self, pc_diff: ProgramCounter) {
+        // Update program counter
+        self.pc += pc_diff;
+
+        if let Some(ref mut state) = self.loop_state {
+            if self.pc >= state.end {
+                if state.cur_iteration > state.iterations {
+                    // continue past the loop
+                    self.loop_state = None;
+                } else {
+                    // loop again
+                    state.cur_iteration += 1;
+                    self.pc = state.begin;
+                }
+            }
+        }
+    }
+    /// Execute an instruction, modifying state and return number of instructions to move forward
+    pub fn do_op(&mut self, op: &OpCode) -> Option<ProgramCounter> {
         match op {
             // arithmetic
             OpCode::Add => self.do_binop(|x, y| {
@@ -595,21 +643,26 @@ impl Executor {
             // control flow
             OpCode::Bez(jgap) => {
                 let top = self.stack.pop()?;
-                if top == Value::Int(1u32.into()) {
-                    return Some(pc + 1 + *jgap as u32);
+                if top == Value::Int(0u32.into()) {
+                    return Some(1 + *jgap as usize);
                 }
             }
             OpCode::Bnz(jgap) => {
                 let top = self.stack.pop()?;
                 if top != Value::Int(0u32.into()) {
-                    return Some(pc + 1 + *jgap as u32);
+                    return Some(1 + *jgap as usize);
                 }
             }
-            OpCode::Jmp(jgap) => return Some(pc + 1 + *jgap as u32),
-            OpCode::Loop(iterations, ops) => {
-                for _ in 0..*iterations {
-                    self.run_bare(&ops)?
-                }
+            OpCode::Jmp(jgap) => {
+                return Some(1 + *jgap as usize);
+            },
+            OpCode::Loop(iterations, op_count) => {
+                self.loop_state = Some( LoopState {
+                    begin: self.pc + 1,
+                    end: self.pc + *op_count as usize,
+                    cur_iteration: 0,
+                    iterations: *iterations,
+                });
             }
             // Conversions
             OpCode::BtoI => self.do_monop(|x| {
@@ -640,27 +693,26 @@ impl Executor {
                 self.stack.push(val);
             }
         }
-        Some(pc + 1)
+
+        // Default is to step pc by one
+        Some(1)
     }
     fn run_bare(&mut self, ops: &[OpCode]) -> Option<()> {
         assert!(ops.len() < 512 * 1024);
-        let mut pc = 0;
-        while pc < ops.len() {
-            pc = self.do_op(ops.get(pc)?, pc as u32)? as usize;
+        // Run to completion
+        while self.pc < ops.len() {
+            self.step(ops.get(self.pc)?)?
         }
+
         Some(())
     }
-    fn run_return(&mut self, ops: &[OpCode]) -> Option<()> {
+    fn run_return(&mut self, ops: &[OpCode]) -> bool {
         self.run_bare(ops);
-        match self.stack.pop()? {
-            Value::Int(b) => {
-                if b == U256::from(0u32) {
-                    None
-                } else {
-                    Some(())
-                }
-            }
-            _ => Some(()),
+        let res = self.stack.pop();
+        if res == None || res == Some(Value::Int(U256::from(0u32))) {
+            false
+        } else {
+            true
         }
     }
 }
@@ -717,7 +769,8 @@ pub enum OpCode {
     Bez(u16),
     Bnz(u16),
     Jmp(u16),
-    Loop(u16, Vec<OpCode>),
+    // Loop(iterations, instructions)
+    Loop(u16, u16),
 
     // type conversions
     ItoB,
@@ -785,9 +838,8 @@ impl OpCode {
             OpCode::Bez(_) => 1,
             OpCode::Bnz(_) => 1,
             OpCode::Jmp(_) => 1,
-            OpCode::Loop(loops, contents) => {
-                let one_iteration: u128 = contents.iter().map(|o| o.weight()).sum();
-                one_iteration.saturating_mul(*loops as _)
+            OpCode::Loop(loops, inst_count) => {
+                (*inst_count as u128).saturating_mul(*loops as _)
             }
 
             OpCode::PushB(_) => 1,
@@ -996,19 +1048,18 @@ mod tests {
     fn check_sig() {
         let (pk, sk) = tmelcrypt::ed25519_keygen();
         // (SIGEOK (LOAD 1) (PUSH pk) (VREF (VREF (LOAD 0) 6) 0))
-        let check_sig_script = Covenant::from_ops(&[OpCode::Loop(
-            5,
-            vec![
-                OpCode::PushI(0u32.into()),
-                OpCode::PushI(6u32.into()),
-                OpCode::LoadImm(0),
-                OpCode::VRef,
-                OpCode::VRef,
-                OpCode::PushB(pk.0.to_vec()),
-                OpCode::LoadImm(1),
-                OpCode::SigEOk(32),
+        let check_sig_script = Covenant::from_ops(
+            &[OpCode::Loop(5, 8),
+              OpCode::PushI(0u32.into()),
+              OpCode::PushI(6u32.into()),
+              OpCode::LoadImm(0),
+              OpCode::VRef,
+              OpCode::VRef,
+              OpCode::PushB(pk.0.to_vec()),
+              OpCode::LoadImm(1),
+              OpCode::SigEOk(32),
             ],
-        )])
+        )
         .unwrap();
         println!("script length is {}", check_sig_script.0.len());
         let mut tx = Transaction::empty_test().signed_ed25519(sk);
