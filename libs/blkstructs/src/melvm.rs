@@ -353,7 +353,7 @@ pub struct Executor {
     /// Program counter
     pc: ProgramCounter,
     /// Marks the (begin, end) of the loop if currently in one
-    loop_state: Option<LoopState>,
+    loop_state: Vec<LoopState>,
 }
 
 impl Executor {
@@ -362,7 +362,7 @@ impl Executor {
             stack: Vec::new(),
             heap: heap_init,
             pc: 0,
-            loop_state: None,
+            loop_state: vec![],
         }
     }
     pub fn new_from_env(tx: Transaction, env: Option<CovenantEnv>) -> Self {
@@ -436,7 +436,28 @@ impl Executor {
         // Update program counter
         self.pc += pc_diff;
 
+        if let Some(mut state) = self.loop_state.pop() {
+            // If done with body of loop
+            if self.pc > state.end {
+                // But not finished with all iterations
+                if state.cur_iteration < state.iterations-1 {
+                    // loop again
+                    state.cur_iteration += 1;
+                    self.pc = state.begin;
+                    self.loop_state.push(state);
+                }
+                // If finished with all iterations, check for another loop state
+                else {
+                    self.update_pc_state(0);
+                }
+            } else {
+                // If not done with loop body, resume
+                self.loop_state.push(state);
+            }
+        }
+        /*
         if let Some(ref mut state) = self.loop_state {
+        //if !self.loop_state.is_empty() {
             if self.pc > state.end {
                 if state.cur_iteration >= state.iterations-1 {
                     // continue past the loop
@@ -448,6 +469,7 @@ impl Executor {
                 }
             }
         }
+        */
     }
     /// Execute an instruction, modifying state and return number of instructions to move forward
     pub fn do_op(&mut self, op: &OpCode) -> Option<ProgramCounter> {
@@ -657,7 +679,7 @@ impl Executor {
                 return Some(1 + *jgap as usize);
             },
             OpCode::Loop(iterations, op_count) => {
-                self.loop_state = Some( LoopState {
+                self.loop_state.push( LoopState {
                     begin: self.pc + 1,
                     end: self.pc + *op_count as usize,
                     cur_iteration: 0,
