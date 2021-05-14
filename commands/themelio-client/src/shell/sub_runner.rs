@@ -117,9 +117,9 @@ impl WalletSubShellRunner {
         eprintln!(">> faucet <amount> <unit>");
         eprintln!(">> send-coins <address> <amount> <unit>");
         eprintln!(">> add-coins <coin-id>");
-        eprintln!(">> deposit args");
+        eprintln!(">> deposit <coin-id-a> <amount-a> <coin-id-b> <amount-b>");
         eprintln!(">> swap args");
-        eprintln!(">> withdraw args");
+        eprintln!(">> withdraw <coin-id-a> <amount-a> <coin-id-b> <amount-b>");
         eprintln!(">> show-balance");
         eprintln!(">> help");
         eprintln!(">> exit");

@@ -113,9 +113,9 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                 WalletUtilsCommand::DepositCoins {
                     wallet_name,
                     secret,
-                    cov_hash_a,
+                    coin_id_a: cov_hash_a,
                     amount_a,
-                    cov_hash_b,
+                    coin_id_b: cov_hash_b,
                     amount_b,
                 } => {
                     let info = executor
@@ -133,9 +133,9 @@ async fn dispatch(opts: ClientOpts) -> anyhow::Result<()> {
                 WalletUtilsCommand::WithdrawCoins {
                     wallet_name,
                     secret,
-                    cov_hash_a,
+                    coin_id_a: cov_hash_a,
                     amount_a,
-                    cov_hash_b,
+                    coin_id_b: cov_hash_b,
                     amount_b,
                 } => {
                     let info = executor

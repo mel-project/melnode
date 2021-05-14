@@ -54,20 +54,16 @@ Exiting Themelio Client wallet-shell mode
 
 ## wallet-utils  
 
-The wallet utils executes a command which can be formatted with different outputs such as JSON.
+The wallet utils executes a command and prints an output in JSON to std out.
 
-The util executor allows a user to execute a single command and exit the binary. 
-
-This is suited better for automation and testing.
+This is best suited for automation and testing.
 
 examples:
 
 ### Create wallet
-> cargo run -- --host "94.237.109.44:11814" wallet-utils create-wallet alice
-```asm
->> New data:  alice 
->> Address:   t9yey-zvk27-9vr9x-774ce-qckxk-b7gx3-74egz-05xkf-p99ka-f4t06-742g
->> Secret:    e2926ba128937218e12ffa81109fc152d6626f30dddc92641d353a3cc2099b3f0492314a06191bae7eb4d5e4a9d645f23d3cabf8babfd9f698c98f36236d04b9
+> cargo run -- --host "185.70.196.63:11814" wallet-utils create-wallet robert
+```
+{"name":"robert","address":"t4d4pwewtk0dj7sq1kxam86mv2rv3999qzrcw6g59b1jekr5qykhm0","secret":"5fb33a8b9e2c825b483791761e071aabbf798b28841a975e836383df6d133c76fb7ebefe5a585517d911d4df0cb83ba86bc45d7f328f545f59af53483ee1ff15"}%
 ```
 
 ### Faucet

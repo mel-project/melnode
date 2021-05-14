@@ -152,11 +152,20 @@ impl CommandExecutor {
         &self,
         wallet_name: &str,
         secret: &str,
-        cov_hash_a: &str,
+        coin_id_a: &str,
         amount_a: &str,
-        cov_hash_b: &str,
+        coin_id_b: &str,
         amount_b: &str,
     ) -> anyhow::Result<DepositInfo> {
+        // Load wallet from wallet manager using name and secret
+        let manager = WalletManager::new(self.context.clone());
+        let mut wallet = manager.load_wallet(wallet_name, secret).await?;
+
+        // Create the deposit transaction and send it.
+        wallet
+            .deposit_tx(coin_id_a, amount_a, coin_id_b, amount_b)
+            .await?;
+
         Ok(DepositInfo)
     }
     /// Liq. Deposit a token pair into melswap
@@ -164,11 +173,20 @@ impl CommandExecutor {
         &self,
         wallet_name: &str,
         secret: &str,
-        cov_hash_a: &str,
+        coin_id_a: &str,
         amount_a: &str,
-        cov_hash_b: &str,
+        coin_id_b: &str,
         amount_b: &str,
     ) -> anyhow::Result<WithdrawInfo> {
+        // Load wallet from wallet manager using name and secret
+        let manager = WalletManager::new(self.context.clone());
+        let mut wallet = manager.load_wallet(wallet_name, secret).await?;
+
+        // Create the withdraw transaction and send it.
+        wallet
+            .withdraw_tx(coin_id_a, amount_a, coin_id_b, amount_b)
+            .await?;
+
         Ok(WithdrawInfo)
     }
     /// Swap to and from mel
@@ -179,6 +197,10 @@ impl CommandExecutor {
         cov_hash: &str,
         amount: &str,
     ) -> anyhow::Result<SwapInfo> {
+        // Load wallet from wallet manager using name and secret
+        let manager = WalletManager::new(self.context.clone());
+        let mut wallet = manager.load_wallet(wallet_name, secret).await?;
+
         Ok(SwapInfo)
     }
 }
