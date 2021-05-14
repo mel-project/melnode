@@ -21,6 +21,7 @@ impl StakerProtocol {
         storage: SharedStorage,
         my_sk: Ed25519SK,
         payout_covhash: HashVal,
+        target_fee_multiplier: u128,
     ) -> anyhow::Result<Self> {
         let _network_task = smolscale::spawn(async move {
             loop {
@@ -35,6 +36,7 @@ impl StakerProtocol {
                         storage.clone(),
                         my_sk,
                         payout_covhash,
+                        target_fee_multiplier,
                     );
                     let epoch_termination = async {
                         loop {
@@ -65,6 +67,7 @@ async fn one_epoch_loop(
     storage: SharedStorage,
     my_sk: Ed25519SK,
     payout_covhash: HashVal,
+    target_fee_multiplier: u128,
 ) -> anyhow::Result<()> {
     let genesis = storage.read().highest_state();
     let forest = storage.clone().read().forest();
@@ -79,6 +82,7 @@ async fn one_epoch_loop(
         builder: StorageBlockBuilder {
             storage: storage.clone(),
             payout_covhash,
+            target_fee_multiplier,
         },
         get_confirmed: {
             let storage = storage.clone();
@@ -120,13 +124,18 @@ async fn one_epoch_loop(
 struct StorageBlockBuilder {
     storage: SharedStorage,
     payout_covhash: HashVal,
+    target_fee_multiplier: u128,
 }
 
 impl BlockBuilder for StorageBlockBuilder {
     fn build_block(&self, tip: SealedState) -> Block {
         let mut storage = self.storage.write();
         let proposer_action = ProposerAction {
-            fee_multiplier_delta: 0,
+            fee_multiplier_delta: if tip.header().fee_multiplier > self.target_fee_multiplier {
+                i8::MIN
+            } else {
+                i8::MAX
+            },
             reward_dest: self.payout_covhash,
         };
         let mempool_state = storage.mempool().to_state().seal(Some(proposer_action));

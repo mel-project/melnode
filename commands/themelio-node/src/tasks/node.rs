@@ -45,6 +45,10 @@ pub struct NodeConfig {
     /// If set to true, default to the testnet. Otherwise, mainnet validation rules are used.
     #[structopt(long)]
     testnet: bool,
+
+    /// Fee multiplier to target. Default is 1000.
+    #[structopt(long, default_value = "1000")]
+    target_fee_multiplier: u128,
 }
 
 /// Runs the main function for a node.
@@ -87,6 +91,7 @@ pub async fn run_node(opt: NodeConfig) -> anyhow::Result<()> {
                 my_sk,
                 HashVal::from_addr(&opt.staker_payout_addr.unwrap())
                     .context("cannot parse payout address")?,
+                opt.target_fee_multiplier,
             )
             .unwrap(),
         )

@@ -1,6 +1,6 @@
-use std::path::Path;
+use std::{collections::BTreeMap, path::Path};
 
-use blkstructs::{CoinDataHeight, CoinID, Transaction, TxKind};
+use blkstructs::{CoinData, CoinDataHeight, CoinID, Transaction, TxKind};
 use serde::{Deserialize, Serialize};
 use tmelcrypt::HashVal;
 

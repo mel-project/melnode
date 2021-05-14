@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::Context;
-use blkstructs::{melvm::Covenant, CoinData, CoinDataHeight, CoinID, Denom};
+use blkstructs::{melvm::Covenant, CoinData, CoinDataHeight, CoinID, Denom, Transaction};
 use cmdopts::{CmdOpts, InitCmdOpts, MintCmdOpts};
 use nodeprot::ValClientSnapshot;
 use state::MintState;
@@ -30,31 +30,32 @@ fn main() -> anyhow::Result<()> {
 
 async fn main_mint(opts: MintCmdOpts) -> anyhow::Result<()> {
     let mut mint_state = MintState::read_from_file(&opts.common.persist).await?;
-    let my_speed = compute_speed().await;
+    let mut my_speed = compute_speed().await;
     let snap = get_snapshot(opts.common.testnet, opts.common.connect).await?;
     let max_speed = snap.current_header().dosc_speed as f64 / 30.0;
-    log::info!("** My speed: {:.3} kH/s", my_speed / 1000.0);
-    log::info!("** Max speed: {:.3} kH/s", max_speed / 1000.0);
-    log::info!(
-        "** Estimated return: {:.2} rDOSC/day",
-        my_speed * max_speed / max_speed.powi(2)
-    );
     assert_eq!(
         snap.get_coin(mint_state.chain_tip_id).await?.unwrap(),
         mint_state.chain_tip_cdh
     );
 
-    let my_difficulty = (my_speed * 3100.0).log2().ceil() as usize;
-    let approx_iter = Duration::from_secs_f64(2.0f64.powi(my_difficulty as _) / my_speed);
-    log::info!(
-        "** Selected difficulty: {} (approx. {:?} / tx)",
-        my_difficulty,
-        approx_iter
-    );
     loop {
+        log::info!("** My speed: {:.3} kH/s", my_speed / 1000.0);
+        log::info!("** Max speed: {:.3} kH/s", max_speed / 1000.0);
+        log::info!(
+            "** Estimated return: {:.2} rDOSC/day",
+            my_speed * max_speed / max_speed.powi(2)
+        );
+        let my_difficulty = (my_speed * 3000.0).log2().ceil() as usize;
+        let approx_iter = Duration::from_secs_f64(2.0f64.powi(my_difficulty as _) / my_speed);
+        log::info!(
+            "** Selected difficulty: {} (approx. {:?} / tx)",
+            my_difficulty,
+            approx_iter
+        );
+        let start = Instant::now();
         let deadline =
             SystemTime::now() + Duration::from_secs_f64(2.0f64.powi(my_difficulty as _) / my_speed);
-        let mut tx = mint_state
+        let mut tx: Transaction = mint_state
             .mint_transaction(my_difficulty)
             .or(async move {
                 loop {
@@ -70,10 +71,10 @@ async fn main_mint(opts: MintCmdOpts) -> anyhow::Result<()> {
             get_snapshot(opts.common.testnet, opts.common.connect).await
         })
         .await;
-        let my_speed = 2u128.pow(my_difficulty as u32)
+        let reward_speed = 2u128.pow(my_difficulty as u32)
             / (snap.current_header().height + 5 - mint_state.chain_tip_cdh.height) as u128;
         let reward = blkstructs::calculate_reward(
-            my_speed,
+            reward_speed,
             snap.current_header().dosc_speed,
             my_difficulty as u32,
         );
@@ -97,10 +98,11 @@ async fn main_mint(opts: MintCmdOpts) -> anyhow::Result<()> {
                 let cdh = snap.get_coin(tx.get_coinid(0)).await?;
                 if let Some(cdh) = cdh {
                     log::info!(
-                        "***** MINTED {} DOSC => {} @ {} *****",
+                        "***** MINTED {} µNomDOSC => {} @ {} / {} µMEL left in chain *****",
                         tx.outputs[1].value,
                         tx.outputs[1].covhash.to_addr(),
-                        tx.get_coinid(1)
+                        tx.get_coinid(1),
+                        tx.outputs[0].value,
                     );
                     return Ok::<_, anyhow::Error>((
                         tx.get_coinid(0),
@@ -122,6 +124,7 @@ async fn main_mint(opts: MintCmdOpts) -> anyhow::Result<()> {
         mint_state.chain_tip_id = coin_id;
         mint_state.chain_tip_cdh = cdh;
         mint_state.chain_tip_hash = hash;
+        my_speed = 2.0f64.powi(my_difficulty as _) / start.elapsed().as_secs_f64();
         mint_state.write_to_file(&opts.common.persist).await?;
     }
 }
@@ -145,7 +148,7 @@ async fn compute_speed() -> f64 {
         smol::unblock(move || melpow::Proof::generate(&[], difficulty)).await;
         let elapsed = start.elapsed();
         let speed = 2.0f64.powi(difficulty as _) / elapsed.as_secs_f64();
-        if elapsed.as_secs_f64() > 1.0 {
+        if elapsed.as_secs_f64() > 10.0 {
             return speed;
         }
     }

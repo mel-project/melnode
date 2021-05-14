@@ -167,7 +167,7 @@ impl<'a> StateHandle<'a> {
 
     fn apply_tx_fees(&mut self, tx: &Transaction) -> Result<(), StateError> {
         // fees
-        let min_fee = tx.base_fee(self.state.fee_multiplier, 0);
+        let min_fee = dbg!(tx.base_fee(dbg!(self.state.fee_multiplier), 0));
         if tx.fee < min_fee {
             return Err(StateError::InsufficientFees(min_fee));
         }

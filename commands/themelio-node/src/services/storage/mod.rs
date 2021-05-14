@@ -109,6 +109,8 @@ impl NodeStorage {
             blk.transactions.len(),
             blk.header.hash()
         );
+        let next = self.highest_state().next_state();
+        self.mempool_mut().rebase(next);
         Ok(())
     }
 

@@ -70,7 +70,7 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
         blocks.push(BlockSummary {
             header: block.header,
             total_weight: block.transactions.iter().map(|v| v.weight()).sum(),
-            reward_amount: MicroUnit(reward, "mel".into()),
+            reward_amount: MicroUnit(reward, "MEL".into()),
         });
         // push transactions
         if transactions.len() < 30 {
@@ -88,7 +88,7 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
                                 .map(|v| if v.denom == Denom::Mel { v.value } else { 0 })
                                 .sum::<u128>()
                                 + transaction.fee,
-                            "mel".into(),
+                            "MEL".into(),
                         ),
                     })
                 }

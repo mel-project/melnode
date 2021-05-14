@@ -40,10 +40,7 @@ impl Client {
         let existing = {
             let pool = self.pool.read();
             let existing = pool.get(&addr);
-            match existing {
-                Some(existing) => Some(existing.clone()),
-                None => None,
-            }
+            existing.cloned()
         };
         match existing {
             Some(existing) => {
@@ -83,7 +80,7 @@ impl Client {
         req: TInput,
     ) -> Result<TOutput> {
         // Semaphore
-        static GLOBAL_LIMIT: Semaphore = Semaphore::new(64);
+        static GLOBAL_LIMIT: Semaphore = Semaphore::new(32);
         let _guard = GLOBAL_LIMIT.acquire().await;
 
         // grab a connection
@@ -158,7 +155,7 @@ async fn singlehost_monitor(
     }
 
     loop {
-        let heap_overflow = heap.len() > 4;
+        let heap_overflow = heap.len() > 64;
         let deadline = async {
             if heap_overflow {
             } else if let Some((min, _)) = heap.peek_min() {
