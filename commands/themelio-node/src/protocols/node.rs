@@ -62,11 +62,14 @@ impl NodeProtocol {
 #[tracing::instrument(skip(network, state))]
 async fn blksync_loop(netid: NetID, network: melnet::NetState, state: SharedStorage) {
     let tag = || format!("blksync@{:?}", state.read().highest_state().header().height);
+    const SLOW_TIME: Duration = Duration::from_millis(5000);
+    const FAST_TIME: Duration = Duration::from_millis(10);
     loop {
         let random_peer = network.routes().first().cloned();
         if let Some(peer) = random_peer {
             log::trace!("{}: picked random peer {} for blksync", tag(), peer);
             let last_state = state.read().highest_state();
+            let start = Instant::now();
             let res = blksync::sync_state(netid, peer, last_state.inner_ref().height + 1, |tx| {
                 state.read().mempool().lookup(tx)
             })
@@ -74,9 +77,16 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, state: SharedStor
             match res {
                 Err(e) => {
                     log::trace!("{}: failed to blksync with {}: {:?}", tag(), peer, e);
+                    smol::Timer::after(FAST_TIME).await;
                 }
                 Ok(blocks) => {
-                    log::debug!("got {} blocks from other side", blocks.len());
+                    log::debug!(
+                        "got {} blocks from {} in {:?}",
+                        blocks.len(),
+                        peer,
+                        start.elapsed()
+                    );
+                    let blklen = blocks.len();
                     for (blk, cproof) in blocks {
                         let res = state.write().apply_block(blk.clone(), cproof);
                         if res.is_err() {
@@ -88,10 +98,16 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, state: SharedStor
                             break;
                         }
                     }
+                    if blklen > 0 {
+                        smol::Timer::after(FAST_TIME).await;
+                    } else {
+                        smol::Timer::after(SLOW_TIME).await;
+                    }
                 }
             }
+        } else {
+            smol::Timer::after(SLOW_TIME).await;
         }
-        smol::Timer::after(Duration::from_millis(100)).await;
     }
 }
 

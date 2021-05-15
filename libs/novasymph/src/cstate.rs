@@ -50,6 +50,10 @@ impl ChainState {
             proposed_block.header.hash(),
             last_nonempty
         );
+        if !proposal_sig.verify(proposer, &proposed_block.abbreviate()) {
+            return Err(ProposalError::InvalidBlock);
+        }
+
         let lnc_tips = self.get_lnc_tips();
         if !lnc_tips.contains(&last_nonempty) {
             log::warn!("tips: {:?}", lnc_tips);
@@ -109,6 +113,9 @@ impl ChainState {
         voter: Ed25519PK,
         signature: VoteSig,
     ) -> Result<(), VoteError> {
+        if !signature.verify(voter, voting_for) {
+            return Err(VoteError::InvalidSignature);
+        }
         let mut existing_metadata = self
             .inner
             .get_cursor(voting_for)
@@ -125,41 +132,31 @@ impl ChainState {
 
     /// Votes for all "appropriate" proposals.
     pub fn vote_all(&mut self, voter_sk: Ed25519SK) {
-        let mut metadata_map = BTreeMap::new();
         let lnc_cursor = self
             .get_lnc_tips()
             .into_iter()
             .next()
             .map(|v| self.inner.get_cursor(v).unwrap())
             .unwrap();
+        let mut vote_for = Vec::new();
         let mut stack = lnc_cursor.children();
         while let Some(child) = stack.pop() {
-            if let Some(mut metadata) = child.get_streamlet() {
-                let abbr_block = child.to_state().to_block().abbreviate();
-                if metadata
-                    .votes
-                    .insert(
-                        voter_sk.to_public(),
-                        VoteSig::generate(voter_sk, &abbr_block),
-                    )
-                    .is_none()
-                {
-                    log::warn!(
-                        "voting for {} at height {}",
-                        child.header().hash(),
-                        child.header().height
-                    );
-                    metadata_map.insert(child.header().hash(), metadata);
+            if let Some(metadata) = child.get_streamlet() {
+                if metadata.votes.get(&voter_sk.to_public()).is_none() {
+                    vote_for.push(child.header().hash());
                 }
             } else {
                 stack.extend(child.children())
             }
         }
-        for (hash, metadata) in metadata_map {
-            self.inner
-                .get_cursor_mut(hash)
-                .unwrap()
-                .set_metadata(&stdcode::serialize(&metadata).unwrap())
+        for hash in vote_for {
+            log::debug!("self-voting for {}", hash);
+            self.inject_vote(
+                hash,
+                voter_sk.to_public(),
+                VoteSig::generate(voter_sk, hash),
+            )
+            .expect("vote_all should never produce an error");
         }
     }
 
@@ -178,7 +175,7 @@ impl ChainState {
             .into_iter()
             .filter_map(|v| self.inner.get_cursor(v))
             .collect::<Vec<_>>();
-        let to_send = self.get_descendants(their_lnc_tips);
+        let to_send = self.get_nonempty_descendants(their_lnc_tips);
         to_send
             .into_iter()
             .map(|hash| {
@@ -186,9 +183,17 @@ impl ChainState {
                     .inner
                     .get_cursor(hash)
                     .expect("leaf that we just saw is now gone");
+                let last_nonempty = {
+                    let mut cursor = cursor.parent().expect("must have parent at this point");
+                    while cursor.get_streamlet().is_none() && cursor.parent().is_some() {
+                        cursor = cursor.parent().unwrap()
+                    }
+                    cursor.header().hash()
+                };
                 AbbrBlockResponse {
                     abbr_block: cursor.to_state().to_block().abbreviate(),
-                    metadata: cursor.get_streamlet(),
+                    metadata: cursor.get_streamlet().unwrap(),
+                    last_nonempty,
                 }
             })
             .collect()
@@ -226,53 +231,66 @@ impl ChainState {
     }
 
     /// Attempts to apply a full-block response from a gossip peer.
-    pub fn apply_block_response(
-        &mut self,
-        response: FullBlockResponse,
-    ) -> Result<(), ApplyBlockErr> {
-        let existing_metadata = self
+    pub fn apply_block_response(&mut self, response: FullBlockResponse) -> anyhow::Result<()> {
+        if self
             .inner
             .get_cursor(response.block.header.hash())
-            .map(|v| v.get_streamlet())
-            .flatten();
-        if let Some(mut metadata) = response.metadata.clone() {
-            if !metadata.is_signed_correctly(&response.block.abbreviate()) {
-                return Err(ApplyBlockErr::HeaderMismatch);
-            }
-            if let Some(Some(previous_metadata)) = self
-                .inner
-                .get_cursor(response.block.header.hash())
-                .map(|v| v.get_streamlet())
-            {
-                if previous_metadata.proposer != metadata.proposer {
-                    return Err(ApplyBlockErr::HeaderMismatch);
-                }
-                for (voter, vote) in previous_metadata.votes {
-                    metadata.votes.insert(voter, vote);
-                }
-            }
-            // Now we must validate the metadata to make sure it all makes sense
-            let abbr_block = response.block.abbreviate();
-            let mut real_votes = BTreeMap::new();
-            for (voter, vote) in metadata.votes.iter() {
-                if vote.verify(*voter, &abbr_block) {
-                    real_votes.insert(*voter, vote.clone());
-                }
-            }
-            metadata.votes = real_votes;
-
-            self.inner
-                .apply_block(&response.block, &stdcode::serialize(&metadata).unwrap())?;
-        } else {
-            self.inner.apply_block(
+            .is_none()
+        {
+            self.inject_proposal(
                 &response.block,
-                &(if let Some(existing_metadata) = existing_metadata {
-                    stdcode::serialize(&existing_metadata).unwrap()
-                } else {
-                    vec![]
-                }),
+                response.metadata.proposer,
+                response.metadata.proposal_sig,
+                response.last_nonempty,
             )?;
         }
+        let voting_for = response.block.header.hash();
+        for (voter, vote) in response.metadata.votes {
+            self.inject_vote(voting_for, voter, vote)?;
+        }
+        // let existing_metadata = self
+        //     .inner
+        //     .get_cursor(response.block.header.hash())
+        //     .map(|v| v.get_streamlet())
+        //     .flatten();
+        // if let Some(mut metadata) = response.metadata.clone() {
+        //     if !metadata.is_signed_correctly(&response.block.abbreviate()) {
+        //         return Err(ApplyBlockErr::HeaderMismatch);
+        //     }
+        //     if let Some(Some(previous_metadata)) = self
+        //         .inner
+        //         .get_cursor(response.block.header.hash())
+        //         .map(|v| v.get_streamlet())
+        //     {
+        //         if previous_metadata.proposer != metadata.proposer {
+        //             return Err(ApplyBlockErr::HeaderMismatch);
+        //         }
+        //         for (voter, vote) in previous_metadata.votes {
+        //             metadata.votes.insert(voter, vote);
+        //         }
+        //     }
+        //     // Now we must validate the metadata to make sure it all makes sense
+        //     let abbr_block = response.block.abbreviate();
+        //     let mut real_votes = BTreeMap::new();
+        //     for (voter, vote) in metadata.votes.iter() {
+        //         if vote.verify(*voter, &abbr_block) {
+        //             real_votes.insert(*voter, vote.clone());
+        //         }
+        //     }
+        //     metadata.votes = real_votes;
+
+        //     self.inner
+        //         .apply_block(&response.block, &stdcode::serialize(&metadata).unwrap())?;
+        // } else {
+        //     self.inner.apply_block(
+        //         &response.block,
+        //         &(if let Some(existing_metadata) = existing_metadata {
+        //             stdcode::serialize(&existing_metadata).unwrap()
+        //         } else {
+        //             vec![]
+        //         }),
+        //     )?;
+        // }
         Ok(())
     }
 
@@ -388,11 +406,16 @@ impl ChainState {
         }
     }
 
-    fn get_descendants(&self, mut stack: Vec<Cursor<'_, InMemoryBackend>>) -> BTreeSet<HashVal> {
+    fn get_nonempty_descendants(
+        &self,
+        mut stack: Vec<Cursor<'_, InMemoryBackend>>,
+    ) -> BTreeSet<HashVal> {
         let mut toret = BTreeSet::new();
         while let Some(top) = stack.pop() {
             for child in top.children() {
-                toret.insert(child.header().hash());
+                if child.get_streamlet().is_some() {
+                    toret.insert(child.header().hash());
+                }
                 stack.push(child);
             }
         }

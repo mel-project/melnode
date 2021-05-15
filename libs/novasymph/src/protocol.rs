@@ -24,7 +24,7 @@ use crate::{
         },
         ChainState,
     },
-    msg::{ProposalSig, VoteSig},
+    msg::ProposalSig,
 };
 
 /// A trait that represents a "mempool".
@@ -313,6 +313,7 @@ async fn gossiper_loop<B: BlockBuilder>(
                         let full_resp = FullBlockResponse {
                             block,
                             metadata: abbr_response.metadata,
+                            last_nonempty: abbr_response.last_nonempty,
                         };
                         full_responses.push(full_resp);
                     }

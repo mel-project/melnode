@@ -17,14 +17,16 @@ pub struct BlockRequest {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AbbrBlockResponse {
     pub abbr_block: AbbrBlock,
-    pub metadata: Option<StreamletMetadata>,
+    pub metadata: StreamletMetadata,
+    pub last_nonempty: HashVal,
 }
 
 /// A gossip response that contains information for one block, that has all the information needed
 #[derive(Clone, Debug)]
 pub struct FullBlockResponse {
     pub block: Block,
-    pub metadata: Option<StreamletMetadata>,
+    pub metadata: StreamletMetadata,
+    pub last_nonempty: HashVal,
 }
 
 /// A gossip request that solicits information about transactions.

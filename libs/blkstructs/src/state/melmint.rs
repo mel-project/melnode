@@ -95,6 +95,7 @@ fn process_swaps(mut state: State) -> State {
                 && (tx.outputs[0].denom == Denom::Mel || tx.outputs[0].denom.to_bytes() == tx.data)
         })
         .collect::<Vec<_>>();
+    log::warn!("{} swap requests", swap_reqs.len());
     // find the pools mentioned
     let mut pools = swap_reqs
         .iter()
@@ -109,6 +110,11 @@ fn process_swaps(mut state: State) -> State {
             .filter(|tx| Denom::from_bytes(&tx.data) == Some(pool))
             .cloned()
             .collect();
+        log::warn!(
+            "{} relevant swaps for pool {:?}",
+            relevant_swaps.len(),
+            pool
+        );
         let mut pool_state = state.pools.get(&pool).0.unwrap();
         // sum up total mels and toks
         let total_mels = relevant_swaps
@@ -132,13 +138,20 @@ fn process_swaps(mut state: State) -> State {
             })
             .fold(0u128, |a, b| a.saturating_add(b));
         // transmute coins
+        dbg!(total_mels, total_toks);
         let (mel_withdrawn, tok_withdrawn) = pool_state.swap_many(total_mels, total_toks);
+
         for mut swap in relevant_swaps {
+            let correct_coinid = swap.get_coinid(0);
+
             if swap.outputs[0].denom == Denom::Mel {
+                log::warn!("swapping output {}-0 to {:?}", swap.hash_nosigs(), pool);
                 swap.outputs[0].denom = pool;
-                swap.outputs[0].value =
-                    multiply_frac(tok_withdrawn, Ratio::new(swap.outputs[0].value, total_mels))
-                        .min(MAX_COINVAL);
+                swap.outputs[0].value = multiply_frac(
+                    dbg!(tok_withdrawn),
+                    dbg!(Ratio::new(swap.outputs[0].value, total_mels)),
+                )
+                .min(MAX_COINVAL);
             } else {
                 swap.outputs[0].denom = Denom::Mel;
                 swap.outputs[0].value =
@@ -146,9 +159,9 @@ fn process_swaps(mut state: State) -> State {
                         .min(MAX_COINVAL);
             }
             state.coins.insert(
-                swap.get_coinid(0),
+                correct_coinid,
                 CoinDataHeight {
-                    coin_data: swap.outputs[0].clone(),
+                    coin_data: dbg!(swap.outputs[0].clone()),
                     height: state.height,
                 },
             );
@@ -207,6 +220,7 @@ fn process_deposits(mut state: State) -> State {
         };
         // divvy up the liqs
         for mut deposit in relevant_txx {
+            let correct_coinid = deposit.get_coinid(0);
             let my_mtsqrt = deposit.outputs[0]
                 .value
                 .sqrt()
@@ -215,7 +229,7 @@ fn process_deposits(mut state: State) -> State {
             deposit.outputs[0].value =
                 multiply_frac(total_liqs, Ratio::new(my_mtsqrt, total_mtsqrt));
             state.coins.insert(
-                deposit.get_coinid(0),
+                correct_coinid,
                 CoinDataHeight {
                     coin_data: deposit.outputs[0].clone(),
                     height: state.height,
@@ -268,6 +282,9 @@ fn process_withdrawals(mut state: State) -> State {
         state.pools.insert(pool, pool_state);
         // divvy up the mel and tok
         for mut deposit in relevant_txx {
+            let coinid_0 = deposit.get_coinid(0);
+            let coinid_1 = deposit.get_coinid(1);
+
             let my_liqs = deposit.outputs[0].value;
             deposit.outputs[0].denom = Denom::Mel;
             deposit.outputs[0].value = multiply_frac(total_mel, Ratio::new(my_liqs, total_liqs));
@@ -279,14 +296,14 @@ fn process_withdrawals(mut state: State) -> State {
             };
 
             state.coins.insert(
-                deposit.get_coinid(0),
+                coinid_0,
                 CoinDataHeight {
                     coin_data: deposit.outputs[0].clone(),
                     height: state.height,
                 },
             );
             state.coins.insert(
-                deposit.get_coinid(1),
+                coinid_1,
                 CoinDataHeight {
                     coin_data: synth,
                     height: state.height,
@@ -359,7 +376,7 @@ pub fn liq_token_denom(pool: Denom) -> Denom {
 fn multiply_frac(x: u128, frac: Ratio<u128>) -> u128 {
     let frac = Ratio::new(BigInt::from(*frac.numer()), BigInt::from(*frac.denom()));
     let result = BigRational::from(BigInt::from(x)) * frac;
-    result.floor().denom().try_into().unwrap_or(u128::MAX)
+    result.floor().numer().try_into().unwrap_or(u128::MAX)
 }
 
 #[cfg(test)]
@@ -371,6 +388,11 @@ mod tests {
     };
 
     use super::*;
+
+    #[test]
+    fn math() {
+        assert_eq!(multiply_frac(1000, Ratio::new(2, 1)), 2000)
+    }
 
     #[test]
     // test a simple deposit flow
@@ -445,5 +467,27 @@ mod tests {
         for pool in second_sealed.inner_ref().pools.val_iter() {
             dbg!(pool);
         }
+        let swap_tx = Transaction {
+            kind: TxKind::Swap,
+            inputs: vec![newcoin_tx.get_coinid(0), newcoin_tx.get_coinid(1)],
+            outputs: vec![
+                CoinData {
+                    covhash: my_covhash,
+                    value: (1 << 64) - 2000000 - 2000000,
+                    denom: Denom::Mel,
+                    additional_data: vec![],
+                },
+                CoinData {
+                    covhash: my_covhash,
+                    value: 1 << 64,
+                    denom: Denom::Custom(newcoin_tx.hash_nosigs()),
+                    additional_data: vec![],
+                },
+            ],
+            fee: 2000000,
+            scripts: vec![melvm::Covenant::std_ed25519_pk_legacy(my_pk)],
+            data: newcoin_tx.hash_nosigs().to_vec(),
+            sigs: vec![],
+        };
     }
 }

@@ -139,11 +139,12 @@ mod tests {
     #[test]
     fn general() {
         let mut pool = PoolState::new_empty();
-        let _ = pool.deposit(1000, 1000);
-        for _ in 1..200 {
-            let _ = pool.swap_many(10, 10);
+        let _ = pool.deposit(634684496, 1579230128);
+        for _ in 1..5 {
+            let out = pool.swap_many(100, 0);
             dbg!(pool);
             dbg!(pool.liq_constant());
+            dbg!(out);
         }
     }
 }

@@ -24,6 +24,8 @@ pub enum VoteError {
     NoSuchBlock,
     #[error("voting for empty block")]
     EmptyBlock,
+    #[error("invalid signature")]
+    InvalidSignature,
 }
 
 /// An extension trait for dealing with Cursors.
@@ -89,7 +91,7 @@ impl StreamletMetadata {
             return false;
         }
         for (voter, vote) in self.votes.iter() {
-            if !vote.verify(*voter, voting_for) {
+            if !vote.verify(*voter, voting_for.header.hash()) {
                 return false;
             }
         }

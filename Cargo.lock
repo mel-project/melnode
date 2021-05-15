@@ -499,6 +499,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "beef"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "474a626a67200bd107d44179bb3d4fc61891172d11696609264589be6a0e6a43"
+
+[[package]]
 name = "bincode"
 version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -586,6 +592,7 @@ dependencies = [
  "im",
  "lazy_static",
  "log",
+ "logos",
  "melpow",
  "num",
  "num_enum",
@@ -593,6 +600,7 @@ dependencies = [
  "parking_lot 0.11.1",
  "quickcheck",
  "quickcheck_macros",
+ "rand 0.7.3",
  "rayon",
  "rstest",
  "serde",
@@ -1807,6 +1815,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "logos"
+version = "0.11.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b91c49573597a5d6c094f9031617bb1fed15c0db68c81e6546d313414ce107e4"
+dependencies = [
+ "logos-derive",
+]
+
+[[package]]
+name = "logos-derive"
+version = "0.11.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "797b1f8a0571b331c1b47e7db245af3dc634838da7a92b3bef4e30376ae1c347"
+dependencies = [
+ "beef",
+ "fnv",
+ "proc-macro2 1.0.26",
+ "quote 1.0.9",
+ "regex-syntax",
+ "syn 1.0.72",
+ "utf8-ranges",
+]
+
+[[package]]
 name = "lru"
 version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1829,27 +1861,6 @@ name = "matches"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ffc5c5338469d4d3ea17d269fa8ea3512ad247247c30bd2df69e68309ed0a08"
-
-[[package]]
-name = "melminter"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "blkstructs",
- "hex",
- "log",
- "melpow",
- "nodeprot",
- "serde",
- "serde_json",
- "smol",
- "smolscale 0.2.1",
- "stdcode",
- "structopt",
- "tmelcrypt",
- "tracing",
- "tracing-subscriber",
-]
 
 [[package]]
 name = "melnet"
@@ -3578,6 +3589,12 @@ dependencies = [
  "percent-encoding",
  "serde",
 ]
+
+[[package]]
+name = "utf8-ranges"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4ae116fef2b7fea257ed6440d3cfcff7f190865f170cdad00bb6465bf18ecba"
 
 [[package]]
 name = "utf8parse"
