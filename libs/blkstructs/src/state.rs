@@ -338,10 +338,17 @@ impl State {
     pub fn seal(mut self, action: Option<ProposerAction>) -> SealedState {
         // first apply melmint
         self = preseal_melmint(self);
+
+        let after_tip_901 = self.height >= 42700;
+
         // apply the proposer action
         if let Some(action) = action {
             // first let's move the fee multiplier
-            let max_movement = (self.fee_multiplier >> 7) as i64;
+            let max_movement = if after_tip_901 {
+                ((self.fee_multiplier >> 7) as i64).max(2)
+            } else {
+                (self.fee_multiplier >> 7) as i64
+            };
             let scaled_movement = max_movement * action.fee_multiplier_delta as i64 / 128;
             log::debug!(
                 "changing fee multiplier {} by {}",
@@ -353,6 +360,7 @@ impl State {
             } else {
                 self.fee_multiplier -= scaled_movement.abs() as u128;
             }
+
             // then it's time to collect the fees dude! we synthesize a coin with 1/65536 of the fee pool and all the tips.
             let base_fees = self.fee_pool >> 16;
             self.fee_pool -= base_fees;

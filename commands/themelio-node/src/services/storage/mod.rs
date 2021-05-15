@@ -164,9 +164,9 @@ impl Mempool {
 
     /// Tries to add a transaction to the mempool.
     pub fn apply_transaction(&mut self, tx: &Transaction) -> Result<(), StateError> {
-        if self.seen.put(tx.hash_nosigs(), tx.clone()).is_some() {
-            return Err(StateError::DuplicateTx);
-        }
+        // if self.seen.put(tx.hash_nosigs(), tx.clone()).is_some() {
+        //     return Err(StateError::DuplicateTx);
+        // }
         self.provisional_state.apply_tx(tx)
     }
 
