@@ -1,5 +1,5 @@
 pub use crate::stake::*;
-use crate::{constants::*, melvm::Covenant, preseal_melmint, CoinDataHeight, Denom, TxKind};
+use crate::{constants::*, melvm::Covenant, preseal_melmint, CoinDataHeight, Denom};
 use crate::{smtmapping::*, CoinData};
 use crate::{transaction as txn, CoinID};
 use applytx::StateHandle;
