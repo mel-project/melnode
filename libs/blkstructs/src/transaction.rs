@@ -177,9 +177,10 @@ impl Transaction {
         ballast: u128,
         deduct_from_idx: usize,
     ) -> Option<Self> {
-        self.fee += self.base_fee(fee_multiplier, ballast);
+        let delta_fee = self.base_fee(fee_multiplier, ballast);
+        self.fee += delta_fee;
         let deduct_from = self.outputs.get_mut(deduct_from_idx)?;
-        deduct_from.value = deduct_from.value.checked_sub(self.fee)?;
+        deduct_from.value = deduct_from.value.checked_sub(delta_fee)?;
         Some(self)
     }
 }
