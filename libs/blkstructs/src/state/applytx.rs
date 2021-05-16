@@ -1,4 +1,4 @@
-use std::convert::TryInto;
+use std::{collections::HashSet, convert::TryInto};
 
 use dashmap::DashMap;
 use parking_lot::Mutex;
@@ -50,7 +50,11 @@ impl<'a> StateHandle<'a> {
 
     /// Applies a batch of transactions, returning an error if any of them fail. Consumes and re-returns the handle; if any fail the handle is gone.
     pub fn apply_tx_batch(mut self, txx: &[Transaction]) -> Result<Self, StateError> {
-        for tx in txx {
+        let txx: HashSet<Transaction> = txx.iter().cloned().collect();
+        for tx in txx.iter() {
+            if self.state.transactions.get(&tx.hash_nosigs()).0.is_some() {
+                return Err(StateError::DuplicateTx);
+            }
             if !tx.is_well_formed() {
                 return Err(StateError::MalformedTx);
             }
@@ -155,9 +159,15 @@ impl<'a> StateHandle<'a> {
                 if tx.kind == TxKind::DoscMint && *currency == Denom::NomDosc {
                     continue;
                 }
-                if *currency != Denom::NewCoin
-                    && *value != *in_coins.get(currency).unwrap_or(&u128::MAX)
-                {
+                let in_value = *in_coins.get(currency).unwrap_or(&u128::MAX);
+                if *currency != Denom::NewCoin && *value != in_value {
+                    log::warn!(
+                        "unbalanced: {} {:?} in, {} {:?} out",
+                        in_value,
+                        currency,
+                        value,
+                        currency
+                    );
                     return Err(StateError::UnbalancedInOut);
                 }
             }

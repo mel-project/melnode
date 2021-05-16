@@ -60,7 +60,7 @@ async fn pool_items(
     let snapshot = client.snapshot().await.map_err(to_badgateway)?;
     let last_height = snapshot.current_header().height;
     let blocks = last_height.min(blocks);
-    const DIVIDER: u64 = 100;
+    const DIVIDER: u64 = 300;
     // at most DIVIDER points
     let snapshot = &snapshot;
     let mut item_futs = FuturesUnordered::new();
