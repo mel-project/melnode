@@ -8,7 +8,7 @@ use tmelcrypt::HashVal;
 use crate::{AbbreviatedBlock, NodeRequest, StateSummary, Substate};
 
 /// This trait represents a server of Themelio's node protocol. Actual nodes should implement this.
-pub trait NodeServer {
+pub trait NodeServer: Send + Sync {
     /// Broadcasts a transaction to the network
     fn send_tx(&self, state: melnet::NetState, tx: Transaction) -> melnet::Result<()>;
 
@@ -43,12 +43,12 @@ impl<S: NodeServer> NodeResponder<S> {
 }
 
 impl<S: NodeServer> melnet::Endpoint<NodeRequest, Vec<u8>> for NodeResponder<S> {
-    fn respond(&mut self, req: Request<NodeRequest, Vec<u8>>) {
+    fn respond(&self, req: Request<NodeRequest, Vec<u8>>) {
         let state = req.state.clone();
         match req.body.clone() {
             NodeRequest::SendTx(tx) => req
                 .response
-                .send(self.server.send_tx(state, tx).map(|_| vec![])),
+                .send(self.server.send_tx(state, tx).map(|_| Vec::new())),
             NodeRequest::GetSummary => req.response.send(
                 self.server
                     .get_summary()

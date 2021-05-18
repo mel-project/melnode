@@ -56,6 +56,7 @@ pub fn calculate_reward(my_speed: u128, dosc_speed: u128, difficulty: u32) -> u1
 }
 
 /// Presealing function that is called before a state is sealed to apply melmint actions.
+#[tracing::instrument]
 pub fn preseal_melmint(state: State) -> State {
     let state = create_builtins(state);
     let state = process_swaps(state);
@@ -78,6 +79,7 @@ fn create_builtins(mut state: State) -> State {
 }
 
 /// Process swaps.
+#[tracing::instrument]
 fn process_swaps(mut state: State) -> State {
     // find the swap requests
     let swap_reqs = state
@@ -95,7 +97,7 @@ fn process_swaps(mut state: State) -> State {
                 && (tx.outputs[0].denom == Denom::Mel || tx.outputs[0].denom.to_bytes() == tx.data)
         })
         .collect::<Vec<_>>();
-    log::warn!("{} swap requests", swap_reqs.len());
+    log::trace!("{} swap requests", swap_reqs.len());
     // find the pools mentioned
     let mut pools = swap_reqs
         .iter()
@@ -110,7 +112,7 @@ fn process_swaps(mut state: State) -> State {
             .filter(|tx| Denom::from_bytes(&tx.data) == Some(pool))
             .cloned()
             .collect();
-        log::warn!(
+        log::trace!(
             "{} relevant swaps for pool {:?}",
             relevant_swaps.len(),
             pool
@@ -172,6 +174,7 @@ fn process_swaps(mut state: State) -> State {
 }
 
 /// Process deposits.
+#[tracing::instrument]
 fn process_deposits(mut state: State) -> State {
     // find the deposit requests
     let deposit_reqs = state
@@ -242,6 +245,7 @@ fn process_deposits(mut state: State) -> State {
 }
 
 /// Process deposits.
+#[tracing::instrument]
 fn process_withdrawals(mut state: State) -> State {
     // find the withdrawal requests
     let withdraw_reqs = state
@@ -315,6 +319,7 @@ fn process_withdrawals(mut state: State) -> State {
 }
 
 /// Process pegging.
+#[tracing::instrument]
 fn process_pegging(mut state: State) -> State {
     // first calculate the implied sym/nomDOSC exchange rate
     let x_s = state
@@ -384,7 +389,7 @@ mod tests {
     use crate::{
         melvm,
         testing::fixtures::{genesis_mel_coin_id, genesis_state},
-        CoinID, Denom,
+        CoinID, Denom, HexBytes,
     };
 
     use super::*;

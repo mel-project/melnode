@@ -1,4 +1,4 @@
-use crate::{constants::*, melvm};
+use crate::{constants::*, melvm, HexBytes};
 use arbitrary::Arbitrary;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -64,7 +64,7 @@ pub struct Transaction {
     pub scripts: Vec<melvm::Covenant>,
     #[serde(with = "stdcode::hex")]
     pub data: Vec<u8>,
-    pub sigs: Vec<Vec<u8>>,
+    pub sigs: Vec<HexBytes>,
 }
 
 impl Transaction {
@@ -104,7 +104,7 @@ impl Transaction {
     }
     /// sign_ed25519 consumes the transaction, appends an ed25519 signature, adn returns it..
     pub fn signed_ed25519(mut self, sk: tmelcrypt::Ed25519SK) -> Self {
-        self.sigs.push(sk.sign(&self.hash_nosigs().0));
+        self.sigs.push(sk.sign(&self.hash_nosigs().0).into());
         self
     }
     /// total_outputs returns a HashMap mapping each type of coin to its total value. Fees will be included in COINTYPE_TMEL.

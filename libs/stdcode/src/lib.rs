@@ -1,5 +1,7 @@
+use std::ops::{Deref, DerefMut};
+
 use bincode::Options;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 pub mod hex;
 pub mod hex32;
 

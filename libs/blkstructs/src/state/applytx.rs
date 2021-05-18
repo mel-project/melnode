@@ -52,7 +52,9 @@ impl<'a> StateHandle<'a> {
     pub fn apply_tx_batch(mut self, txx: &[Transaction]) -> Result<Self, StateError> {
         let txx: HashSet<Transaction> = txx.iter().cloned().collect();
         for tx in txx.iter() {
-            if self.state.transactions.get(&tx.hash_nosigs()).0.is_some() {
+            if self.state.transactions.get(&tx.hash_nosigs()).0.is_some()
+                && tx.kind == TxKind::Faucet
+            {
                 return Err(StateError::DuplicateTx);
             }
             if !tx.is_well_formed() {
@@ -177,7 +179,7 @@ impl<'a> StateHandle<'a> {
 
     fn apply_tx_fees(&mut self, tx: &Transaction) -> Result<(), StateError> {
         // fees
-        let min_fee = dbg!(tx.base_fee(dbg!(self.state.fee_multiplier), 0));
+        let min_fee = tx.base_fee(self.state.fee_multiplier, 0);
         if tx.fee < min_fee {
             return Err(StateError::InsufficientFees(min_fee));
         }

@@ -151,33 +151,6 @@ mod tests {
         assert_eq!(actual_last_path, expected_last_path);
     }
 
-    // TODO: determine if we need endian support and
-    // either impl below tests or ensure happy path
-    // handle system endianess checks in some way
-    // #[test]
-    // fn test_key_to_path_first_byte_little_endian() {
-    //     // TODO
-    // }
-    //
-    // #[test]
-    // fn test_key_to_path_first_byte_big_endian() {
-    //     // TODO
-    // }
-
-    fn test_key_to_path_happy_path() {
-        let hv = HashVal::random();
-        let actual_path = key_to_path(hv.clone());
-        let mut expected_path = Vec::new();
-        for &byt in hv.0.iter() {
-            for j in 0..8 {
-                expected_path.push(MSB_SET & byt >> j != 0);
-            }
-        }
-
-        let actual_path = key_to_path(hv);
-        assert_eq!(expected_path, actual_path.to_vec());
-    }
-
     #[test]
     fn test_decompress_none_when_length_is_zero() {
         // create empty vector

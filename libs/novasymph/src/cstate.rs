@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 mod helpers;
-use blkdb::{backends::InMemoryBackend, ApplyBlockErr, BlockTree, Cursor};
+use blkdb::{backends::InMemoryBackend, BlockTree, Cursor};
 use blkstructs::{Block, SealedState, StakeMapping, STAKE_EPOCH};
 use helpers::*;
 
@@ -34,6 +34,11 @@ impl ChainState {
 
             drained_height: 0,
         }
+    }
+
+    /// Does this block exist?
+    pub fn has_block(&self, blkhash: HashVal) -> bool {
+        self.inner.get_cursor(blkhash).is_some()
     }
 
     /// Process a proposal. Returns an error if the proposal is unacceptable for whatever reason.
@@ -102,7 +107,10 @@ impl ChainState {
                 })
                 .unwrap(),
             )
-            .map_err(|_| ProposalError::InvalidBlock)?;
+            .map_err(|e| {
+                log::warn!("error applying block: {:?}", e);
+                ProposalError::InvalidBlock
+            })?;
         Ok(())
     }
 

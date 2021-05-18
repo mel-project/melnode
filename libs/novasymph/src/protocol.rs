@@ -254,7 +254,7 @@ async fn gossiper_loop<B: BlockBuilder>(
                                 unknown.push(txhash);
                             }
                         }
-                        log::debug!(
+                        log::trace!(
                             "({}) {} known, {} unknown for {}",
                             random_peer,
                             known.len(),
@@ -319,7 +319,7 @@ async fn gossiper_loop<B: BlockBuilder>(
                     }
                     let mut cstate = cstate.write();
                     if !full_responses.is_empty() {
-                        log::debug!("({}) applying {} blocks", random_peer, full_responses.len());
+                        log::trace!("({}) applying {} blocks", random_peer, full_responses.len());
                     }
                     for full_resp in full_responses {
                         if let Err(err) = cstate.apply_block_response(full_resp) {
@@ -357,7 +357,7 @@ async fn confirmer_loop(
     });
 
     let (send_fut, recv_fut) = smol::channel::bounded(128);
-    let mut confirmed_generator = FuturesOrdered::<Boxed<ConfirmedState>>::new();
+    let mut confirmed_generator = FuturesOrdered::<Boxed<Option<ConfirmedState>>>::new();
     let _piper = {
         // let cstate = cstate.clone();
         // let known_votes = known_votes.clone();
@@ -369,7 +369,9 @@ async fn confirmer_loop(
                 };
                 let end_evt = async {
                     if let Some(res) = confirmed_generator.next().await {
-                        send_confirmed.send(res).await.unwrap();
+                        if let Some(res) = res {
+                            send_confirmed.send(res).await.unwrap();
+                        }
                         None
                     } else {
                         smol::future::pending().await
@@ -389,6 +391,7 @@ async fn confirmer_loop(
             log::warn!("skipping out-of-bounds finalized block");
             continue;
         }
+        let my_hash = finalized.header().hash();
         let own_signature = signing_sk.sign(&finalized.header().hash());
         let sigs = UnconfirmedBlock {
             state: finalized,
@@ -402,6 +405,8 @@ async fn confirmer_loop(
         let known_votes = known_votes.clone();
         let cstate = cstate.clone();
         let network = network.clone();
+
+        // This future resolves to either a confirmed block, or nothing. Nothing is when the cstate no longer has this block due to external intervention.
         let confirm_fut = async move {
             while !known_votes
                 .read()
@@ -409,6 +414,9 @@ async fn confirmer_loop(
                 .unwrap()
                 .is_confirmed(cstate.read().stakes())
             {
+                if !cstate.read().has_block(my_hash) {
+                    log::warn!("breaking out of confirmation loop due to external intervention")
+                }
                 if let Some(random_peer) = network.routes().into_iter().next() {
                     log::debug!("confirming block {} with {}", my_height, random_peer);
                     let their_sigs = melnet::request::<_, BTreeMap<Ed25519PK, Vec<u8>>>(
@@ -442,11 +450,11 @@ async fn confirmer_loop(
                         ),
                     }
                 }
-                smol::Timer::after(Duration::from_millis(1000)).await;
+                smol::Timer::after(Duration::from_millis(100)).await;
             }
 
             let sigs = known_votes.read().get(&my_height).cloned().unwrap();
-            sigs.state.confirm(sigs.signatures, None).unwrap()
+            Some(sigs.state.confirm(sigs.signatures, None).unwrap())
         };
         send_fut.send(confirm_fut.boxed()).await.unwrap();
     }

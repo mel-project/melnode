@@ -17,10 +17,13 @@ pub use state::melmint::*;
 mod transaction;
 pub use constants::*;
 mod smtmapping;
+use arbitrary::Arbitrary;
 pub use fastsync::*;
+use serde::{Deserialize, Serialize};
 pub use smtmapping::*;
 pub use state::melswap::PoolState;
 pub use state::*;
+use std::ops::{Deref, DerefMut};
 pub use transaction::*;
 
 mod fastsync;
@@ -30,3 +33,30 @@ mod fastsync;
 extern crate lazy_static;
 
 mod testing;
+
+#[derive(
+    Arbitrary, Serialize, Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default,
+)]
+/// A type that wraps a bytevector, serializing as hexadecimal for JSON.
+#[serde(transparent)]
+pub struct HexBytes(#[serde(with = "stdcode::hex")] pub Vec<u8>);
+
+impl Deref for HexBytes {
+    type Target = Vec<u8>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for HexBytes {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl From<Vec<u8>> for HexBytes {
+    fn from(val: Vec<u8>) -> Self {
+        Self(val)
+    }
+}

@@ -18,13 +18,13 @@ mod tests {
         let genesis = State::genesis(&forest, GenesisConfig::std_testnet()).seal(None);
         tree.set_genesis(genesis.clone(), &[]);
         assert!(tree.get_tips()[0].header() == genesis.header());
-        eprintln!("{}", tree.debug_graphviz());
+        eprintln!("{}", tree.debug_graphviz(|_| "gray".into()));
 
         let mut next_state = genesis;
         for _ in 0..10 {
             next_state = next_state.next_state().seal(None);
             tree.apply_block(&next_state.to_block(), &[]).unwrap();
         }
-        eprintln!("{}", tree.debug_graphviz());
+        eprintln!("{}", tree.debug_graphviz(|_| "gray".into()));
     }
 }

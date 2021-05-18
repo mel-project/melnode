@@ -494,6 +494,11 @@ impl SealedState {
         basis.apply_tx_batch(&block.transactions.iter().cloned().collect::<Vec<_>>())?;
         let basis = basis.seal(block.proposer_action);
         if basis.header() != block.header {
+            log::warn!(
+                "post-apply header {:?} doesn't match declared header {:?}",
+                basis.header(),
+                block.header
+            );
             return Err(StateError::WrongHeader);
         }
         Ok(basis)

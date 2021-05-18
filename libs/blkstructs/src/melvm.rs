@@ -1,5 +1,5 @@
 pub use crate::{CoinData, CoinID, Transaction};
-use crate::{CoinDataHeight, Denom, Header};
+use crate::{CoinDataHeight, Denom, Header, HexBytes};
 use arbitrary::Arbitrary;
 use ethnum::U256;
 use serde::{Deserialize, Serialize};
@@ -32,7 +32,7 @@ pub const ADDR_LAST_HEADER: u16 = 10;
 
 #[derive(Clone, Eq, PartialEq, Debug, Arbitrary, Serialize, Deserialize, Hash)]
 /// A MelVM covenant. Essentially, given a transaction that attempts to spend it, it either allows the transaction through or doesn't.
-pub struct Covenant(pub Vec<u8>);
+pub struct Covenant(#[serde(with = "stdcode::hex")] pub Vec<u8>);
 
 /// A pointer to the currently executing instruction.
 type ProgramCounter = usize;
@@ -731,11 +731,7 @@ impl Executor {
     fn run_return(&mut self, ops: &[OpCode]) -> bool {
         self.run_bare(ops);
         let res = self.stack.pop();
-        if res == None || res == Some(Value::Int(U256::from(0u32))) {
-            false
-        } else {
-            true
-        }
+        !(res == None || res == Some(Value::Int(U256::from(0u32))))
     }
 }
 
@@ -1009,6 +1005,12 @@ impl From<Denom> for Value {
 impl From<Vec<u8>> for Value {
     fn from(v: Vec<u8>) -> Self {
         Value::Bytes(v.into_iter().collect::<im::Vector<u8>>())
+    }
+}
+
+impl From<HexBytes> for Value {
+    fn from(v: HexBytes) -> Self {
+        Value::Bytes(v.0.into_iter().collect::<im::Vector<u8>>())
     }
 }
 

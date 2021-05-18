@@ -39,9 +39,10 @@ impl<B: DbBackend> BlockTree<B> {
         let next_state = previous
             .apply_block(block)
             .map_err(ApplyBlockErr::CannotValidate)?;
-        if next_state.header() != block.header {
-            return Err(ApplyBlockErr::HeaderMismatch);
-        }
+
+        // apply block should already have checked this
+        assert_eq!(next_state.header(), block.header);
+
         self.inner.insert_block(next_state, init_metadata);
         Ok(())
     }

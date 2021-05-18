@@ -149,10 +149,9 @@ impl NetState {
         trace!("got command {:?} from {:?}", cmd, conn.peer_addr());
         // respond to command
         let response_fut = {
-            let mut verbs = self.verbs.lock();
-            let responder = verbs.get_mut(&cmd.verb);
+            let responder = self.verbs.lock().get(&cmd.verb).cloned();
             if let Some(responder) = responder {
-                Some((responder.0)(&cmd.payload))
+                Some(responder.0(&cmd.payload))
             } else {
                 None
             }

@@ -1,3 +1,5 @@
+#![allow(clippy::float_cmp)]
+
 use crate::SmtMapping;
 use serde::{Deserialize, Serialize};
 
@@ -104,7 +106,7 @@ mod tests {
     }
 
     #[rstest(
-        staked_syms => [vec![100 as u128], vec![100 as u128, 10], vec![1 as u128, 2 as u128, 3 as u128]]
+        staked_syms => [vec![100u128], vec![100u128, 10], vec![1u128, 2u128, 3u128]]
     )]
     fn test_non_staker_has_no_vote_power(staked_syms: Vec<u128>) {
         // Generate genesis block for stakers
@@ -120,7 +122,7 @@ mod tests {
         let vote_power = genesis.stakes.vote_power(0, pk);
 
         // assert they have no vote power
-        assert_eq!(vote_power, 0 as f64)
+        assert_eq!(vote_power, 0.0)
     }
 
     #[rstest(

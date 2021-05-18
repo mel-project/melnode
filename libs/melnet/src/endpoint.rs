@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use serde::{de::DeserializeOwned, Serialize};
 use smol::channel::Sender;
 use smol::prelude::*;
@@ -5,15 +7,15 @@ use smol::prelude::*;
 use crate::MelnetError;
 
 /// An Endpoint responds to Requests. Requests are responded to by calling `Request::respond()` rather than by return value to simplify asynchronous handling.
-pub trait Endpoint<Req: DeserializeOwned, Resp: Serialize> {
+pub trait Endpoint<Req: DeserializeOwned, Resp: Serialize>: Send + Sync {
     /// Handle a request. This should not block. Implementations should do things like move the Request to background tasks/threads to avoid this.
-    fn respond(&mut self, req: Request<Req, Resp>);
+    fn respond(&self, req: Request<Req, Resp>);
 }
 
-impl<Req: DeserializeOwned, Resp: Serialize, F: FnMut(Request<Req, Resp>) + 'static + Send>
+impl<Req: DeserializeOwned, Resp: Serialize, F: Fn(Request<Req, Resp>) + 'static + Send + Sync>
     Endpoint<Req, Resp> for F
 {
-    fn respond(&mut self, req: Request<Req, Resp>) {
+    fn respond(&self, req: Request<Req, Resp>) {
         (self)(req)
     }
 }
@@ -24,7 +26,7 @@ pub(crate) fn responder_to_closure<
     Resp: Serialize + Send + 'static,
 >(
     state: crate::NetState,
-    mut responder: impl Endpoint<Req, Resp> + 'static + Send,
+    responder: impl Endpoint<Req, Resp> + 'static + Send,
 ) -> BoxedResponder {
     let clos = move |bts: &[u8]| {
         let decoded: Result<Req, _> = stdcode::deserialize(&bts);
@@ -52,12 +54,13 @@ pub(crate) fn responder_to_closure<
             }
         }
     };
-    BoxedResponder(Box::new(clos))
+    BoxedResponder(Arc::new(clos))
 }
 
 #[allow(clippy::type_complexity)]
+#[derive(Clone)]
 pub(crate) struct BoxedResponder(
-    pub Box<dyn FnMut(&[u8]) -> smol::future::Boxed<crate::Result<Vec<u8>>> + Send>,
+    pub Arc<dyn Fn(&[u8]) -> smol::future::Boxed<crate::Result<Vec<u8>>> + Send + Sync>,
 );
 
 /// A `Request<Req, Resp>` carries a stdcode-compatible request of type `Req and can be responded to with responses of type Resp.

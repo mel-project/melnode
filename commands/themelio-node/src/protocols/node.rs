@@ -118,17 +118,19 @@ struct AuditorResponder {
 
 impl NodeServer for AuditorResponder {
     fn send_tx(&self, state: melnet::NetState, tx: Transaction) -> melnet::Result<()> {
+        let start = Instant::now();
         self.storage
             .write()
             .mempool_mut()
             .apply_transaction(&tx)
             .map_err(|e| {
-                log::warn!("cannot apply tx: {:?}", e);
+                // log::warn!("cannot apply tx: {:?}", e);
                 MelnetError::Custom(e.to_string())
             })?;
         log::debug!(
-            "txhash {:?} successfully inserted, gonna propagate now",
-            tx.hash_nosigs()
+            "txhash {}.. inserted ({:?})",
+            &tx.hash_nosigs().to_string()[..10],
+            start.elapsed()
         );
         // log::debug!("about to broadcast txhash {:?}", tx.hash_nosigs());
         for neigh in state.routes().iter().take(4).cloned() {
