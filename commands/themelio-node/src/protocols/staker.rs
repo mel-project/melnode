@@ -149,7 +149,9 @@ impl BlockBuilder for StorageBlockBuilder {
             next.to_block()
         } else {
             storage.mempool_mut().rebase(mempool_state.next_state());
-            mempool_state.to_block()
+            let blk = mempool_state.to_block();
+            // assert!(tip.apply_block(&blk).is_ok());
+            blk
         }
     }
 

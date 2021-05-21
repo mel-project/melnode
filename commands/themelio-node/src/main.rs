@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use structopt::StructOpt;
 mod config;
 mod protocols;
@@ -17,5 +19,26 @@ fn main() -> anyhow::Result<()> {
     //     .parse_filters("themelio_core")
     //     .init();
     let opts = NodeConfig::from_args();
+
+    // Create a background thread which checks for deadlocks
+    std::thread::spawn(move || loop {
+        std::thread::sleep(Duration::from_secs(1));
+        let deadlocks = parking_lot::deadlock::check_deadlock();
+        if deadlocks.is_empty() {
+            continue;
+        }
+
+        println!("{} deadlocks detected", deadlocks.len());
+        for (i, threads) in deadlocks.iter().enumerate() {
+            println!("Deadlock #{}", i);
+            for t in threads {
+                println!("Thread Id {:#?}", t.thread_id());
+                println!("{:#?}", t.backtrace());
+            }
+        }
+    });
+
+    // HACK: this gets rid of some stuff that appear to be deadlocks
+    // smolscale::permanently_single_threaded();
     smolscale::block_on(tasks::run_node(opts))
 }

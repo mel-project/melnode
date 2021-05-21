@@ -89,11 +89,12 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, state: SharedStor
                     let blklen = blocks.len();
                     for (blk, cproof) in blocks {
                         let res = state.write().apply_block(blk.clone(), cproof);
-                        if res.is_err() {
+                        if let Err(err) = res {
                             log::warn!(
-                                "{}: failed to apply block {} from other node",
+                                "{}: failed to apply block {} from other node: {:?}",
                                 tag(),
-                                blk.header.height
+                                blk.header.height,
+                                err
                             );
                             break;
                         }
@@ -119,18 +120,18 @@ struct AuditorResponder {
 impl NodeServer for AuditorResponder {
     fn send_tx(&self, state: melnet::NetState, tx: Transaction) -> melnet::Result<()> {
         let start = Instant::now();
-        self.storage
-            .write()
-            .mempool_mut()
-            .apply_transaction(&tx)
-            .map_err(|e| {
-                // log::warn!("cannot apply tx: {:?}", e);
-                MelnetError::Custom(e.to_string())
-            })?;
-        log::debug!(
-            "txhash {}.. inserted ({:?})",
+        let mut storage = self.storage.write();
+        let post_lock = Instant::now();
+        storage.mempool_mut().apply_transaction(&tx).map_err(|e| {
+            // log::warn!("cannot apply tx: {:?}", e);
+            MelnetError::Custom(e.to_string())
+        })?;
+        log::trace!(
+            "txhash {}.. inserted ({:?}, {:?} locking, {:?} applying)",
             &tx.hash_nosigs().to_string()[..10],
-            start.elapsed()
+            start.elapsed(),
+            post_lock - start,
+            post_lock.elapsed()
         );
         // log::debug!("about to broadcast txhash {:?}", tx.hash_nosigs());
         for neigh in state.routes().iter().take(4).cloned() {
@@ -155,16 +156,14 @@ impl NodeServer for AuditorResponder {
     }
 
     fn get_summary(&self) -> melnet::Result<StateSummary> {
-        let start = Instant::now();
         let storage = self.storage.read();
         let highest = storage.highest_state();
         let proof = storage
             .get_consensus(highest.header().height)
             .unwrap_or_default();
-        dbg!(start.elapsed());
         Ok(StateSummary {
             netid: self.network,
-            height: self.storage.read().highest_height(),
+            height: storage.highest_height(),
             header: highest.header(),
             proof,
         })

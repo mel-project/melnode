@@ -80,7 +80,7 @@ impl Client {
         req: TInput,
     ) -> Result<TOutput> {
         // Semaphore
-        static GLOBAL_LIMIT: Semaphore = Semaphore::new(32);
+        static GLOBAL_LIMIT: Semaphore = Semaphore::new(256);
         let _guard = GLOBAL_LIMIT.acquire().await;
 
         // grab a connection
@@ -155,7 +155,7 @@ async fn singlehost_monitor(
     }
 
     loop {
-        let heap_overflow = heap.len() > 64;
+        let heap_overflow = heap.len() > 256;
         let deadline = async {
             if heap_overflow {
             } else if let Some((min, _)) = heap.peek_min() {

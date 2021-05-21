@@ -2,7 +2,9 @@ use std::{net::SocketAddr, time::Duration};
 
 use anyhow::Context;
 use blkstructs::{Block, ConsensusProof, NetID, Transaction};
+use futures_util::stream::FuturesUnordered;
 use nodeprot::{AbbreviatedBlock, NodeClient};
+use smol::prelude::*;
 use smol_timeout::TimeoutExt;
 use tmelcrypt::HashVal;
 
@@ -68,16 +70,29 @@ async fn get_one_block(
             unknown_txhashes.push(txh);
         }
     }
-    for txh in unknown_txhashes {
-        let (tx_content, _proof) = client
-            .get_smt_branch(
-                height,
-                nodeprot::Substate::Transactions,
-                tmelcrypt::hash_single(&stdcode::serialize(&txh).unwrap()),
-            )
-            .await?;
-        // TODO check?
-        all_txx.push(stdcode::deserialize(&tx_content)?);
+    let mut get_tx_tasks = FuturesUnordered::new();
+    for txh in unknown_txhashes.iter() {
+        let client = &client;
+        get_tx_tasks.push(async move {
+            let (tx_content, _proof) = client
+                .get_smt_branch(
+                    height,
+                    nodeprot::Substate::Transactions,
+                    tmelcrypt::hash_single(&stdcode::serialize(&txh).unwrap()),
+                )
+                .await?;
+            // TODO check?
+            Ok::<_, anyhow::Error>(stdcode::deserialize(&tx_content)?)
+        });
+    }
+    while let Some(res) = get_tx_tasks.next().await {
+        all_txx.push(res?);
+        log::debug!(
+            "loaded {}/{} txx for block {}",
+            all_txx.len(),
+            unknown_txhashes.len(),
+            height,
+        );
     }
     // now we should be able to construct the state
     let new_block = Block {

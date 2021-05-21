@@ -86,7 +86,8 @@ impl ChainState {
                     last = last.next_state().seal(None);
                     to_apply.push(last.to_block());
                 }
-                if last.apply_block(&proposed_block).is_err() {
+                if let Err(err) = last.apply_block(&proposed_block) {
+                    log::warn!("problem applying block: {:?}", err);
                     return Err(ProposalError::InvalidBlock);
                 }
             }

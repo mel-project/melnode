@@ -18,7 +18,6 @@ use governor::{
 use nodeprot::NodeClient;
 use priority_queue::PriorityQueue;
 use rand::prelude::*;
-use smol::prelude::*;
 use smol_timeout::TimeoutExt;
 use structopt::StructOpt;
 use tmelcrypt::Ed25519SK;
@@ -114,11 +113,11 @@ async fn spammer(
         );
         lim.until_ready().await;
 
-        let num_to_gather = (rand::random::<usize>() % 200).max(1).min(coin_queue.len());
+        let num_to_gather = (rand::random::<usize>() % 5).max(1).min(coin_queue.len());
         let inputs = (0..num_to_gather)
             .map(|_| coin_queue.pop().unwrap().0)
             .collect::<Vec<_>>();
-        let num_outputs = (rand::random::<usize>() % 200).max(1);
+        let num_outputs = (rand::random::<usize>() % 5).max(1);
         let total_input = inputs.iter().map(|v| v.value).sum::<u128>();
         let outputs = (0..num_outputs)
             .map(|_| (total_input - MICRO_CONVERTER) / (num_outputs as u128))

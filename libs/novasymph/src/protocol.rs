@@ -175,7 +175,7 @@ async fn protocol_loop<B: BlockBuilder>(
                 );
                 continue;
             }
-            let build_upon_hash = build_upon.header().hash();
+            let last_nonempty_hash = build_upon.header().hash();
             // fill in a bunch of empty blocks until the height matches
             while build_upon.inner_ref().height + 1 < height {
                 build_upon = build_upon.next_state().seal(None);
@@ -200,17 +200,46 @@ async fn protocol_loop<B: BlockBuilder>(
                     }))
                     .to_block()
             } else {
-                cfg.builder.build_block(build_upon)
+                cfg.builder.build_block(build_upon.clone())
             };
             // inject proposal
-            cstate
-                .inject_proposal(
-                    &proposed_block,
-                    cfg.signing_sk.to_public(),
-                    ProposalSig::generate(cfg.signing_sk, &proposed_block.abbreviate()),
-                    build_upon_hash,
-                )
-                .expect("failed to inject a self-created proposal");
+            if let Err(err) = cstate.inject_proposal(
+                &proposed_block,
+                cfg.signing_sk.to_public(),
+                ProposalSig::generate(cfg.signing_sk, &proposed_block.abbreviate()),
+                last_nonempty_hash,
+            ) {
+                log::error!("***** OH MY GOD VERY FATAL ERROR (issue #27) *****");
+                log::error!("Error: {:?}", err);
+                log::error!(
+                    "while building upon {} with block hash {} with {} txx, last_nonempty {}",
+                    build_upon.header().hash(),
+                    proposed_block.header.hash(),
+                    proposed_block.transactions.len(),
+                    last_nonempty_hash
+                );
+                log::error!(
+                    "did I fail again? {}",
+                    build_upon.apply_block(&proposed_block).is_err()
+                );
+                for _ in 0..10 {
+                    let mut build_upon_state = build_upon.inner_ref().clone();
+                    build_upon_state
+                        .apply_tx_batch(
+                            &proposed_block
+                                .transactions
+                                .iter()
+                                .cloned()
+                                .collect::<Vec<_>>(),
+                        )
+                        .unwrap();
+                    log::error!(
+                        "possible coins hash: {}",
+                        build_upon_state.coins.root_hash()
+                    )
+                }
+                panic!("PANIK PANIK");
+            }
             // vote for it myself
             cstate.vote_all(cfg.signing_sk);
         }
@@ -391,7 +420,7 @@ async fn confirmer_loop(
             log::warn!("skipping out-of-bounds finalized block");
             continue;
         }
-        let my_hash = finalized.header().hash();
+        let my_header = finalized.header();
         let own_signature = signing_sk.sign(&finalized.header().hash());
         let sigs = UnconfirmedBlock {
             state: finalized,
@@ -414,11 +443,22 @@ async fn confirmer_loop(
                 .unwrap()
                 .is_confirmed(cstate.read().stakes())
             {
-                if !cstate.read().has_block(my_hash) {
+                if !cstate.read().has_block(my_header.previous) {
                     log::warn!("breaking out of confirmation loop due to external intervention")
                 }
                 if let Some(random_peer) = network.routes().into_iter().next() {
-                    log::debug!("confirming block {} with {}", my_height, random_peer);
+                    log::debug!(
+                        "confirming block {} with {}; known votes {:?}",
+                        my_height,
+                        random_peer,
+                        known_votes
+                            .read()
+                            .get(&my_height)
+                            .unwrap()
+                            .signatures
+                            .keys()
+                            .collect::<Vec<_>>()
+                    );
                     let their_sigs = melnet::request::<_, BTreeMap<Ed25519PK, Vec<u8>>>(
                         random_peer,
                         "symphgossip",
@@ -430,6 +470,11 @@ async fn confirmer_loop(
                     let sigs = known_votes.get_mut(&my_height).unwrap();
                     match their_sigs {
                         Ok(their_sigs) => {
+                            log::debug!(
+                                "got {} confirmation sigs from {}",
+                                their_sigs.len(),
+                                random_peer
+                            );
                             for (key, signature) in their_sigs {
                                 if cstate
                                     .read()

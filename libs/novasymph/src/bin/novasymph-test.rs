@@ -77,7 +77,8 @@ async fn run_staker(idx: usize, genesis: SealedState, forest: autosmt::Forest) {
     });
     loop {
         let blk = protocol.next_confirmed().await;
-        log::warn!("CONFIRMED {:?}", blk.inner().header().height)
+        log::warn!("CONFIRMED {:?}", blk.inner().header().height);
+        protocol.reset_genesis(blk.inner().clone());
     }
 }
 

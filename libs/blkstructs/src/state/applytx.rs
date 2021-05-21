@@ -50,10 +50,11 @@ impl<'a> StateHandle<'a> {
 
     /// Applies a batch of transactions, returning an error if any of them fail. Consumes and re-returns the handle; if any fail the handle is gone.
     pub fn apply_tx_batch(mut self, txx: &[Transaction]) -> Result<Self, StateError> {
-        let txx: HashSet<Transaction> = txx.iter().cloned().collect();
+        let mut seen = HashSet::new();
         for tx in txx.iter() {
-            if self.state.transactions.get(&tx.hash_nosigs()).0.is_some()
-                && tx.kind == TxKind::Faucet
+            if tx.kind == TxKind::Faucet
+                && (!seen.insert(tx.hash_nosigs())
+                    || self.state.transactions.get(&tx.hash_nosigs()).0.is_some())
             {
                 return Err(StateError::DuplicateTx);
             }

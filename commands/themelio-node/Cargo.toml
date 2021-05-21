@@ -28,7 +28,7 @@ nodeprot={path="../../libs/nodeprot"}
 novasymph={path="../../libs/novasymph"}
 blkdb={path="../../libs/blkdb"}
 im="15"
-parking_lot="0.11"
+parking_lot={version="0.11", features=["deadlock_detection"]}
 
 dashmap="4"
 

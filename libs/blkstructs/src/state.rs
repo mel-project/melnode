@@ -5,6 +5,7 @@ use crate::{transaction as txn, CoinID};
 use applytx::StateHandle;
 use defmac::defmac;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use rand::prelude::SliceRandom;
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use arbitrary::Arbitrary;
@@ -324,7 +325,7 @@ impl State {
 
     pub fn apply_tx_batch(&mut self, txx: &[txn::Transaction]) -> Result<(), StateError> {
         let old_hash = self.coins.root_hash();
-        StateHandle::new(self).apply_tx_batch(txx)?.commit();
+        StateHandle::new(self).apply_tx_batch(&txx)?.commit();
         log::debug!(
             "applied a batch of {} txx to {:?} => {:?}",
             txx.len(),
@@ -471,6 +472,10 @@ impl SealedState {
         for tx in self.0.transactions.val_iter() {
             txx.insert(tx);
         }
+        // self check since im sometimes is buggy
+        for tx in self.0.transactions.val_iter() {
+            assert!(txx.contains(&tx));
+        }
         Block {
             header: self.header(),
             transactions: txx,
@@ -491,13 +496,19 @@ impl SealedState {
     /// Applies a block to this state.
     pub fn apply_block(&self, block: &Block) -> Result<SealedState, StateError> {
         let mut basis = self.next_state();
-        basis.apply_tx_batch(&block.transactions.iter().cloned().collect::<Vec<_>>())?;
+        let mut basis2 = self.next_state();
+        let mut transactions = block.transactions.iter().cloned().collect::<Vec<_>>();
+        basis.apply_tx_batch(&transactions)?;
+        transactions.shuffle(&mut rand::thread_rng());
+        basis2.apply_tx_batch(&transactions)?;
+        assert_eq!(basis.coins.root_hash(), basis2.coins.root_hash());
         let basis = basis.seal(block.proposer_action);
         if basis.header() != block.header {
             log::warn!(
-                "post-apply header {:?} doesn't match declared header {:?}",
+                "post-apply header {:?} doesn't match declared header {:?} with {} txx",
                 basis.header(),
-                block.header
+                block.header,
+                transactions.len()
             );
             return Err(StateError::WrongHeader);
         }
