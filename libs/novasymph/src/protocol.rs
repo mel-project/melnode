@@ -222,6 +222,7 @@ async fn protocol_loop<B: BlockBuilder>(
                     "did I fail again? {}",
                     build_upon.apply_block(&proposed_block).is_err()
                 );
+                log::error!("proposer action: {:?}", proposed_block.proposer_action);
                 for _ in 0..10 {
                     let mut build_upon_state = build_upon.inner_ref().clone();
                     build_upon_state
@@ -235,7 +236,11 @@ async fn protocol_loop<B: BlockBuilder>(
                         .unwrap();
                     log::error!(
                         "possible coins hash: {}",
-                        build_upon_state.coins.root_hash()
+                        build_upon_state
+                            .seal(proposed_block.proposer_action)
+                            .inner_ref()
+                            .coins
+                            .root_hash()
                     )
                 }
                 panic!("PANIK PANIK");
