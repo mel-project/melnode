@@ -10,6 +10,7 @@ use blkstructs::{ConsensusProof, NetID, Transaction};
 use melnet::MelnetError;
 use nodeprot::{AbbreviatedBlock, NodeClient, NodeResponder, NodeServer, StateSummary, Substate};
 use smol::net::TcpListener;
+use smol_timeout::TimeoutExt;
 use tmelcrypt::HashVal;
 
 use crate::services::storage::SharedStorage;
@@ -126,7 +127,7 @@ impl NodeServer for AuditorResponder {
             // log::warn!("cannot apply tx: {:?}", e);
             MelnetError::Custom(e.to_string())
         })?;
-        log::trace!(
+        log::debug!(
             "txhash {}.. inserted ({:?}, {:?} locking, {:?} applying)",
             &tx.hash_nosigs().to_string()[..10],
             start.elapsed(),
@@ -138,8 +139,13 @@ impl NodeServer for AuditorResponder {
             let tx = tx.clone();
             let network = self.network;
             // log::debug!("bcast {:?} => {:?}", tx.hash_nosigs(), neigh);
-            smolscale::spawn(async move { NodeClient::new(network, neigh).send_tx(tx).await })
-                .detach();
+            smolscale::spawn(async move {
+                NodeClient::new(network, neigh)
+                    .send_tx(tx)
+                    .timeout(Duration::from_secs(10))
+                    .await
+            })
+            .detach();
         }
         Ok(())
     }

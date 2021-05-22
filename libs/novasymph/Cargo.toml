@@ -27,7 +27,7 @@ env_logger="0.8"
 smolscale="0.2"
 futures-util="0.3"
 melnet={path="../melnet"}
-
+stacker="0.1.13"
 broadcaster={version="1"}
 
 fastrand="1"

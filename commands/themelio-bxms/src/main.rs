@@ -46,9 +46,9 @@ async fn main_inner() -> anyhow::Result<()> {
     // TODO read this from an argument
     if args.testnet {
         client.trust(
-            2550,
+            65447,
             HashVal(
-                hex::decode("2b2133e34779c4043278a5d084671a7a801022605dba2721e2d164d9c1096c13")?
+                hex::decode("68aebb894d48cb46e599f7a6bcf3727a0429fc798f6ec2870bdc9e1b0340f1d0")?
                     .try_into()
                     .unwrap(),
             ),

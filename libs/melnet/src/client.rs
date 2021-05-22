@@ -80,7 +80,8 @@ impl Client {
         req: TInput,
     ) -> Result<TOutput> {
         // Semaphore
-        static GLOBAL_LIMIT: Semaphore = Semaphore::new(256);
+        static GLOBAL_LIMIT: Semaphore = Semaphore::new(64);
+        let start = Instant::now();
         let _guard = GLOBAL_LIMIT.acquire().await;
 
         // grab a connection
@@ -112,6 +113,10 @@ impl Client {
         };
         // put the connection back
         self.recycle(conn);
+        let elapsed = start.elapsed();
+        if elapsed.as_secs_f64() > 3.0 {
+            log::warn!("melnet req to {} took {:?}", addr, elapsed)
+        }
         Ok(response)
     }
 }

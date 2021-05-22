@@ -7,6 +7,7 @@ use melnet::Request;
 use parking_lot::RwLock;
 use smol::{channel::Receiver, future::Boxed};
 use smol::{channel::Sender, prelude::*};
+use smol_timeout::TimeoutExt;
 use std::{
     collections::BTreeMap,
     convert::TryInto,
@@ -224,7 +225,7 @@ async fn protocol_loop<B: BlockBuilder>(
                 );
                 log::error!("proposer action: {:?}", proposed_block.proposer_action);
                 for _ in 0..10 {
-                    let mut build_upon_state = build_upon.inner_ref().clone();
+                    let mut build_upon_state = build_upon.next_state();
                     build_upon_state
                         .apply_tx_batch(
                             &proposed_block
@@ -258,7 +259,7 @@ async fn gossiper_loop<B: BlockBuilder>(
     cfg: Arc<EpochConfig<B>>,
 ) -> ! {
     'mainloop: loop {
-        smol::Timer::after(Duration::from_millis(100)).await;
+        smol::Timer::after(Duration::from_millis(1000)).await;
         if let Some(random_peer) = network.routes().get(0) {
             // log::debug!("gossipping with {}", random_peer);
             // create a new block request
@@ -269,10 +270,12 @@ async fn gossiper_loop<B: BlockBuilder>(
                 "get_blocks",
                 block_req,
             )
+            .timeout(Duration::from_secs(5))
             .await;
             match response {
-                Err(err) => log::warn!("gossip failed with {}: {:?}", random_peer, err),
-                Ok(mut res) => {
+                None => log::warn!("gossip timed out with {}", random_peer),
+                Some(Err(err)) => log::warn!("gossip failed with {}: {:?}", random_peer, err),
+                Some(Ok(mut res)) => {
                     // log::debug!("({}) {} responses gotten", random_peer, res.len());
                     res.sort_unstable_by_key(|v| v.abbr_block.header.height);
                     // we now "fill in" everything
@@ -386,6 +389,11 @@ async fn confirmer_loop(
                 .cloned()
                 .map(|v: UnconfirmedBlock| v.signatures)
                 .unwrap_or_default();
+            log::debug!(
+                "responding to confirm request for {} with {} sigs",
+                height,
+                res.len()
+            );
             req.response.send(Ok(res))
         }
     });

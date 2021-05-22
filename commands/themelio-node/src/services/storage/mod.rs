@@ -1,7 +1,7 @@
 #![allow(clippy::upper_case_acronyms)]
 
 mod sled_tree;
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use blkdb::{traits::DbBackend, BlockTree};
 use blkstructs::{ConsensusProof, GenesisConfig, SealedState, State, StateError, Transaction};
@@ -48,7 +48,9 @@ impl NodeStorage {
         let mempool_state = history.get_tips()[0].to_state().next_state();
         Self {
             mempool: Mempool {
-                provisional_state: mempool_state,
+                provisional_state: mempool_state.clone(),
+                last_rebase: mempool_state,
+                txx_in_state: vec![],
                 seen: LruCache::new(100000),
             },
             history,
@@ -153,6 +155,8 @@ impl DbBackend for SledBackend {
 /// Mempool encapsulates a "mempool" --- a provisional state that is used to form new blocks by stakers, or provisionally validate transactions by auditors.
 pub struct Mempool {
     provisional_state: State,
+    last_rebase: State,
+    txx_in_state: Vec<Transaction>,
     seen: LruCache<HashVal, Transaction>, // TODO: caches if benchmarks prove them helpful
 }
 
@@ -167,7 +171,9 @@ impl Mempool {
         // if self.seen.put(tx.hash_nosigs(), tx.clone()).is_some() {
         //     return Err(StateError::DuplicateTx);
         // }
-        self.provisional_state.apply_tx(tx)
+        self.provisional_state.apply_tx(tx)?;
+        self.txx_in_state.push(tx.clone());
+        Ok(())
     }
 
     /// Forcibly replaces the internal state of the mempool with the given state.
@@ -182,7 +188,10 @@ impl Mempool {
                 let count = self.provisional_state.transactions.val_iter().count();
                 log::warn!("*** THROWING AWAY {} MEMPOOL TXX ***", count);
             }
-            self.provisional_state = state;
+            assert!(state.transactions.is_empty());
+            self.provisional_state = state.clone();
+            self.last_rebase = state;
+            self.txx_in_state.clear();
         }
     }
 
@@ -191,5 +200,51 @@ impl Mempool {
             .peek(&hash)
             .cloned()
             .or_else(|| self.provisional_state.transactions.get(&hash).0)
+    }
+
+    pub fn debug_verify(&self) {
+        let mut lrb = self.last_rebase.clone();
+        let mut panic = false;
+        if let Err(err) = lrb.apply_tx_batch(&self.txx_in_state) {
+            log::error!(
+                "We recorded txx_in_state, but batch-applying them failed with {:?}",
+                err
+            );
+            panic = true;
+        }
+
+        if lrb.coins.root_hash() != self.provisional_state.coins.root_hash() {
+            log::error!(
+                "Batch-applying recorded tx got coins {}, should have been {}",
+                lrb.coins.root_hash(),
+                self.provisional_state.coins.root_hash(),
+            );
+            panic = true;
+        }
+
+        if panic {
+            let mut lrb = self.last_rebase.clone();
+            log::error!("**** P A N I K ****");
+            let mut seen = HashSet::new();
+            log::error!("Trying to apply them one-by-one now...");
+            for (idx, tx) in self.txx_in_state.iter().enumerate() {
+                log::error!(
+                    "tx {}/{}: {}, hash {}",
+                    idx,
+                    self.txx_in_state.len(),
+                    tx.kind,
+                    tx.hash_nosigs(),
+                );
+                if !seen.insert(tx.clone()) {
+                    log::error!(">>>> DUPLICATE ?! <<<<");
+                }
+                if let Err(err) = lrb.apply_tx(tx) {
+                    panic!("can't proceed now. {}", err)
+                }
+                log::error!("coins hash is now {}", lrb.coins.root_hash());
+            }
+            panic!("P A N I K");
+        }
+        log::info!("mempool verified with {} txx", self.txx_in_state.len());
     }
 }

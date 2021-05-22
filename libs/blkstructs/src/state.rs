@@ -496,12 +496,8 @@ impl SealedState {
     /// Applies a block to this state.
     pub fn apply_block(&self, block: &Block) -> Result<SealedState, StateError> {
         let mut basis = self.next_state();
-        let mut basis2 = self.next_state();
-        let mut transactions = block.transactions.iter().cloned().collect::<Vec<_>>();
+        let transactions = block.transactions.iter().cloned().collect::<Vec<_>>();
         basis.apply_tx_batch(&transactions)?;
-        transactions.shuffle(&mut rand::thread_rng());
-        basis2.apply_tx_batch(&transactions)?;
-        assert_eq!(basis.coins.root_hash(), basis2.coins.root_hash());
         let basis = basis.seal(block.proposer_action);
         if basis.header() != block.header {
             log::warn!(

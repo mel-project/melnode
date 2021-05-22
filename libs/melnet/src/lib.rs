@@ -151,7 +151,8 @@ impl NetState {
         let response_fut = {
             let responder = self.verbs.lock().get(&cmd.verb).cloned();
             if let Some(responder) = responder {
-                Some(responder.0(&cmd.payload))
+                let res = smol::unblock(move || responder.0(&cmd.payload)).await;
+                Some(res)
             } else {
                 None
             }

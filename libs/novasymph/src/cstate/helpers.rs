@@ -2,9 +2,11 @@ use std::collections::BTreeMap;
 
 use blkdb::{backends::InMemoryBackend, Cursor};
 use blkstructs::{AbbrBlock, StakeMapping};
+use once_cell::sync::Lazy;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tmelcrypt::Ed25519PK;
+use tmelcrypt::{Ed25519PK, HashVal};
 
 use crate::msg::{ProposalSig, VoteSig};
 
@@ -45,17 +47,27 @@ impl<'a> CursorExt for Cursor<'a, InMemoryBackend> {
     }
 
     fn chain_weight(&self) -> u64 {
-        let mut tip = self.clone();
-        let mut weight = if tip.get_streamlet().is_some() { 1 } else { 0 };
-        while let Some(parent) = tip.parent() {
-            weight += if parent.get_streamlet().is_some() {
-                1
-            } else {
-                0
-            };
-            tip = parent;
+        static MEMOIZER: Lazy<RwLock<BTreeMap<HashVal, u64>>> = Lazy::new(Default::default);
+
+        if let Some(val) = MEMOIZER.read().get(&self.header().hash()) {
+            return *val;
         }
-        weight
+        let value = {
+            match self.parent() {
+                Some(parent) => {
+                    let parent_weight =
+                        stacker::maybe_grow(32 * 1024, 1024 * 1024, || parent.chain_weight());
+                    if self.get_streamlet().is_none() {
+                        parent_weight
+                    } else {
+                        parent_weight + 1
+                    }
+                }
+                None => 1,
+            }
+        };
+        MEMOIZER.write().insert(self.header().hash(), value);
+        value
     }
 }
 

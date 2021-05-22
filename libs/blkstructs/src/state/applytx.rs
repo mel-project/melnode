@@ -6,8 +6,8 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use tmelcrypt::HashVal;
 
 use crate::{
-    melvm::CovenantEnv, CoinDataHeight, CoinID, Denom, NetID, StakeDoc, State, StateError,
-    Transaction, TxKind, COVHASH_DESTROY, STAKE_EPOCH,
+    melvm::CovenantEnv, CoinData, CoinDataHeight, CoinID, Denom, NetID, StakeDoc, State,
+    StateError, Transaction, TxKind, COVHASH_DESTROY, STAKE_EPOCH,
 };
 
 use super::melmint;
@@ -25,6 +25,13 @@ pub(crate) struct StateHandle<'a> {
     dosc_speed_cache: Mutex<u128>,
 
     stakes_cache: DashMap<HashVal, StakeDoc>,
+}
+
+fn faucet_dedup_pseudocoin(txhash: HashVal) -> CoinID {
+    CoinID {
+        txhash: tmelcrypt::hash_keyed(b"fdp", &txhash),
+        index: 0,
+    }
 }
 
 impl<'a> StateHandle<'a> {
@@ -50,13 +57,25 @@ impl<'a> StateHandle<'a> {
 
     /// Applies a batch of transactions, returning an error if any of them fail. Consumes and re-returns the handle; if any fail the handle is gone.
     pub fn apply_tx_batch(mut self, txx: &[Transaction]) -> Result<Self, StateError> {
-        let mut seen = HashSet::new();
         for tx in txx.iter() {
-            if tx.kind == TxKind::Faucet
-                && (!seen.insert(tx.hash_nosigs())
-                    || self.state.transactions.get(&tx.hash_nosigs()).0.is_some())
-            {
-                return Err(StateError::DuplicateTx);
+            if tx.kind == TxKind::Faucet {
+                let pseudocoin = faucet_dedup_pseudocoin(tx.hash_nosigs());
+                if self.state.coins.get(&pseudocoin).0.is_some() {
+                    return Err(StateError::DuplicateTx);
+                } else {
+                    self.state.coins.insert(
+                        pseudocoin,
+                        CoinDataHeight {
+                            coin_data: CoinData {
+                                denom: Denom::Mel,
+                                value: 0,
+                                additional_data: vec![],
+                                covhash: HashVal::default(),
+                            },
+                            height: 0,
+                        },
+                    );
+                }
             }
             if !tx.is_well_formed() {
                 return Err(StateError::MalformedTx);
