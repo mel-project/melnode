@@ -204,6 +204,7 @@ impl State {
                 for (k, v) in cfg.stakes.iter() {
                     stakes.insert(*k, *v);
                 }
+                dbg!(stakes.root_hash());
                 stakes
             },
         };

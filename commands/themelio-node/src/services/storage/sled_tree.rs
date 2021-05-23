@@ -70,7 +70,7 @@ impl novasmt::BackendDB for SledTreeDB {
                         rcount = rcount.saturating_sub(1);
                         if rcount == 0 {
                             log::debug!("deleting {}", hex::encode(&top));
-                            tree.remove(&top);
+                            tree.remove(&top).unwrap();
                             if let BackendNode::Internal(left, right) = bnode {
                                 dfs_stack.push(left);
                                 dfs_stack.push(right);
