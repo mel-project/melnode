@@ -7,12 +7,12 @@ pub use tree::*;
 mod tests {
     use blkstructs::{GenesisConfig, State};
 
-    use crate::{backends::InMemoryBackend, BlockTree};
+    use crate::{backends::InMemoryDb, BlockTree};
 
     #[test]
     fn simple_test() {
-        let backend = InMemoryBackend::default();
-        let forest = autosmt::Forest::load(autosmt::MemDB::default());
+        let backend = InMemoryDb::default();
+        let forest = novasmt::Forest::new(novasmt::InMemoryBackend::default());
         let mut tree = BlockTree::new(backend, forest.clone());
         assert!(tree.get_tips().is_empty());
         let genesis = State::genesis(&forest, GenesisConfig::std_testnet()).seal(None);

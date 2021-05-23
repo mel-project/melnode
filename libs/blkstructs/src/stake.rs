@@ -40,19 +40,21 @@ impl SmtMapping<tmelcrypt::HashVal, StakeDoc> {
 
     /// Filter out all the elements that no longer matter.
     pub fn remove_stale(&mut self, epoch: u64) {
-        let stale_key_hashes = self.mapping.iter().filter_map(|(kh, v)| {
-            let v: StakeDoc = stdcode::deserialize(&v).unwrap();
-            if epoch > v.e_post_end {
-                Some(kh)
-            } else {
-                None
-            }
-        });
-        let mut new_tree = self.mapping.clone();
+        let stale_key_hashes = self
+            .mapping
+            .iter()
+            .filter_map(|(kh, v)| {
+                let v: StakeDoc = stdcode::deserialize(&v).unwrap();
+                if epoch > v.e_post_end {
+                    Some(kh)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
         for stale_key in stale_key_hashes {
-            new_tree = new_tree.set(stale_key, b"");
+            self.mapping.insert(stale_key, Default::default());
         }
-        self.mapping = new_tree
     }
 }
 
@@ -68,7 +70,7 @@ mod tests {
     /// Create a state using a mapping from sk to syms staked for an epoch
     fn create_state(stakers: &HashMap<Ed25519SK, u128>, epoch_start: u64) -> State {
         // Create emtpy state
-        let db = autosmt::Forest::load(autosmt::MemDB::default());
+        let db = novasmt::Forest::new(novasmt::InMemoryBackend::default());
         let mut state = State::new_empty_testnet(db);
 
         // Insert a mel coin into state so we can transact
@@ -126,7 +128,7 @@ mod tests {
     }
 
     #[rstest(
-        staked_syms => [vec![100 as u128, 200 as u128, 300 as u128], vec![100 as u128, 10], vec![1 as u128, 2 as u128, 30 as u128]]
+        staked_syms => [vec![100_u128, 200_u128, 300 as u128], vec![100 as u128, 10], vec![1 as u128, 2 as u128, 30 as u128]]
     )]
     fn test_staker_has_correct_vote_power_in_epoch(staked_syms: Vec<u128>) {
         // Generate state for stakers
@@ -234,7 +236,7 @@ mod tests {
         state.stakes.remove_stale(100000000000);
 
         for (_key, value) in state.stakes.mapping.iter() {
-            assert_eq!(value, b"");
+            assert_eq!(value.as_ref(), b"");
         }
     }
 
@@ -253,7 +255,7 @@ mod tests {
         state.stakes.remove_stale(100);
 
         for (_key, value) in state.stakes.mapping.iter() {
-            assert_ne!(value, b"");
+            assert_ne!(value.as_ref(), b"");
         }
     }
 }

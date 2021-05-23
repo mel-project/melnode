@@ -38,7 +38,5 @@ fn main() -> anyhow::Result<()> {
         }
     });
 
-    // HACK: this gets rid of some stuff that appear to be deadlocks
-    // smolscale::permanently_single_threaded();
     smolscale::block_on(tasks::run_node(opts))
 }

@@ -157,7 +157,7 @@ fn test_melswap_v2_simple(
 
 #[test]
 fn state_simple_order_independence() {
-    let db = autosmt::Forest::load(autosmt::MemDB::default());
+    let db = novasmt::Forest::new(novasmt::InMemoryBackend::default());
     let (pk, sk) = tmelcrypt::ed25519_keygen();
     let scr = melvm::Covenant::std_ed25519_pk_legacy(pk);
     let mut genesis = State::test_genesis(db, MICRO_CONVERTER * 1000, scr.hash(), &[]);
@@ -204,8 +204,8 @@ fn state_simple_order_independence() {
 // TODO: Create an integration/smp_mapping.rs integration test and move this there.
 #[test]
 fn smt_mapping() {
-    let db = autosmt::Forest::load(autosmt::MemDB::default());
-    let tree = db.get_tree(tmelcrypt::HashVal::default());
+    let db = novasmt::Forest::new(novasmt::InMemoryBackend::default());
+    let tree = db.open_tree(Default::default()).unwrap();
     let mut map: SmtMapping<u64, u64> = SmtMapping::new(tree.clone());
     for i in 0..10 {
         map.insert(i, i);

@@ -18,7 +18,7 @@ pub struct NodeStorage {
     mempool: Mempool,
 
     history: BlockTree<SledBackend>,
-    forest: autosmt::Forest,
+    forest: novasmt::Forest,
 }
 
 impl NodeStorage {
@@ -34,9 +34,16 @@ impl NodeStorage {
 
     /// Opens a NodeStorage, given a sled database.
     pub fn new(db: sled::Db, genesis: GenesisConfig) -> Self {
-        let forest = autosmt::Forest::load(SledTreeDB::new(db.open_tree("autosmt").unwrap()));
+        // Identify the genesis by the genesis ID
+        let genesis_id = tmelcrypt::hash_single(stdcode::serialize(&genesis).unwrap());
+
+        let forest = novasmt::Forest::new(SledTreeDB::new(
+            db.open_tree(format!("{}-autosmt", genesis_id)).unwrap(),
+        ));
         let blktree_backend = SledBackend {
-            inner: db.open_tree("node_blktree").unwrap(),
+            inner: db
+                .open_tree(format!("{}-node_blktree", genesis_id))
+                .unwrap(),
         };
         let mut history = BlockTree::new(blktree_backend, forest.clone());
 
@@ -122,7 +129,7 @@ impl NodeStorage {
     }
 
     /// Gets the forest.
-    pub fn forest(&self) -> autosmt::Forest {
+    pub fn forest(&self) -> novasmt::Forest {
         self.forest.clone()
     }
 }

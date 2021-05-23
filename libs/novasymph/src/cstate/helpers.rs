@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use blkdb::{backends::InMemoryBackend, Cursor};
+use blkdb::{backends::InMemoryDb, Cursor};
 use blkstructs::{AbbrBlock, StakeMapping};
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
@@ -36,7 +36,7 @@ pub trait CursorExt {
     fn chain_weight(&self) -> u64;
 }
 
-impl<'a> CursorExt for Cursor<'a, InMemoryBackend> {
+impl<'a> CursorExt for Cursor<'a, InMemoryDb> {
     fn get_streamlet(&self) -> Option<StreamletMetadata> {
         let metadata = self.metadata();
         if metadata.is_empty() {

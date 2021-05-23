@@ -20,7 +20,7 @@ static TEST_SKK: Lazy<Vec<Ed25519SK>> =
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("novasymph")).init();
-    let forest = autosmt::Forest::load(autosmt::MemDB::default());
+    let forest = novasmt::Forest::new(novasmt::InMemoryBackend::default());
     let genesis = State::genesis(
         &forest,
         GenesisConfig {
@@ -61,7 +61,7 @@ fn idx_to_addr(idx: usize) -> SocketAddr {
     format!("127.0.0.1:{}", idx + 20000).parse().unwrap()
 }
 
-async fn run_staker(idx: usize, genesis: SealedState, forest: autosmt::Forest) {
+async fn run_staker(idx: usize, genesis: SealedState, forest: novasmt::Forest) {
     let protocol = EpochProtocol::new(EpochConfig {
         listen: idx_to_addr(idx),
         bootstrap: (0..COUNT).map(idx_to_addr).collect(),

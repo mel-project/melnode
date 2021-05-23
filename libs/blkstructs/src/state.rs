@@ -5,7 +5,6 @@ use crate::{transaction as txn, CoinID};
 use applytx::StateHandle;
 use defmac::defmac;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use rand::prelude::SliceRandom;
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use arbitrary::Arbitrary;
@@ -186,8 +185,8 @@ fn read_bts(r: &mut impl Read, n: usize) -> Option<Vec<u8>> {
 
 impl State {
     /// Creates a new State from a config
-    pub fn genesis(db: &autosmt::Forest, cfg: GenesisConfig) -> Self {
-        let empty_tree = db.get_tree(HashVal::default());
+    pub fn genesis(db: &novasmt::Forest, cfg: GenesisConfig) -> Self {
+        let empty_tree = db.open_tree(HashVal::default().0).unwrap();
         let mut new_state = Self {
             network: cfg.network,
             height: 0,
@@ -240,13 +239,13 @@ impl State {
     }
 
     /// Restores a state from its partial encoding in conjunction with a database. **Does not validate data and will panic; do not use on untrusted data**
-    pub fn from_partial_encoding_infallible(mut encoding: &[u8], db: &autosmt::Forest) -> Self {
+    pub fn from_partial_encoding_infallible(mut encoding: &[u8], db: &novasmt::Forest) -> Self {
         defmac!(readu8 => u8::from_be_bytes(read_bts(&mut encoding, 1).unwrap().as_slice().try_into().unwrap()));
         defmac!(readu64 => u64::from_be_bytes(read_bts(&mut encoding, 8).unwrap().as_slice().try_into().unwrap()));
         defmac!(readu128 => u128::from_be_bytes(read_bts(&mut encoding, 16).unwrap().as_slice().try_into().unwrap()));
-        defmac!(readtree => SmtMapping::new(db.get_tree(tmelcrypt::HashVal(
+        defmac!(readtree => SmtMapping::new(db.open_tree(
             read_bts(&mut encoding, 32).unwrap().as_slice().try_into().unwrap(),
-        ))));
+        ).unwrap()));
         let network: NetID = readu8!().try_into().unwrap();
         let height = readu64!();
         let history = readtree!();
@@ -281,7 +280,7 @@ impl State {
 
     /// Generates a test genesis state, with a given starting coin.
     pub fn test_genesis(
-        db: autosmt::Forest,
+        db: novasmt::Forest,
         start_micro_mels: u128,
         start_cov_hash: tmelcrypt::HashVal,
         start_stakeholders: &[tmelcrypt::Ed25519PK],
@@ -321,6 +320,15 @@ impl State {
     /// Applies a single transaction.
     pub fn apply_tx(&mut self, tx: &txn::Transaction) -> Result<(), StateError> {
         self.apply_tx_batch(std::slice::from_ref(tx))
+    }
+
+    /// Saves all the SMTs to disk.
+    pub fn save_smts(&mut self) {
+        self.history.mapping.save();
+        self.coins.mapping.save();
+        self.pools.mapping.save();
+        self.transactions.mapping.save();
+        self.stakes.mapping.save();
     }
 
     pub fn apply_tx_batch(&mut self, txx: &[txn::Transaction]) -> Result<(), StateError> {
@@ -381,13 +389,13 @@ impl State {
             self.coins.insert(pseudocoin_id, pseudocoin_data);
         }
         // create the finalized state
-        SealedState(Arc::new(self), action)
+        SealedState(self, action)
     }
 
     // ----------- helpers start here ------------
 
-    pub(crate) fn new_empty_testnet(db: autosmt::Forest) -> Self {
-        let empty_tree = db.get_tree(tmelcrypt::HashVal::default());
+    pub(crate) fn new_empty_testnet(db: novasmt::Forest) -> Self {
+        let empty_tree = db.open_tree(Default::default()).unwrap();
         State {
             network: NetID::Testnet,
             height: 0,
@@ -407,17 +415,22 @@ impl State {
 /// SealedState represents an immutable state at a finalized block height.
 /// It cannot be constructed except through sealing a State or restoring from persistent storage.
 #[derive(Clone, Debug)]
-pub struct SealedState(Arc<State>, Option<ProposerAction>);
+pub struct SealedState(State, Option<ProposerAction>);
 
 impl SealedState {
     /// Forcibly creates a SealedState.
     pub(crate) fn force_new(state: State) -> Self {
-        Self(Arc::new(state), None)
+        Self(state, None)
     }
 
     /// Returns a reference to the State finalized within.
     pub fn inner_ref(&self) -> &State {
         &self.0
+    }
+
+    /// Saves the inner state to disk.
+    pub fn save_smts(&mut self) {
+        self.0.save_smts()
     }
 
     /// Returns whether or not it's empty.
@@ -432,12 +445,9 @@ impl SealedState {
     }
 
     /// Decodes from the partial encoding.
-    pub fn from_partial_encoding_infallible(bts: &[u8], db: &autosmt::Forest) -> Self {
+    pub fn from_partial_encoding_infallible(bts: &[u8], db: &novasmt::Forest) -> Self {
         let tmp: (Vec<u8>, Option<ProposerAction>) = stdcode::deserialize(&bts).unwrap();
-        SealedState(
-            Arc::new(State::from_partial_encoding_infallible(&tmp.0, db)),
-            tmp.1,
-        )
+        SealedState(State::from_partial_encoding_infallible(&tmp.0, db), tmp.1)
     }
 
     /// Returns the block header represented by the finalized state.
@@ -501,7 +511,7 @@ impl SealedState {
         let basis = basis.seal(block.proposer_action);
         if basis.header() != block.header {
             log::warn!(
-                "post-apply header {:?} doesn't match declared header {:?} with {} txx",
+                "post-apply header {:#?} doesn't match declared header {:#?} with {} txx",
                 basis.header(),
                 block.header,
                 transactions.len()

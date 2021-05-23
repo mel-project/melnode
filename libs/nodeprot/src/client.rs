@@ -4,13 +4,13 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use autosmt::{CompressedProof, FullProof};
 use blkstructs::{
     Block, CoinDataHeight, CoinID, ConsensusProof, Denom, Header, NetID, PoolState, SmtMapping,
     StakeDoc, StakeMapping, Transaction, STAKE_EPOCH,
 };
 use futures_util::stream::FuturesUnordered;
 use melnet::MelnetError;
+use novasmt::{CompressedProof, Forest, FullProof, InMemoryBackend};
 use serde::{de::DeserializeOwned, Serialize};
 use smol::stream::StreamExt;
 use tmelcrypt::HashVal;
@@ -107,7 +107,7 @@ impl ValClient {
     /// Helper function to obtain the trusted staker set.
     async fn get_trusted_stakers(&self) -> melnet::Result<(u64, StakeMapping)> {
         let (trusted_height, trusted_hash) = self.trusted_height.lock().unwrap().unwrap();
-        let temp_forest = autosmt::Forest::load(autosmt::MemDB::default());
+        let temp_forest = Forest::new(InMemoryBackend::default());
         let stakers = self.raw.get_stakers_raw(trusted_height).await?;
         // first obtain trusted SMT branch
         let (abbr_block, _) = self.raw.get_abbr_block(trusted_height).await?;
@@ -117,11 +117,11 @@ impl ValClient {
             ));
         }
         let trusted_stake_hash = abbr_block.header.stakes_hash;
-        let mut mapping = temp_forest.get_tree(HashVal::default());
+        let mut mapping = temp_forest.open_tree(Default::default()).unwrap();
         for (k, v) in stakers {
-            mapping = mapping.set(k, &v);
+            mapping.insert(k.0, v.into());
         }
-        if mapping.root_hash() != trusted_stake_hash {
+        if mapping.root_hash() != trusted_stake_hash.0 {
             return Err(MelnetError::Custom(
                 "remote staker set contradicted valid header".into(),
             ));
@@ -265,7 +265,7 @@ impl ValClientSnapshot {
             Substate::Transactions => self.header.transactions_hash,
         };
         let (val, branch) = self.raw.get_smt_branch(self.height, substate, key).await?;
-        if !branch.verify(verify_against, key, &val) {
+        if !branch.verify(verify_against.0, key.0, &val) {
             return Err(MelnetError::Custom(format!(
                 "unable to verify merkle proof for height {:?}, substate {:?}, key {:?}, value {:?}, branch {:?}",
                 self.height, substate, key, val, branch
@@ -406,7 +406,9 @@ async fn get_full_block(this: NodeClient, height: u64) -> melnet::Result<Block> 
 
     let mut txx = vec![];
     let mut txx_smt = SmtMapping::new(
-        autosmt::Forest::load(autosmt::MemDB::default()).get_tree(Default::default()),
+        Forest::new(InMemoryBackend::default())
+            .open_tree(Default::default())
+            .unwrap(),
     );
     while let Some(val) = txx_tasks.next().await {
         let tx: Transaction = val?;

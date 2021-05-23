@@ -4,8 +4,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-use autosmt::CompressedProof;
 use blkstructs::{ConsensusProof, NetID, Transaction};
+use novasmt::CompressedProof;
 
 use melnet::MelnetError;
 use nodeprot::{AbbreviatedBlock, NodeClient, NodeResponder, NodeServer, StateSummary, Substate};
@@ -192,8 +192,8 @@ impl NodeServer for AuditorResponder {
             Substate::Stakes => &state.inner_ref().stakes.mapping,
             Substate::Transactions => &state.inner_ref().transactions.mapping,
         };
-        let (v, proof) = tree.get(key);
-        if !proof.verify(tree.root_hash(), key, &v) {
+        let (v, proof) = tree.get_with_proof(key.0);
+        if !proof.verify(tree.root_hash(), key.0, &v) {
             panic!(
                 "get_smt_branch({}, {:?}, {:?}) => {} failed",
                 height,
@@ -202,7 +202,7 @@ impl NodeServer for AuditorResponder {
                 hex::encode(&v)
             )
         }
-        Ok((v, proof.compress()))
+        Ok((v.to_vec(), proof.compress()))
     }
 
     fn get_stakers_raw(&self, height: u64) -> melnet::Result<BTreeMap<HashVal, Vec<u8>>> {
@@ -212,7 +212,7 @@ impl NodeServer for AuditorResponder {
             })?;
         let mut accum = BTreeMap::new();
         for (k, v) in state.inner_ref().stakes.mapping.iter() {
-            accum.insert(k, v);
+            accum.insert(HashVal(k), v.to_vec());
         }
         Ok(accum)
     }

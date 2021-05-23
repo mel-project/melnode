@@ -1,5 +1,4 @@
-use autosmt::DBNode;
-use tmelcrypt::HashVal;
+use novasmt::{BackendNode, Hashed};
 
 /// A sled-backed `autosmt` database.
 pub struct SledTreeDB {
@@ -13,44 +12,80 @@ impl SledTreeDB {
     }
 }
 
-const GC_ROOTS_KEY: &[u8] = b"GC_ROOTS";
+fn to_delete_tmrw(key: [u8; 32]) -> [u8; 33] {
+    let mut toret = [0; 33];
+    toret[0] = 0xff;
+    toret[1..].copy_from_slice(&key);
+    toret
+}
 
-impl autosmt::RawDB for SledTreeDB {
-    fn get(&self, hash: HashVal) -> DBNode {
-        DBNode::from_bytes(
-            &self
-                .disk_tree
-                .get(&hash)
-                .expect("sled failed to read")
-                .expect("sled didn't have the node we wanted"),
-        )
+type BackendNodeRc = (BackendNode, u64);
+
+impl novasmt::BackendDB for SledTreeDB {
+    fn get(&self, key: Hashed) -> Option<BackendNode> {
+        let (bnode, _): BackendNodeRc =
+            stdcode::deserialize(&self.disk_tree.get(&key).unwrap()?).unwrap();
+        Some(bnode)
     }
 
-    fn set_batch(&mut self, kvv: Vec<(tmelcrypt::HashVal, DBNode)>) {
-        let mut batch = sled::Batch::default();
-        for (k, v) in kvv {
-            batch.insert(&k.0, v.to_bytes());
-        }
+    fn set_batch(&self, kvv: &[(Hashed, BackendNode)]) {
         self.disk_tree
-            .apply_batch(batch)
-            .expect("sled failed to set batch");
+            .transaction::<_, _, ()>(|tree| {
+                let mut increment = Vec::new();
+                log::debug!("inserting {} pairs", kvv.len());
+                // first insert all the new elements with refcount 0, while keeping track of what to increment
+                for (k, v) in kvv {
+                    if let BackendNode::Internal(left, right) = v {
+                        increment.push(*left);
+                        increment.push(*right);
+                    }
+                    tree.insert(k.as_ref(), stdcode::serialize(&(v.clone(), 0)).unwrap())?;
+                    // also delete from "delete tomorrow"
+                    tree.remove(to_delete_tmrw(*k).as_ref())?;
+                }
+                // go through increment
+                for increment in increment {
+                    if increment != [0; 32] {
+                        let mut bnrc: BackendNodeRc =
+                            stdcode::deserialize(&tree.get(&increment)?.unwrap()).unwrap();
+                        bnrc.1 += 1;
+                        tree.insert(increment.as_ref(), stdcode::serialize(&bnrc).unwrap())?;
+                    }
+                }
+                Ok(())
+            })
+            .unwrap();
     }
 
-    fn set_gc_roots(&mut self, roots: &[tmelcrypt::HashVal]) {
+    fn delete_root(&self, key: Hashed) {
         self.disk_tree
-            .insert(
-                GC_ROOTS_KEY,
-                stdcode::serialize(&roots).expect("could not serialize roots"),
-            )
-            .expect("sled failed to set gc roots");
-        // TODO: actually garbage-collect
+            .transaction::<_, _, ()>(|tree| {
+                tree.remove(to_delete_tmrw(key).as_ref())?;
+                // DFS
+                let mut dfs_stack: Vec<Hashed> = vec![key];
+                while let Some(top) = dfs_stack.pop() {
+                    if top != [0; 32] {
+                        let (bnode, mut rcount): BackendNodeRc =
+                            stdcode::deserialize(&tree.get(&top)?.unwrap()).unwrap();
+                        rcount = rcount.saturating_sub(1);
+                        if rcount == 0 {
+                            log::debug!("deleting {}", hex::encode(&top));
+                            tree.remove(&top);
+                            if let BackendNode::Internal(left, right) = bnode {
+                                dfs_stack.push(left);
+                                dfs_stack.push(right);
+                            }
+                        }
+                    }
+                }
+                Ok(())
+            })
+            .unwrap();
     }
 
-    fn get_gc_roots(&self) -> Vec<tmelcrypt::HashVal> {
+    fn delete_root_tomorrow(&self, key: Hashed) {
         self.disk_tree
-            .get(GC_ROOTS_KEY)
-            .expect("sled failed to get gc roots")
-            .map(|v| stdcode::deserialize(&v).expect("gc roots contained garbage"))
-            .unwrap_or_default()
+            .insert(to_delete_tmrw(key), b"dummy")
+            .unwrap();
     }
 }

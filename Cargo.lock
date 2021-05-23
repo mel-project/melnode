@@ -602,9 +602,9 @@ dependencies = [
 name = "blkdb"
 version = "0.1.0"
 dependencies = [
- "autosmt",
  "blkstructs",
  "im",
+ "novasmt",
  "parking_lot 0.11.1",
  "serde",
  "stdcode",
@@ -618,7 +618,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "arbitrary",
- "autosmt",
  "beaver",
  "cached",
  "chrono",
@@ -1319,15 +1318,6 @@ dependencies = [
  "log",
  "regex",
  "termcolor",
-]
-
-[[package]]
-name = "erased-serde"
-version = "0.3.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0465971a8cc1fa2455c8465aaa377131e1f1cf4983280f474a13e68793aa770c"
-dependencies = [
- "serde",
 ]
 
 [[package]]
@@ -2048,7 +2038,7 @@ dependencies = [
  "serde",
  "smol",
  "smol-timeout",
- "smolscale 0.2.3",
+ "smolscale",
  "stdcode",
  "thiserror",
 ]
@@ -2126,13 +2116,13 @@ dependencies = [
 name = "nodeprot"
 version = "0.1.0"
 dependencies = [
- "autosmt",
  "blkstructs",
  "cached",
  "futures-util",
  "hex",
  "log",
  "melnet",
+ "novasmt",
  "serde",
  "smol",
  "stdcode",
@@ -2157,14 +2147,15 @@ checksum = "44a1290799eababa63ea60af0cbc3f03363e328e58f32fb0294798ed3e85f444"
 
 [[package]]
 name = "novasmt"
-version = "0.1.0"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76aca86765810c09467e14a3e6801e115f6ded2ed1a5febb44696dbfe3290e1d"
+checksum = "11133dc549ea58c177459866b4b2d19e8cc49a58f4e8cb2a4066bb5ab74d2d60"
 dependencies = [
  "bitvec 0.22.3",
  "blake3",
  "bytes",
  "dashmap",
+ "genawaiter",
  "im",
  "log",
  "parking_lot 0.11.1",
@@ -2179,7 +2170,6 @@ dependencies = [
  "anyhow",
  "async-oneshot",
  "async-trait",
- "autosmt",
  "blkdb",
  "blkstructs",
  "broadcaster",
@@ -2190,12 +2180,13 @@ dependencies = [
  "im",
  "log",
  "melnet",
+ "novasmt",
  "once_cell",
  "parking_lot 0.11.1",
  "serde",
  "smol",
  "smol-timeout",
- "smolscale 0.2.3",
+ "smolscale",
  "stacker",
  "stdcode",
  "thiserror",
@@ -3083,15 +3074,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_scan"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c328aed355674cef5038b201b14b24eb877213462edb7ba28801c6bdd0ac5597"
-dependencies = [
- "serde",
-]
-
-[[package]]
 name = "serde_urlencoded"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3247,25 +3229,6 @@ checksum = "847d777e2c6c166bad26264479e80a9820f3d364fcb4a0e23cd57bbfa8e94961"
 dependencies = [
  "async-io",
  "pin-project-lite 0.1.12",
-]
-
-[[package]]
-name = "smolscale"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aef486f585dce3b9a3fc604f44ff8671741b14c2168a6d1cf1aca9bb8207bf36"
-dependencies = [
- "anyhow",
- "async-channel",
- "async-executor",
- "async-io",
- "async-oneshot",
- "event-listener",
- "futures-lite",
- "once_cell",
- "pin-project-lite 0.2.6",
- "scopeguard",
- "slab",
 ]
 
 [[package]]
@@ -3545,34 +3508,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "themelio-client"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "blkstructs",
- "colored",
- "erased-serde",
- "hex",
- "im",
- "nodeprot",
- "rustyline",
- "serde",
- "serde_json",
- "serde_scan",
- "sled",
- "smol",
- "smol-timeout",
- "smolscale 0.1.3",
- "stdcode",
- "storage",
- "structopt",
- "tabwriter",
- "thiserror",
- "tmelcrypt",
-]
-
-[[package]]
 name = "themelio-crypttool"
 version = "0.1.0"
 dependencies = [
@@ -3589,7 +3524,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-compression",
- "autosmt",
  "blkdb",
  "blkstructs",
  "colored",
@@ -3601,6 +3535,7 @@ dependencies = [
  "lru",
  "melnet",
  "nodeprot",
+ "novasmt",
  "novasymph",
  "parking_lot 0.11.1",
  "rusqlite",
@@ -3609,7 +3544,7 @@ dependencies = [
  "sled",
  "smol",
  "smol-timeout",
- "smolscale 0.2.3",
+ "smolscale",
  "stdcode",
  "structopt",
  "tabwriter",

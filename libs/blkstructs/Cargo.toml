@@ -9,7 +9,6 @@ edition = "2018"
 [dependencies]
 tmelcrypt={path="../tmelcrypt"}
 melpow={path="../melpow"}
-autosmt={path="../autosmt"}
 stdcode={path="../stdcode"}
 cached="0.23"
 num_enum = "0.5.0"
@@ -36,7 +35,7 @@ anyhow="1"
 tracing="0.1"
 rand="0.8"
 
-novasmt="0.1"
+novasmt="0.1.2"
 
 [dev-dependencies]
 rstest = "0.6.4"

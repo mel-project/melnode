@@ -18,15 +18,12 @@ mod transaction;
 pub use constants::*;
 mod smtmapping;
 use arbitrary::Arbitrary;
-pub use fastsync::*;
 use serde::{Deserialize, Serialize};
 pub use smtmapping::*;
 pub use state::melswap::PoolState;
 pub use state::*;
 use std::ops::{Deref, DerefMut};
 pub use transaction::*;
-
-mod fastsync;
 
 #[cfg(test)]
 #[macro_use]

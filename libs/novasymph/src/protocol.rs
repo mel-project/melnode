@@ -49,7 +49,7 @@ pub struct EpochConfig<B: BlockBuilder> {
     pub listen: SocketAddr,
     pub bootstrap: Vec<SocketAddr>,
     pub genesis: SealedState,
-    pub forest: autosmt::Forest,
+    pub forest: novasmt::Forest,
     pub start_time: SystemTime,
     pub interval: Duration,
     pub signing_sk: Ed25519SK,

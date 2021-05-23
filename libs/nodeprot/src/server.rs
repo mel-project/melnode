@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
-use autosmt::CompressedProof;
 use blkstructs::{ConsensusProof, Transaction};
 use melnet::Request;
+use novasmt::CompressedProof;
 use tmelcrypt::HashVal;
 
 use crate::{AbbreviatedBlock, NodeRequest, StateSummary, Substate};

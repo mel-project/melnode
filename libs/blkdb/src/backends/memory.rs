@@ -4,11 +4,11 @@ use crate::traits::DbBackend;
 
 /// An in-memory DbBackend.
 #[derive(Default, Debug)]
-pub struct InMemoryBackend {
+pub struct InMemoryDb {
     inner: BTreeMap<Vec<u8>, Vec<u8>>,
 }
 
-impl DbBackend for InMemoryBackend {
+impl DbBackend for InMemoryDb {
     fn insert(&mut self, key: &[u8], value: &[u8]) -> Option<Vec<u8>> {
         self.inner.insert(key.to_vec(), value.to_vec())
     }

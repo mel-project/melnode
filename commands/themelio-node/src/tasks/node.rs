@@ -19,7 +19,7 @@ pub struct NodeConfig {
     bootstrap: Vec<String>,
 
     /// Database path
-    #[structopt(long, default_value = "/tmp/themelio-mainnet")]
+    #[structopt(long, default_value = "/var/themelio-node/blocks")]
     database: String,
 
     /// Specifies the secret key for staking.

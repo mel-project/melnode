@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 mod helpers;
-use blkdb::{backends::InMemoryBackend, BlockTree, Cursor};
+use blkdb::{backends::InMemoryDb, BlockTree, Cursor};
 use blkstructs::{Block, SealedState, StakeMapping, STAKE_EPOCH};
 use helpers::*;
 
@@ -15,17 +15,17 @@ use crate::msg::{ProposalSig, VoteSig};
 pub struct ChainState {
     epoch: u64,
     stakes: StakeMapping,
-    inner: BlockTree<InMemoryBackend>,
+    inner: BlockTree<InMemoryDb>,
 
     drained_height: u64,
 }
 
 impl ChainState {
     /// Create a new ChainState with the given genesis state.
-    pub fn new(genesis: SealedState, forest: autosmt::Forest) -> Self {
+    pub fn new(genesis: SealedState, forest: novasmt::Forest) -> Self {
         let epoch = genesis.inner_ref().height / STAKE_EPOCH;
         let stakes = genesis.inner_ref().stakes.clone();
-        let mut inner = BlockTree::new(InMemoryBackend::default(), forest);
+        let mut inner = BlockTree::new(InMemoryDb::default(), forest);
         inner.set_genesis(genesis, &[]);
         Self {
             epoch,
@@ -417,7 +417,7 @@ impl ChainState {
 
     fn get_nonempty_descendants(
         &self,
-        mut stack: Vec<Cursor<'_, InMemoryBackend>>,
+        mut stack: Vec<Cursor<'_, InMemoryDb>>,
     ) -> BTreeSet<HashVal> {
         let mut toret = BTreeSet::new();
         while let Some(top) = stack.pop() {
@@ -441,7 +441,7 @@ mod tests {
 
     #[test]
     fn simple_sequence() {
-        let forest = autosmt::Forest::load(autosmt::MemDB::default());
+        let forest = novasmt::Forest::new(novasmt::InMemoryBackend::default());
         let genesis = State::genesis(&forest, GenesisConfig::std_testnet()).seal(None);
         let cstate = ChainState::new(genesis, forest);
         dbg!(cstate.get_lnc_tips());

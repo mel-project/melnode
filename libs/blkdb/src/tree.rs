@@ -12,12 +12,12 @@ use tmelcrypt::HashVal;
 /// A block tree, stored on a particular backend.
 pub struct BlockTree<B: DbBackend> {
     inner: Inner<B>,
-    forest: autosmt::Forest,
+    forest: novasmt::Forest,
 }
 
 impl<B: DbBackend> BlockTree<B> {
     /// Create a new BlockTree.
-    pub fn new(backend: B, forest: autosmt::Forest) -> Self {
+    pub fn new(backend: B, forest: novasmt::Forest) -> Self {
         let inner = Inner { backend };
         Self { inner, forest }
     }
@@ -136,6 +136,12 @@ impl<B: DbBackend> BlockTree<B> {
         todel.sort_unstable_by_key(|v| v.height);
         for todel in todel {
             self.inner.remove_orphan(todel.hash(), Some(todel.height));
+            // we also delete all the SMTs
+            self.forest.delete_tree(todel.coins_hash.0);
+            self.forest.delete_tree(todel.pools_hash.0);
+            self.forest.delete_tree(todel.stakes_hash.0);
+            self.forest.delete_tree(todel.transactions_hash.0);
+            self.forest.delete_tree(todel.history_hash.0);
         }
     }
 
@@ -315,10 +321,15 @@ impl<B: DbBackend> Inner<B> {
         self.tip_remove(blkhash);
         self.index_remove(blkhash);
         self.internal_remove(blkhash, current.header.height);
+        // finally delete the smts
     }
 
     /// Inserts a block into the database
-    fn insert_block(&mut self, state: SealedState, init_metadata: &[u8]) -> Option<InternalValue> {
+    fn insert_block(
+        &mut self,
+        mut state: SealedState,
+        init_metadata: &[u8],
+    ) -> Option<InternalValue> {
         // if let Some(val) = self.get_block(state.header().hash(), Some(state.inner_ref().height)) {
         //     return Some(val);
         // }
@@ -330,6 +341,8 @@ impl<B: DbBackend> Inner<B> {
         // - then we update the tips list
         let header = state.header();
         let blkhash = header.hash();
+        // stabilize the block onto disk
+        state.save_smts();
         // insert the block
         self.internal_insert(
             blkhash,
@@ -434,7 +447,7 @@ impl InternalValue {
         }
     }
 
-    fn to_state(&self, forest: &autosmt::Forest) -> SealedState {
+    fn to_state(&self, forest: &novasmt::Forest) -> SealedState {
         SealedState::from_partial_encoding_infallible(&self.partial_state, forest)
     }
 }
