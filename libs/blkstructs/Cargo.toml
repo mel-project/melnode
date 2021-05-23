@@ -36,6 +36,8 @@ anyhow="1"
 tracing="0.1"
 rand="0.8"
 
+novasmt="0.1"
+
 [dev-dependencies]
 rstest = "0.6.4"
 lazy_static = "1"

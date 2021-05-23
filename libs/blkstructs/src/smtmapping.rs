@@ -5,7 +5,7 @@ use tmelcrypt::HashVal;
 
 /// SmtMapping is a type-safe, constant-time cloneable, imperative-style interface to a sparse Merkle tree.
 pub struct SmtMapping<K: Serialize, V: Serialize + DeserializeOwned> {
-    pub mapping: autosmt::Tree,
+    pub mapping: novasmt::Tree,
     _phantom_k: PhantomData<K>,
     _phantom_v: PhantomData<V>,
 }
@@ -32,7 +32,7 @@ impl<K: Serialize, V: Serialize + DeserializeOwned> SmtMapping<K, V> {
         self.root_hash().0 == [0; 32]
     }
     /// new converts a type-unsafe SMT to a SmtMapping
-    pub fn new(tree: autosmt::Tree) -> Self {
+    pub fn new(tree: novasmt::Tree) -> Self {
         SmtMapping {
             mapping: tree,
             _phantom_k: PhantomData,
