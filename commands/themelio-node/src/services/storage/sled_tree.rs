@@ -23,16 +23,23 @@ type BackendNodeRc = (BackendNode, u64);
 
 impl novasmt::BackendDB for SledTreeDB {
     fn get(&self, key: Hashed) -> Option<BackendNode> {
-        let (bnode, _): BackendNodeRc =
-            stdcode::deserialize(&self.disk_tree.get(&key).unwrap()?).unwrap();
-        Some(bnode)
+        self.disk_tree
+            .transaction::<_, _, ()>(|tree| {
+                if let Some(val) = tree.get(&key)? {
+                    let (bnode, _): BackendNodeRc = stdcode::deserialize(&val).unwrap();
+                    Ok(Some(bnode))
+                } else {
+                    Ok(None)
+                }
+            })
+            .unwrap()
     }
 
     fn set_batch(&self, kvv: &[(Hashed, BackendNode)]) {
         self.disk_tree
             .transaction::<_, _, ()>(|tree| {
                 let mut increment = Vec::new();
-                log::debug!("inserting {} pairs", kvv.len());
+                log::trace!("inserting {} pairs", kvv.len());
                 // first insert all the new elements with refcount 0, while keeping track of what to increment
                 for (k, v) in kvv {
                     if let BackendNode::Internal(left, right) = v {
@@ -67,6 +74,7 @@ impl novasmt::BackendDB for SledTreeDB {
                     if top != [0; 32] {
                         let (bnode, mut rcount): BackendNodeRc =
                             stdcode::deserialize(&tree.get(&top)?.unwrap()).unwrap();
+                        log::debug!("rcount {}", rcount);
                         rcount = rcount.saturating_sub(1);
                         if rcount == 0 {
                             log::debug!("deleting {}", hex::encode(&top));

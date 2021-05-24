@@ -8,5 +8,5 @@ edition = "2018"
 
 [dependencies]
 stdcode={path="../stdcode"}
-serde={version="1", features=["derive"]}
-sled="0.34.6"
+serde={ version = "1.0.126", features = ["derive"] }
+sled= "0.34.6"

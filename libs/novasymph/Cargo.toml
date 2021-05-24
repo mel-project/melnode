@@ -10,27 +10,27 @@ edition = "2018"
 tmelcrypt={path="../tmelcrypt"}
 blkstructs={path="../blkstructs"}
 blkdb={path="../blkdb"}
-bytes={version="1", features=["serde"]}
-serde={version="1", features=["derive"]}
+bytes={ version = "1.0.1", features = ["serde"] }
+serde={ version = "1.0.126", features = ["derive"] }
 stdcode={path="../stdcode"}
-anyhow="1"
-im="15"
-async-trait="0.1.42"
-smol="1"
-parking_lot="0.11"
-log="0.4"
-async-oneshot="0.4"
-smol-timeout="0.6"
-once_cell="1"
-env_logger="0.8"
-smolscale="0.2"
-futures-util="0.3"
+anyhow= "1.0.40"
+im= "15.0.0"
+async-trait= "0.1.50"
+smol= "1.2.5"
+parking_lot= "0.11.1"
+log= "0.4.14"
+async-oneshot= "0.4.2"
+smol-timeout= "0.6.0"
+once_cell= "1.7.2"
+env_logger= "0.8.3"
+smolscale= "0.2.3"
+futures-util= "0.3.15"
 melnet={path="../melnet"}
-stacker="0.1.13"
-broadcaster={version="1"}
+stacker= "0.1.14"
+broadcaster= "1.0.0"
 
-novasmt="0.1.2"
+novasmt= "0.1.5"
 
-fastrand="1"
+fastrand= "1.4.1"
 
-thiserror="1"
+thiserror= "1.0.25"

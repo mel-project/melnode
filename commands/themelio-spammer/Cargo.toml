@@ -10,10 +10,10 @@ edition = "2018"
 blkstructs={path="../../libs/blkstructs"}
 tmelcrypt={path="../../libs/tmelcrypt"}
 nodeprot={path="../../libs/nodeprot"}
-smol="1.2.5"
-anyhow="1"
-structopt="0.3.21"
-rand="0.8"
-smol-timeout="0.6"
-governor="0.3"
-priority-queue="1.1.1"
+smol= "1.2.5"
+anyhow= "1.0.40"
+structopt= "0.3.21"
+rand= "0.8.3"
+smol-timeout= "0.6.0"
+governor= "0.3.2"
+priority-queue= "1.1.1"

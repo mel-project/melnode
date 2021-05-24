@@ -9,10 +9,9 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use arbitrary::Arbitrary;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::fmt::Debug;
 use std::{collections::BTreeMap, convert::TryInto};
 use std::{collections::BTreeSet, io::Read};
-use std::{collections::HashMap, fmt::Debug};
 use thiserror::Error;
 use tmelcrypt::{Ed25519PK, HashVal};
 use txn::Transaction;
@@ -62,7 +61,7 @@ pub struct GenesisConfig {
     /// Initial supply of free money. This will be put at the zero-zero coin ID.
     pub init_coindata: CoinData,
     /// Mapping of initial stakeholders.
-    pub stakes: HashMap<HashVal, StakeDoc>,
+    pub stakes: BTreeMap<HashVal, StakeDoc>,
     /// Initial fee pool, in micromels. Half-life is approximately 15 days.
     pub init_fee_pool: u128,
 }

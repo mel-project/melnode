@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 tmelcrypt={path="../../libs/tmelcrypt"}
-structopt="0.3.21"
-hex="0.4"
+structopt= "0.3.21"
+hex= "0.4.3"
 blkstructs={path="../../libs/blkstructs"}
-serde_json="1"
+serde_json= "1.0.64"
