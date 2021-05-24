@@ -25,6 +25,18 @@ impl StakerProtocol {
     ) -> anyhow::Result<Self> {
         let _network_task = smolscale::spawn(async move {
             loop {
+                let x = storage.read().highest_height();
+                smol::Timer::after(Duration::from_secs(5)).await;
+                let y = storage.read().highest_height();
+                log::info!(
+                    "delta-height = {}; must be less than 5 to start staker",
+                    y - x
+                );
+                if y - x < 5 {
+                    break;
+                }
+            }
+            loop {
                 let genesis_epoch = storage.read().highest_height() / STAKE_EPOCH;
                 for current_epoch in genesis_epoch.. {
                     log::info!("epoch transitioning into {}!", current_epoch);

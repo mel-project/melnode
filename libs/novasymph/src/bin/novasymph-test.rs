@@ -49,9 +49,9 @@ fn main() {
         },
     )
     .seal(None);
-    smolscale::block_on(async move {
+    smol::future::block_on(async move {
         for i in 0..COUNT {
-            smolscale::spawn(run_staker(i, genesis.clone(), forest.clone())).detach();
+            smol::spawn(run_staker(i, genesis.clone(), forest.clone())).detach();
         }
         smol::future::pending().await
     })

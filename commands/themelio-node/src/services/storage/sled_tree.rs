@@ -1,4 +1,5 @@
 use novasmt::{BackendNode, Hashed};
+use parking_lot::Mutex;
 
 /// A sled-backed `autosmt` database.
 pub struct SledTreeDB {

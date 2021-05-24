@@ -26,6 +26,7 @@ use crate::{
         ChainState,
     },
     msg::ProposalSig,
+    NS_EXECUTOR,
 };
 
 /// A trait that represents a "mempool".
@@ -75,7 +76,7 @@ impl EpochProtocol {
         Self {
             _task: {
                 let cstate = cstate.clone();
-                smolscale::spawn(async move {
+                NS_EXECUTOR.spawn(async move {
                     protocol_loop(cfg, cstate, send_confirmed).await;
                 })
             },
@@ -117,22 +118,32 @@ async fn protocol_loop<B: BlockBuilder>(
         network.listen(
             "get_blocks",
             move |breq: Request<BlockRequest, Vec<AbbrBlockResponse>>| {
-                let response = cstate_inner.read().new_block_responses(breq.body);
-                breq.response.send(Ok(response))
+                let cstate_inner = cstate_inner.clone();
+                NS_EXECUTOR
+                    .spawn(async move {
+                        let response = cstate_inner.read().new_block_responses(breq.body);
+                        breq.response.send(Ok(response))
+                    })
+                    .detach();
             },
         );
         let cstate_inner = cstate.clone();
         network.listen(
             "get_txx",
             move |breq: Request<TransactionRequest, TransactionResponse>| {
-                let resp = cstate_inner.read().new_transaction_response(breq.body);
-                breq.response.send(Ok(resp))
+                let cstate_inner = cstate_inner.clone();
+                NS_EXECUTOR
+                    .spawn(async move {
+                        let resp = cstate_inner.read().new_transaction_response(breq.body);
+                        breq.response.send(Ok(resp))
+                    })
+                    .detach();
             },
         )
     }
     // melnet client
-    let _gossiper = smolscale::spawn(gossiper_loop(network.clone(), cstate.clone(), cfg.clone()));
-    let _confirmer = smolscale::spawn(confirmer_loop(
+    let _gossiper = NS_EXECUTOR.spawn(gossiper_loop(network.clone(), cstate.clone(), cfg.clone()));
+    let _confirmer = NS_EXECUTOR.spawn(confirmer_loop(
         my_epoch,
         cfg.signing_sk,
         network.clone(),
@@ -147,7 +158,7 @@ async fn protocol_loop<B: BlockBuilder>(
         .await
         .expect("could not start to listen");
     let net_inner = network.clone();
-    let _server = smolscale::spawn(async move { net_inner.run_server(listener).await });
+    let _server = NS_EXECUTOR.spawn(async move { net_inner.run_server(listener).await });
     loop {
         let vote_loop = async {
             loop {
@@ -382,19 +393,24 @@ async fn confirmer_loop(
     network.listen("confirm_block", {
         let known_votes = known_votes.clone();
         move |req: Request<u64, BTreeMap<Ed25519PK, Vec<u8>>>| {
-            let height = req.body;
-            let res = known_votes
-                .read()
-                .get(&height)
-                .cloned()
-                .map(|v: UnconfirmedBlock| v.signatures)
-                .unwrap_or_default();
-            log::debug!(
-                "responding to confirm request for {} with {} sigs",
-                height,
-                res.len()
-            );
-            req.response.send(Ok(res))
+            let known_votes = known_votes.clone();
+            NS_EXECUTOR
+                .spawn(async move {
+                    let height = req.body;
+                    let res = known_votes
+                        .read()
+                        .get(&height)
+                        .cloned()
+                        .map(|v: UnconfirmedBlock| v.signatures)
+                        .unwrap_or_default();
+                    log::debug!(
+                        "responding to confirm request for {} with {} sigs",
+                        height,
+                        res.len()
+                    );
+                    req.response.send(Ok(res))
+                })
+                .detach();
         }
     });
 
@@ -403,7 +419,7 @@ async fn confirmer_loop(
     let _piper = {
         // let cstate = cstate.clone();
         // let known_votes = known_votes.clone();
-        smolscale::spawn(async move {
+        NS_EXECUTOR.spawn(async move {
             loop {
                 let start_evt = async {
                     let fut = recv_fut.recv().await.unwrap();

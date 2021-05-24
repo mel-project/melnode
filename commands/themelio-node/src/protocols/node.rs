@@ -99,6 +99,7 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, state: SharedStor
                             );
                             break;
                         }
+                        smol::future::yield_now().await;
                     }
                     if blklen > 0 {
                         smol::Timer::after(FAST_TIME).await;

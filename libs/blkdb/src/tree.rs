@@ -1,5 +1,6 @@
 use crate::traits::DbBackend;
 use blkstructs::{Block, Header, ProposerAction, SealedState};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::fmt::Write;
 use std::{
@@ -19,7 +20,11 @@ pub struct BlockTree<B: DbBackend> {
 impl<B: DbBackend> BlockTree<B> {
     /// Create a new BlockTree.
     pub fn new(backend: B, forest: novasmt::Forest, canonical: bool) -> Self {
-        let inner = Inner { backend, canonical };
+        let inner = Inner {
+            backend,
+            canonical,
+            cache: Default::default(),
+        };
         Self {
             inner,
             forest,
@@ -40,7 +45,7 @@ impl<B: DbBackend> BlockTree<B> {
                 Some(block.header.height.saturating_sub(1)),
             )
             .ok_or(ApplyBlockErr::ParentNotFound(block.header.previous))?;
-        let previous = previous.to_state(&self.forest);
+        let previous = previous.to_state(&self.forest, &self.inner.cache);
         let next_state = previous
             .apply_block(block)
             .map_err(ApplyBlockErr::CannotValidate)?;
@@ -218,7 +223,8 @@ impl<'a, B: DbBackend> Clone for Cursor<'a, B> {
 impl<'a, B: DbBackend> Cursor<'a, B> {
     /// Converts to a SealedState.
     pub fn to_state(&self) -> SealedState {
-        self.internal.to_state(&self.tree.forest)
+        self.internal
+            .to_state(&self.tree.forest, &self.tree.inner.cache)
     }
 
     /// Extracts the header.
@@ -255,7 +261,8 @@ pub struct CursorMut<'a, B: DbBackend> {
 impl<'a, B: DbBackend> CursorMut<'a, B> {
     /// Converts to a SealedState.
     pub fn to_state(&self) -> SealedState {
-        self.internal.to_state(&self.tree.forest)
+        self.internal
+            .to_state(&self.tree.forest, &self.tree.inner.cache)
     }
 
     /// Extracts the header.
@@ -307,6 +314,8 @@ pub enum ApplyBlockErr {
 struct Inner<B: DbBackend> {
     backend: B,
     canonical: bool,
+    // cached SealedStates for non-canonical mode. this is required so that inserted blocks are persistent.
+    cache: DashMap<HashVal, SealedState>,
 }
 
 impl<B: DbBackend> Inner<B> {
@@ -329,7 +338,8 @@ impl<B: DbBackend> Inner<B> {
         self.tip_remove(blkhash);
         self.index_remove(blkhash);
         self.internal_remove(blkhash, current.header.height);
-        // finally delete the smts
+        // finally delete from cache
+        self.cache.remove(&blkhash);
     }
 
     /// Inserts a block into the database
@@ -357,7 +367,7 @@ impl<B: DbBackend> Inner<B> {
         self.internal_insert(
             blkhash,
             header.height,
-            InternalValue::from_state(state, action, init_metadata.to_vec()),
+            InternalValue::from_state(&state, action, init_metadata.to_vec()),
         );
         // insert into parent
         if let Some(mut parent) =
@@ -371,6 +381,8 @@ impl<B: DbBackend> Inner<B> {
         // update tips list
         self.tip_remove(header.previous);
         self.tip_insert(blkhash, header.height);
+        // update cache
+        self.cache.insert(state.header().hash(), state);
         None
     }
 
@@ -447,7 +459,7 @@ struct InternalValue {
 }
 
 impl InternalValue {
-    fn from_state(state: SealedState, action: Option<ProposerAction>, metadata: Vec<u8>) -> Self {
+    fn from_state(state: &SealedState, action: Option<ProposerAction>, metadata: Vec<u8>) -> Self {
         Self {
             header: state.header(),
             partial_state: state.partial_encoding(),
@@ -457,8 +469,18 @@ impl InternalValue {
         }
     }
 
-    fn to_state(&self, forest: &novasmt::Forest) -> SealedState {
-        SealedState::from_partial_encoding_infallible(&self.partial_state, forest)
+    fn to_state(
+        &self,
+        forest: &novasmt::Forest,
+        cache: &DashMap<HashVal, SealedState>,
+    ) -> SealedState {
+        cache
+            .entry(self.header.hash())
+            .or_insert_with(|| {
+                SealedState::from_partial_encoding_infallible(&self.partial_state, forest)
+            })
+            .value()
+            .clone()
     }
 }
 
