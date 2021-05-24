@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 im= "15.0.0"
 parking_lot= "0.11.1"
-novasmt= "0.1.5"
+novasmt= "0.1.6"
 blkstructs={path="../blkstructs"}
 tmelcrypt={path="../tmelcrypt"}
 stdcode={path="../stdcode"}

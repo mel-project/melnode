@@ -13,13 +13,18 @@ use tmelcrypt::HashVal;
 pub struct BlockTree<B: DbBackend> {
     inner: Inner<B>,
     forest: novasmt::Forest,
+    canonical: bool,
 }
 
 impl<B: DbBackend> BlockTree<B> {
     /// Create a new BlockTree.
-    pub fn new(backend: B, forest: novasmt::Forest) -> Self {
-        let inner = Inner { backend };
-        Self { inner, forest }
+    pub fn new(backend: B, forest: novasmt::Forest, canonical: bool) -> Self {
+        let inner = Inner { backend, canonical };
+        Self {
+            inner,
+            forest,
+            canonical,
+        }
     }
 
     /// Attempts to apply a block.
@@ -136,12 +141,14 @@ impl<B: DbBackend> BlockTree<B> {
         todel.sort_unstable_by_key(|v| v.height);
         for todel in todel {
             self.inner.remove_orphan(todel.hash(), Some(todel.height));
-            // we also delete all the SMTs
-            self.forest.delete_tree(todel.coins_hash.0);
-            self.forest.delete_tree(todel.pools_hash.0);
-            self.forest.delete_tree(todel.stakes_hash.0);
-            self.forest.delete_tree(todel.transactions_hash.0);
-            self.forest.delete_tree(todel.history_hash.0);
+            if self.canonical {
+                // we also delete all the SMTs
+                self.forest.delete_tree(todel.coins_hash.0);
+                self.forest.delete_tree(todel.pools_hash.0);
+                self.forest.delete_tree(todel.stakes_hash.0);
+                self.forest.delete_tree(todel.transactions_hash.0);
+                self.forest.delete_tree(todel.history_hash.0);
+            }
         }
     }
 
@@ -299,6 +306,7 @@ pub enum ApplyBlockErr {
 /// Lower-level helper struct that provides fail-safe basic operations.
 struct Inner<B: DbBackend> {
     backend: B,
+    canonical: bool,
 }
 
 impl<B: DbBackend> Inner<B> {
@@ -342,7 +350,9 @@ impl<B: DbBackend> Inner<B> {
         let header = state.header();
         let blkhash = header.hash();
         // stabilize the block onto disk
-        state.save_smts();
+        if self.canonical {
+            state.save_smts();
+        }
         // insert the block
         self.internal_insert(
             blkhash,

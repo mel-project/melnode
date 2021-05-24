@@ -2116,14 +2116,13 @@ checksum = "44a1290799eababa63ea60af0cbc3f03363e328e58f32fb0294798ed3e85f444"
 
 [[package]]
 name = "novasmt"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e88ec283c5a6d3f48a23dc5965ce6d553ce1d0f2b509ade0e0801381c1b57a2c"
+checksum = "e142b5d11a6b8f82c6182d10115721a08bd1c398b4243365184a5df7db1ae359"
 dependencies = [
  "bitvec 0.22.3",
  "blake3",
  "bytes",
- "dashmap",
  "env_logger 0.8.3",
  "genawaiter",
  "hex",

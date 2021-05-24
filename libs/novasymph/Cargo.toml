@@ -29,7 +29,7 @@ melnet={path="../melnet"}
 stacker= "0.1.14"
 broadcaster= "1.0.0"
 
-novasmt= "0.1.5"
+novasmt= "0.1.6"
 
 fastrand= "1.4.1"
 

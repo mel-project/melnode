@@ -25,7 +25,7 @@ impl ChainState {
     pub fn new(genesis: SealedState, forest: novasmt::Forest) -> Self {
         let epoch = genesis.inner_ref().height / STAKE_EPOCH;
         let stakes = genesis.inner_ref().stakes.clone();
-        let mut inner = BlockTree::new(InMemoryDb::default(), forest);
+        let mut inner = BlockTree::new(InMemoryDb::default(), forest, false);
         inner.set_genesis(genesis, &[]);
         Self {
             epoch,

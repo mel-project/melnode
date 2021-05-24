@@ -35,7 +35,7 @@ anyhow= "1.0.40"
 tracing= "0.1.26"
 rand= "0.7.3"
 
-novasmt= "0.1.5"
+novasmt= "0.1.6"
 
 [dev-dependencies]
 rstest = "0.6.4"

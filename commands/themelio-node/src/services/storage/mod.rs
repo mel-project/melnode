@@ -45,7 +45,7 @@ impl NodeStorage {
                 .open_tree(format!("{}-node_blktree", genesis_id))
                 .unwrap(),
         };
-        let mut history = BlockTree::new(blktree_backend, forest.clone());
+        let mut history = BlockTree::new(blktree_backend, forest.clone(), true);
 
         // initialize stuff
         if history.get_tips().is_empty() {
