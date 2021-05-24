@@ -1,5 +1,3 @@
-use std::convert::TryInto;
-
 use blkstructs::melvm::Covenant;
 #[cfg(fuzzing)]
 use honggfuzz::fuzz;
@@ -25,7 +23,15 @@ fn main() {
 
 fn test_once(data: &[u8]) {
     let covenant = Covenant(data.to_vec());
+    if let Some(weight) = covenant.weight() {
+        if weight > 10000 {
+            return;
+        }
+    }
     covenant.check_raw(&[]);
+    if let Some(ops) = covenant.to_ops() {
+        assert_eq!(Covenant::from_ops(&ops).unwrap(), covenant);
+    }
 }
 
 #[cfg(not(fuzzing))]
