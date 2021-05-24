@@ -342,9 +342,7 @@ struct LoopState {
     /// Pointer to last op in loop (inclusive)
     end: ProgramCounter,
     /// Total number of iterations
-    iterations: u16,
-    /// Current iteration of the loop
-    cur_iteration: u16,
+    iterations_left: u16,
 }
 
 pub struct Executor {
@@ -440,9 +438,9 @@ impl Executor {
             // If done with body of loop
             if self.pc > state.end {
                 // But not finished with all iterations
-                if state.cur_iteration < state.iterations - 1 {
+                if state.iterations_left > 0 {
                     // loop again
-                    state.cur_iteration += 1;
+                    state.iterations_left -= 1;
                     self.pc = state.begin;
                     self.loop_state.push(state);
                 }
@@ -473,6 +471,7 @@ impl Executor {
     }
     /// Execute an instruction, modifying state and return number of instructions to move forward
     pub fn do_op(&mut self, op: &OpCode) -> Option<ProgramCounter> {
+        log::trace!("do_op {:?}", op);
         match op {
             // arithmetic
             OpCode::Add => self.do_binop(|x, y| {
@@ -526,12 +525,12 @@ impl Executor {
             OpCode::Shl => self.do_binop(|x, offset| {
                 let x = x.into_int()?;
                 let offset = offset.into_int()?;
-                Some(Value::Int(x << offset))
+                Some(Value::Int(x.wrapping_shl(offset.as_u32())))
             })?,
             OpCode::Shr => self.do_binop(|x, offset| {
                 let x = x.into_int()?;
                 let offset = offset.into_int()?;
-                Some(Value::Int(x >> offset))
+                Some(Value::Int(x.wrapping_shr(offset.as_u32())))
             })?,
             // cryptography
             OpCode::Hash(n) => self.do_monop(|to_hash| {
@@ -589,8 +588,12 @@ impl Executor {
             OpCode::VSet => self.do_triop(|vec, idx, value| {
                 let idx = idx.into_u16()? as usize;
                 let mut vec = vec.into_vector()?;
-                vec.set(idx, value);
-                Some(Value::Vector(vec))
+                if idx < vec.len() {
+                    vec.set(idx, value);
+                    Some(Value::Vector(vec))
+                } else {
+                    None
+                }
             })?,
             OpCode::VAppend => self.do_binop(|v1, v2| {
                 let mut v1 = v1.into_vector()?;
@@ -602,7 +605,13 @@ impl Executor {
                 let i = i.into_u16()? as usize;
                 let j = j.into_u16()? as usize;
                 match vec {
-                    Value::Vector(mut vec) => Some(Value::Vector(vec.slice(i..j))),
+                    Value::Vector(mut vec) => {
+                        if j >= vec.len() || j <= i {
+                            Some(Value::Vector(im::Vector::new()))
+                        } else {
+                            Some(Value::Vector(vec.slice(i..j)))
+                        }
+                    }
                     _ => None,
                 }
             })?,
@@ -641,8 +650,12 @@ impl Executor {
             OpCode::BSet => self.do_triop(|vec, idx, value| {
                 let idx = idx.into_u16()? as usize;
                 let mut vec = vec.into_bytes()?;
-                vec.set(idx, value.into_truncated_u8()?);
-                Some(Value::Bytes(vec))
+                if idx < vec.len() {
+                    vec.set(idx, value.into_truncated_u8()?);
+                    Some(Value::Bytes(vec))
+                } else {
+                    None
+                }
             })?,
             OpCode::BAppend => self.do_binop(|v1, v2| {
                 let mut v1 = v1.into_bytes()?;
@@ -654,7 +667,13 @@ impl Executor {
                 let i = i.into_u16()? as usize;
                 let j = j.into_u16()? as usize;
                 match vec {
-                    Value::Bytes(mut vec) => Some(Value::Bytes(vec.slice(i..j))),
+                    Value::Bytes(mut vec) => {
+                        if j >= vec.len() || j <= i {
+                            Some(Value::Bytes(im::Vector::new()))
+                        } else {
+                            Some(Value::Bytes(vec.slice(i..j)))
+                        }
+                    }
                     _ => None,
                 }
             })?,
@@ -682,8 +701,7 @@ impl Executor {
                 self.loop_state.push(LoopState {
                     begin: self.pc + 1,
                     end: self.pc + *op_count as usize,
-                    cur_iteration: 0,
-                    iterations: *iterations,
+                    iterations_left: *iterations,
                 });
             }
             // Conversions
