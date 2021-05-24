@@ -59,9 +59,13 @@ pub fn calculate_reward(my_speed: u128, dosc_speed: u128, difficulty: u32) -> u1
 #[tracing::instrument]
 pub fn preseal_melmint(state: State) -> State {
     let state = create_builtins(state);
+    assert!(state.pools.val_iter().count() >= 2);
     let state = process_swaps(state);
+    assert!(state.pools.val_iter().count() >= 2);
     let state = process_deposits(state);
+    assert!(state.pools.val_iter().count() >= 2);
     let state = process_withdrawals(state);
+    assert!(state.pools.val_iter().count() >= 2);
     process_pegging(state)
 }
 
@@ -70,11 +74,14 @@ fn create_builtins(mut state: State) -> State {
     let mut def = PoolState::new_empty();
     let _ = def.deposit(MICRO_CONVERTER * 1000, MICRO_CONVERTER * 1000);
     if state.pools.get(&Denom::Sym).0.is_none() {
+        dbg!(state.pools.root_hash());
         state.pools.insert(Denom::Sym, def)
     }
     if state.pools.get(&Denom::NomDosc).0.is_none() {
+        dbg!(state.pools.root_hash());
         state.pools.insert(Denom::NomDosc, def)
     }
+    assert!(state.pools.val_iter().count() >= 2);
     state
 }
 
@@ -140,7 +147,6 @@ fn process_swaps(mut state: State) -> State {
             })
             .fold(0u128, |a, b| a.saturating_add(b));
         // transmute coins
-        dbg!(total_mels, total_toks);
         let (mel_withdrawn, tok_withdrawn) = pool_state.swap_many(total_mels, total_toks);
 
         for mut swap in relevant_swaps {
@@ -170,6 +176,7 @@ fn process_swaps(mut state: State) -> State {
         }
         state.pools.insert(pool, pool_state);
     }
+
     state
 }
 
@@ -370,6 +377,7 @@ fn process_pegging(mut state: State) -> State {
     }
     state.pools.insert(Denom::Sym, sm_pool);
     // return the state now
+    assert!(state.pools.val_iter().count() >= 2);
     state
 }
 

@@ -348,6 +348,7 @@ impl State {
     pub fn seal(mut self, action: Option<ProposerAction>) -> SealedState {
         // first apply melmint
         self = preseal_melmint(self);
+        assert!(self.pools.val_iter().count() >= 2);
 
         let after_tip_901 = self.height >= 42700;
 
@@ -507,9 +508,12 @@ impl SealedState {
     /// Applies a block to this state.
     pub fn apply_block(&self, block: &Block) -> Result<SealedState, StateError> {
         let mut basis = self.next_state();
+        assert!(basis.pools.val_iter().count() >= 2);
         let transactions = block.transactions.iter().cloned().collect::<Vec<_>>();
         basis.apply_tx_batch(&transactions)?;
+        assert!(basis.pools.val_iter().count() >= 2);
         let basis = basis.seal(block.proposer_action);
+        assert!(basis.inner_ref().pools.val_iter().count() >= 2);
         if basis.header() != block.header {
             log::warn!(
                 "post-apply header {:#?} doesn't match declared header {:#?} with {} txx",
@@ -517,6 +521,10 @@ impl SealedState {
                 block.header,
                 transactions.len()
             );
+            assert!(basis.inner_ref().pools.val_iter().count() >= 2);
+            for pool_info in basis.inner_ref().pools.val_iter() {
+                dbg!(pool_info);
+            }
             return Err(StateError::WrongHeader);
         }
         Ok(basis)
