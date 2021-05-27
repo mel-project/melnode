@@ -692,11 +692,15 @@ impl Executor {
                 return Some(1 + *jgap as usize);
             }
             OpCode::Loop(iterations, op_count) => {
-                self.loop_state.push(LoopState {
-                    begin: self.pc + 1,
-                    end: self.pc + *op_count as usize,
-                    iterations_left: *iterations,
-                });
+                if *iterations > 0 && *op_count > 0 {
+                    self.loop_state.push(LoopState {
+                        begin: self.pc + 1,
+                        end: self.pc + *op_count as usize,
+                        iterations_left: *iterations,
+                    });
+                } else {
+                    return None;
+                }
             }
             // Conversions
             OpCode::BtoI => self.do_monop(|x| {
@@ -734,8 +738,14 @@ impl Executor {
     fn run_bare(&mut self, ops: &[OpCode]) -> Option<()> {
         assert!(ops.len() < 512 * 1024);
         // Run to completion
+        let weight = opcodes_weight(&ops);
+        let mut steps = 0u128;
         while self.pc < ops.len() {
-            self.step(ops.get(self.pc)?)?
+            self.step(ops.get(self.pc)?)?;
+            steps += 1;
+            if steps > weight {
+                panic!("somehow exceeded weight {}", weight)
+            }
         }
 
         Some(())
@@ -836,7 +846,7 @@ fn opcodes_car_weight(opcodes: &[OpCode]) -> (u128, &[OpCode]) {
     match first {
         // handle loops specially
         OpCode::Loop(iters, body_len) => {
-            let mut sum = 1u128;
+            let mut sum = 0u128;
             let mut rest = rest;
             for _ in 0..*body_len {
                 let (weight, rem) =
@@ -844,7 +854,7 @@ fn opcodes_car_weight(opcodes: &[OpCode]) -> (u128, &[OpCode]) {
                 sum = sum.saturating_add(weight);
                 rest = rem;
             }
-            (sum.saturating_mul(*iters as u128), rest)
+            (sum.saturating_mul(*iters as u128).saturating_add(1), rest)
         }
         OpCode::Add => (4, rest),
         OpCode::Sub => (4, rest),
