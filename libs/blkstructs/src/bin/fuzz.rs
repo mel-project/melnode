@@ -25,7 +25,7 @@ fn test_once(data: &[u8]) {
     let (first, second) = data.split_at(data.len() / 2);
     let covenant = Covenant(first.to_vec());
     if let Some(weight) = covenant.weight() {
-        if weight > 10000000 {
+        if weight > 1000000 {
             return;
         }
     }
