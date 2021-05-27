@@ -852,8 +852,7 @@ fn opcodes_car_weight(opcodes: &[OpCode]) -> (u128, &[OpCode]) {
             let mut sum = 0u128;
             let mut rest = rest;
             for _ in 0..*body_len {
-                let (weight, rem) =
-                    stacker::maybe_grow(32 * 1024, 1024 * 1024, || opcodes_car_weight(rest));
+                let (weight, rem) = opcodes_car_weight(rest);
                 sum = sum.saturating_add(weight);
                 rest = rem;
             }
