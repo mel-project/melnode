@@ -416,6 +416,7 @@ impl Executor {
     }
     /// Execute one instruction and update internal VM state
     pub fn step(&mut self, op: &OpCode) -> Option<()> {
+        log::trace!("pc = {}", self.pc);
         if let Some(pc_diff) = self.do_op(op) {
             self.update_pc_state(pc_diff);
             Some(())
@@ -431,8 +432,9 @@ impl Executor {
         if let Some(mut state) = self.loop_state.pop() {
             // If done with body of loop
             if self.pc > state.end {
-                // But not finished with all iterations
-                if state.iterations_left > 0 {
+                // But not finished with all iterations, and did not jump outside the loop
+                if state.iterations_left > 0 && self.pc.saturating_sub(state.end) == 1 {
+                    log::trace!("{} iterations left", state.iterations_left);
                     // loop again
                     state.iterations_left -= 1;
                     self.pc = state.begin;
@@ -741,11 +743,12 @@ impl Executor {
         let weight = opcodes_weight(&ops);
         let mut steps = 0u128;
         while self.pc < ops.len() {
-            self.step(ops.get(self.pc)?)?;
-            steps += 1;
             if steps > weight {
+                log::error!("{:?}", ops);
                 panic!("somehow exceeded weight {}", weight)
             }
+            self.step(ops.get(self.pc)?)?;
+            steps += 1;
         }
 
         Some(())

@@ -22,13 +22,14 @@ fn main() {
 }
 
 fn test_once(data: &[u8]) {
-    let covenant = Covenant(data.to_vec());
+    let (first, second) = data.split_at(data.len() / 2);
+    let covenant = Covenant(first.to_vec());
     if let Some(weight) = covenant.weight() {
-        if weight > 10000 {
+        if weight > 10000000 {
             return;
         }
     }
-    covenant.check_raw(&[]);
+    covenant.check_raw(&[second.to_vec().into()]);
     if let Some(ops) = covenant.to_ops() {
         assert_eq!(Covenant::from_ops(&ops).unwrap(), covenant);
     }
