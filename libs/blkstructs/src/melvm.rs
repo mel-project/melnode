@@ -126,14 +126,7 @@ impl Covenant {
         Covenant::from_ops(&[OpCode::PushI(1u32.into())]).unwrap()
     }
 
-    fn disassemble_one(
-        bcode: &mut Vec<u8>,
-        output: &mut Vec<OpCode>,
-        rec_depth: usize,
-    ) -> Option<()> {
-        if rec_depth > 16 {
-            return None;
-        }
+    fn disassemble_one(bcode: &mut Vec<u8>, output: &mut Vec<OpCode>) -> Option<()> {
         let u16arg = |vec: &mut Vec<u8>| {
             let mut z = [0; 2];
             z[0] = vec.pop()?;
@@ -222,13 +215,14 @@ impl Covenant {
         reversed.reverse();
         let mut output = Vec::new();
         while !reversed.is_empty() {
-            Covenant::disassemble_one(&mut reversed, &mut output, 0)?
+            Covenant::disassemble_one(&mut reversed, &mut output)?
         }
         Some(output)
     }
 
     pub fn weight(&self) -> Option<u128> {
-        Some(self.to_ops()?.into_iter().map(|v| v.weight()).sum())
+        let ops = self.to_ops()?;
+        Some(opcodes_weight(&ops))
     }
 
     fn assemble_one(op: &OpCode, output: &mut Vec<u8>) -> Option<()> {
@@ -822,65 +816,90 @@ pub enum OpCode {
     Dup,
 }
 
-impl OpCode {
-    pub fn weight(&self) -> u128 {
-        match self {
-            OpCode::Add => 4,
-            OpCode::Sub => 4,
-            OpCode::Mul => 6,
-            OpCode::Div => 6,
-            OpCode::Rem => 6,
+/// Computes the weight of a bunch of opcodes.
+fn opcodes_weight(opcodes: &[OpCode]) -> u128 {
+    let (mut sum, mut rest) = opcodes_car_weight(opcodes);
+    while !rest.is_empty() {
+        let (delta_sum, new_rest) = opcodes_car_weight(rest);
+        rest = new_rest;
+        sum = sum.saturating_add(delta_sum);
+    }
+    sum
+}
 
-            OpCode::And => 4,
-            OpCode::Or => 4,
-            OpCode::Xor => 4,
-            OpCode::Not => 4,
-            OpCode::Eql => 4,
-            OpCode::Lt => 4,
-            OpCode::Gt => 4,
-            OpCode::Shl => 4,
-            OpCode::Shr => 4,
-
-            OpCode::Hash(n) => 50 + *n as u128,
-            OpCode::SigEOk(n) => 100 + *n as u128,
-
-            OpCode::Store => 10,
-            OpCode::Load => 10,
-            OpCode::StoreImm(_) => 4,
-            OpCode::LoadImm(_) => 4,
-
-            OpCode::VRef => 10,
-            OpCode::VSet => 20,
-            OpCode::VAppend => 50,
-            OpCode::VSlice => 50,
-            OpCode::VLength => 4,
-            OpCode::VEmpty => 4,
-            OpCode::BEmpty => 4,
-            OpCode::BPush => 10,
-            OpCode::VPush => 10,
-            OpCode::VCons => 10,
-            OpCode::BRef => 10,
-            OpCode::BAppend => 10,
-            OpCode::BLength => 4,
-            OpCode::BSlice => 50,
-            OpCode::BSet => 20,
-            OpCode::BCons => 10,
-
-            OpCode::TypeQ => 4,
-
-            OpCode::ItoB => 50,
-            OpCode::BtoI => 50,
-
-            OpCode::Bez(_) => 1,
-            OpCode::Bnz(_) => 1,
-            OpCode::Jmp(_) => 1,
-            OpCode::Loop(loops, inst_count) => (*inst_count as u128).saturating_mul(*loops as _),
-
-            OpCode::PushB(_) => 1,
-            OpCode::PushI(_) => 1,
-
-            OpCode::Dup => 4,
+/// Compute the weight of the first bit of opcodes, returning a weight and what remains.
+fn opcodes_car_weight(opcodes: &[OpCode]) -> (u128, &[OpCode]) {
+    if opcodes.is_empty() {
+        return (0, opcodes);
+    }
+    let (first, rest) = opcodes.split_first().unwrap();
+    match first {
+        // handle loops specially
+        OpCode::Loop(iters, body_len) => {
+            let mut sum = 1u128;
+            let mut rest = rest;
+            for _ in 0..*body_len {
+                let (weight, rem) =
+                    stacker::maybe_grow(32 * 1024, 1024 * 1024, || opcodes_car_weight(rest));
+                sum = sum.saturating_add(weight);
+                rest = rem;
+            }
+            (sum.saturating_mul(*iters as u128), rest)
         }
+        OpCode::Add => (4, rest),
+        OpCode::Sub => (4, rest),
+        OpCode::Mul => (6, rest),
+        OpCode::Div => (6, rest),
+        OpCode::Rem => (6, rest),
+
+        OpCode::And => (4, rest),
+        OpCode::Or => (4, rest),
+        OpCode::Xor => (4, rest),
+        OpCode::Not => (4, rest),
+        OpCode::Eql => (4, rest),
+        OpCode::Lt => (4, rest),
+        OpCode::Gt => (4, rest),
+        OpCode::Shl => (4, rest),
+        OpCode::Shr => (4, rest),
+
+        OpCode::Hash(n) => (50u128.saturating_add(*n as u128), rest),
+        OpCode::SigEOk(n) => (100u128.saturating_add(*n as u128), rest),
+
+        OpCode::Store => (10, rest),
+        OpCode::Load => (10, rest),
+        OpCode::StoreImm(_) => (4, rest),
+        OpCode::LoadImm(_) => (4, rest),
+
+        OpCode::VRef => (10, rest),
+        OpCode::VSet => (20, rest),
+        OpCode::VAppend => (50, rest),
+        OpCode::VSlice => (50, rest),
+        OpCode::VLength => (4, rest),
+        OpCode::VEmpty => (4, rest),
+        OpCode::BEmpty => (4, rest),
+        OpCode::BPush => (10, rest),
+        OpCode::VPush => (10, rest),
+        OpCode::VCons => (10, rest),
+        OpCode::BRef => (10, rest),
+        OpCode::BAppend => (10, rest),
+        OpCode::BLength => (4, rest),
+        OpCode::BSlice => (50, rest),
+        OpCode::BSet => (20, rest),
+        OpCode::BCons => (10, rest),
+
+        OpCode::TypeQ => (4, rest),
+
+        OpCode::ItoB => (50, rest),
+        OpCode::BtoI => (50, rest),
+
+        OpCode::Bez(_) => (1, rest),
+        OpCode::Bnz(_) => (1, rest),
+        OpCode::Jmp(_) => (1, rest),
+
+        OpCode::PushB(_) => (1, rest),
+        OpCode::PushI(_) => (1, rest),
+
+        OpCode::Dup => (4, rest),
     }
 }
 

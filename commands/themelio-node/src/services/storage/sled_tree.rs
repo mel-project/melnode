@@ -63,6 +63,7 @@ impl novasmt::BackendDB for SledTreeDB {
                 Ok(())
             })
             .unwrap();
+        self.disk_tree.flush().unwrap();
     }
 
     fn delete_root(&self, key: Hashed) {

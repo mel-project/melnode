@@ -24,7 +24,7 @@ fn main() {
 fn test_once(data: &[u8]) {
     let covenant = Covenant(data.to_vec());
     if let Some(weight) = covenant.weight() {
-        if weight > 10000 {
+        if weight > 100000 {
             return;
         }
     }

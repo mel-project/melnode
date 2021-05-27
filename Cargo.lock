@@ -640,6 +640,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_repr",
+ "stacker",
  "stdcode",
  "thiserror",
  "tmelcrypt",
