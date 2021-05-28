@@ -17,7 +17,7 @@ pub type SharedStorage = Arc<RwLock<NodeStorage>>;
 pub struct NodeStorage {
     mempool: Mempool,
 
-    history: BlockTree<SledBackend>,
+    history: BlockTree<BoringDbBackend>,
     forest: novasmt::Forest,
 }
 
@@ -33,19 +33,12 @@ impl NodeStorage {
     }
 
     /// Opens a NodeStorage, given a sled database.
-    pub fn new(db: sled::Db, genesis: GenesisConfig) -> Self {
+    pub fn new(db: boringdb::Database, genesis: GenesisConfig) -> Self {
         // Identify the genesis by the genesis ID
         let genesis_id = tmelcrypt::hash_single(stdcode::serialize(&genesis).unwrap());
-
-        let forest = novasmt::Forest::new(SledTreeDB::new(
-            db.open_tree(format!("{}-autosmt", genesis_id)).unwrap(),
-        ));
-        let blktree_backend = SledBackend {
-            inner: db
-                .open_tree(format!("{}-node_blktree", genesis_id))
-                .unwrap(),
-        };
-        let mut history = BlockTree::new(blktree_backend, forest.clone(), true);
+        let dict = db.open_dict(&format!("genesis{}", genesis_id)).unwrap();
+        let forest = novasmt::Forest::new(BoringDbSmt::new(dict.clone()));
+        let mut history = BlockTree::new(BoringDbBackend { dict }, forest.clone(), true);
 
         // initialize stuff
         if history.get_tips().is_empty() {
@@ -72,7 +65,14 @@ impl NodeStorage {
 
     /// Obtain the highest height.
     pub fn highest_height(&self) -> u64 {
-        self.history.get_tips()[0].header().height
+        let tips = self.history.get_tips();
+        if tips.len() != 1 {
+            log::error!(
+                "multiple tips: {:#?}",
+                tips.iter().map(|v| v.header()).collect::<Vec<_>>()
+            );
+        }
+        tips.into_iter().map(|v| v.header().height).max().unwrap()
     }
 
     /// Obtain a historical SealedState.
@@ -113,10 +113,11 @@ impl NodeStorage {
             .apply_block(&blk, &stdcode::serialize(&cproof).unwrap())?;
 
         log::debug!(
-            "block {}, txcount={}, hash={:?} APPLIED",
+            "block {}, txcount={}, hash={:?} APPLIED (highest height {})",
             highest_height + 1,
             blk.transactions.len(),
-            blk.header.hash()
+            blk.header.hash(),
+            self.highest_height(),
         );
         let next = self.highest_state().next_state();
         self.mempool_mut().rebase(next);
@@ -134,26 +135,30 @@ impl NodeStorage {
     }
 }
 
-struct SledBackend {
-    inner: sled::Tree,
+struct BoringDbBackend {
+    dict: boringdb::Dict,
 }
 
-impl DbBackend for SledBackend {
+impl DbBackend for BoringDbBackend {
     fn insert(&mut self, key: &[u8], value: &[u8]) -> Option<Vec<u8>> {
-        self.inner.insert(key, value).unwrap().map(|v| v.to_vec())
+        self.dict
+            .insert(key.to_vec(), value.to_vec())
+            .unwrap()
+            .map(|v| v.to_vec())
     }
 
     fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
-        self.inner.get(key).unwrap().map(|v| v.to_vec())
+        self.dict.get(key).unwrap().map(|v| v.to_vec())
     }
 
     fn remove(&mut self, key: &[u8]) -> Option<Vec<u8>> {
-        self.inner.remove(key).unwrap().map(|v| v.to_vec())
+        self.dict.remove(key).unwrap().map(|v| v.to_vec())
     }
 
     fn key_range(&self, start: &[u8], end: &[u8]) -> Vec<Vec<u8>> {
-        self.inner
+        self.dict
             .range(start..=end)
+            .unwrap()
             .map(|v| v.unwrap().0.to_vec())
             .collect()
     }

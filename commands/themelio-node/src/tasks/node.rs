@@ -19,7 +19,7 @@ pub struct NodeConfig {
     bootstrap: Vec<String>,
 
     /// Database path
-    #[structopt(long, default_value = "/var/themelio-node/blocks")]
+    #[structopt(long, default_value = "/var/themelio-node/main.sqlite3")]
     database: String,
 
     /// Specifies the secret key for staking.
@@ -54,7 +54,6 @@ pub struct NodeConfig {
 /// Runs the main function for a node.
 #[instrument(skip(opt))]
 pub async fn run_node(opt: NodeConfig) -> anyhow::Result<()> {
-    let _ = std::fs::create_dir_all(&opt.database);
     log::info!("themelio-core v{} initializing...", VERSION);
     let genesis = if let Some(path) = opt.override_genesis {
         let genesis_toml = smol::fs::read(&path)
@@ -67,11 +66,7 @@ pub async fn run_node(opt: NodeConfig) -> anyhow::Result<()> {
         GenesisConfig::std_mainnet()
     };
     let netid = genesis.network;
-    let database = sled::Config::default()
-        .path(&opt.database)
-        .cache_capacity(1024 * 1024 * 100)
-        .open()
-        .context("can't open database")?;
+    let database = boringdb::Database::open(&opt.database)?;
     let storage = NodeStorage::new(database, genesis).share();
     let mut bootstrap = vec![];
     for name in opt.bootstrap.iter() {

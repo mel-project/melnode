@@ -4,7 +4,7 @@ use anyhow::Context;
 use blkstructs::{Block, ConsensusProof, NetID, Transaction};
 use futures_util::stream::FuturesUnordered;
 use nodeprot::{AbbreviatedBlock, NodeClient};
-use smol::prelude::*;
+use smol::{lock::Semaphore, prelude::*};
 use smol_timeout::TimeoutExt;
 use tmelcrypt::HashVal;
 
@@ -16,7 +16,7 @@ pub async fn sync_state(
     starting_height: u64,
     get_cached_tx: impl Fn(HashVal) -> Option<Transaction> + Send + Sync,
 ) -> anyhow::Result<Vec<(Block, ConsensusProof)>> {
-    const BLKSIZE: u64 = 100;
+    const BLKSIZE: u64 = 64;
     let exec = smol::Executor::new();
     let tasks = {
         let mut toret = Vec::new();
@@ -72,15 +72,19 @@ async fn get_one_block(
     }
     let mut get_tx_tasks = FuturesUnordered::new();
     for txh in unknown_txhashes.iter() {
+        let semaph = Semaphore::new(20);
         let client = &client;
         get_tx_tasks.push(async move {
+            let _guard = semaph.acquire().await;
             let (tx_content, _proof) = client
                 .get_smt_branch(
                     height,
                     nodeprot::Substate::Transactions,
                     tmelcrypt::hash_single(&stdcode::serialize(&txh).unwrap()),
                 )
-                .await?;
+                .timeout(Duration::from_secs(5))
+                .await
+                .context("timeout")??;
             // TODO check?
             Ok::<_, anyhow::Error>(stdcode::deserialize(&tx_content)?)
         });

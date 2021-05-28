@@ -37,8 +37,14 @@ tabwriter = "1.2.1"
 rustyline = "7.1.0"
 tracing-subscriber = "0.2.18"
 futures-util= "0.3.15"
-sled= "0.34.6"
 smol-timeout= "0.6.0"
 
 novasmt= "0.1.6"
 fastrand="1"
+
+# boringdb={ version="0.3.5-alpha.0", path="../../../boringdb"}
+boringdb="0.3.5"
+
+[dependencies.rusqlite]
+version = "0.25"
+features = ["bundled"]

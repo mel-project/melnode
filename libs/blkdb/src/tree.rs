@@ -2,7 +2,7 @@ use crate::traits::DbBackend;
 use blkstructs::{Block, Header, ProposerAction, SealedState};
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
-use std::fmt::Write;
+use std::{collections::HashMap, fmt::Write};
 use std::{
     collections::{BTreeSet, HashSet},
     convert::TryInto,
@@ -25,10 +25,33 @@ impl<B: DbBackend> BlockTree<B> {
             canonical,
             cache: Default::default(),
         };
-        Self {
+        let mut toret = Self {
             inner,
             forest,
             canonical,
+        };
+        toret.initial_tip_cleanup();
+        toret
+    }
+
+    /// Initial cleanup: delete tips that are ancestors of other tips.
+    fn initial_tip_cleanup(&mut self) {
+        let mut tips = HashMap::new();
+        for tip in self.get_tips() {
+            let hash = tip.header().hash();
+            tips.insert(hash, tip.to_state().inner_ref().history.clone());
+        }
+        let mut to_delete = Vec::new();
+        for tip in self.get_tips() {
+            if tips
+                .iter()
+                .any(|(_, history)| history.get(&tip.header().height).0 == Some(tip.header()))
+            {
+                to_delete.push(tip.header().hash())
+            }
+        }
+        for to_delete in to_delete {
+            self.inner.tip_remove(to_delete);
         }
     }
 
@@ -379,8 +402,8 @@ impl<B: DbBackend> Inner<B> {
         // insert into blkhash index
         self.index_insert(blkhash, header.height);
         // update tips list
-        self.tip_remove(header.previous);
         self.tip_insert(blkhash, header.height);
+        self.tip_remove(header.previous);
         // update cache
         self.cache.insert(state.header().hash(), state);
         None

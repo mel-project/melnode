@@ -449,6 +449,7 @@ async fn confirmer_loop(
             log::warn!("skipping out-of-bounds finalized block");
             continue;
         }
+        log::info!("[[[ {} FINALIZED ]]]", finalized.inner_ref().height);
         let my_header = finalized.header();
         let own_signature = signing_sk.sign(&finalized.header().hash());
         let sigs = UnconfirmedBlock {
@@ -473,21 +474,22 @@ async fn confirmer_loop(
                 .is_confirmed(cstate.read().stakes())
             {
                 if !cstate.read().has_block(my_header.previous) {
-                    log::warn!("breaking out of confirmation loop due to external intervention")
+                    log::warn!("breaking out of confirmation loop due to external intervention");
+                    break;
                 }
                 if let Some(random_peer) = network.routes().into_iter().next() {
-                    log::debug!(
-                        "confirming block {} with {}; known votes {:?}",
-                        my_height,
-                        random_peer,
-                        known_votes
-                            .read()
-                            .get(&my_height)
-                            .unwrap()
-                            .signatures
-                            .keys()
-                            .collect::<Vec<_>>()
-                    );
+                    // log::debug!(
+                    //     "confirming block {} with {}; known votes {:?}",
+                    //     my_height,
+                    //     random_peer,
+                    //     known_votes
+                    //         .read()
+                    //         .get(&my_height)
+                    //         .unwrap()
+                    //         .signatures
+                    //         .keys()
+                    //         .collect::<Vec<_>>()
+                    // );
                     let their_sigs = melnet::request::<_, BTreeMap<Ed25519PK, Vec<u8>>>(
                         random_peer,
                         "symphgossip",
@@ -499,11 +501,11 @@ async fn confirmer_loop(
                     let sigs = known_votes.get_mut(&my_height).unwrap();
                     match their_sigs {
                         Ok(their_sigs) => {
-                            log::debug!(
-                                "got {} confirmation sigs from {}",
-                                their_sigs.len(),
-                                random_peer
-                            );
+                            // log::debug!(
+                            //     "got {} confirmation sigs from {}",
+                            //     their_sigs.len(),
+                            //     random_peer
+                            // );
                             for (key, signature) in their_sigs {
                                 if cstate
                                     .read()
@@ -524,10 +526,11 @@ async fn confirmer_loop(
                         ),
                     }
                 }
-                smol::Timer::after(Duration::from_millis(100)).await;
+                smol::Timer::after(Duration::from_millis(1000)).await;
             }
 
             let sigs = known_votes.read().get(&my_height).cloned().unwrap();
+            log::info!("[[[ {} CONFIRMED !!! ]]]", &my_height);
             Some(sigs.state.confirm(sigs.signatures, None).unwrap())
         };
         send_fut.send(confirm_fut.boxed()).await.unwrap();
