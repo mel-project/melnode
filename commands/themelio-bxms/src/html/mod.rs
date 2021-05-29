@@ -1,7 +1,7 @@
 mod homepage;
 use std::{fmt::Display, time::Instant};
 
-use blkstructs::{Denom, MICRO_CONVERTER};
+use themelio_stf::{Denom, MICRO_CONVERTER};
 mod block;
 mod pool;
 mod transaction;

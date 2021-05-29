@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 mod helpers;
 use blkdb::{backends::InMemoryDb, BlockTree, Cursor};
-use blkstructs::{Block, SealedState, StakeMapping, STAKE_EPOCH};
+use themelio_stf::{Block, SealedState, StakeMapping, STAKE_EPOCH};
 use helpers::*;
 
 pub mod gossip;
@@ -435,7 +435,7 @@ impl ChainState {
 
 #[cfg(test)]
 mod tests {
-    use blkstructs::{GenesisConfig, State};
+    use themelio_stf::{GenesisConfig, State};
 
     use super::*;
 

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use blkdb::{backends::InMemoryDb, Cursor};
-use blkstructs::{AbbrBlock, StakeMapping};
+use themelio_stf::{AbbrBlock, StakeMapping};
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};

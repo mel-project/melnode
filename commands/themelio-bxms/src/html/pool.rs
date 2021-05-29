@@ -3,7 +3,7 @@ use std::time::Duration;
 use crate::{notfound, to_badgateway, to_badreq};
 use anyhow::Context;
 use askama::Template;
-use blkstructs::{Denom, NetID, MICRO_CONVERTER};
+use themelio_stf::{Denom, NetID, MICRO_CONVERTER};
 use futures_util::stream::FuturesUnordered;
 use nodeprot::ValClient;
 use num_traits::ToPrimitive;

@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use blkstructs::{
+use themelio_stf::{
     Block, CoinDataHeight, CoinID, ConsensusProof, Denom, Header, NetID, PoolState, SmtMapping,
     StakeDoc, StakeMapping, Transaction, STAKE_EPOCH,
 };

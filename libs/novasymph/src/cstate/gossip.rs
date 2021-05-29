@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use blkstructs::{AbbrBlock, Block, Transaction};
+use themelio_stf::{AbbrBlock, Block, Transaction};
 use serde::{Deserialize, Serialize};
 use tmelcrypt::HashVal;
 

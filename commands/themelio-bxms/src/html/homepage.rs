@@ -1,6 +1,6 @@
 use crate::to_badgateway;
 use askama::Template;
-use blkstructs::{CoinID, Denom, Header, NetID};
+use themelio_stf::{CoinID, Denom, Header, NetID};
 use futures_util::stream::FuturesOrdered;
 use futures_util::StreamExt;
 use nodeprot::ValClient;
@@ -102,7 +102,7 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
         .map_err(to_badgateway)?
         .unwrap()
         .implied_price()
-        * blkstructs::dosc_inflator(last_snap.current_header().height))
+        * themelio_stf::dosc_inflator(last_snap.current_header().height))
     .to_f64()
     .unwrap_or_default();
 

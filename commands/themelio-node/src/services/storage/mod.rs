@@ -4,7 +4,7 @@ mod sled_tree;
 use std::{collections::HashSet, sync::Arc};
 
 use blkdb::{traits::DbBackend, BlockTree};
-use blkstructs::{ConsensusProof, GenesisConfig, SealedState, State, StateError, Transaction};
+use themelio_stf::{ConsensusProof, GenesisConfig, SealedState, State, StateError, Transaction};
 use lru::LruCache;
 use parking_lot::RwLock;
 pub use sled_tree::*;
@@ -50,7 +50,7 @@ impl NodeStorage {
             mempool: Mempool {
                 provisional_state: mempool_state.clone(),
                 last_rebase: mempool_state,
-                txx_in_state: vec![],
+                txx_in_state: HashSet::new(),
                 seen: LruCache::new(100000),
             },
             history,
@@ -97,7 +97,7 @@ impl NodeStorage {
     /// Consumes a block, applying it to the current state.
     pub fn apply_block(
         &mut self,
-        blk: blkstructs::Block,
+        blk: themelio_stf::Block,
         cproof: ConsensusProof,
     ) -> anyhow::Result<()> {
         let highest_height = self.highest_height();
@@ -168,7 +168,7 @@ impl DbBackend for BoringDbBackend {
 pub struct Mempool {
     provisional_state: State,
     last_rebase: State,
-    txx_in_state: Vec<Transaction>,
+    txx_in_state: HashSet<HashVal>,
     seen: LruCache<HashVal, Transaction>, // TODO: caches if benchmarks prove them helpful
 }
 
@@ -183,8 +183,11 @@ impl Mempool {
         // if self.seen.put(tx.hash_nosigs(), tx.clone()).is_some() {
         //     return Err(StateError::DuplicateTx);
         // }
+        if !self.txx_in_state.insert(tx.hash_nosigs()) {
+            return Err(StateError::DuplicateTx);
+        }
         self.provisional_state.apply_tx(tx)?;
-        self.txx_in_state.push(tx.clone());
+        self.seen.put(tx.hash_nosigs(), tx.clone());
         Ok(())
     }
 
@@ -212,51 +215,5 @@ impl Mempool {
             .peek(&hash)
             .cloned()
             .or_else(|| self.provisional_state.transactions.get(&hash).0)
-    }
-
-    pub fn debug_verify(&self) {
-        let mut lrb = self.last_rebase.clone();
-        let mut panic = false;
-        if let Err(err) = lrb.apply_tx_batch(&self.txx_in_state) {
-            log::error!(
-                "We recorded txx_in_state, but batch-applying them failed with {:?}",
-                err
-            );
-            panic = true;
-        }
-
-        if lrb.coins.root_hash() != self.provisional_state.coins.root_hash() {
-            log::error!(
-                "Batch-applying recorded tx got coins {}, should have been {}",
-                lrb.coins.root_hash(),
-                self.provisional_state.coins.root_hash(),
-            );
-            panic = true;
-        }
-
-        if panic {
-            let mut lrb = self.last_rebase.clone();
-            log::error!("**** P A N I K ****");
-            let mut seen = HashSet::new();
-            log::error!("Trying to apply them one-by-one now...");
-            for (idx, tx) in self.txx_in_state.iter().enumerate() {
-                log::error!(
-                    "tx {}/{}: {}, hash {}",
-                    idx,
-                    self.txx_in_state.len(),
-                    tx.kind,
-                    tx.hash_nosigs(),
-                );
-                if !seen.insert(tx.clone()) {
-                    log::error!(">>>> DUPLICATE ?! <<<<");
-                }
-                if let Err(err) = lrb.apply_tx(tx) {
-                    panic!("can't proceed now. {}", err)
-                }
-                log::error!("coins hash is now {}", lrb.coins.root_hash());
-            }
-            panic!("P A N I K");
-        }
-        log::info!("mempool verified with {} txx", self.txx_in_state.len());
     }
 }

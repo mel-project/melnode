@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 
 use anyhow::Context;
-use blkstructs::{CoinID, Denom};
+use themelio_stf::{CoinID, Denom};
 use nodeprot::ValClient;
 
 use tide::Body;

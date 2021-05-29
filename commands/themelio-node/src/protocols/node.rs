@@ -4,8 +4,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-use blkstructs::{ConsensusProof, NetID, Transaction};
 use novasmt::CompressedProof;
+use themelio_stf::{ConsensusProof, NetID, Transaction};
 
 use melnet::MelnetError;
 use nodeprot::{AbbreviatedBlock, NodeClient, NodeResponder, NodeServer, StateSummary, Substate};

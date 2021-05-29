@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use blkstructs::{ConsensusProof, Transaction};
+use themelio_stf::{ConsensusProof, Transaction};
 use melnet::Request;
 use novasmt::CompressedProof;
 use tmelcrypt::HashVal;

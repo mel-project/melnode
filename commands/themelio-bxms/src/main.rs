@@ -1,9 +1,9 @@
 use std::{convert::TryInto, net::SocketAddr};
 
-use blkstructs::NetID;
 use nodeprot::ValClient;
 use std::fmt::Debug;
 use structopt::StructOpt;
+use themelio_stf::NetID;
 use tide::StatusCode;
 use tmelcrypt::HashVal;
 mod html;
@@ -30,7 +30,8 @@ pub struct Args {
 
 #[tracing::instrument]
 async fn main_inner() -> anyhow::Result<()> {
-    let log_conf = std::env::var("RUST_LOG").unwrap_or_else(|_| "themelio_bxms=debug,warn".into());
+    let log_conf = std::env::var("RUST_LOG")
+        .unwrap_or_else(|_| "themelio_bxms=debug,nodeprot=debug,warn".into());
     std::env::set_var("RUST_LOG", log_conf);
     tracing_subscriber::fmt::init();
 

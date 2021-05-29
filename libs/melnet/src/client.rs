@@ -80,10 +80,9 @@ impl Client {
         req: TInput,
     ) -> Result<TOutput> {
         // Semaphore
-        static GLOBAL_LIMIT: Semaphore = Semaphore::new(64);
-        let start = Instant::now();
+        static GLOBAL_LIMIT: Semaphore = Semaphore::new(128);
         let _guard = GLOBAL_LIMIT.acquire().await;
-
+        let start = Instant::now();
         // grab a connection
         let mut conn = self.connect(addr).await.map_err(MelnetError::Network)?;
         conn.set_nodelay(true).unwrap();

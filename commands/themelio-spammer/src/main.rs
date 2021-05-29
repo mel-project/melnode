@@ -9,7 +9,6 @@ use std::{
 };
 
 use anyhow::Context;
-use blkstructs::{melvm::Covenant, CoinData, CoinID, Denom, Transaction, TxKind, MICRO_CONVERTER};
 use governor::{
     clock::QuantaClock,
     state::{InMemoryState, NotKeyed},
@@ -20,6 +19,9 @@ use priority_queue::PriorityQueue;
 use rand::prelude::*;
 use smol_timeout::TimeoutExt;
 use structopt::StructOpt;
+use themelio_stf::{
+    melvm::Covenant, CoinData, CoinID, Denom, Transaction, TxKind, MICRO_CONVERTER,
+};
 use tmelcrypt::Ed25519SK;
 
 #[derive(StructOpt)]
@@ -44,7 +46,7 @@ async fn main_async() -> anyhow::Result<()> {
             .allow_burst(NonZeroU32::new(1).unwrap()),
     ));
     for wkr in 0..args.tps.max(100) {
-        let client = NodeClient::new(blkstructs::NetID::Testnet, args.connect);
+        let client = NodeClient::new(themelio_stf::NetID::Testnet, args.connect);
         let lim = lim.clone();
         smol::spawn(async move {
             loop {

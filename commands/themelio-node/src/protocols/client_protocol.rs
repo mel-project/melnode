@@ -1,5 +1,5 @@
-use blkstructs::{CoinDataHeight, CoinID, Transaction};
 use serde::{Deserialize, Serialize};
+use themelio_stf::{CoinDataHeight, CoinID, Transaction};
 use tmelcrypt::HashVal;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

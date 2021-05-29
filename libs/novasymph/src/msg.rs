@@ -1,5 +1,5 @@
-use blkstructs::AbbrBlock;
 use serde::{Deserialize, Serialize};
+use themelio_stf::AbbrBlock;
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -1,11 +1,11 @@
 use std::{net::SocketAddr, time::Duration};
 
 use anyhow::Context;
-use blkstructs::{Block, ConsensusProof, NetID, Transaction};
 use futures_util::stream::FuturesUnordered;
 use nodeprot::{AbbreviatedBlock, NodeClient};
 use smol::{lock::Semaphore, prelude::*};
 use smol_timeout::TimeoutExt;
+use themelio_stf::{Block, ConsensusProof, NetID, Transaction};
 use tmelcrypt::HashVal;
 
 /// This cancellable async function synchronizes the block state with some other node. If the other node has the next few blocks, those are returned.
@@ -110,19 +110,19 @@ async fn get_one_block(
 // TODO: where does this test go?
 // async fn test_spam_txx(auditor: Auditor) {
 //     let (_, sk) = tmelcrypt::ed25519_keygen();
-//     let txx = blkstructs::testing::random_valid_txx(
+//     let txx = themelio_stf::testing::random_valid_txx(
 //         &mut rand::thread_rng(),
-//         blkstructs::CoinID {
+//         themelio_stf::CoinID {
 //             txhash: tmelcrypt::HashVal::default(),
 //             index: 0,
 //         },
-//         blkstructs::CoinData {
-//             conshash: blkstructs::melvm::Covenant::always_true().hash(),
-//             value: blkstructs::MICRO_CONVERTER * 1000,
-//             cointype: blkstructs::COINTYPE_TMEL.to_owned(),
+//         themelio_stf::CoinData {
+//             conshash: themelio_stf::melvm::Covenant::always_true().hash(),
+//             value: themelio_stf::MICRO_CONVERTER * 1000,
+//             cointype: themelio_stf::COINTYPE_TMEL.to_owned(),
 //         },
 //         sk,
-//         &blkstructs::melvm::Covenant::always_true(),
+//         &themelio_stf::melvm::Covenant::always_true(),
 //     );
 //     log::info!("starting spamming with {} txx", txx.len());
 //     //let txx = &txx[1..];

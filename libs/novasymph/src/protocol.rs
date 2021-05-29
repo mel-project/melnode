@@ -1,4 +1,4 @@
-use blkstructs::{
+use themelio_stf::{
     Block, ConfirmedState, ConsensusProof, ProposerAction, SealedState, StakeMapping, Transaction,
     STAKE_EPOCH,
 };

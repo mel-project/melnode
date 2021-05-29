@@ -1,6 +1,6 @@
 // use std::{convert::TryInto, net::SocketAddr, env};
 
-// use blkstructs::{melvm, CoinID};
+// use themelio_stf::{melvm, CoinID};
 // use colored::Colorize;
 // use std::io::prelude::*;
 // use structopt::StructOpt;

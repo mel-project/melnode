@@ -1,5 +1,5 @@
 use crate::protocols::{AbbreviatedBlock, NODE_NETNAME};
-use blkstructs::{CoinDataHeight, CoinID, ConsensusProof, Header, Transaction};
+use themelio_stf::{CoinDataHeight, CoinID, ConsensusProof, Header, Transaction};
 use std::time::Instant;
 use std::{net::SocketAddr, time::Duration};
 use tmelcrypt::HashVal;

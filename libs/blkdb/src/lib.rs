@@ -5,7 +5,7 @@ pub use tree::*;
 
 #[cfg(test)]
 mod tests {
-    use blkstructs::{GenesisConfig, State};
+    use themelio_stf::{GenesisConfig, State};
 
     use crate::{backends::InMemoryDb, BlockTree};
 

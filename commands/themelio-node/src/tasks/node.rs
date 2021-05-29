@@ -3,9 +3,9 @@ use std::path::PathBuf;
 use crate::protocols::{NodeProtocol, StakerProtocol};
 use crate::{config::VERSION, services::NodeStorage};
 use anyhow::Context;
-use blkstructs::GenesisConfig;
 use smol::net::SocketAddr;
 use structopt::StructOpt;
+use themelio_stf::GenesisConfig;
 use tmelcrypt::{Ed25519SK, HashVal};
 use tracing::instrument;
 #[derive(Debug, StructOpt)]

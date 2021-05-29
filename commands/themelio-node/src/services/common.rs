@@ -5,12 +5,12 @@ pub use smol::prelude::*;
 use serde::{Deserialize, Serialize};
 pub use smol::{Task, Timer};
 
-use blkstructs::Transaction;
+use themelio_stf::Transaction;
 use tmelcrypt::HashVal;
 /// Request for a new block.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NewBlkRequest {
-    pub header: blkstructs::Header,
+    pub header: themelio_stf::Header,
     pub txhashes: Vec<HashVal>,
     pub partial_transactions: Vec<Transaction>,
 }

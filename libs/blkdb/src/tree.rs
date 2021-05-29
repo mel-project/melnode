@@ -1,5 +1,4 @@
 use crate::traits::DbBackend;
-use blkstructs::{Block, Header, ProposerAction, SealedState};
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Write};
@@ -7,6 +6,7 @@ use std::{
     collections::{BTreeSet, HashSet},
     convert::TryInto,
 };
+use themelio_stf::{Block, Header, ProposerAction, SealedState};
 use thiserror::Error;
 use tmelcrypt::HashVal;
 
@@ -328,7 +328,7 @@ pub enum ApplyBlockErr {
     #[error("parent `{0}` not found")]
     ParentNotFound(HashVal),
     #[error("validation error: `{0}`")]
-    CannotValidate(blkstructs::StateError),
+    CannotValidate(themelio_stf::StateError),
     #[error("header mismatch")]
     HeaderMismatch,
 }

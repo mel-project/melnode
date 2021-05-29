@@ -1,6 +1,6 @@
 use crate::{to_badgateway, to_badreq};
 use askama::Template;
-use blkstructs::{CoinID, Header, NetID};
+use themelio_stf::{CoinID, Header, NetID};
 use nodeprot::ValClient;
 use tmelcrypt::HashVal;
 

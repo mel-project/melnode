@@ -3,7 +3,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use blkstructs::{
+use themelio_stf::{
     melvm::Covenant, Block, CoinData, Denom, GenesisConfig, NetID, ProposerAction, SealedState,
     StakeDoc, State,
 };

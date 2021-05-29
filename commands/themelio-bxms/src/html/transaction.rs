@@ -6,7 +6,7 @@ use std::{
 use crate::{notfound, to_badgateway, to_badreq};
 use anyhow::Context;
 use askama::Template;
-use blkstructs::{CoinData, CoinDataHeight, CoinID, NetID, Transaction};
+use themelio_stf::{CoinData, CoinDataHeight, CoinID, NetID, Transaction};
 use nodeprot::ValClient;
 use tmelcrypt::HashVal;
 
@@ -55,7 +55,7 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
     let denoms: BTreeSet<_> = transaction
         .outputs
         .iter()
-        .map(|v| -> blkstructs::Denom { v.denom })
+        .map(|v| -> themelio_stf::Denom { v.denom })
         .collect();
     let mut net_loss: BTreeMap<String, Vec<MicroUnit>> = BTreeMap::new();
     let mut net_gain: BTreeMap<String, Vec<MicroUnit>> = BTreeMap::new();

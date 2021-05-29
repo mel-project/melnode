@@ -1,6 +1,6 @@
 use crate::services::storage::SharedStorage;
 
-use blkstructs::{Block, ProposerAction, SealedState, STAKE_EPOCH};
+use themelio_stf::{Block, ProposerAction, SealedState, STAKE_EPOCH};
 
 use novasymph::BlockBuilder;
 use smol::prelude::*;
@@ -160,7 +160,6 @@ impl BlockBuilder for StorageBlockBuilder {
             let next = tip.next_state().seal(Some(proposer_action));
             next.to_block()
         } else {
-            storage.mempool().debug_verify();
             storage.mempool_mut().rebase(mempool_state.next_state());
             mempool_state.to_block()
         }
