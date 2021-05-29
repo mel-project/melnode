@@ -3,13 +3,13 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+use env_logger::Env;
+use novasymph::{BlockBuilder, EpochConfig, EpochProtocol};
+use once_cell::sync::Lazy;
 use themelio_stf::{
     melvm::Covenant, Block, CoinData, Denom, GenesisConfig, NetID, ProposerAction, SealedState,
     StakeDoc, State,
 };
-use env_logger::Env;
-use novasymph::{BlockBuilder, EpochConfig, EpochProtocol};
-use once_cell::sync::Lazy;
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
 const COUNT: usize = 10;
@@ -51,7 +51,9 @@ fn main() {
     .seal(None);
     smol::future::block_on(async move {
         for i in 0..COUNT {
+            // if i < 9 {
             smol::spawn(run_staker(i, genesis.clone(), forest.clone())).detach();
+            // }
         }
         smol::future::pending().await
     })

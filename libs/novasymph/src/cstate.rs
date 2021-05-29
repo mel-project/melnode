@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 mod helpers;
 use blkdb::{backends::InMemoryDb, BlockTree, Cursor};
-use themelio_stf::{Block, SealedState, StakeMapping, STAKE_EPOCH};
 use helpers::*;
+use themelio_stf::{Block, SealedState, StakeMapping, STAKE_EPOCH};
 
 pub mod gossip;
 use gossip::*;

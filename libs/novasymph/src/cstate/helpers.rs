@@ -1,10 +1,10 @@
 use std::collections::BTreeMap;
 
 use blkdb::{backends::InMemoryDb, Cursor};
-use themelio_stf::{AbbrBlock, StakeMapping};
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
+use themelio_stf::{AbbrBlock, StakeMapping};
 use thiserror::Error;
 use tmelcrypt::{Ed25519PK, HashVal};
 
@@ -94,7 +94,7 @@ impl StreamletMetadata {
         }
         assert!(total_stake >= voting_stake);
         // is this enough?
-        voting_stake >= 2 * total_stake / 3
+        voting_stake > 2 * total_stake / 3
     }
 
     /// Checks that the proposal and votes actually belong to the given block.
