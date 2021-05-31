@@ -7,19 +7,19 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tmelcrypt="0.1"
-themelio-stf="0.1"
+tmelcrypt= "0.1.0"
+themelio-stf= "0.2.0"
 blkdb={path="../blkdb"}
 bytes={ version = "1.0.1", features = ["serde"] }
 serde={ version = "1.0.126", features = ["derive"] }
-stdcode="0.1"
+stdcode= "0.1.0"
 anyhow= "1.0.40"
 im= "15.0.0"
 async-trait= "0.1.50"
 smol= "1.2.5"
 parking_lot= "0.11.1"
 log= "0.4.14"
-async-oneshot= "0.4.2"
+async-oneshot= "0.5.0"
 smol-timeout= "0.6.0"
 once_cell= "1.7.2"
 env_logger= "0.8.3"

@@ -4,10 +4,12 @@ mod sled_tree;
 use std::{collections::HashSet, sync::Arc};
 
 use blkdb::{traits::DbBackend, BlockTree};
-use themelio_stf::{ConsensusProof, GenesisConfig, SealedState, State, StateError, Transaction};
 use lru::LruCache;
 use parking_lot::RwLock;
 pub use sled_tree::*;
+use themelio_stf::{
+    ConsensusProof, GenesisConfig, SealedState, State, StateError, Transaction, TxHash,
+};
 use tmelcrypt::HashVal;
 
 /// An alias for a shared NodeStorage.
@@ -111,14 +113,6 @@ impl NodeStorage {
 
         self.history
             .apply_block(&blk, &stdcode::serialize(&cproof).unwrap())?;
-
-        log::debug!(
-            "block {}, txcount={}, hash={:?} APPLIED (highest height {})",
-            highest_height + 1,
-            blk.transactions.len(),
-            blk.header.hash(),
-            self.highest_height(),
-        );
         let next = self.highest_state().next_state();
         self.mempool_mut().rebase(next);
         Ok(())
@@ -168,8 +162,8 @@ impl DbBackend for BoringDbBackend {
 pub struct Mempool {
     provisional_state: State,
     last_rebase: State,
-    txx_in_state: HashSet<HashVal>,
-    seen: LruCache<HashVal, Transaction>, // TODO: caches if benchmarks prove them helpful
+    txx_in_state: HashSet<TxHash>,
+    seen: LruCache<TxHash, Transaction>, // TODO: caches if benchmarks prove them helpful
 }
 
 impl Mempool {
@@ -194,7 +188,7 @@ impl Mempool {
     /// Forcibly replaces the internal state of the mempool with the given state.
     pub fn rebase(&mut self, state: State) {
         if state.height > self.provisional_state.height {
-            log::debug!(
+            log::trace!(
                 "rebasing mempool {} => {}",
                 self.provisional_state.height,
                 state.height
@@ -210,7 +204,7 @@ impl Mempool {
         }
     }
 
-    pub fn lookup(&self, hash: HashVal) -> Option<Transaction> {
+    pub fn lookup(&self, hash: TxHash) -> Option<Transaction> {
         self.seen
             .peek(&hash)
             .cloned()

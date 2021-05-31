@@ -4,21 +4,21 @@ mod server;
 pub use client::*;
 pub use server::*;
 
-use themelio_stf::{ConsensusProof, Header, NetID, ProposerAction, Transaction};
 use serde::{Deserialize, Serialize};
+use themelio_stf::{ConsensusProof, Header, NetID, ProposerAction, Transaction, TxHash};
 use tmelcrypt::HashVal;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AbbreviatedBlock {
     pub header: Header,
     pub proposer_action: Option<ProposerAction>,
-    pub txhashes: Vec<HashVal>,
+    pub txhashes: Vec<TxHash>,
 }
 
 impl AbbreviatedBlock {
     pub fn from_state(state: &themelio_stf::SealedState) -> Self {
         let header = state.header();
-        let txhashes: Vec<HashVal> = state
+        let txhashes: Vec<TxHash> = state
             .inner_ref()
             .transactions
             .val_iter()

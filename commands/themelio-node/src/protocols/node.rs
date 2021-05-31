@@ -101,6 +101,7 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, state: SharedStor
                         }
                         smol::future::yield_now().await;
                     }
+                    log::debug!("synced to height {}", state.read().highest_height());
                     if blklen > 0 {
                         smol::Timer::after(FAST_TIME).await;
                     } else {

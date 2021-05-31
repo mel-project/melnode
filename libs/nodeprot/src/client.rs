@@ -4,15 +4,15 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use themelio_stf::{
-    Block, CoinDataHeight, CoinID, ConsensusProof, Denom, Header, NetID, PoolState, SmtMapping,
-    StakeDoc, StakeMapping, Transaction, STAKE_EPOCH,
-};
 use futures_util::stream::FuturesUnordered;
 use melnet::MelnetError;
 use novasmt::{CompressedProof, Forest, FullProof, InMemoryBackend};
 use serde::{de::DeserializeOwned, Serialize};
 use smol::stream::StreamExt;
+use themelio_stf::{
+    Block, CoinDataHeight, CoinID, ConsensusProof, Denom, Header, NetID, PoolState, SmtMapping,
+    StakeDoc, StakeMapping, Transaction, TxHash, STAKE_EPOCH,
+};
 use tmelcrypt::HashVal;
 
 use crate::{AbbreviatedBlock, NodeRequest, StateSummary, Substate};
@@ -230,7 +230,7 @@ impl ValClientSnapshot {
     }
 
     /// Gets a transaction.
-    pub async fn get_transaction(&self, txhash: HashVal) -> melnet::Result<Option<Transaction>> {
+    pub async fn get_transaction(&self, txhash: TxHash) -> melnet::Result<Option<Transaction>> {
         self.get_smt_value_serde(Substate::Transactions, txhash)
             .await
     }
@@ -394,7 +394,7 @@ async fn get_full_block(this: NodeClient, height: u64) -> melnet::Result<Block> 
                 this,
                 height,
                 Substate::Transactions,
-                tmelcrypt::hash_single(&txhash),
+                tmelcrypt::hash_single(&txhash.0),
             )
             .await?;
             let tx = stdcode::deserialize(&v).map_err(|_| {

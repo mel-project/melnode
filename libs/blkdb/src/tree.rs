@@ -405,7 +405,9 @@ impl<B: DbBackend> Inner<B> {
         self.tip_insert(blkhash, header.height);
         self.tip_remove(header.previous);
         // update cache
-        self.cache.insert(state.header().hash(), state);
+        if !self.canonical {
+            self.cache.insert(state.header().hash(), state);
+        }
         None
     }
 

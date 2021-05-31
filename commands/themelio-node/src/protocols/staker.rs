@@ -1,11 +1,11 @@
 use crate::services::storage::SharedStorage;
 
-use themelio_stf::{Block, ProposerAction, SealedState, STAKE_EPOCH};
+use themelio_stf::{melvm::CovHash, Block, ProposerAction, SealedState, STAKE_EPOCH};
 
 use novasymph::BlockBuilder;
 use smol::prelude::*;
 use std::{net::SocketAddr, time::Duration};
-use tmelcrypt::{Ed25519SK, HashVal};
+use tmelcrypt::Ed25519SK;
 use tracing::instrument;
 
 /// This encapsulates the staker-specific peer-to-peer.
@@ -20,13 +20,13 @@ impl StakerProtocol {
         bootstrap: Vec<SocketAddr>,
         storage: SharedStorage,
         my_sk: Ed25519SK,
-        payout_covhash: HashVal,
+        payout_covhash: CovHash,
         target_fee_multiplier: u128,
     ) -> anyhow::Result<Self> {
         let _network_task = smolscale::spawn(async move {
             loop {
                 let x = storage.read().highest_height();
-                smol::Timer::after(Duration::from_secs(5)).await;
+                smol::Timer::after(Duration::from_secs(60)).await;
                 let y = storage.read().highest_height();
                 log::info!(
                     "delta-height = {}; must be less than 5 to start staker",
@@ -78,7 +78,7 @@ async fn one_epoch_loop(
     bootstrap: Vec<SocketAddr>,
     storage: SharedStorage,
     my_sk: Ed25519SK,
-    payout_covhash: HashVal,
+    payout_covhash: CovHash,
     target_fee_multiplier: u128,
 ) -> anyhow::Result<()> {
     let genesis = storage.read().highest_state();
@@ -135,7 +135,7 @@ async fn one_epoch_loop(
 
 struct StorageBlockBuilder {
     storage: SharedStorage,
-    payout_covhash: HashVal,
+    payout_covhash: CovHash,
     target_fee_multiplier: u128,
 }
 

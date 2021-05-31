@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
-use themelio_stf::{AbbrBlock, Block, Transaction};
 use serde::{Deserialize, Serialize};
+use themelio_stf::{AbbrBlock, Block, Transaction, TxHash};
 use tmelcrypt::HashVal;
 
 use super::helpers::StreamletMetadata;
@@ -35,7 +35,7 @@ pub struct TransactionRequest {
     /// Which block to search in
     pub block_hash: HashVal,
     /// Transaction hashes
-    pub hashes: Vec<HashVal>,
+    pub hashes: Vec<TxHash>,
 }
 
 /// A gossip response that contains information about transactions.

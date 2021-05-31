@@ -85,7 +85,8 @@ pub async fn run_node(opt: NodeConfig) -> anyhow::Result<()> {
                 storage.clone(),
                 my_sk,
                 HashVal::from_addr(&opt.staker_payout_addr.unwrap())
-                    .context("cannot parse payout address")?,
+                    .context("cannot parse payout address")?
+                    .into(),
                 opt.target_fee_multiplier,
             )
             .unwrap(),

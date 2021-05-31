@@ -39,12 +39,12 @@ fn main() {
             eprintln!("PK = {}", hex::encode(pk.0));
             eprintln!("SK = {}", hex::encode(sk.0));
             let cov = Covenant::std_ed25519_pk_new(pk);
-            eprintln!("Address (new covenant): {}", cov.hash().to_addr());
+            eprintln!("Address (new covenant): {}", cov.hash().0.to_addr());
         }
         Args::Hash(opts) => {
             let h = if opts.json_transaction {
                 let transaction: Transaction = serde_json::from_str(&opts.to_hash).unwrap();
-                transaction.hash_nosigs()
+                transaction.hash_nosigs().0
             } else {
                 let to_hash = hex::decode(&opts.to_hash).unwrap();
                 tmelcrypt::hash_single(&to_hash)

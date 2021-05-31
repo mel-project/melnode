@@ -1,7 +1,3 @@
-use themelio_stf::{
-    Block, ConfirmedState, ConsensusProof, ProposerAction, SealedState, StakeMapping, Transaction,
-    STAKE_EPOCH,
-};
 use futures_util::stream::FuturesOrdered;
 use melnet::Request;
 use parking_lot::RwLock;
@@ -14,6 +10,10 @@ use std::{
     net::SocketAddr,
     sync::Arc,
     time::{Duration, SystemTime},
+};
+use themelio_stf::{
+    Block, ConfirmedState, ConsensusProof, ProposerAction, SealedState, StakeMapping, Transaction,
+    TxHash, STAKE_EPOCH,
 };
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
@@ -40,7 +40,7 @@ pub trait BlockBuilder: 'static + Send + Sync {
 
     /// Gets a cached transaction if available.
     #[allow(unused_variables)]
-    fn get_cached_transaction(&self, txhash: HashVal) -> Option<Transaction> {
+    fn get_cached_transaction(&self, txhash: TxHash) -> Option<Transaction> {
         None
     }
 }
@@ -208,7 +208,7 @@ async fn protocol_loop<B: BlockBuilder>(
                     .next_state()
                     .seal(Some(ProposerAction {
                         fee_multiplier_delta: 0,
-                        reward_dest: HashVal::default(),
+                        reward_dest: HashVal::default().into(),
                     }))
                     .to_block()
             } else {

@@ -5,8 +5,7 @@ use futures_util::stream::FuturesUnordered;
 use nodeprot::{AbbreviatedBlock, NodeClient};
 use smol::{lock::Semaphore, prelude::*};
 use smol_timeout::TimeoutExt;
-use themelio_stf::{Block, ConsensusProof, NetID, Transaction};
-use tmelcrypt::HashVal;
+use themelio_stf::{Block, ConsensusProof, NetID, Transaction, TxHash};
 
 /// This cancellable async function synchronizes the block state with some other node. If the other node has the next few blocks, those are returned.
 #[tracing::instrument(skip(get_cached_tx))]
@@ -14,7 +13,7 @@ pub async fn sync_state(
     netid: NetID,
     remote: SocketAddr,
     starting_height: u64,
-    get_cached_tx: impl Fn(HashVal) -> Option<Transaction> + Send + Sync,
+    get_cached_tx: impl Fn(TxHash) -> Option<Transaction> + Send + Sync,
 ) -> anyhow::Result<Vec<(Block, ConsensusProof)>> {
     const BLKSIZE: u64 = 64;
     let exec = smol::Executor::new();
@@ -47,7 +46,7 @@ async fn get_one_block(
     netid: NetID,
     remote: SocketAddr,
     height: u64,
-    get_cached_tx: &(impl Sync + Fn(HashVal) -> Option<Transaction>),
+    get_cached_tx: &(impl Sync + Fn(TxHash) -> Option<Transaction>),
 ) -> anyhow::Result<(Block, ConsensusProof)> {
     log::trace!("get_one_block({})", height);
     let client = NodeClient::new(netid, remote);

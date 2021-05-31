@@ -29,14 +29,14 @@ fn main() {
                 denom: Denom::Mel,
                 value: 1 << 64,
                 additional_data: vec![],
-                covhash: HashVal::default(),
+                covhash: HashVal::default().into(),
             },
             init_fee_pool: 1 << 64,
             stakes: TEST_SKK
                 .iter()
                 .map(|v| {
                     (
-                        tmelcrypt::hash_single(&v.to_public().0),
+                        tmelcrypt::hash_single(&v.to_public().0).into(),
                         StakeDoc {
                             pubkey: v.to_public(),
                             e_start: 0,

@@ -151,7 +151,7 @@ impl NetState {
         let response_fut = {
             let responder = self.verbs.lock().get(&cmd.verb).cloned();
             if let Some(responder) = responder {
-                let res = smol::unblock(move || responder.0(&cmd.payload)).await;
+                let res = responder.0(&cmd.payload);
                 Some(res)
             } else {
                 None
@@ -279,44 +279,5 @@ impl NetState {
         let mut ns = NetState::default();
         ns.set_name(name);
         ns
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn basic_test() {
-        let _ = env_logger::try_init();
-        let server_task = async {
-            let ns = NetState::new_with_name("test");
-            // TODO: Fix regsiter verb (does this require a local system up or can we use a test server?)
-            // ns.register_verb("test", |_, input: String| async { Ok(input) });
-            // ns.listen(
-            //     "test",
-            //     anon_responder(|_: endpoint::Request<String, String>| ()),
-            // );
-            // ns.run_server(
-            //     smol::net::TcpListener::bind("127.0.0.1:12345")
-            //         .await
-            //         .unwrap(),
-            // )
-            // .await;
-        };
-        let client_task = async {
-            smol::Timer::after(Duration::from_millis(100)).await;
-            // let client = g_client();
-            // let response: String = client
-            //     .request(
-            //         "127.0.0.1:12345".parse().unwrap(),
-            //         "test",
-            //         "test",
-            //         "hello world",
-            //     )
-            //     .await
-            //     .unwrap();
-            // assert_eq!(response, "hello world".to_string())
-        };
-        smol::future::block_on(smol::future::race(server_task, client_task));
     }
 }
