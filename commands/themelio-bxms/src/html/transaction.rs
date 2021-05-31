@@ -3,14 +3,12 @@ use std::{
     convert::TryInto,
 };
 
+use super::{friendly_denom, MicroUnit, RenderTimeTracer};
 use crate::{notfound, to_badgateway, to_badreq};
 use anyhow::Context;
 use askama::Template;
 use nodeprot::ValClient;
 use themelio_stf::{melvm::CovHash, CoinData, CoinDataHeight, CoinID, NetID, Transaction, TxHash};
-use tmelcrypt::HashVal;
-
-use super::{friendly_denom, MicroUnit, RenderTimeTracer};
 
 #[derive(Template)]
 #[template(path = "transaction.html")]

@@ -16,7 +16,7 @@ struct BlockTemplate {
 
     fee_pool: MicroUnit,
     fee_multiplier: f64,
-    reward_amount: MicroUnit,
+    _reward_amount: MicroUnit,
     total_fees: MicroUnit,
 }
 
@@ -51,7 +51,7 @@ pub async fn get_blockpage(req: tide::Request<ValClient>) -> tide::Result<tide::
             .map(|v| (v.hash_nosigs(), v.weight()))
             .collect(),
         fee_multiplier: block.header.fee_multiplier as f64 / 65536.0,
-        reward_amount: MicroUnit(reward_amount, "MEL".into()),
+        _reward_amount: MicroUnit(reward_amount, "MEL".into()),
         total_fees: MicroUnit(block.transactions.iter().map(|v| v.fee).sum(), "MEL".into()),
         fee_pool: MicroUnit(block.header.fee_pool, "MEL".into()),
     }
