@@ -1,8 +1,8 @@
 use std::convert::TryInto;
 
 use anyhow::Context;
-use themelio_stf::{CoinID, Denom};
 use nodeprot::ValClient;
+use themelio_stf::{CoinID, Denom, TxHash};
 
 use tide::Body;
 use tmelcrypt::HashVal;
@@ -31,12 +31,13 @@ pub async fn get_transaction(req: tide::Request<ValClient>) -> tide::Result<Body
     let height: u64 = req.param("height")?.parse()?;
     let txhash: String = req.param("txhash")?.into();
     let txhash: Vec<u8> = hex::decode(&txhash)?;
-    let txhash: HashVal = HashVal(
+    let txhash: TxHash = HashVal(
         txhash
             .try_into()
             .map_err(|_| anyhow::anyhow!("not the right length"))
             .map_err(to_badreq)?,
-    );
+    )
+    .into();
     let last_snap = req.state().snapshot().await?;
     let older = last_snap.get_older(height).await?;
     let tx = older.get_transaction(txhash).await?;
@@ -53,12 +54,13 @@ pub async fn get_coin(req: tide::Request<ValClient>) -> tide::Result<Body> {
         return Err(to_badreq(anyhow::anyhow!("bad coinid")));
     }
     let txhash: Vec<u8> = hex::decode(&coinid_exploded[0])?;
-    let txhash: HashVal = HashVal(
+    let txhash: TxHash = HashVal(
         txhash
             .try_into()
             .map_err(|_| anyhow::anyhow!("not the right length"))
             .map_err(to_badreq)?,
-    );
+    )
+    .into();
     let index: u8 = coinid_exploded[1].parse().map_err(to_badreq)?;
     let last_snap = req.state().snapshot().await?;
     let older = last_snap.get_older(height).await?;

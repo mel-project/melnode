@@ -1,8 +1,7 @@
 use crate::{to_badgateway, to_badreq};
 use askama::Template;
-use themelio_stf::{CoinID, Header, NetID};
 use nodeprot::ValClient;
-use tmelcrypt::HashVal;
+use themelio_stf::{CoinID, Header, NetID, TxHash};
 
 use super::{MicroUnit, RenderTimeTracer};
 
@@ -13,7 +12,7 @@ struct BlockTemplate {
     header: Header,
     txcount: usize,
     txweight: u128,
-    txhashes: Vec<(HashVal, u128)>,
+    txhashes: Vec<(TxHash, u128)>,
 
     fee_pool: MicroUnit,
     fee_multiplier: f64,

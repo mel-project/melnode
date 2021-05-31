@@ -1,10 +1,10 @@
 use crate::to_badgateway;
 use askama::Template;
-use themelio_stf::{CoinID, Denom, Header, NetID};
 use futures_util::stream::FuturesOrdered;
 use futures_util::StreamExt;
 use nodeprot::ValClient;
 use num_traits::ToPrimitive;
+use themelio_stf::{CoinID, Denom, Header, NetID};
 use tide::Body;
 
 use super::{MicroUnit, RenderTimeTracer};
@@ -77,8 +77,8 @@ pub async fn get_homepage(req: tide::Request<ValClient>) -> tide::Result<Body> {
             for transaction in block.transactions {
                 if transactions.len() < 30 {
                     transactions.push(TransactionSummary {
-                        hash: hex::encode(&transaction.hash_nosigs()),
-                        shorthash: hex::encode(&transaction.hash_nosigs()[0..5]),
+                        hash: hex::encode(&transaction.hash_nosigs().0),
+                        shorthash: hex::encode(&transaction.hash_nosigs().0[0..5]),
                         height: block.header.height,
                         _weight: transaction.weight(),
                         mel_moved: MicroUnit(

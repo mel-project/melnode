@@ -6,8 +6,8 @@ use std::{
 use crate::{notfound, to_badgateway, to_badreq};
 use anyhow::Context;
 use askama::Template;
-use themelio_stf::{CoinData, CoinDataHeight, CoinID, NetID, Transaction};
 use nodeprot::ValClient;
+use themelio_stf::{melvm::CovHash, CoinData, CoinDataHeight, CoinID, NetID, Transaction, TxHash};
 use tmelcrypt::HashVal;
 
 use super::{friendly_denom, MicroUnit, RenderTimeTracer};
@@ -16,7 +16,7 @@ use super::{friendly_denom, MicroUnit, RenderTimeTracer};
 #[template(path = "transaction.html")]
 struct TransactionTemplate {
     testnet: bool,
-    txhash: HashVal,
+    txhash: TxHash,
     txhash_abbr: String,
     height: u64,
     transaction: Transaction,
@@ -36,7 +36,7 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
     let _render = RenderTimeTracer::new("txpage");
 
     let height: u64 = req.param("height").unwrap().parse().map_err(to_badreq)?;
-    let txhash: HashVal = req.param("txhash").unwrap().parse().map_err(to_badreq)?;
+    let txhash: TxHash = TxHash(req.param("txhash").unwrap().parse().map_err(to_badreq)?);
     let snap = req
         .state()
         .snapshot()
@@ -60,7 +60,7 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
     let mut net_loss: BTreeMap<String, Vec<MicroUnit>> = BTreeMap::new();
     let mut net_gain: BTreeMap<String, Vec<MicroUnit>> = BTreeMap::new();
     for denom in denoms {
-        let mut balance: BTreeMap<HashVal, i128> = BTreeMap::new();
+        let mut balance: BTreeMap<CovHash, i128> = BTreeMap::new();
         // we add to the balance
         for output in transaction.outputs.iter() {
             if output.denom == denom {
@@ -93,12 +93,12 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
         for (addr, balance) in balance {
             if balance < 0 {
                 net_loss
-                    .entry(addr.to_addr())
+                    .entry(addr.0.to_addr())
                     .or_default()
                     .push(MicroUnit((-balance) as u128, friendly_denom(denom)));
             } else if balance > 0 {
                 net_gain
-                    .entry(addr.to_addr())
+                    .entry(addr.0.to_addr())
                     .or_default()
                     .push(MicroUnit(balance as u128, friendly_denom(denom)));
             }
@@ -133,7 +133,7 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
     let mut body: tide::Body = TransactionTemplate {
         testnet: req.state().netid() == NetID::Testnet,
         txhash,
-        txhash_abbr: hex::encode(&txhash[..5]),
+        txhash_abbr: hex::encode(&txhash.0[..5]),
         height,
         transaction: transaction.clone(),
         net_loss,
