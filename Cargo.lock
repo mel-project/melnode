@@ -588,7 +588,9 @@ dependencies = [
 
 [[package]]
 name = "boringdb"
-version = "0.3.6-alpha.0"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab87a6a9ff5968bb0b5a4e5bbd1f1dad2b932b32daa959272697d806432261a6"
 dependencies = [
  "bytes",
  "flume",
