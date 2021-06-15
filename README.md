@@ -8,13 +8,11 @@ This repository contains the core node implementation of Themelio, as well as so
 
 `commands`: Core command-line programs
 
-- **`themelio-node`: Reference Themelio implementation**
+- **`themelio-node`: Themelio' reference full node implementation**
 - `themelio-bxms`: Block-explorer microservice (will be moved outside this repo)
 - `themelio-crypttool`: Tool for generating keys, hashing, and other cryptographic tools
 
 `libs`: supporting libraries
 
 - `blkdb`: a "block database" library for ergonomically and correctly working with trees of blocks
-- `melnet`: a bare-bones peer-to-peer RPC library, used by Themelio as the underlying transport for all network messages
-- `nodeprot`: a higher-level library that implements the node RPC protocol on top of melnet
 - `novasymph`: an instantiation of the Streamlet-based Symphonia consensus protocol for use in Themelio

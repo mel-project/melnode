@@ -7,8 +7,8 @@ use super::{friendly_denom, MicroUnit, RenderTimeTracer};
 use crate::{notfound, to_badgateway, to_badreq};
 use anyhow::Context;
 use askama::Template;
-use nodeprot::ValClient;
-use themelio_stf::{melvm::CovHash, CoinData, CoinDataHeight, CoinID, NetID, Transaction, TxHash};
+use themelio_nodeprot::ValClient;
+use themelio_stf::{melvm::Address, CoinData, CoinDataHeight, CoinID, NetID, Transaction, TxHash};
 
 #[derive(Template)]
 #[template(path = "transaction.html")]
@@ -58,7 +58,7 @@ pub async fn get_txpage(req: tide::Request<ValClient>) -> tide::Result<tide::Bod
     let mut net_loss: BTreeMap<String, Vec<MicroUnit>> = BTreeMap::new();
     let mut net_gain: BTreeMap<String, Vec<MicroUnit>> = BTreeMap::new();
     for denom in denoms {
-        let mut balance: BTreeMap<CovHash, i128> = BTreeMap::new();
+        let mut balance: BTreeMap<Address, i128> = BTreeMap::new();
         // we add to the balance
         for output in transaction.outputs.iter() {
             if output.denom == denom {

@@ -2,8 +2,8 @@ use crate::to_badgateway;
 use askama::Template;
 use futures_util::stream::FuturesOrdered;
 use futures_util::StreamExt;
-use nodeprot::ValClient;
 use num_traits::ToPrimitive;
+use themelio_nodeprot::ValClient;
 use themelio_stf::{CoinID, Denom, Header, NetID};
 use tide::Body;
 

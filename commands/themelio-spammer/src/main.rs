@@ -14,11 +14,11 @@ use governor::{
     state::{InMemoryState, NotKeyed},
     Quota, RateLimiter,
 };
-use nodeprot::NodeClient;
 use priority_queue::PriorityQueue;
 use rand::prelude::*;
 use smol_timeout::TimeoutExt;
 use structopt::StructOpt;
+use themelio_nodeprot::NodeClient;
 use themelio_stf::{
     melvm::Covenant, CoinData, CoinID, Denom, Transaction, TxKind, MICRO_CONVERTER,
 };

@@ -6,9 +6,7 @@ members = [
     "commands/themelio-crypttool",
     "commands/themelio-spammer",
 
-    "libs/nodeprot",
-    "libs/melnet",
-    "libs/novasymph", 
+    "libs/novasymph",  
     "libs/blkdb"
 ]
 

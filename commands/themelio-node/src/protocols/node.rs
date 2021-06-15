@@ -8,9 +8,11 @@ use novasmt::CompressedProof;
 use themelio_stf::{ConsensusProof, NetID, Transaction};
 
 use melnet::MelnetError;
-use nodeprot::{AbbreviatedBlock, NodeClient, NodeResponder, NodeServer, StateSummary, Substate};
 use smol::net::TcpListener;
 use smol_timeout::TimeoutExt;
+use themelio_nodeprot::{
+    AbbreviatedBlock, NodeClient, NodeResponder, NodeServer, StateSummary, Substate,
+};
 use tmelcrypt::HashVal;
 
 use crate::services::storage::SharedStorage;

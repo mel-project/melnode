@@ -2,9 +2,9 @@ use std::{net::SocketAddr, time::Duration};
 
 use anyhow::Context;
 use futures_util::stream::FuturesUnordered;
-use nodeprot::{AbbreviatedBlock, NodeClient};
 use smol::{lock::Semaphore, prelude::*};
 use smol_timeout::TimeoutExt;
+use themelio_nodeprot::{AbbreviatedBlock, NodeClient};
 use themelio_stf::{Block, ConsensusProof, NetID, Transaction, TxHash};
 
 /// This cancellable async function synchronizes the block state with some other node. If the other node has the next few blocks, those are returned.
@@ -78,7 +78,7 @@ async fn get_one_block(
             let (tx_content, _proof) = client
                 .get_smt_branch(
                     height,
-                    nodeprot::Substate::Transactions,
+                    themelio_nodeprot::Substate::Transactions,
                     tmelcrypt::hash_single(&stdcode::serialize(&txh).unwrap()),
                 )
                 .timeout(Duration::from_secs(5))

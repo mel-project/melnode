@@ -1,6 +1,6 @@
 use crate::{to_badgateway, to_badreq};
 use askama::Template;
-use nodeprot::ValClient;
+use themelio_nodeprot::ValClient;
 use themelio_stf::{CoinID, Header, NetID, TxHash};
 
 use super::{MicroUnit, RenderTimeTracer};

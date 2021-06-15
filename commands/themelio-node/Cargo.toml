@@ -19,11 +19,11 @@ toml= "0.5.8"
 hex= "0.4.3"
 lru= "0.6.5"
 
-themelio-stf= "0.2.0"
+themelio-stf= "0.3.0"
 tmelcrypt= "0.1.0"
-melnet={path="../../libs/melnet"} 
+melnet="0.1"
 stdcode= "0.1.0"
-nodeprot={path="../../libs/nodeprot"}
+themelio-nodeprot="0.1"
 novasymph={path="../../libs/novasymph"}
 blkdb={path="../../libs/blkdb"}
 im= "15.0.0"

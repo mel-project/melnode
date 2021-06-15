@@ -1,6 +1,6 @@
 use crate::services::storage::SharedStorage;
 
-use themelio_stf::{melvm::CovHash, Block, ProposerAction, SealedState, STAKE_EPOCH};
+use themelio_stf::{melvm::Address, Block, ProposerAction, SealedState, STAKE_EPOCH};
 
 use novasymph::BlockBuilder;
 use smol::prelude::*;
@@ -20,7 +20,7 @@ impl StakerProtocol {
         bootstrap: Vec<SocketAddr>,
         storage: SharedStorage,
         my_sk: Ed25519SK,
-        payout_covhash: CovHash,
+        payout_covhash: Address,
         target_fee_multiplier: u128,
     ) -> anyhow::Result<Self> {
         let _network_task = smolscale::spawn(async move {
@@ -78,7 +78,7 @@ async fn one_epoch_loop(
     bootstrap: Vec<SocketAddr>,
     storage: SharedStorage,
     my_sk: Ed25519SK,
-    payout_covhash: CovHash,
+    payout_covhash: Address,
     target_fee_multiplier: u128,
 ) -> anyhow::Result<()> {
     let genesis = storage.read().highest_state();
@@ -135,7 +135,7 @@ async fn one_epoch_loop(
 
 struct StorageBlockBuilder {
     storage: SharedStorage,
-    payout_covhash: CovHash,
+    payout_covhash: Address,
     target_fee_multiplier: u128,
 }
 

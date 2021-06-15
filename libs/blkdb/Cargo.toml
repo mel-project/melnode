@@ -15,4 +15,4 @@ stdcode= "0.1.0"
 serde={ version = "1.0.126", features = ["derive"] }
 thiserror= "1.0.25"
 dashmap= "4.0.2"
-themelio-stf= "0.2.0"
+themelio-stf= "0.3.0"

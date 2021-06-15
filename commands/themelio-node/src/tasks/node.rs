@@ -67,7 +67,9 @@ pub async fn run_node(opt: NodeConfig) -> anyhow::Result<()> {
     };
     let netid = genesis.network;
     let database = boringdb::Database::open(&opt.database)?;
+    log::debug!("database opened at {}", opt.database);
     let storage = NodeStorage::new(database, genesis).share();
+    log::debug!("node storage opened");
     let mut bootstrap = vec![];
     for name in opt.bootstrap.iter() {
         let addrs = smol::net::resolve(&name)

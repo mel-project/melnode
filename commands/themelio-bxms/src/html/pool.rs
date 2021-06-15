@@ -3,12 +3,12 @@ use std::time::Duration;
 use crate::{notfound, to_badgateway, to_badreq};
 use anyhow::Context;
 use askama::Template;
-use themelio_stf::{Denom, NetID, MICRO_CONVERTER};
 use futures_util::stream::FuturesUnordered;
-use nodeprot::ValClient;
 use num_traits::ToPrimitive;
 use serde::Serialize;
 use smol::prelude::*;
+use themelio_nodeprot::ValClient;
+use themelio_stf::{Denom, NetID, MICRO_CONVERTER};
 
 use super::{friendly_denom, RenderTimeTracer};
 

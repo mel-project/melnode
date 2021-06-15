@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 
 use anyhow::Context;
-use nodeprot::ValClient;
+use themelio_nodeprot::ValClient;
 use themelio_stf::{CoinID, Denom, TxHash};
 
 use tide::Body;
