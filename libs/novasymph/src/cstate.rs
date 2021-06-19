@@ -256,9 +256,6 @@ impl ChainState {
             }
             self.inner = new_inner;
             log::warn!("rewrote internal blocktree randomly ({} blocks)", copied);
-            for tip in self.inner.get_tips() {
-                log::warn!("tip: {:?}", tip.to_state());
-            }
         }
     }
 
