@@ -4,7 +4,7 @@ use themelio_stf::{melvm::Address, Block, ProposerAction, SealedState, STAKE_EPO
 
 use novasymph::BlockBuilder;
 use smol::prelude::*;
-use std::{net::SocketAddr, time::Duration};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 use tmelcrypt::Ed25519SK;
 use tracing::instrument;
 
@@ -70,7 +70,7 @@ impl StakerProtocol {
     }
 }
 
-#[allow(clippy::clippy::or_fun_call)]
+#[allow(clippy::or_fun_call)]
 #[instrument(skip(storage, my_sk))]
 async fn one_epoch_loop(
     epoch: u64,
@@ -106,7 +106,7 @@ async fn one_epoch_loop(
             })
         },
     };
-    let protocol = novasymph::EpochProtocol::new(config);
+    let protocol = Arc::new(novasymph::EpochProtocol::new(config));
     let main_loop = async {
         loop {
             let confirmed = protocol.next_confirmed().await;
@@ -126,7 +126,8 @@ async fn one_epoch_loop(
     let reset_loop = async {
         loop {
             let latest_known = storage.read().highest_state();
-            protocol.reset_genesis(latest_known);
+            let protocol = protocol.clone();
+            smol::unblock(move || protocol.reset_genesis(latest_known)).await;
             smol::Timer::after(Duration::from_secs(5)).await;
         }
     };

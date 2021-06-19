@@ -8,6 +8,7 @@ pub use protocol::*;
 static NS_EXECUTOR: Lazy<&'static smol::Executor<'static>> = Lazy::new(|| {
     let exec = Box::leak(Box::new(smol::Executor::new()));
     let exec: &'static smol::Executor<'static> = exec;
+    log::warn!("starting novasymph executor");
     // spin off one thread
     std::thread::Builder::new()
         .name("novasymph".into())

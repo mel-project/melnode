@@ -15,11 +15,16 @@ pub async fn sync_state(
     starting_height: u64,
     get_cached_tx: impl Fn(TxHash) -> Option<Transaction> + Send + Sync,
 ) -> anyhow::Result<Vec<(Block, ConsensusProof)>> {
+    let client = NodeClient::new(netid, remote);
+    let remote_summary = client.get_summary().await?;
+    if starting_height > remote_summary.height {
+        return Ok(vec![]);
+    }
     const BLKSIZE: u64 = 64;
     let exec = smol::Executor::new();
     let tasks = {
         let mut toret = Vec::new();
-        for height in starting_height..starting_height + BLKSIZE {
+        for height in starting_height..=(starting_height + BLKSIZE).min(remote_summary.height) {
             let task = exec.spawn(get_one_block(netid, remote, height, &get_cached_tx));
             toret.push(task);
         }
@@ -27,14 +32,8 @@ pub async fn sync_state(
     };
     exec.run(async move {
         let mut toret = Vec::new();
-        for (i, task) in tasks.into_iter().enumerate() {
-            if i == 0 {
-                toret.push(task.await?)
-            } else if let Ok(res) = task.await {
-                toret.push(res);
-            } else {
-                break;
-            }
+        for task in tasks.into_iter() {
+            toret.push(task.await?)
         }
         Ok(toret)
     })

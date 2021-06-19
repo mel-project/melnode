@@ -270,7 +270,7 @@ async fn gossiper_loop<B: BlockBuilder>(
     cfg: Arc<EpochConfig<B>>,
 ) -> ! {
     'mainloop: loop {
-        smol::Timer::after(Duration::from_millis(1000)).await;
+        smol::Timer::after(Duration::from_millis(300)).await;
         if let Some(random_peer) = network.routes().get(0) {
             // log::debug!("gossipping with {}", random_peer);
             // create a new block request
@@ -557,7 +557,6 @@ impl UnconfirmedBlock {
 async fn wait_until_sys(sys: SystemTime) {
     let now = SystemTime::now();
     if sys < now {
-        return;
     } else {
         let interv = sys.duration_since(now).unwrap();
         smol::Timer::after(interv).await;

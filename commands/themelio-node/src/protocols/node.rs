@@ -67,8 +67,8 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, state: SharedStor
     let tag = || format!("blksync@{:?}", state.read().highest_state().header().height);
     const SLOW_TIME: Duration = Duration::from_millis(5000);
     const FAST_TIME: Duration = Duration::from_millis(10);
+    let mut random_peer = network.routes().first().cloned();
     loop {
-        let random_peer = network.routes().first().cloned();
         if let Some(peer) = random_peer {
             log::trace!("{}: picked random peer {} for blksync", tag(), peer);
             let last_state = state.read().highest_state();
@@ -79,7 +79,7 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, state: SharedStor
             .await;
             match res {
                 Err(e) => {
-                    log::trace!("{}: failed to blksync with {}: {:?}", tag(), peer, e);
+                    log::warn!("{}: failed to blksync with {}: {:?}", tag(), peer, e);
                     smol::Timer::after(FAST_TIME).await;
                 }
                 Ok(blocks) => {
@@ -108,11 +108,13 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, state: SharedStor
                         smol::Timer::after(FAST_TIME).await;
                     } else {
                         smol::Timer::after(SLOW_TIME).await;
+                        random_peer = network.routes().first().cloned()
                     }
                 }
             }
         } else {
             smol::Timer::after(SLOW_TIME).await;
+            random_peer = network.routes().first().cloned()
         }
     }
 }

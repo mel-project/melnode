@@ -122,9 +122,8 @@ impl<B: DbBackend> BlockTree<B> {
     /// Sets the genesis block of the tree. This also prunes all elements that do not belong to the given genesis block.
     pub fn set_genesis(&mut self, state: SealedState, init_metadata: &[u8]) {
         let state_hash = state.header().hash();
-        if self.get_cursor(state_hash).is_none() {
-            // directly insert the block now
-            assert!(self.inner.insert_block(state, init_metadata).is_none());
+        if self.get_cursor(state.header().hash()).is_none() {
+            self.inner.insert_block(state, init_metadata);
         }
 
         let old_genesis = self.get_tips().into_iter().next().map(|v| {
@@ -337,13 +336,14 @@ pub enum ApplyBlockErr {
 struct Inner<B: DbBackend> {
     backend: B,
     canonical: bool,
-    // cached SealedStates for non-canonical mode. this is required so that inserted blocks are persistent.
+    // cached SealedStates. this is also required so that inserted blocks in non-canonical mode are persistent.
     cache: DashMap<HashVal, SealedState>,
 }
 
 impl<B: DbBackend> Inner<B> {
     /// Gets a block from the database.
     fn get_block(&self, blkhash: HashVal, height: Option<u64>) -> Option<InternalValue> {
+        self.maybe_gc_cache();
         let height = match height {
             Some(height) => height,
             None => self.index_get(blkhash)?,
@@ -405,10 +405,17 @@ impl<B: DbBackend> Inner<B> {
         self.tip_insert(blkhash, header.height);
         self.tip_remove(header.previous);
         // update cache
-        if !self.canonical {
-            self.cache.insert(state.header().hash(), state);
-        }
+        self.cache.insert(state.header().hash(), state);
+        self.maybe_gc_cache();
         None
+    }
+
+    fn maybe_gc_cache(&self) {
+        if self.canonical && self.cache.len() > 1000 {
+            // in canonical mode we are sure that the stuff is all on disk, so it's safe to do this.
+            log::warn!("GC-ing the blkdb");
+            self.cache.retain(|_, _| fastrand::bool());
+        }
     }
 
     fn internal_insert(&mut self, blkhash: HashVal, height: u64, value: InternalValue) {

@@ -12,7 +12,7 @@ use themelio_stf::{
 };
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
-const COUNT: usize = 10;
+const COUNT: usize = 20;
 
 /// Bunch of secret keys for testing
 static TEST_SKK: Lazy<Vec<Ed25519SK>> =

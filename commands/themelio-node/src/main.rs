@@ -9,6 +9,10 @@ use tasks::NodeConfig;
 
 use tracing::instrument;
 
+// #[cfg(unix)]
+// #[global_allocator]
+// static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 #[instrument]
 fn main() -> anyhow::Result<()> {
     // LogTracer::init().unwrap();

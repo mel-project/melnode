@@ -16,6 +16,7 @@ pub struct ChainState {
     epoch: u64,
     stakes: StakeMapping,
     inner: BlockTree<InMemoryDb>,
+    forest: novasmt::Forest,
 
     drained_height: u64,
 }
@@ -25,12 +26,13 @@ impl ChainState {
     pub fn new(genesis: SealedState, forest: novasmt::Forest) -> Self {
         let epoch = genesis.inner_ref().height / STAKE_EPOCH;
         let stakes = genesis.inner_ref().stakes.clone();
-        let mut inner = BlockTree::new(InMemoryDb::default(), forest, false);
+        let mut inner = BlockTree::new(InMemoryDb::default(), forest.clone(), false);
         inner.set_genesis(genesis, &[]);
         Self {
             epoch,
             stakes,
             inner,
+            forest,
 
             drained_height: 0,
         }
@@ -235,7 +237,28 @@ impl ChainState {
             drop(cursor);
             self.inner.set_genesis(state, &metadata);
         } else {
-            self.inner.set_genesis(genesis, &[]);
+            self.inner.set_genesis(genesis.clone(), &[]);
+        }
+
+        // Small chance of completely rewriting the internal blocktree (GC)
+        if fastrand::f32() < 0.1 {
+            let mut new_inner = BlockTree::new(InMemoryDb::default(), self.forest.clone(), false);
+            let cursor = self.inner.get_cursor(genesis.header().hash()).unwrap();
+            // DFS into the new thing.
+            new_inner.set_genesis(cursor.to_state(), cursor.metadata());
+            let mut copied = 1;
+            let mut stack = cursor.children();
+            while let Some(top) = stack.pop() {
+                new_inner
+                    .apply_block(&top.to_state().to_block(), top.metadata())
+                    .unwrap();
+                copied += 1;
+            }
+            self.inner = new_inner;
+            log::warn!("rewrote internal blocktree randomly ({} blocks)", copied);
+            for tip in self.inner.get_tips() {
+                log::warn!("tip: {:?}", tip.to_state());
+            }
         }
     }
 
