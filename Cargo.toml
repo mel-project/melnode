@@ -1,7 +1,6 @@
 [workspace] 
 
 members = [
-    "commands/themelio-bxms",
     "commands/themelio-node",
     "commands/themelio-crypttool",
     "commands/themelio-spammer",

@@ -9,7 +9,6 @@ This repository contains the core node implementation of Themelio, as well as so
 `commands`: Core command-line programs
 
 - **`themelio-node`: Themelio' reference full node implementation**
-- `themelio-bxms`: Block-explorer microservice (will be moved outside this repo)
 - `themelio-crypttool`: Tool for generating keys, hashing, and other cryptographic tools
 
 `libs`: supporting libraries
