@@ -76,9 +76,10 @@ impl<B: DbBackend> BlockTree<B> {
         // apply block should already have checked this
         assert_eq!(next_state.header(), block.header);
         log::warn!(
-            "inserted block with coin delta {}, history delta {}",
+            "inserted block with coin delta {}, history delta {} onto previous with history delta {}",
             next_state.inner_ref().coins.mapping.delta_count(),
             next_state.inner_ref().history.mapping.delta_count(),
+            previous.inner_ref().history.mapping.delta_count(),
         );
         self.inner.insert_block(next_state, init_metadata);
         Ok(())
@@ -409,16 +410,18 @@ impl<B: DbBackend> Inner<B> {
         self.tip_insert(blkhash, header.height);
         self.tip_remove(header.previous);
         // update cache
-        self.cache.insert(state.header().hash(), state);
-        self.maybe_gc_cache();
+        if !self.canonical {
+            self.cache.insert(state.header().hash(), state);
+            self.maybe_gc_cache();
+        }
         None
     }
 
     fn maybe_gc_cache(&self) {
-        if self.canonical && self.cache.len() > 1000 {
+        if self.canonical && self.cache.len() > 10000 {
             // in canonical mode we are sure that the stuff is all on disk, so it's safe to do this.
             log::warn!("GC-ing the blkdb");
-            self.cache.retain(|_, _| fastrand::bool());
+            self.cache.clear()
         }
     }
 

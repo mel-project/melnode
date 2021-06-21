@@ -231,32 +231,35 @@ impl ChainState {
 
     /// Forcibly resets the genesis to something with the given HashVal.
     pub fn reset_genesis(&mut self, genesis: SealedState) {
-        if let Some(cursor) = self.inner.get_cursor(genesis.header().hash()) {
-            let state = cursor.to_state();
-            let metadata = cursor.metadata().to_vec();
-            drop(cursor);
-            self.inner.set_genesis(state, &metadata);
-        } else {
-            self.inner.set_genesis(genesis.clone(), &[]);
-        }
-
-        // Small chance of completely rewriting the internal blocktree (GC)
-        if fastrand::f32() < 0.1 {
-            let mut new_inner = BlockTree::new(InMemoryDb::default(), self.forest.clone(), false);
-            let cursor = self.inner.get_cursor(genesis.header().hash()).unwrap();
-            // DFS into the new thing.
-            new_inner.set_genesis(cursor.to_state(), cursor.metadata());
-            let mut copied = 1;
+        // We use a full copying approach to avoid lingering cache garbage. This may eventually be the "correct" way to do so in blkdb.
+        // log::warn!(
+        //     "** starting blocktree rewriting with a reset genesis with history delta {}",
+        //     genesis.inner_ref().history.mapping.delta_count()
+        // );
+        let mut new_inner = BlockTree::new(InMemoryDb::default(), self.forest.clone(), false);
+        // DFS into the new thing.
+        let cursor = self.inner.get_cursor(genesis.header().hash());
+        new_inner.set_genesis(
+            genesis,
+            if let Some(cursor) = cursor.as_ref() {
+                cursor.metadata()
+            } else {
+                &[]
+            },
+        );
+        let mut copied = 1;
+        if let Some(cursor) = cursor {
             let mut stack = cursor.children();
             while let Some(top) = stack.pop() {
                 new_inner
                     .apply_block(&top.to_state().to_block(), top.metadata())
                     .unwrap();
                 copied += 1;
+                stack.extend_from_slice(&top.children());
             }
-            self.inner = new_inner;
-            log::warn!("rewrote internal blocktree randomly ({} blocks)", copied);
         }
+        self.inner = new_inner;
+        log::warn!("rewrote internal blocktree randomly ({} blocks)", copied);
     }
 
     /// Attempts to apply a full-block response from a gossip peer.
