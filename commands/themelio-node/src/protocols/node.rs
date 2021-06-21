@@ -83,28 +83,28 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, state: SharedStor
                     smol::Timer::after(FAST_TIME).await;
                 }
                 Ok(blocks) => {
-                    log::debug!(
-                        "got {} blocks from {} in {:?}",
-                        blocks.len(),
-                        peer,
-                        start.elapsed()
-                    );
                     let blklen = blocks.len();
-                    for (blk, cproof) in blocks {
-                        let res = state.write().apply_block(blk.clone(), cproof);
-                        if let Err(err) = res {
-                            log::warn!(
-                                "{}: failed to apply block {} from other node: {:?}",
-                                tag(),
-                                blk.header.height,
-                                err
-                            );
-                            break;
-                        }
-                        smol::future::yield_now().await;
-                    }
-                    log::debug!("synced to height {}", state.read().highest_height());
                     if blklen > 0 {
+                        log::debug!(
+                            "got {} blocks from {} in {:?}",
+                            blocks.len(),
+                            peer,
+                            start.elapsed()
+                        );
+                        for (blk, cproof) in blocks {
+                            let res = state.write().apply_block(blk.clone(), cproof);
+                            if let Err(err) = res {
+                                log::warn!(
+                                    "{}: failed to apply block {} from other node: {:?}",
+                                    tag(),
+                                    blk.header.height,
+                                    err
+                                );
+                                break;
+                            }
+                            smol::future::yield_now().await;
+                        }
+                        log::debug!("synced to height {}", state.read().highest_height());
                         smol::Timer::after(FAST_TIME).await;
                     } else {
                         smol::Timer::after(SLOW_TIME).await;

@@ -113,6 +113,7 @@ impl NodeStorage {
 
         self.history
             .apply_block(&blk, &stdcode::serialize(&cproof).unwrap())?;
+        log::debug!("applied block {}", blk.header.height);
         let next = self.highest_state().next_state();
         self.mempool_mut().rebase(next);
         Ok(())

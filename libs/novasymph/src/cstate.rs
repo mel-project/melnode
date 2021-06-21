@@ -232,10 +232,6 @@ impl ChainState {
     /// Forcibly resets the genesis to something with the given HashVal.
     pub fn reset_genesis(&mut self, genesis: SealedState) {
         // We use a full copying approach to avoid lingering cache garbage. This may eventually be the "correct" way to do so in blkdb.
-        // log::warn!(
-        //     "** starting blocktree rewriting with a reset genesis with history delta {}",
-        //     genesis.inner_ref().history.mapping.delta_count()
-        // );
         let mut new_inner = BlockTree::new(InMemoryDb::default(), self.forest.clone(), false);
         // DFS into the new thing.
         let cursor = self.inner.get_cursor(genesis.header().hash());
@@ -247,19 +243,16 @@ impl ChainState {
                 &[]
             },
         );
-        let mut copied = 1;
         if let Some(cursor) = cursor {
             let mut stack = cursor.children();
             while let Some(top) = stack.pop() {
                 new_inner
                     .apply_block(&top.to_state().to_block(), top.metadata())
                     .unwrap();
-                copied += 1;
                 stack.extend_from_slice(&top.children());
             }
         }
         self.inner = new_inner;
-        log::warn!("rewrote internal blocktree randomly ({} blocks)", copied);
     }
 
     /// Attempts to apply a full-block response from a gossip peer.
@@ -280,49 +273,6 @@ impl ChainState {
         for (voter, vote) in response.metadata.votes {
             self.inject_vote(voting_for, voter, vote)?;
         }
-        // let existing_metadata = self
-        //     .inner
-        //     .get_cursor(response.block.header.hash())
-        //     .map(|v| v.get_streamlet())
-        //     .flatten();
-        // if let Some(mut metadata) = response.metadata.clone() {
-        //     if !metadata.is_signed_correctly(&response.block.abbreviate()) {
-        //         return Err(ApplyBlockErr::HeaderMismatch);
-        //     }
-        //     if let Some(Some(previous_metadata)) = self
-        //         .inner
-        //         .get_cursor(response.block.header.hash())
-        //         .map(|v| v.get_streamlet())
-        //     {
-        //         if previous_metadata.proposer != metadata.proposer {
-        //             return Err(ApplyBlockErr::HeaderMismatch);
-        //         }
-        //         for (voter, vote) in previous_metadata.votes {
-        //             metadata.votes.insert(voter, vote);
-        //         }
-        //     }
-        //     // Now we must validate the metadata to make sure it all makes sense
-        //     let abbr_block = response.block.abbreviate();
-        //     let mut real_votes = BTreeMap::new();
-        //     for (voter, vote) in metadata.votes.iter() {
-        //         if vote.verify(*voter, &abbr_block) {
-        //             real_votes.insert(*voter, vote.clone());
-        //         }
-        //     }
-        //     metadata.votes = real_votes;
-
-        //     self.inner
-        //         .apply_block(&response.block, &stdcode::serialize(&metadata).unwrap())?;
-        // } else {
-        //     self.inner.apply_block(
-        //         &response.block,
-        //         &(if let Some(existing_metadata) = existing_metadata {
-        //             stdcode::serialize(&existing_metadata).unwrap()
-        //         } else {
-        //             vec![]
-        //         }),
-        //     )?;
-        // }
         Ok(())
     }
 

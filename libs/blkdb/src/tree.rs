@@ -75,7 +75,7 @@ impl<B: DbBackend> BlockTree<B> {
 
         // apply block should already have checked this
         assert_eq!(next_state.header(), block.header);
-        log::warn!(
+        log::trace!(
             "inserted block with coin delta {}, history delta {} onto previous with history delta {}",
             next_state.inner_ref().coins.mapping.delta_count(),
             next_state.inner_ref().history.mapping.delta_count(),

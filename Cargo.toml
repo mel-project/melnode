@@ -18,6 +18,6 @@ overflow-checks = true
 panic = "abort"
 opt-level = 3
 overflow-checks = true
-debug=2
+debug=0
 # lto=true
 # codegen-units=1
