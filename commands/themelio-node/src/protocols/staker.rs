@@ -1,6 +1,8 @@
-use crate::services::storage::SharedStorage;
+use crate::storage::SharedStorage;
 
-use themelio_stf::{melvm::Address, Block, ProposerAction, SealedState, STAKE_EPOCH};
+use themelio_stf::{
+    melvm::Address, Block, ProposerAction, SealedState, Transaction, TxHash, STAKE_EPOCH,
+};
 
 use novasymph::BlockBuilder;
 use smol::prelude::*;
@@ -168,5 +170,9 @@ impl BlockBuilder for StorageBlockBuilder {
 
     fn hint_next_build(&self, tip: SealedState) {
         self.storage.write().mempool_mut().rebase(tip.next_state());
+    }
+
+    fn get_cached_transaction(&self, txhash: TxHash) -> Option<Transaction> {
+        self.storage.read().mempool().lookup(txhash)
     }
 }

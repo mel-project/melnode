@@ -15,7 +15,7 @@ use themelio_nodeprot::{
 };
 use tmelcrypt::HashVal;
 
-use crate::services::storage::SharedStorage;
+use crate::storage::SharedStorage;
 
 use super::blksync;
 
