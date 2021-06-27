@@ -1,14 +1,25 @@
 use crate::storage::SharedStorage;
 
+use once_cell::sync::Lazy;
 use themelio_stf::{
     melvm::Address, Block, ProposerAction, SealedState, Transaction, TxHash, STAKE_EPOCH,
 };
 
 use novasymph::BlockBuilder;
 use smol::prelude::*;
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use std::{
+    net::SocketAddr,
+    sync::Arc,
+    time::{Duration, SystemTime},
+};
 use tmelcrypt::Ed25519SK;
 use tracing::instrument;
+
+static MAINNET_START_TIME: Lazy<SystemTime> =
+    Lazy::new(|| std::time::UNIX_EPOCH + Duration::from_secs(1619758800)); // Apr 30 2021
+
+static TESTNET_START_TIME: Lazy<SystemTime> =
+    Lazy::new(|| std::time::UNIX_EPOCH + Duration::from_secs(1617249600)); // Apr 01 2021
 
 /// This encapsulates the staker-specific peer-to-peer.
 pub struct StakerProtocol {
@@ -85,12 +96,16 @@ async fn one_epoch_loop(
 ) -> anyhow::Result<()> {
     let genesis = storage.read().highest_state();
     let forest = storage.clone().read().forest();
+    let start_time = match genesis.inner_ref().network {
+        themelio_stf::NetID::Mainnet => *MAINNET_START_TIME,
+        themelio_stf::NetID::Testnet => *TESTNET_START_TIME,
+    };
     let config = novasymph::EpochConfig {
         listen: addr,
         bootstrap,
         genesis,
         forest,
-        start_time: std::time::UNIX_EPOCH + Duration::from_secs(1619758800), // Apr 30 2021
+        start_time,
         interval: Duration::from_secs(30),
         signing_sk: my_sk,
         builder: StorageBlockBuilder {

@@ -21,3 +21,6 @@ overflow-checks = true
 debug=0
 # lto=true
 # codegen-units=1
+
+[patch.crates-io]
+themelio-stf={path="../themelio-stf"}

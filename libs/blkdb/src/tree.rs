@@ -184,6 +184,18 @@ impl<B: DbBackend> BlockTree<B> {
         }
     }
 
+    /// Deletes all the tips.
+    pub fn delete_tips(&mut self) {
+        let tips = self
+            .get_tips()
+            .iter()
+            .map(|v| v.header().hash())
+            .collect::<Vec<_>>();
+        for tip in tips {
+            self.inner.remove_childless(tip, None);
+        }
+    }
+
     /// Creates a GraphViz string that represents all the blocks in the tree.
     pub fn debug_graphviz(&self, visitor: impl Fn(&Cursor<'_, B>) -> String) -> String {
         let mut stack = self.get_tips();
@@ -365,6 +377,27 @@ impl<B: DbBackend> Inner<B> {
         // remove from tips, index, then main
         self.tip_remove(blkhash);
         self.index_remove(blkhash);
+        self.internal_remove(blkhash, current.header.height);
+        // finally delete from cache
+        self.cache.remove(&blkhash);
+    }
+
+    /// Removes a block with no children.
+    fn remove_childless(&mut self, blkhash: HashVal, height: Option<u64>) {
+        let current = self
+            .get_block(blkhash, height)
+            .expect("trying to remove nonexistent childless");
+        // remove from tips, index, then main
+        self.tip_remove(blkhash);
+        self.tip_insert(current.header.previous, current.header.height - 1);
+        self.index_remove(blkhash);
+
+        let mut parent = self
+            .get_block(current.header.previous, Some(current.header.height - 1))
+            .unwrap();
+        parent.next.remove(&blkhash);
+        self.internal_insert(current.header.previous, parent.header.height, parent);
+
         self.internal_remove(blkhash, current.header.height);
         // finally delete from cache
         self.cache.remove(&blkhash);

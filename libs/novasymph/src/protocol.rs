@@ -171,7 +171,11 @@ async fn protocol_loop<B: BlockBuilder>(
                 smol::Timer::after(Duration::from_secs(1)).await;
             }
         };
-        let (height, height_time) = next_height_time(cfg.start_time, cfg.interval);
+        let (height, height_time) = next_height_time(
+            cstate.read().get_lnc_state().inner_ref().height,
+            cfg.start_time,
+            cfg.interval,
+        );
         wait_until_sys(height_time).or(vote_loop).await;
 
         log::debug!("entering height {}", height);
@@ -281,7 +285,7 @@ async fn gossiper_loop<B: BlockBuilder>(
                 "get_blocks",
                 block_req,
             )
-            .timeout(Duration::from_secs(5))
+            .timeout(Duration::from_secs(10))
             .await;
             match response {
                 None => log::warn!("gossip timed out with {}", random_peer),
@@ -564,15 +568,25 @@ async fn wait_until_sys(sys: SystemTime) {
 }
 
 /// waits until the next block height, then returns that height
-fn next_height_time(start_time: SystemTime, interval: Duration) -> (u64, SystemTime) {
+fn next_height_time(
+    current_height: u64,
+    start_time: SystemTime,
+    interval: Duration,
+) -> (u64, SystemTime) {
     let now = SystemTime::now();
     let elapsed_time = now
         .duration_since(start_time)
         .expect("clock randomly jumped, that breaks streamlet");
     let next_height = elapsed_time.as_millis() / interval.as_millis();
-    let next_height = next_height as u64;
-    let next_time = start_time + interval * (next_height as u32 + 1);
-    (next_height, next_time)
+    if next_height < (current_height + 500).into() {
+        let next_height = next_height as u64;
+        let next_time = start_time + interval * (next_height as u32 + 1);
+        (next_height, next_time)
+    } else {
+        let pseudoheight = elapsed_time.as_millis() / (interval.as_millis() / 8);
+        let next_time = start_time + (interval / 8) * (pseudoheight as u32 + 1);
+        (current_height + 1, next_time)
+    }
 }
 
 // a helper function that returns a proposer-calculator for a given epoch, given the SealedState before the epoch.

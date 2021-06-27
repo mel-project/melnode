@@ -91,6 +91,10 @@ pub struct Args {
     /// Fee multiplier to target. Default is 1000.
     #[structopt(long, default_value = "1000")]
     target_fee_multiplier: u128,
+
+    /// Reset last block to the given height.
+    #[structopt(long)]
+    emergency_reset_block: Option<u64>,
 }
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -112,7 +116,23 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
     let netid = genesis.network;
     let database = boringdb::Database::open(&opt.database)?;
     log::debug!("database opened at {}", opt.database);
+
     let storage = NodeStorage::new(database, genesis).share();
+
+    // Reset block. This is used to roll back history in emergencies
+    if let Some(height) = opt.emergency_reset_block {
+        let mut storage = storage.write();
+        log::warn!("*** EMERGENCY RESET TO BLOCK {} ***", height);
+        let history = storage.history_mut();
+        while history
+            .get_tips()
+            .iter()
+            .any(|f| dbg!(f.header().height) > height)
+        {
+            history.delete_tips();
+        }
+    }
+
     log::debug!("node storage opened");
     let mut bootstrap = vec![];
     for name in opt.bootstrap.iter() {

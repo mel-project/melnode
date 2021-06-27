@@ -121,6 +121,11 @@ impl NodeStorage {
     pub fn forest(&self) -> novasmt::Forest {
         self.forest.clone()
     }
+
+    /// Gets the blockdb.
+    pub fn history_mut(&mut self) -> &mut blkdb::BlockTree<impl DbBackend> {
+        &mut self.history
+    }
 }
 
 struct BoringDbBackend {
