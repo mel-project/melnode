@@ -339,7 +339,7 @@ dependencies = [
  "parking_lot",
  "serde",
  "stdcode",
- "themelio-stf 0.3.3",
+ "themelio-stf",
  "thiserror",
  "tmelcrypt",
 ]
@@ -837,6 +837,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "futures-intrusive"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62007592ac46aa7c2b6416f7deb9a8a8f63a01e0f1d6e1787d5630170db2b63e"
+dependencies = [
+ "futures-core",
+ "lock_api",
+ "parking_lot",
+]
+
+[[package]]
 name = "futures-io"
 version = "0.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1240,7 +1251,7 @@ dependencies = [
  "serde",
  "smol",
  "smol-timeout",
- "smolscale",
+ "smolscale 0.2.3",
  "stdcode",
  "thiserror",
 ]
@@ -1362,7 +1373,7 @@ dependencies = [
  "smol-timeout",
  "stacker",
  "stdcode",
- "themelio-stf 0.3.3",
+ "themelio-stf",
  "thiserror",
  "tmelcrypt",
 ]
@@ -1884,6 +1895,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
 
 [[package]]
+name = "rtrb"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "318256ac02f7e11a48a10339ba5dca8bd7eb17496abf384e8ea909bb2ae5275f"
+dependencies = [
+ "cache-padded",
+]
+
+[[package]]
 name = "rusqlite"
 version = "0.25.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2093,6 +2113,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "smolscale"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bf9e33146dfb9be7990ae70647c94c0115763e1b0021a2c86ea27833a67416d"
+dependencies = [
+ "anyhow",
+ "async-channel",
+ "async-executor",
+ "async-io",
+ "async-oneshot 0.4.2",
+ "async-task",
+ "backtrace",
+ "concurrent-queue",
+ "event-listener",
+ "fastrand",
+ "futures-intrusive",
+ "futures-lite",
+ "log",
+ "num_cpus",
+ "once_cell",
+ "pin-project-lite 0.2.7",
+ "rtrb",
+ "scopeguard",
+ "slab",
+ "spin",
+]
+
+[[package]]
 name = "socket2"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2101,6 +2149,12 @@ dependencies = [
  "libc",
  "winapi",
 ]
+
+[[package]]
+name = "spin"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f5fdd7196b4ae35a111c6dc97f9cc152ca3ea8ad744f7cb46a9f27b3ef8f2f54"
 
 [[package]]
 name = "spinning_top"
@@ -2242,7 +2296,7 @@ dependencies = [
  "hex",
  "serde_json",
  "structopt",
- "themelio-stf 0.2.1",
+ "themelio-stf",
  "tmelcrypt",
 ]
 
@@ -2271,11 +2325,11 @@ dependencies = [
  "serde",
  "smol",
  "smol-timeout",
- "smolscale",
+ "smolscale 0.3.5",
  "stdcode",
  "structopt",
  "themelio-nodeprot",
- "themelio-stf 0.3.3",
+ "themelio-stf",
  "tmelcrypt",
  "toml",
  "tracing",
@@ -2284,9 +2338,9 @@ dependencies = [
 
 [[package]]
 name = "themelio-nodeprot"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98bcaa771ed6bbf73d7ca815a7f1ac2c61ccdaf9b20a01693e1cbc9c523f0a30"
+checksum = "5e0f2a88c65d7c3c15c4b93e57f7882c5d0d36680140e4b1b333d8d0fefdba8c"
 dependencies = [
  "cached",
  "futures-util",
@@ -2297,7 +2351,7 @@ dependencies = [
  "serde",
  "smol",
  "stdcode",
- "themelio-stf 0.3.3",
+ "themelio-stf",
  "tmelcrypt",
 ]
 
@@ -2313,45 +2367,15 @@ dependencies = [
  "smol-timeout",
  "structopt",
  "themelio-nodeprot",
- "themelio-stf 0.3.3",
+ "themelio-stf",
  "tmelcrypt",
 ]
 
 [[package]]
 name = "themelio-stf"
-version = "0.2.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a0b01d07675a772a0ab32e0d9161f348fd2dbf12f33f8441e8cabc71e3ff556"
-dependencies = [
- "arbitrary",
- "cached",
- "dashmap",
- "defmac",
- "derive_more",
- "ethnum",
- "genawaiter",
- "hex",
- "honggfuzz",
- "im",
- "log",
- "novasmt",
- "num",
- "num_enum",
- "once_cell",
- "parking_lot",
- "rayon",
- "rustc-hash",
- "serde",
- "serde_repr",
- "smallvec",
- "stdcode",
- "thiserror",
- "tmelcrypt",
-]
-
-[[package]]
-name = "themelio-stf"
-version = "0.3.3"
+checksum = "d5272b140f72bb3c141361b8d066c1372d7513a5859aa2dc2038f833327c9d7a"
 dependencies = [
  "arbitrary",
  "dashmap",

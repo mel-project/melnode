@@ -583,8 +583,8 @@ fn next_height_time(
         let next_time = start_time + interval * (next_height as u32 + 1);
         (next_height, next_time)
     } else {
-        let pseudoheight = elapsed_time.as_millis() / (interval.as_millis() / 8);
-        let next_time = start_time + (interval / 8) * (pseudoheight as u32 + 1);
+        let pseudoheight = elapsed_time.as_millis() / (interval.as_millis() / 16);
+        let next_time = start_time + (interval / 16) * (pseudoheight as u32 + 1);
         (current_height + 1, next_time)
     }
 }
