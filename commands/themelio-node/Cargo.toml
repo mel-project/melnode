@@ -19,7 +19,7 @@ toml= "0.5.8"
 hex= "0.4.3"
 lru= "0.6.5"
 
-themelio-stf= "0.4.0"
+themelio-stf= "0.4.2"
 tmelcrypt= "0.1.0"
 melnet= "0.1.0"
 stdcode= "0.1.2"

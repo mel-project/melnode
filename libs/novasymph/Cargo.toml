@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 tmelcrypt= "0.1.0"
-themelio-stf= "0.4.0"
+themelio-stf= "0.4.2"
 blkdb={path="../blkdb"}
 bytes={ version = "1.0.1", features = ["serde"] }
 serde={ version = "1.0.126", features = ["derive"] }
