@@ -110,7 +110,7 @@ async fn protocol_loop<B: BlockBuilder>(
         network.add_route(*addr);
     }
 
-    let my_epoch = cfg.genesis.inner_ref().height / STAKE_EPOCH;
+    let my_epoch = (cfg.genesis.inner_ref().height + 1) / STAKE_EPOCH;
 
     // melnet server
     {

@@ -33,7 +33,7 @@ impl StakerProtocol {
         bootstrap: Vec<SocketAddr>,
         storage: SharedStorage,
         my_sk: Ed25519SK,
-        payout_covhash: Address,
+        payout_address: Address,
         target_fee_multiplier: u128,
     ) -> anyhow::Result<Self> {
         let _network_task = smolscale::spawn(async move {
@@ -53,6 +53,7 @@ impl StakerProtocol {
                 let genesis_epoch = storage.read().highest_height() / STAKE_EPOCH;
                 for current_epoch in genesis_epoch.. {
                     log::info!("epoch transitioning into {}!", current_epoch);
+                    smol::Timer::after(Duration::from_secs(1)).await;
                     // we race the staker loop with epoch termination. epoch termination for now is just a sleep loop that waits until the last block in the epoch is confirmed.
                     let staker_fut = one_epoch_loop(
                         current_epoch,
@@ -60,7 +61,7 @@ impl StakerProtocol {
                         bootstrap.clone(),
                         storage.clone(),
                         my_sk,
-                        payout_covhash,
+                        payout_address,
                         target_fee_multiplier,
                     );
                     let epoch_termination = async {

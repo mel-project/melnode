@@ -562,6 +562,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossbeam-queue"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b10ddc024425c88c2ad148c1b0fd53f4c6d38db9697c9f1588381212fa657c9"
+dependencies = [
+ "cfg-if 1.0.0",
+ "crossbeam-utils",
+]
+
+[[package]]
 name = "crossbeam-utils"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -762,12 +772,6 @@ checksum = "77b705829d1e87f762c2df6da140b26af5839e1033aa84aa5f56bb688e4e1bdb"
 dependencies = [
  "instant",
 ]
-
-[[package]]
-name = "fixedbitset"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37ab347416e802de484e4d03c7316c48f1ecb56574dfd4a46a80f173ce1de04d"
 
 [[package]]
 name = "flume"
@@ -1191,7 +1195,6 @@ version = "0.22.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "290b64917f8b0cb885d9de0f9959fe1f775d7fa12f1da2db9001c1c8ab60f89d"
 dependencies = [
- "cc",
  "pkg-config",
  "vcpkg",
 ]
@@ -1530,25 +1533,12 @@ version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fa7a782938e745763fe6907fc6ba86946d72f49fe7e21de074e08128a99fb018"
 dependencies = [
- "backtrace",
  "cfg-if 1.0.0",
  "instant",
  "libc",
- "petgraph",
- "redox_syscall 0.2.9",
+ "redox_syscall",
  "smallvec",
- "thread-id",
  "winapi",
-]
-
-[[package]]
-name = "petgraph"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "467d164a6de56270bd7c4d070df81d07beace25012d5103ced4e9ff08d6afdb7"
-dependencies = [
- "fixedbitset",
- "indexmap",
 ]
 
 [[package]]
@@ -1855,12 +1845,6 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
-version = "0.1.57"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41cc0f7e4d5d4544e8861606a285bb08d3e70712ccc7d2b84d7c0ccfaf4b05ce"
-
-[[package]]
-name = "redox_syscall"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5ab49abadf3f9e1c4bc499e8845e152ad87d2ad2d30371841171169e9d75feee"
@@ -2114,9 +2098,9 @@ dependencies = [
 
 [[package]]
 name = "smolscale"
-version = "0.3.5"
+version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bf9e33146dfb9be7990ae70647c94c0115763e1b0021a2c86ea27833a67416d"
+checksum = "3961e4af02820c37f744e601fbefa09ddf8273e764cd46052001b756ec169ec4"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -2125,7 +2109,9 @@ dependencies = [
  "async-oneshot 0.4.2",
  "async-task",
  "backtrace",
+ "cache-padded",
  "concurrent-queue",
+ "crossbeam-queue",
  "event-listener",
  "fastrand",
  "futures-intrusive",
@@ -2138,6 +2124,7 @@ dependencies = [
  "scopeguard",
  "slab",
  "spin",
+ "thread_local",
 ]
 
 [[package]]
@@ -2321,11 +2308,10 @@ dependencies = [
  "novasymph",
  "once_cell",
  "parking_lot",
- "rusqlite",
  "serde",
  "smol",
  "smol-timeout",
- "smolscale 0.3.5",
+ "smolscale 0.3.9",
  "stdcode",
  "structopt",
  "themelio-nodeprot",
@@ -2423,17 +2409,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "thread-id"
-version = "3.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7fbf4c9d56b320106cd64fd024dadfa0be7cb4706725fc44a7d7ce952d820c1"
-dependencies = [
- "libc",
- "redox_syscall 0.1.57",
- "winapi",
 ]
 
 [[package]]
