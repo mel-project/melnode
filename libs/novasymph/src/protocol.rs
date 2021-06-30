@@ -578,13 +578,13 @@ fn next_height_time(
         .duration_since(start_time)
         .expect("clock randomly jumped, that breaks streamlet");
     let next_height = elapsed_time.as_millis() / interval.as_millis();
-    if next_height < (current_height + 500).into() {
+    if dbg!(next_height) < (dbg!(current_height) + 500).into() {
         let next_height = next_height as u64;
         let next_time = start_time + interval * (next_height as u32 + 1);
         (next_height, next_time)
     } else {
-        let pseudoheight = elapsed_time.as_millis() / (interval.as_millis() / 16);
-        let next_time = start_time + (interval / 16) * (pseudoheight as u32 + 1);
+        let pseudoheight = elapsed_time.as_millis() / (interval.as_millis() / 4);
+        let next_time = start_time + (interval / 4) * (pseudoheight as u32 + 1);
         (current_height + 1, next_time)
     }
 }

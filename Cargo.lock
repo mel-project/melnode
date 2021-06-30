@@ -369,9 +369,7 @@ dependencies = [
 
 [[package]]
 name = "boringdb"
-version = "0.3.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92cfe220b1e45efe21145c072756694907da08bc2cd783c895a14b126f495b6e"
+version = "0.3.10-alpha.0"
 dependencies = [
  "bytes",
  "flume",
@@ -1195,6 +1193,7 @@ version = "0.22.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "290b64917f8b0cb885d9de0f9959fe1f775d7fa12f1da2db9001c1c8ab60f89d"
 dependencies = [
+ "cc",
  "pkg-config",
  "vcpkg",
 ]
@@ -2077,9 +2076,9 @@ dependencies = [
 
 [[package]]
 name = "smolscale"
-version = "0.3.9"
+version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3961e4af02820c37f744e601fbefa09ddf8273e764cd46052001b756ec169ec4"
+checksum = "b175230b3b71abe591696ace70dbeb422ebbd1cb52e3e7866e6805e311ea2dc9"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -2287,13 +2286,14 @@ dependencies = [
  "novasymph",
  "once_cell",
  "parking_lot",
+ "rusqlite",
  "serde",
  "smol",
  "smol-timeout",
  "smolscale",
  "stdcode",
  "structopt",
- "themelio-nodeprot",
+ "themelio-nodeprot 0.3.1",
  "themelio-stf",
  "tmelcrypt",
  "toml",
@@ -2321,6 +2321,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "themelio-nodeprot"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cfa247882c81986ac3dc992de71e2b08e6f73943e7d3a28efddbd8f060ed2474"
+dependencies = [
+ "cached",
+ "hex",
+ "log",
+ "melnet",
+ "novasmt",
+ "serde",
+ "smol",
+ "smolscale",
+ "stdcode",
+ "themelio-stf",
+ "tmelcrypt",
+]
+
+[[package]]
 name = "themelio-spammer"
 version = "0.1.0"
 dependencies = [
@@ -2331,7 +2350,7 @@ dependencies = [
  "smol",
  "smol-timeout",
  "structopt",
- "themelio-nodeprot",
+ "themelio-nodeprot 0.2.0",
  "themelio-stf",
  "tmelcrypt",
 ]

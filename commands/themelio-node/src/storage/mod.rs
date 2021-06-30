@@ -86,7 +86,7 @@ impl NodeStorage {
             .into_iter()
             .next()
             .unwrap();
-        Some(stdcode::deserialize(height.metadata()).unwrap())
+        stdcode::deserialize(height.metadata()).ok()
     }
 
     /// Consumes a block, applying it to the current state.

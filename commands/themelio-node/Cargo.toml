@@ -23,7 +23,7 @@ themelio-stf= "0.4.2"
 tmelcrypt= "0.1.0"
 melnet= "0.1.0"
 stdcode= "0.1.2"
-themelio-nodeprot= "0.2.0"
+themelio-nodeprot= "0.3.1"
 novasymph={path="../../libs/novasymph"}
 blkdb={path="../../libs/blkdb"}
 im= "15.0.0"
@@ -41,9 +41,12 @@ smol-timeout= "0.6.0"
 novasmt= "0.1.9"
 fastrand= "1.4.1"
 env_logger= "0.8.4"
-# boringdb={  path="../../../boringdb"}
-boringdb= "0.3.9"
+boringdb={  path="../../../boringdb"}
+# boringdb= "0.3.9"
 
 [target.'cfg(unix)'.dependencies]
 mimalloc= "0.1.26"
 
+[dependencies.rusqlite]
+version = "0.25.3"
+features = ["bundled"]

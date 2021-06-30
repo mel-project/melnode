@@ -7,15 +7,13 @@ use std::{
 use anyhow::Context;
 use futures_util::{StreamExt, TryStreamExt};
 use novasmt::CompressedProof;
-use themelio_stf::{Block, ConsensusProof, NetID, Transaction};
+use themelio_stf::{AbbrBlock, Block, ConsensusProof, NetID, SealedState, Transaction};
 
-use crate::{protocols::blksync::get_one_block, storage::SharedStorage};
+use crate::storage::SharedStorage;
 use melnet::MelnetError;
 use smol::net::TcpListener;
 use smol_timeout::TimeoutExt;
-use themelio_nodeprot::{
-    AbbreviatedBlock, NodeClient, NodeResponder, NodeServer, StateSummary, Substate,
-};
+use themelio_nodeprot::{NodeClient, NodeResponder, NodeServer, StateSummary, Substate};
 use tmelcrypt::HashVal;
 
 /// This encapsulates the node peer-to-peer for both auditors and stakers..
@@ -117,7 +115,7 @@ async fn attempt_blksync(client: &NodeClient, storage: &SharedStorage) -> anyhow
         .map(Ok::<_, anyhow::Error>)
         .try_filter_map(|height| async move {
             Ok(Some(async move {
-                get_one_block(client, height, &lookup_tx).await
+                Ok(client.get_full_block(height, &lookup_tx).await?)
             }))
         })
         .try_buffered(64)
@@ -172,7 +170,7 @@ impl NodeServer for AuditorResponder {
         Ok(())
     }
 
-    fn get_abbr_block(&self, height: u64) -> melnet::Result<(AbbreviatedBlock, ConsensusProof)> {
+    fn get_abbr_block(&self, height: u64) -> melnet::Result<(AbbrBlock, ConsensusProof)> {
         let storage = self.storage.read();
         let state = storage
             .get_state(height)
@@ -180,7 +178,7 @@ impl NodeServer for AuditorResponder {
         let proof = storage
             .get_consensus(height)
             .ok_or_else(|| MelnetError::Custom(format!("block {} not confirmed yet", height)))?;
-        Ok((AbbreviatedBlock::from_state(&state), proof))
+        Ok((state.to_block().abbreviate(), proof))
     }
 
     fn get_summary(&self) -> melnet::Result<StateSummary> {
@@ -195,6 +193,13 @@ impl NodeServer for AuditorResponder {
             header: highest.header(),
             proof,
         })
+    }
+
+    fn get_state(&self, height: u64) -> melnet::Result<SealedState> {
+        self.storage
+            .read()
+            .get_state(height)
+            .ok_or_else(|| melnet::MelnetError::Custom("no such height".into()))
     }
 
     fn get_smt_branch(
