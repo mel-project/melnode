@@ -1,54 +1,19 @@
-use std::{net::SocketAddr, time::Duration};
+use std::time::Duration;
 
 use anyhow::Context;
 use futures_util::stream::FuturesUnordered;
 use smol::{lock::Semaphore, prelude::*};
 use smol_timeout::TimeoutExt;
 use themelio_nodeprot::{AbbreviatedBlock, NodeClient};
-use themelio_stf::{Block, ConsensusProof, NetID, Transaction, TxHash};
-
-/// This cancellable async function synchronizes the block state with some other node. If the other node has the next few blocks, those are returned.
-#[tracing::instrument(skip(get_cached_tx))]
-pub async fn sync_state(
-    netid: NetID,
-    remote: SocketAddr,
-    starting_height: u64,
-    get_cached_tx: impl Fn(TxHash) -> Option<Transaction> + Send + Sync,
-) -> anyhow::Result<Vec<(Block, ConsensusProof)>> {
-    let client = NodeClient::new(netid, remote);
-    let remote_summary = client.get_summary().await?;
-    if starting_height > remote_summary.height {
-        return Ok(vec![]);
-    }
-    const BLKSIZE: u64 = 64;
-    let exec = smol::Executor::new();
-    let tasks = {
-        let mut toret = Vec::new();
-        for height in starting_height..=(starting_height + BLKSIZE).min(remote_summary.height) {
-            let task = exec.spawn(get_one_block(netid, remote, height, &get_cached_tx));
-            toret.push(task);
-        }
-        toret
-    };
-    exec.run(async move {
-        let mut toret = Vec::new();
-        for task in tasks.into_iter() {
-            toret.push(task.await?)
-        }
-        Ok(toret)
-    })
-    .await
-}
+use themelio_stf::{Block, ConsensusProof, Transaction, TxHash};
 
 /// Obtains *one* block
-async fn get_one_block(
-    netid: NetID,
-    remote: SocketAddr,
+pub async fn get_one_block(
+    client: &NodeClient,
     height: u64,
     get_cached_tx: &(impl Sync + Fn(TxHash) -> Option<Transaction>),
 ) -> anyhow::Result<(Block, ConsensusProof)> {
     log::trace!("get_one_block({})", height);
-    let client = NodeClient::new(netid, remote);
     let remote_state: (AbbreviatedBlock, ConsensusProof) = client
         .get_abbr_block(height)
         .timeout(Duration::from_secs(5))

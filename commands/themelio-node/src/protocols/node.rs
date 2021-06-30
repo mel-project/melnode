@@ -4,9 +4,12 @@ use std::{
     time::{Duration, Instant},
 };
 
+use anyhow::Context;
+use futures_util::{StreamExt, TryStreamExt};
 use novasmt::CompressedProof;
-use themelio_stf::{ConsensusProof, NetID, Transaction};
+use themelio_stf::{Block, ConsensusProof, NetID, Transaction};
 
+use crate::{protocols::blksync::get_one_block, storage::SharedStorage};
 use melnet::MelnetError;
 use smol::net::TcpListener;
 use smol_timeout::TimeoutExt;
@@ -14,10 +17,6 @@ use themelio_nodeprot::{
     AbbreviatedBlock, NodeClient, NodeResponder, NodeServer, StateSummary, Substate,
 };
 use tmelcrypt::HashVal;
-
-use crate::storage::SharedStorage;
-
-use super::blksync;
 
 /// This encapsulates the node peer-to-peer for both auditors and stakers..
 pub struct NodeProtocol {
@@ -62,49 +61,31 @@ impl NodeProtocol {
     }
 }
 
-#[tracing::instrument(skip(network, state))]
-async fn blksync_loop(netid: NetID, network: melnet::NetState, state: SharedStorage) {
-    let tag = || format!("blksync@{:?}", state.read().highest_state().header().height);
+#[tracing::instrument(skip(network, storage))]
+async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: SharedStorage) {
+    let tag = || {
+        format!(
+            "blksync@{:?}",
+            storage.read().highest_state().header().height
+        )
+    };
     const SLOW_TIME: Duration = Duration::from_millis(5000);
     const FAST_TIME: Duration = Duration::from_millis(10);
     let mut random_peer = network.routes().first().cloned();
     loop {
         if let Some(peer) = random_peer {
             log::trace!("{}: picked random peer {} for blksync", tag(), peer);
-            let last_state = state.read().highest_state();
-            let start = Instant::now();
-            let res = blksync::sync_state(netid, peer, last_state.inner_ref().height + 1, |tx| {
-                state.read().mempool().lookup(tx)
-            })
-            .await;
+            let client = NodeClient::new(netid, peer);
+
+            let res = attempt_blksync(&client, &storage).await;
             match res {
                 Err(e) => {
                     log::warn!("{}: failed to blksync with {}: {:?}", tag(), peer, e);
                     smol::Timer::after(FAST_TIME).await;
                 }
-                Ok(blocks) => {
-                    let blklen = blocks.len();
+                Ok(blklen) => {
                     if blklen > 0 {
-                        log::debug!(
-                            "got {} blocks from {} in {:?}",
-                            blocks.len(),
-                            peer,
-                            start.elapsed()
-                        );
-                        for (blk, cproof) in blocks {
-                            let res = state.write().apply_block(blk.clone(), cproof);
-                            if let Err(err) = res {
-                                log::warn!(
-                                    "{}: failed to apply block {} from other node: {:?}",
-                                    tag(),
-                                    blk.header.height,
-                                    err
-                                );
-                                break;
-                            }
-                            smol::future::yield_now().await;
-                        }
-                        log::debug!("synced to height {}", state.read().highest_height());
+                        log::debug!("synced to height {}", storage.read().highest_height());
                         smol::Timer::after(FAST_TIME).await;
                     } else {
                         smol::Timer::after(SLOW_TIME).await;
@@ -117,6 +98,41 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, state: SharedStor
             random_peer = network.routes().first().cloned()
         }
     }
+}
+
+/// Attempts a sync using the given given node client.
+async fn attempt_blksync(client: &NodeClient, storage: &SharedStorage) -> anyhow::Result<usize> {
+    let their_highest = client
+        .get_summary()
+        .await
+        .context("cannot get their highest block")?
+        .height;
+    let my_highest = storage.read().highest_height();
+    if their_highest <= my_highest {
+        return Ok(0);
+    }
+    let height_stream = futures_util::stream::iter((my_highest..=their_highest).skip(1));
+    let lookup_tx = |tx| storage.read().mempool().lookup(tx);
+    let mut result_stream = height_stream
+        .map(Ok::<_, anyhow::Error>)
+        .try_filter_map(|height| async move {
+            Ok(Some(async move {
+                get_one_block(client, height, &lookup_tx).await
+            }))
+        })
+        .try_buffered(64)
+        .boxed();
+    let mut toret = 0;
+    while let Some(res) = result_stream.try_next().await? {
+        let (block, proof): (Block, ConsensusProof) = res;
+        log::debug!("fully resolved block {} from network", block.header.height);
+        storage
+            .write()
+            .apply_block(block, proof)
+            .context("could not apply a resolved block")?;
+        toret += 1;
+    }
+    Ok(toret)
 }
 
 struct AuditorResponder {
