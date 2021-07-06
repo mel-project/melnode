@@ -41,8 +41,8 @@ smol-timeout= "0.6.0"
 novasmt= "0.1.9"
 fastrand= "1.4.1"
 env_logger= "0.8.4"
-boringdb={  path="../../../boringdb"}
-# boringdb= "0.3.9"
+#boringdb={  path="../../../boringdb"}
+ boringdb= "0.3.9"
 
 [target.'cfg(unix)'.dependencies]
 mimalloc= "0.1.26"
