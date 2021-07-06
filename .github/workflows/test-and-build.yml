@@ -21,7 +21,7 @@ jobs:
       - name: Update Apt
         run: sudo apt update
       - name: Install Musl
-        run: sudo apt -y install musl
+        run: sudo apt -y install musl musl-gcc
       - name: Add Musl Target Triple
         run: rustup target add x86_64-unknown-linux-musl
       - name: Build (Musl)
