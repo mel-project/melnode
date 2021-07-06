@@ -12,11 +12,11 @@ env:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: rust-latest
 
     steps:
       - uses: actions/checkout@v2
       - name: Run tests
         run: cargo test --verbose
       - name: Build
-        run: cargo build --verbose
+        run: apt update && apt -y install musl && rustup target add x86_64-unknown-linux-musl && cargo build --target x86_64-unknown-linux-musl --verbose
