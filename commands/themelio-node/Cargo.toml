@@ -42,7 +42,7 @@ novasmt= "0.1.9"
 fastrand= "1.4.1"
 env_logger= "0.8.4"
 #boringdb={  path="../../../boringdb"}
- boringdb= "0.3.9"
+ boringdb= "0.3.10"
 
 [target.'cfg(unix)'.dependencies]
 mimalloc= "0.1.26"
