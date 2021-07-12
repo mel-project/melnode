@@ -6,15 +6,18 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[dependencies.serde]
+version = "1.0.126"
+features = ["derive"]
+
 [dependencies]
-im= "15.0.0"
-parking_lot= "0.11.1"
-novasmt= "0.1.9"
-tmelcrypt= "0.1.0"
-stdcode= "0.1.2"
-serde={ version = "1.0.126", features = ["derive"] }
-thiserror= "1.0.25"
-dashmap= "4.0.2"
-themelio-stf= "0.4.2"
-log= "0.4.14"
+dashmap = "4.0.2"
 fastrand = "1.4.1"
+im = "15.0.0"
+log = "0.4.14"
+novasmt = "0.1.9"
+parking_lot = "0.11.1"
+stdcode = "0.1.2"
+themelio-stf = "0.4.3"
+thiserror = "1.0.26"
+tmelcrypt = "0.1.0"
