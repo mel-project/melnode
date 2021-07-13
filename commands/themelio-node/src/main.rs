@@ -33,7 +33,13 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
     let storage = opt.storage().await?;
     let bootstrap = opt.bootstrap().await?;
     log::info!("bootstrapping with {:?}", bootstrap);
-    let _node_prot = NodeProtocol::new(netid, opt.listen_addr(), bootstrap, storage.clone());
+    let _node_prot = NodeProtocol::new(
+        netid,
+        opt.listen_addr(),
+        opt.advertise_addr(),
+        bootstrap,
+        storage.clone(),
+    );
     let _staker_prot = if let Some((
         staker_sk,
         staker_listen,

@@ -33,7 +33,8 @@ impl NodeProtocol {
     /// Creates a new AuditorProtocol listening on the given address with the given AuditorState.
     pub fn new(
         netid: NetID,
-        addr: SocketAddr,
+        listen_addr: SocketAddr,
+        advertise_addr: Option<SocketAddr>,
         bootstrap: Vec<SocketAddr>,
         storage: SharedStorage,
     ) -> Self {
@@ -41,13 +42,15 @@ impl NodeProtocol {
         for addr in bootstrap {
             network.add_route(addr);
         }
-        network.add_route(addr);
+        if let Some(advertise_addr) = advertise_addr {
+            network.add_route(advertise_addr);
+        }
         let responder = AuditorResponder::new(netid, storage.clone());
         network.listen("node", NodeResponder::new(responder));
         let _network_task = smolscale::spawn({
             let network = network.clone();
             async move {
-                let listener = TcpListener::bind(addr).await.unwrap();
+                let listener = TcpListener::bind(listen_addr).await.unwrap();
                 network.run_server(listener).await;
             }
         });
@@ -79,6 +82,7 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: SharedSt
             match res {
                 Err(e) => {
                     log::warn!("{}: failed to blksync with {}: {:?}", tag(), peer, e);
+                    random_peer = network.routes().first().cloned();
                     smol::Timer::after(FAST_TIME).await;
                 }
                 Ok(blklen) => {

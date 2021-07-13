@@ -10,8 +10,11 @@ use crate::storage::{NodeStorage, SharedStorage};
 #[derive(Debug, StructOpt)]
 pub struct Args {
     /// Listen address
-    #[structopt(long)]
+    #[structopt(long, default_value = "0.0.0.0:11814")]
     listen: SocketAddr,
+
+    /// Advertise address. Put your public IP address here.
+    advertise: Option<SocketAddr>,
 
     /// Bootstrap addresses. May be given as a DNS name.
     #[structopt(long, default_value = "mainnet-bootstrap.themelio.org:11814")]
@@ -55,6 +58,11 @@ pub struct Args {
 }
 
 impl Args {
+    /// Gets the advertised IP.
+    pub fn advertise_addr(&self) -> Option<SocketAddr> {
+        self.advertise
+    }
+
     /// Derives the genesis configuration from the arguments
     pub async fn genesis_config(&self) -> anyhow::Result<GenesisConfig> {
         if let Some(path) = &self.override_genesis {
