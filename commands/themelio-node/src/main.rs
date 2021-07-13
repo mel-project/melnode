@@ -8,9 +8,9 @@ use tracing::instrument;
 
 use crate::protocols::{NodeProtocol, StakerProtocol};
 
-// #[cfg(unix)]
-// #[global_allocator]
-// static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+#[cfg(unix)]
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[instrument]
 fn main() -> anyhow::Result<()> {
