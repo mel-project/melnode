@@ -14,6 +14,7 @@ pub struct Args {
     listen: SocketAddr,
 
     /// Advertise address. Put your public IP address here.
+    #[structopt(long)]
     advertise: Option<SocketAddr>,
 
     /// Bootstrap addresses. May be given as a DNS name.
