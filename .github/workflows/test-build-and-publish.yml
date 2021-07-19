@@ -23,4 +23,4 @@ jobs:
       - name: Install Biome
         run: sudo mv bio /usr/local/bin/bio
       - name: Run tests
-        run: cd biome && env DO_CHECK=true sudo ./biome/themelio-node/tests/test.sh
+        run: cd biome && env DO_CHECK=true sudo ./themelio-node/tests/test.sh
