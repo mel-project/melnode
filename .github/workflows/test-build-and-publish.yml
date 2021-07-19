@@ -20,6 +20,8 @@ jobs:
         run: sudo apt update
       - name: Create Biome Key Path
         run: sudo mkdir -p /hab/cache/keys
+      - name: Run which
+        run: which echo
       - name: Create Biome Public Key
         env:
           BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
