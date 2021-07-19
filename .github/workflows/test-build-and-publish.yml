@@ -23,7 +23,7 @@ jobs:
       - name: Run which
         run: which echo
       - name: Create Biome Public Key
-        run: sudo echo ${{ secrets.BIOME_PUBLIC_KEY }} | base64 -d > /hab/cache/keys/themelio-20210708170207.pub
+        run: echo ${{ secrets.BIOME_PUBLIC_KEY }} | base64 -d > /tmp/themelio-20210708170207.pub
       - name: Download Biome
         run: curl -L https://github.com/biome-sh/biome/releases/download/1.6.300/bio-1.6.300-x86_64-linux.tar.gz | tar zxv
       - name: Install Biome
