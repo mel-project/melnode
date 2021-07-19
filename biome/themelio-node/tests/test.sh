@@ -27,7 +27,6 @@ if [ -n "${SKIPBUILD}" ]; then
   fi
 else
   pushd "${PLANDIR}"
-  ls -la
   bio pkg build "${pkg_name}"
   popd
 
