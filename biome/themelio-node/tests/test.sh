@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -ex
 
 TESTDIR="$(dirname "${0}")"
 PLANDIR="$(dirname "${TESTDIR}")"
