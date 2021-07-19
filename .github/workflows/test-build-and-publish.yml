@@ -21,6 +21,8 @@ jobs:
       - name: Create Biome Key Path
         run: sudo mkdir -p /hab/cache/keys
       - name: Create Biome Public Key
+        env:
+          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
         run: echo ${{ secrets.BIOME_PUBLIC_KEY }} > themelio-20210708170207.pub
       - name: Download Biome
         run: curl -L https://github.com/biome-sh/biome/releases/download/1.6.300/bio-1.6.300-x86_64-linux.tar.gz | tar zxv
