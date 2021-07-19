@@ -27,7 +27,7 @@ if [ -n "${SKIPBUILD}" ]; then
   fi
 else
   pushd "${PLANDIR}"
-  build
+  bio pkg build "${pkg_name}"
   popd
 
   source results/last_build.env
