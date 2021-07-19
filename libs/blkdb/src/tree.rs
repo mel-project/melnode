@@ -547,12 +547,11 @@ impl InternalValue {
         cache: &DashMap<HashVal, SealedState>,
     ) -> SealedState {
         cache
-            .entry(self.header.hash())
-            .or_insert_with(|| {
+            .get(&self.header.hash())
+            .map(|f| f.clone())
+            .unwrap_or_else(|| {
                 SealedState::from_partial_encoding_infallible(&self.partial_state, forest)
             })
-            .value()
-            .clone()
     }
 }
 
