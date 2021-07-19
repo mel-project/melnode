@@ -8,7 +8,7 @@ use self::mempool::Mempool;
 use blkdb::{traits::DbBackend, BlockTree};
 use parking_lot::RwLock;
 pub use smt::*;
-use themelio_stf::{ConsensusProof, GenesisConfig, SealedState, State};
+use themelio_stf::{ConsensusProof, GenesisConfig, SealedState};
 
 /// An alias for a shared NodeStorage.
 pub type SharedStorage = Arc<RwLock<NodeStorage>>;
@@ -42,7 +42,7 @@ impl NodeStorage {
 
         // initialize stuff
         if history.get_tips().is_empty() {
-            history.set_genesis(State::genesis(&forest, genesis).seal(None), &[]);
+            history.set_genesis(genesis.realize(&forest).seal(None), &[]);
         }
 
         let mempool_state = history.get_tips()[0].to_state().next_state();

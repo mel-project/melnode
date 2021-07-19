@@ -8,7 +8,7 @@ use novasymph::{BlockBuilder, EpochConfig, EpochProtocol};
 use once_cell::sync::Lazy;
 use themelio_stf::{
     melvm::Covenant, Block, CoinData, Denom, GenesisConfig, NetID, ProposerAction, SealedState,
-    StakeDoc, State,
+    StakeDoc,
 };
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
@@ -21,33 +21,31 @@ static TEST_SKK: Lazy<Vec<Ed25519SK>> =
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("novasymph")).init();
     let forest = novasmt::Forest::new(novasmt::InMemoryBackend::default());
-    let genesis = State::genesis(
-        &forest,
-        GenesisConfig {
-            network: NetID::Testnet,
-            init_coindata: CoinData {
-                denom: Denom::Mel,
-                value: 1 << 64,
-                additional_data: vec![],
-                covhash: HashVal::default().into(),
-            },
-            init_fee_pool: 1 << 64,
-            stakes: TEST_SKK
-                .iter()
-                .map(|v| {
-                    (
-                        tmelcrypt::hash_single(&v.to_public().0).into(),
-                        StakeDoc {
-                            pubkey: v.to_public(),
-                            e_start: 0,
-                            e_post_end: 100000,
-                            syms_staked: 1,
-                        },
-                    )
-                })
-                .collect(),
+    let genesis = GenesisConfig {
+        network: NetID::Testnet,
+        init_coindata: CoinData {
+            denom: Denom::Mel,
+            value: 1 << 64,
+            additional_data: vec![],
+            covhash: HashVal::default().into(),
         },
-    )
+        init_fee_pool: 1 << 64,
+        stakes: TEST_SKK
+            .iter()
+            .map(|v| {
+                (
+                    tmelcrypt::hash_single(&v.to_public().0).into(),
+                    StakeDoc {
+                        pubkey: v.to_public(),
+                        e_start: 0,
+                        e_post_end: 100000,
+                        syms_staked: 1,
+                    },
+                )
+            })
+            .collect(),
+    }
+    .realize(&forest)
     .seal(None);
     smol::future::block_on(async move {
         for i in 0..COUNT {

@@ -408,14 +408,14 @@ impl ChainState {
 
 #[cfg(test)]
 mod tests {
-    use themelio_stf::{GenesisConfig, State};
+    use themelio_stf::GenesisConfig;
 
     use super::*;
 
     #[test]
     fn simple_sequence() {
         let forest = novasmt::Forest::new(novasmt::InMemoryBackend::default());
-        let genesis = State::genesis(&forest, GenesisConfig::std_testnet()).seal(None);
+        let genesis = GenesisConfig::std_testnet().realize(&forest).seal(None);
         let cstate = ChainState::new(genesis, forest);
         dbg!(cstate.get_lnc_tips());
     }

@@ -5,7 +5,7 @@ pub use tree::*;
 
 #[cfg(test)]
 mod tests {
-    use themelio_stf::{GenesisConfig, State};
+    use themelio_stf::GenesisConfig;
 
     use crate::{backends::InMemoryDb, BlockTree};
 
@@ -15,7 +15,7 @@ mod tests {
         let forest = novasmt::Forest::new(novasmt::InMemoryBackend::default());
         let mut tree = BlockTree::new(backend, forest.clone(), false);
         assert!(tree.get_tips().is_empty());
-        let genesis = State::genesis(&forest, GenesisConfig::std_testnet()).seal(None);
+        let genesis = GenesisConfig::std_testnet().realize(&forest).seal(None);
         tree.set_genesis(genesis.clone(), &[]);
         assert!(tree.get_tips()[0].header() == genesis.header());
         eprintln!("{}", tree.debug_graphviz(|_| "gray".into()));
