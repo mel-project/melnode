@@ -19,7 +19,7 @@ jobs:
       - name: Update Apt
         run: sudo apt update
       - name: Create Biome Key Path
-        run: mkdir -p /hab/cache/keys
+        run: sudo mkdir -p /hab/cache/keys
       - name: Create Biome Public Key
         run: echo ${{ secrets.BIOME_PUBLIC_KEY }} > themelio-20210708170207.pub
       - name: Download Biome
