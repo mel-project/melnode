@@ -1,0 +1,26 @@
+name: TestBuildAndPublish
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Update Apt
+        run: sudo apt update
+      - name: Download Biome
+        run: curl -L https://github.com/biome-sh/biome/releases/download/1.6.300/bio-1.6.300-x86_64-linux.tar.gz | tar zxv
+      - name: Install Biome
+        run: mv bio /usr/local/bin/bio
+      - name: Install Biome
+        run: bio --version
