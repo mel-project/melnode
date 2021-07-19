@@ -21,6 +21,6 @@ jobs:
       - name: Download Biome
         run: curl -L https://github.com/biome-sh/biome/releases/download/1.6.300/bio-1.6.300-x86_64-linux.tar.gz | tar zxv
       - name: Install Biome
-        run: mv bio /usr/local/bin/bio
+        run: sudo mv bio /usr/local/bin/bio
       - name: Install Biome
         run: bio --version
