@@ -23,4 +23,4 @@ jobs:
       - name: Install Biome
         run: sudo mv bio /usr/local/bin/bio
       - name: Install Biome
-        run: bio --version
+        run: env DO_CHECK=true ./biome/themelio-node/tests/test.sh
