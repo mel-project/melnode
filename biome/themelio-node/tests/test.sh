@@ -10,6 +10,9 @@ bio pkg install --binlink core/nmap
 
 source "${PLANDIR}/plan.sh"
 
+pwd
+ls -la
+
 if [ -n "${SKIPBUILD}" ]; then
   source results/last_build.env
 
@@ -26,9 +29,11 @@ if [ -n "${SKIPBUILD}" ]; then
     bio svc load "${pkg_ident}"
   fi
 else
-  pushd "${PLANDIR}"
-  bio pkg build "${pkg_name}"
-  popd
+  bio pkg build "biome/${pkg_name}"
+#  pushd "${PLANDIR}"
+#  ls -la
+#  bio pkg build "biome/${pkg_name}"
+#  popd
 
   source results/last_build.env
 
