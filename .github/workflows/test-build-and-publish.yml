@@ -22,5 +22,7 @@ jobs:
         run: curl -L https://github.com/biome-sh/biome/releases/download/1.6.300/bio-1.6.300-x86_64-linux.tar.gz | tar zxv
       - name: Install Biome
         run: sudo mv bio /usr/local/bin/bio
+#      - name: Run tests
+#        run: cd biome && env DO_CHECK=true sudo ./themelio-node/tests/test.sh
       - name: Run tests
-        run: cd biome && env DO_CHECK=true sudo ./themelio-node/tests/test.sh
+        run: cd biome && sudo bio pkg build themelio-node
