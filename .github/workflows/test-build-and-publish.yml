@@ -24,11 +24,17 @@ jobs:
         run: which echo
       - name: Create Biome Public Key
         run: echo ${{ secrets.BIOME_PUBLIC_KEY }} | base64 -d > /tmp/themelio-20210708170207.pub
+      - name: Move Biome Public Key
+        run: mv /tmp/themelio-20210708170207.pub /hab/cache/keys/themelio-20210708170207.pub
+      - name: Create Biome Signing Key
+        run: echo ${{ secrets.BIOME_SIGNING_KEY }} | base64 -d > /tmp/themelio-20210708170207.sig.key
+      - name: Move Biome Signing Key
+        run: mv /tmp/themelio-20210708170207.sig.key /hab/cache/keys/themelio-20210708170207.sig.key
       - name: Download Biome
         run: curl -L https://github.com/biome-sh/biome/releases/download/1.6.300/bio-1.6.300-x86_64-linux.tar.gz | tar zxv
       - name: Install Biome
         run: sudo mv bio /usr/local/bin/bio
-#      - name: Build plan
-#        run: cd biome && env DO_CHECK=true sudo bio pkg build themelio-node
+      - name: Build plan
+        run: cd biome && env DO_CHECK=true sudo bio pkg build themelio-node
 #      - name: Run tests
 #        run: cd biome && env SKIPBUILD=true sudo ./themelio-node/tests/test.sh
