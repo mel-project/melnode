@@ -46,7 +46,7 @@ jobs:
         run: sudo cp /hab/cache/keys/* /root/.hab/cache/keys
 
       - name: List Keys Directory
-        run: ls -la /root/.hab/cache/keys
+        run: sudo ls -la /root/.hab/cache/keys
 
       - name: Build plan
         env:
