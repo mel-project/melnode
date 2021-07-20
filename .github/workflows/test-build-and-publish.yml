@@ -71,7 +71,7 @@ jobs:
       - name: Download Public Key
         env:
           HAB_BLDR_URL: "https://bldr.biome.sh"
-        run: bio origin key download themelio
+        run: sudo bio origin key download themelio
 
       - name: List Key Directory
         run: ls -la /hab/cache/keys
