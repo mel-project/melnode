@@ -58,20 +58,20 @@ jobs:
       - name: Install Biome
         run: sudo mv bio /usr/local/bin/bio
 
-      - name: Import Public Key
-        env:
-          BIOME_PUBLIC_KEY: ${{secrets.BIOME_PUBLIC_KEY}}
-        run: echo "BIOME_PUBLIC_KEY" | sudo bio origin key import
+#      - name: Import Public Key
+#        env:
+#          BIOME_PUBLIC_KEY: ${{secrets.BIOME_PUBLIC_KEY}}
+#        run: echo "BIOME_PUBLIC_KEY" | sudo bio origin key import
 
       - name: Import Signing Key
         env:
           BIOME_SIGNING_KEY: ${{secrets.BIOME_SIGNING_KEY}}
         run: echo "$BIOME_SIGNING_KEY" | sudo bio origin key import
 
-#      - name: Download Public Key
-#        env:
-#          HAB_BLDR_URL: "https://bldr.biome.sh"
-#        run: bio origin key download themelio
+      - name: Download Public Key
+        env:
+          HAB_BLDR_URL: "https://bldr.biome.sh"
+        run: bio origin key download themelio
 
       - name: Build plan
         env:
