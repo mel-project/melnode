@@ -16,8 +16,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
       - name: Update Apt
         run: sudo apt update
+
+      - name: Install Musl
+        run: sudo apt install -y musl
 
       - name: Download Biome
         env:
