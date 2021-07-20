@@ -24,6 +24,8 @@ do_verify() {
 }
 
 do_check() {
+  cd "${pkg_full_path}"
+
   cargo test --locked --target x86_64-unknown-linux-musl --verbose
 }
 
