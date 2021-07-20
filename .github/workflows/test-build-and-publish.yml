@@ -19,40 +19,6 @@ jobs:
       - name: Update Apt
         run: sudo apt update
 
-#      - name: Create Biome Key Path
-#        run: sudo mkdir -p /root/.hab/cache/keys
-
-#      - name: Create Biome Public Key
-#        run: echo ${{ secrets.BIOME_PUBLIC_KEY }} | base64 -d > /tmp/themelio-20210708170207.pub
-#      - name: Move Biome Public Key
-#        run: sudo mv /tmp/themelio-20210708170207.pub /hab/cache/keys/themelio-20210708170207.pub
-
-#      - name: Create Biome Signing Key
-#        run: echo ${{ secrets.BIOME_SIGNING_KEY }} | base64 -d > /tmp/themelio-20210708170207.sig.key
-#      - name: Move Biome Signing Key
-#        run: sudo mv /tmp/themelio-20210708170207.sig.key /hab/cache/keys/themelio-20210708170207.sig.key
-
-
-
-#      - name: Create Biome Public Key
-#        run: 'echo "$BIOME_PUBLIC_KEY" > /tmp/themelio-20210708170207.pub'
-#        shell: bash
-#        env:
-#          BIOME_PUBLIC_KEY: ${{secrets.BIOME_PUBLIC_KEY}}
-#      - name: Move Biome Public Key
-#        run: sudo mv /tmp/themelio-20210708170207.pub /root/.hab/cache/keys/themelio-20210708170207.pub
-
-
-#      - name: Create Biome Signing Key
-#        run: 'echo "$BIOME_SIGNING_KEY" > /tmp/themelio-20210708170207.sig.key'
-#        shell: bash
-#        env:
-#          BIOME_SIGNING_KEY: ${{secrets.BIOME_SIGNING_KEY}}
-#      - name: Move Biome Signing Key
-#        run: sudo mv /tmp/themelio-20210708170207.sig.key /root/.hab/cache/keys/themelio-20210708170207.sig.key
-
-
-
       - name: Download Biome
         run: curl -L https://github.com/biome-sh/biome/releases/download/1.6.300/bio-1.6.300-x86_64-linux.tar.gz | tar zxv
       - name: Install Biome
@@ -73,8 +39,14 @@ jobs:
 #          HAB_BLDR_URL: "https://bldr.biome.sh"
 #        run: sudo bio origin key download themelio
 
-      - name: List Key Directory
-        run: ls -la /hab/cache/keys
+      - name: Create Keys Directory
+        run: mkdir -p /root/.hab/cache/keys
+
+      - name: Copy Keys
+        run: sudo cp /hab/cache/keys/* /root/.hab/cache/keys
+
+      - name: List Keys Directory
+        run: ls -la /root/.hab/cache/keys
 
       - name: Build plan
         env:
