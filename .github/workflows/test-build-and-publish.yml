@@ -50,13 +50,16 @@ jobs:
 #      - name: List Keys Directory
 #        run: sudo ls -la /root/.hab/cache/keys
 
+      - name: Run Musl Tests
+        run: cargo test --locked --target x86_64-unknown-linux-musl --verbose
+
       - name: Build Plan
         env:
           DO_CHECK: true
           HAB_ORIGIN: "themelio"
         run: cd biome && bio pkg build themelio-node
 
-      - name: Run tests
+      - name: Run BATS Tests
         env:
           SKIPBUILD: true
         run: cd biome && ./themelio-node/tests/test.sh

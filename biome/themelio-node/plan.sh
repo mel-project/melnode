@@ -7,7 +7,6 @@ pkg_license=("MPL-2.0")
 pkg_full_path="${HAB_CACHE_SRC_PATH}/${pkg_name}-${pkg_version}/${pkg_repository_name}"
 pkg_build_deps=(
   core/git
-  core/musl
   core/rust
 )
 pkg_deps=(
@@ -27,11 +26,11 @@ do_verify() {
 do_check() {
   cd "${pkg_full_path}"
 
-  cargo test --locked --target x86_64-unknown-linux-musl --verbose
+  cargo test --locked --verbose
 }
 
 do_build() {
-  git clone "https://github.com/themeliolabs/${pkg_repository_name}.git" "/hab/cache/src/${pkg_name}-${pkg_version}/${pkg_repository_name}"
+  git clone "https://github.com/themeliolabs/${pkg_repository_name}.git" "${pkg_full_path}"
 
   cd "${pkg_full_path}"
 
