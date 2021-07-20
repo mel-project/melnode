@@ -20,7 +20,9 @@ jobs:
         run: sudo apt update
 
       - name: Download Biome
-        run: curl -L https://github.com/biome-sh/biome/releases/download/1.6.300/bio-1.6.300-x86_64-linux.tar.gz | tar zxv
+        env:
+          BIOME_VERSION: "1.6.300"
+        run: curl -L "https://github.com/biome-sh/biome/releases/download/$BIOME_VERSION/bio-$BIOME_VERSION-x86_64-linux.tar.gz" | tar zxv
       - name: Install Biome
         run: sudo mv bio /usr/local/bin/bio
 
