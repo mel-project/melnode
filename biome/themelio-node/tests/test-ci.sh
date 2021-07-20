@@ -21,21 +21,8 @@ sudo bio sup run &
 
 sleep 5
 
-sudo bio svc status
-
-
-BIO_SVC_STATUS="$(sudo bio svc status)"
-NO_SERVICES_LOADED="No services loaded."
-
-if [ "$BIO_SVC_STATUS" == "$NO_SERVICES_LOADED" ]; then
-  sudo bio pkg install --binlink --force "results/${pkg_artifact}"
-  sudo bio svc load "${pkg_ident}"
-else
-  env HAB_BLDR_URL="https://bldr.biome.sh" sudo bio svc unload "${pkg_ident}" || true
-  env HAB_BLDR_URL="https://bldr.biome.sh" sudo bio pkg install --binlink --force "results/${pkg_artifact}"
-  sleep 1
-  sudo bio svc load "${pkg_ident}"
-fi
+sudo bio pkg install --binlink --force "results/${pkg_artifact}"
+sudo bio svc load "${pkg_ident}"
 
 echo "Sleeping for 5 seconds for the service to start."
 sleep 5
