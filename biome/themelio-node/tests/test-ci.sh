@@ -10,11 +10,13 @@ sudo bio pkg install --binlink core/nmap
 
 source "${PLAN_DIR}/plan.sh"
 
-bio pkg build "${pkg_name}"
+#bio pkg build "${pkg_name}"
 
 source results/last_build.env
 
-sudo bio sup run &
+sudo bio pkg install --binlink biome/bio-sup
+
+bio sup run
 
 BIO_SVC_STATUS="$(bio svc status)"
 NO_SERVICES_LOADED="No services loaded."
