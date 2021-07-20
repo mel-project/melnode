@@ -18,8 +18,9 @@ jobs:
       - uses: actions/checkout@v2
       - name: Update Apt
         run: sudo apt update
-      - name: Create Biome Key Path
-        run: sudo mkdir -p /root/.hab/cache/keys
+
+#      - name: Create Biome Key Path
+#        run: sudo mkdir -p /root/.hab/cache/keys
 
 #      - name: Create Biome Public Key
 #        run: echo ${{ secrets.BIOME_PUBLIC_KEY }} | base64 -d > /tmp/themelio-20210708170207.pub
@@ -33,22 +34,22 @@ jobs:
 
 
 
-      - name: Create Biome Public Key
-        run: 'echo "$BIOME_PUBLIC_KEY" > /tmp/themelio-20210708170207.pub'
-        shell: bash
-        env:
-          BIOME_PUBLIC_KEY: ${{secrets.BIOME_PUBLIC_KEY}}
-      - name: Move Biome Public Key
-        run: sudo mv /tmp/themelio-20210708170207.pub /root/.hab/cache/keys/themelio-20210708170207.pub
-
-
-      - name: Create Biome Signing Key
-        run: 'echo "$BIOME_PUBLIC_KEY" > /tmp/themelio-20210708170207.sig.key'
-        shell: bash
-        env:
-          BIOME_PUBLIC_KEY: ${{secrets.BIOME_SIGNING_KEY}}
-      - name: Move Biome Signing Key
-        run: sudo mv /tmp/themelio-20210708170207.sig.key /root/.hab/cache/keys/themelio-20210708170207.sig.key
+#      - name: Create Biome Public Key
+#        run: 'echo "$BIOME_PUBLIC_KEY" > /tmp/themelio-20210708170207.pub'
+#        shell: bash
+#        env:
+#          BIOME_PUBLIC_KEY: ${{secrets.BIOME_PUBLIC_KEY}}
+#      - name: Move Biome Public Key
+#        run: sudo mv /tmp/themelio-20210708170207.pub /root/.hab/cache/keys/themelio-20210708170207.pub
+#
+#
+#      - name: Create Biome Signing Key
+#        run: 'echo "$BIOME_PUBLIC_KEY" > /tmp/themelio-20210708170207.sig.key'
+#        shell: bash
+#        env:
+#          BIOME_PUBLIC_KEY: ${{secrets.BIOME_SIGNING_KEY}}
+#      - name: Move Biome Signing Key
+#        run: sudo mv /tmp/themelio-20210708170207.sig.key /root/.hab/cache/keys/themelio-20210708170207.sig.key
 
 
       - name: Download Biome
@@ -56,7 +57,11 @@ jobs:
       - name: Install Biome
         run: sudo mv bio /usr/local/bin/bio
       - name: Build plan
-        run: cd biome && env DO_CHECK=true sudo bio pkg build themelio-node
+        env:
+          HAB_BLDR_URL: "https://bldr.biome.sh"
+          DO_CHECK: true
+          HAB_AUTH_TOKEN: ${{secrets.HAB_AUTH_TOKEN}}
+        run: cd biome && sudo bio pkg build themelio-node
 
 
 
