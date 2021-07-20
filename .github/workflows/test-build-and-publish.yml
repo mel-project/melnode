@@ -50,15 +50,27 @@ jobs:
 #      - name: List Keys Directory
 #        run: sudo ls -la /root/.hab/cache/keys
 
-      - name: Build plan
+      - name: Build Plan
         env:
-#          HAB_BLDR_URL: "https://bldr.biome.sh"
           DO_CHECK: true
-#          HAB_AUTH_TOKEN: ${{secrets.HAB_AUTH_TOKEN}}
           HAB_ORIGIN: "themelio"
         run: cd biome && bio pkg build themelio-node
 
       - name: Run tests
         env:
           SKIPBUILD: true
-        run: cd biome && sudo ./themelio-node/tests/test.sh
+        run: cd biome && ./themelio-node/tests/test.sh
+
+#      - name: Publish Artifact
+#        env:
+#          HAB_BLDR_URL: "https://bldr.biome.sh"
+#          HAB_AUTH_TOKEN: ${{secrets.BIOME_AUTH_TOKEN}}
+#          HAB_ORIGIN: "themelio"
+#        run: bio pkg upload /path/to/hart/file
+
+#      - name: Mark Release As Stable In The Builder
+
+#      - name: Export Docker Image
+#        env:
+#          SKIPBUILD: true
+#        run: bio pkg export container /path/to/hart/file

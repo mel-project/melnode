@@ -7,6 +7,7 @@ pkg_license=("MPL-2.0")
 pkg_full_path="${HAB_CACHE_SRC_PATH}/${pkg_name}-${pkg_version}/${pkg_repository_name}"
 pkg_build_deps=(
   core/git
+  core/musl
   core/rust
 )
 pkg_deps=(
