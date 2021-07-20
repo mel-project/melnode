@@ -10,7 +10,8 @@ sudo bio pkg install --binlink core/nmap
 
 source "${PLAN_DIR}/plan.sh"
 
-echo "${BIOME_PUBLIC_KEY}" | bio origin key import
+bio origin key download themelio
+sudo bio origin key download themelio
 
 bio pkg build "${pkg_name}"
 
