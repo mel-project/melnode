@@ -61,7 +61,10 @@ jobs:
       - name: Run BATS Tests
         env:
           SKIPBUILD: true
-        run: cd biome && ./themelio-node/tests/test.sh
+        run: cd biome && sudo ./themelio-node/tests/test.sh
+
+
+# /src/results/last_build.env
 
 
 # I need to duplicate the publish artifacts step for https://bldr.habitat.sh as well
