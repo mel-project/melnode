@@ -15,6 +15,7 @@ source "${PLAN_DIR}/plan.sh"
 #source results/last_build.env
 
 sudo bio pkg install --binlink biome/bio-sup
+sudo bio pkg install --binlink biome/bio-launcher
 
 bio sup run
 
