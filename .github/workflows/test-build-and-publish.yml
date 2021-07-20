@@ -79,7 +79,8 @@ jobs:
           DO_CHECK: true
           HAB_AUTH_TOKEN: ${{secrets.HAB_AUTH_TOKEN}}
           HAB_ORIGIN: "themelio"
-        run: cd biome && sudo bio pkg build themelio-node
+        run: echo $HAB_ORIGIN
+#        run: cd biome && sudo bio pkg build themelio-node
 
 
 
