@@ -26,7 +26,7 @@ if [ -n "${SKIP_BUILD}" ]; then
     bio svc load "${pkg_ident}"
   fi
 else
-  bio pkg build "biome/${pkg_name}"
+  build "${pkg_name}"
 
   source results/last_build.env
 
