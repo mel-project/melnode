@@ -11,7 +11,7 @@ bio pkg install --binlink core/nmap
 source "${PLAN_DIR}/plan.sh"
 
 if [ -n "${SKIP_BUILD}" ]; then
-  source /src/results/last_build.env
+  source results/last_build.env
 
   BIO_SVC_STATUS="$(bio svc status)"
   NO_SERVICES_LOADED="No services loaded."
@@ -28,7 +28,7 @@ if [ -n "${SKIP_BUILD}" ]; then
 else
   bio pkg build "biome/${pkg_name}"
 
-  source /src/results/last_build.env
+  source results/last_build.env
 
   BIO_SVC_STATUS="$(bio svc status)"
   NO_SERVICES_LOADED="No services loaded."

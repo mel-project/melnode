@@ -12,24 +12,17 @@ source "${PLAN_DIR}/plan.sh"
 
 bio pkg build "${pkg_name}"
 
-ls -la results
-
-ls -la /src
-
-ls -la /src/results
-
-
-source /src/results/last_build.env
+source results/last_build.env
 
 BIO_SVC_STATUS="$(bio svc status)"
 NO_SERVICES_LOADED="No services loaded."
 
 if [ "$BIO_SVC_STATUS" == "$NO_SERVICES_LOADED" ]; then
-  sudo bio pkg install --binlink --force "/src/results/${pkg_artifact}"
+  sudo bio pkg install --binlink --force "results/${pkg_artifact}"
   bio svc load "${pkg_ident}"
 else
   bio svc unload "${pkg_ident}" || true
-  sudo bio pkg install --binlink --force "/src/results/${pkg_artifact}"
+  sudo bio pkg install --binlink --force "results/${pkg_artifact}"
   sleep 1
   bio svc load "${pkg_ident}"
 fi
