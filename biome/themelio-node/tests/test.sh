@@ -5,7 +5,7 @@ set -ex
 TEST_DIR="$(dirname "${0}")"
 PLAN_DIR="$(dirname "${TEST_DIR}")"
 
-bio pkg install --binlink core/bats
+bio pkg install core/bats
 bio pkg install --binlink core/nmap
 
 source "${PLAN_DIR}/plan.sh"
