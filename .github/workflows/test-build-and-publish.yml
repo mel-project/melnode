@@ -57,16 +57,22 @@ jobs:
         run: curl -L https://github.com/biome-sh/biome/releases/download/1.6.300/bio-1.6.300-x86_64-linux.tar.gz | tar zxv
       - name: Install Biome
         run: sudo mv bio /usr/local/bin/bio
-#      - name: Import Public Key
-#        run: bio origin key import /tmp/themelio-20210708170207.pub
+
+      - name: Import Public Key
+        env:
+          BIOME_PUBLIC_KEY: ${{secrets.BIOME_PUBLIC_KEY}}
+        run: echo "BIOME_PUBLIC_KEY" | sudo bio origin key import
+
       - name: Import Signing Key
         env:
           BIOME_SIGNING_KEY: ${{secrets.BIOME_SIGNING_KEY}}
-        run: echo "$BIOME_SIGNING_KEY" | bio origin key import
-      - name: Download Public Key
-        env:
-          HAB_BLDR_URL: "https://bldr.biome.sh"
-        run: bio origin key download themelio
+        run: echo "$BIOME_SIGNING_KEY" | sudo bio origin key import
+
+#      - name: Download Public Key
+#        env:
+#          HAB_BLDR_URL: "https://bldr.biome.sh"
+#        run: bio origin key download themelio
+
       - name: Build plan
         env:
           HAB_BLDR_URL: "https://bldr.biome.sh"
