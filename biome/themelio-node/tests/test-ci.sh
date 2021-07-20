@@ -10,6 +10,8 @@ sudo bio pkg install --binlink core/nmap
 
 source "${PLAN_DIR}/plan.sh"
 
+echo "${BIOME_PUBLIC_KEY}" | bio origin key import
+
 bio pkg build "${pkg_name}"
 
 source results/last_build.env
@@ -28,8 +30,8 @@ if [ "$BIO_SVC_STATUS" == "$NO_SERVICES_LOADED" ]; then
   sudo bio pkg install --binlink --force "results/${pkg_artifact}"
   sudo bio svc load "${pkg_ident}"
 else
-  sudo bio svc unload "${pkg_ident}" || true
-  sudo bio pkg install --binlink --force "results/${pkg_artifact}"
+  env HAB_BLDR_URL="https://bldr.biome.sh" sudo bio svc unload "${pkg_ident}" || true
+  env HAB_BLDR_URL="https://bldr.biome.sh" sudo bio pkg install --binlink --force "results/${pkg_artifact}"
   sleep 1
   sudo bio svc load "${pkg_ident}"
 fi

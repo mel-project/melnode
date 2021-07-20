@@ -61,6 +61,7 @@ jobs:
       - name: Run BATS Tests
         env:
           HAB_ORIGIN: "themelio"
+          BIOME_PUBLIC_KEY: ${{secrets.BIOME_PUBLIC_KEY}}
         run: cd biome && ./themelio-node/tests/test-ci.sh
 
 
