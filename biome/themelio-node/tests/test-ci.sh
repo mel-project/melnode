@@ -12,7 +12,7 @@ source "${PLAN_DIR}/plan.sh"
 
 #bio pkg build "${pkg_name}"
 
-source results/last_build.env
+#source results/last_build.env
 
 sudo bio pkg install --binlink biome/bio-sup
 
