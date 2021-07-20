@@ -34,20 +34,20 @@ jobs:
 
 
 
-      - name: Create Biome Public Key
-        run: 'echo "$BIOME_PUBLIC_KEY" > /tmp/themelio-20210708170207.pub'
-        shell: bash
-        env:
-          BIOME_PUBLIC_KEY: ${{secrets.BIOME_PUBLIC_KEY}}
+#      - name: Create Biome Public Key
+#        run: 'echo "$BIOME_PUBLIC_KEY" > /tmp/themelio-20210708170207.pub'
+#        shell: bash
+#        env:
+#          BIOME_PUBLIC_KEY: ${{secrets.BIOME_PUBLIC_KEY}}
 #      - name: Move Biome Public Key
 #        run: sudo mv /tmp/themelio-20210708170207.pub /root/.hab/cache/keys/themelio-20210708170207.pub
 
 
-      - name: Create Biome Signing Key
-        run: 'echo "$BIOME_PUBLIC_KEY" > /tmp/themelio-20210708170207.sig.key'
-        shell: bash
-        env:
-          BIOME_PUBLIC_KEY: ${{secrets.BIOME_SIGNING_KEY}}
+#      - name: Create Biome Signing Key
+#        run: 'echo "$BIOME_SIGNING_KEY" > /tmp/themelio-20210708170207.sig.key'
+#        shell: bash
+#        env:
+#          BIOME_SIGNING_KEY: ${{secrets.BIOME_SIGNING_KEY}}
 #      - name: Move Biome Signing Key
 #        run: sudo mv /tmp/themelio-20210708170207.sig.key /root/.hab/cache/keys/themelio-20210708170207.sig.key
 
@@ -60,7 +60,9 @@ jobs:
 #      - name: Import Public Key
 #        run: bio origin key import /tmp/themelio-20210708170207.pub
       - name: Import Signing Key
-        run: bio origin key import /tmp/themelio-20210708170207.sig.key
+        env:
+          BIOME_SIGNING_KEY: ${{secrets.BIOME_SIGNING_KEY}}
+        run: echo "$BIOME_SIGNING_KEY" | bio origin key import
       - name: Download Public Key
         env:
           HAB_BLDR_URL: "https://bldr.biome.sh"
