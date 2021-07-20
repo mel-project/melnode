@@ -17,14 +17,17 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Update Apt
-        run: sudo apt update
-
-      - name: Install Musl
-        run: sudo apt install -y musl musl-tools
-
-      - name: Add Musl Target
-        run: rustup target add x86_64-unknown-linux-musl
+#      - name: Update Apt
+#        run: sudo apt update
+#
+#      - name: Install Musl
+#        run: sudo apt install -y musl musl-tools
+#
+#      - name: Add Musl Target
+#        run: rustup target add x86_64-unknown-linux-musl
+#
+#      - name: Run Musl Tests
+#        run: cargo test --locked --target x86_64-unknown-linux-musl --verbose
 
       - name: Download Biome
         env:
@@ -49,21 +52,9 @@ jobs:
 #          HAB_BLDR_URL: "https://bldr.biome.sh"
 #        run: sudo bio origin key download themelio
 
-#      - name: Create Keys Directory
-#        run: sudo mkdir -p /root/.hab/cache/keys
-#
-#      - name: Copy Keys
-#        run: sudo cp /hab/cache/keys/* /root/.hab/cache/keys
-#
-#      - name: List Keys Directory
-#        run: sudo ls -la /root/.hab/cache/keys
-
-      - name: Run Musl Tests
-        run: cargo test --locked --target x86_64-unknown-linux-musl --verbose
-
       - name: Build Plan
         env:
-          DO_CHECK: true
+#          DO_CHECK: true
           HAB_ORIGIN: "themelio"
         run: cd biome && bio pkg build themelio-node
 
@@ -71,6 +62,9 @@ jobs:
         env:
           SKIPBUILD: true
         run: cd biome && ./themelio-node/tests/test.sh
+
+
+# I need to duplicate the publish artifacts step for https://bldr.habitat.sh as well
 
 #      - name: Publish Artifact
 #        env:
