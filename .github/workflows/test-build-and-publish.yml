@@ -73,16 +73,18 @@ jobs:
           HAB_BLDR_URL: "https://bldr.biome.sh"
         run: bio origin key download themelio
 
+      - name: List Key Directory
+        run: ls -la /hab/cache/keys
+
       - name: Build plan
         env:
           HAB_BLDR_URL: "https://bldr.biome.sh"
           DO_CHECK: true
           HAB_AUTH_TOKEN: ${{secrets.HAB_AUTH_TOKEN}}
           HAB_ORIGIN: "themelio"
-        run: echo $HAB_ORIGIN
-#        run: cd biome && sudo bio pkg build themelio-node
+        run: cd biome && sudo bio pkg build themelio-node
 
-
-
-#      - name: Run tests
-#        run: cd biome && env SKIPBUILD=true sudo ./themelio-node/tests/test.sh
+      - name: Run tests
+        env:
+          SKIPBUILD: true
+        run: cd biome && sudo ./themelio-node/tests/test.sh
