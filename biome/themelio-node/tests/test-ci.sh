@@ -20,6 +20,8 @@ source "${PLAN_DIR}/plan.sh"
 
 sudo bio sup run &
 
+sleep 5
+
 sudo bio svc status
 
 
