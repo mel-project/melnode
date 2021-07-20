@@ -54,7 +54,7 @@ jobs:
         env:
 #          HAB_BLDR_URL: "https://bldr.biome.sh"
           DO_CHECK: true
-          HAB_AUTH_TOKEN: ${{secrets.HAB_AUTH_TOKEN}}
+#          HAB_AUTH_TOKEN: ${{secrets.HAB_AUTH_TOKEN}}
           HAB_ORIGIN: "themelio"
         run: cd biome && bio pkg build themelio-node
 
