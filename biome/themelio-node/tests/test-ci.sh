@@ -12,9 +12,12 @@ source "${PLAN_DIR}/plan.sh"
 
 bio pkg build "${pkg_name}"
 
+ls -la results
+
 ls -la /src
 
 ls -la /src/results
+
 
 source /src/results/last_build.env
 
