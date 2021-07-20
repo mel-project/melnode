@@ -19,7 +19,7 @@ jobs:
       - name: Update Apt
         run: sudo apt update
       - name: Create Biome Key Path
-        run: sudo mkdir -p /hab/cache/keys
+        run: sudo mkdir -p ~/.hab/cache/keys
 
 #      - name: Create Biome Public Key
 #        run: echo ${{ secrets.BIOME_PUBLIC_KEY }} | base64 -d > /tmp/themelio-20210708170207.pub
@@ -32,13 +32,14 @@ jobs:
 #        run: sudo mv /tmp/themelio-20210708170207.sig.key /hab/cache/keys/themelio-20210708170207.sig.key
 
 
+
       - name: Create Biome Public Key
         run: 'echo "$BIOME_PUBLIC_KEY" > /tmp/themelio-20210708170207.pub'
         shell: bash
         env:
           BIOME_PUBLIC_KEY: ${{secrets.BIOME_PUBLIC_KEY}}
       - name: Move Biome Public Key
-        run: sudo mv /tmp/themelio-20210708170207.pub /hab/cache/keys/themelio-20210708170207.pub
+        run: sudo mv /tmp/themelio-20210708170207.pub ~/.hab/cache/keys/themelio-20210708170207.pub
 
 
       - name: Create Biome Signing Key
@@ -47,7 +48,7 @@ jobs:
         env:
           BIOME_PUBLIC_KEY: ${{secrets.BIOME_SIGNING_KEY}}
       - name: Move Biome Signing Key
-        run: sudo mv /tmp/themelio-20210708170207.sig.key /hab/cache/keys/themelio-20210708170207.sig.key
+        run: sudo mv /tmp/themelio-20210708170207.sig.key ~/.hab/cache/keys/themelio-20210708170207.sig.key
 
 
       - name: Download Biome
