@@ -27,26 +27,26 @@ jobs:
       - name: Import Public Key
         env:
           BIOME_PUBLIC_KEY: ${{secrets.BIOME_PUBLIC_KEY}}
-        run: echo "$BIOME_PUBLIC_KEY" | sudo bio origin key import
+        run: echo "$BIOME_PUBLIC_KEY" | bio origin key import
 
       - name: Import Signing Key
         env:
           BIOME_SIGNING_KEY: ${{secrets.BIOME_SIGNING_KEY}}
-        run: echo "$BIOME_SIGNING_KEY" | sudo bio origin key import
+        run: echo "$BIOME_SIGNING_KEY" | bio origin key import
 
 #      - name: Download Public Key
 #        env:
 #          HAB_BLDR_URL: "https://bldr.biome.sh"
 #        run: sudo bio origin key download themelio
 
-      - name: Create Keys Directory
-        run: sudo mkdir -p /root/.hab/cache/keys
-
-      - name: Copy Keys
-        run: sudo cp /hab/cache/keys/* /root/.hab/cache/keys
-
-      - name: List Keys Directory
-        run: sudo ls -la /root/.hab/cache/keys
+#      - name: Create Keys Directory
+#        run: sudo mkdir -p /root/.hab/cache/keys
+#
+#      - name: Copy Keys
+#        run: sudo cp /hab/cache/keys/* /root/.hab/cache/keys
+#
+#      - name: List Keys Directory
+#        run: sudo ls -la /root/.hab/cache/keys
 
       - name: Build plan
         env:
@@ -54,7 +54,7 @@ jobs:
           DO_CHECK: true
           HAB_AUTH_TOKEN: ${{secrets.HAB_AUTH_TOKEN}}
           HAB_ORIGIN: "themelio"
-        run: cd biome && sudo bio pkg build themelio-node
+        run: cd biome && bio pkg build themelio-node
 
       - name: Run tests
         env:
