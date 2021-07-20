@@ -40,7 +40,7 @@ jobs:
 #        run: sudo bio origin key download themelio
 
       - name: Create Keys Directory
-        run: mkdir -p /root/.hab/cache/keys
+        run: sudo mkdir -p /root/.hab/cache/keys
 
       - name: Copy Keys
         run: sudo cp /hab/cache/keys/* /root/.hab/cache/keys
