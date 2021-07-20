@@ -10,7 +10,7 @@ sudo bio pkg install --binlink core/nmap
 
 source "${PLAN_DIR}/plan.sh"
 
-bio pkg build "${pkg_name}"
+#bio pkg build "${pkg_name}"
 
 source results/last_build.env
 
