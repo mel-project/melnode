@@ -61,7 +61,7 @@ jobs:
       - name: Run BATS Tests
         env:
           HAB_ORIGIN: "themelio"
-        run: ./biome/themelio-node/tests/test-ci.sh
+        run: cd biome && ./themelio-node/tests/test-ci.sh
 
 
 # /src/results/last_build.env
