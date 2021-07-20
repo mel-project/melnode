@@ -52,17 +52,17 @@ jobs:
 #          HAB_BLDR_URL: "https://bldr.biome.sh"
 #        run: sudo bio origin key download themelio
 
-      - name: Build Plan
-        env:
-#          DO_CHECK: true
-          HAB_ORIGIN: "themelio"
-        run: cd biome && bio pkg build themelio-node
+#      - name: Build Plan
+#        env:
+##          DO_CHECK: true
+#          HAB_ORIGIN: "themelio"
+#        run: cd biome && bio pkg build themelio-node
 
       - name: Run BATS Tests
         env:
-          SKIPBUILD: true
+          SKIP_BUILD: true
           HAB_ORIGIN: "themelio"
-        run: cd biome && sudo ./themelio-node/tests/test.sh
+        run: cd biome && ./themelio-node/tests/test.sh
 
 
 # /src/results/last_build.env
