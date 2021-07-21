@@ -29,4 +29,18 @@ bats "${TEST_DIR}/test.bats"
 
 sudo bio svc unload "${pkg_ident}" || true
 
+
+echo "Exporting docker image"
+
 sudo bio pkg export container "results/${pkg_artifact}"
+
+source results/last_container_export.env
+
+for name_tag in ${name_tags//,/ }; do
+	docker push "${name_tag}"
+done
+
+#id=75a6708c4147
+#name=themelio/themelio-node
+#tags=latest,0.1.0,0.1.0-20210721183904
+#name_tags=themelio/themelio-node:latest,themelio/themelio-node:0.1.0,themelio/themelio-node:0.1.0-20210721183904

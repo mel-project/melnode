@@ -29,6 +29,13 @@ jobs:
 #      - name: Run Musl Tests
 #        run: cargo test --locked --target x86_64-unknown-linux-musl --verbose
 
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Download Biome
         env:
           BIOME_VERSION: "1.6.300"
@@ -39,40 +46,30 @@ jobs:
 
       - name: Import Public Key
         env:
-          BIOME_PUBLIC_KEY: ${{secrets.BIOME_PUBLIC_KEY}}
+          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
         run: echo "$BIOME_PUBLIC_KEY" | bio origin key import
 
       - name: Import Public Key (sudo)
         env:
-          BIOME_PUBLIC_KEY: ${{secrets.BIOME_PUBLIC_KEY}}
+          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
         run: echo "$BIOME_PUBLIC_KEY" | sudo bio origin key import
 
       - name: Import Signing Key
         env:
-          BIOME_SIGNING_KEY: ${{secrets.BIOME_SIGNING_KEY}}
+          BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
         run: echo "$BIOME_SIGNING_KEY" | bio origin key import
 
       - name: Import Signing Key (sudo)
         env:
-          BIOME_SIGNING_KEY: ${{secrets.BIOME_SIGNING_KEY}}
+          BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
         run: echo "$BIOME_SIGNING_KEY" | sudo bio origin key import
-
-#      - name: Download Public Key
-#        env:
-#          HAB_BLDR_URL: "https://bldr.biome.sh"
-#        run: sudo bio origin key download themelio
-
-#      - name: Build Plan
-#        env:
-##          DO_CHECK: true
-#          HAB_ORIGIN: "themelio"
-#        run: cd biome && bio pkg build themelio-node
 
       - name: Build, Run BATS Tests, Export Docker Image
         env:
           HAB_ORIGIN: "themelio"
-          BIOME_PUBLIC_KEY: ${{secrets.BIOME_PUBLIC_KEY}}
-        run: cd biome && ./themelio-node/tests/test-ci.sh
+          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: cd biome && ./themelio-node/scripts/ci.sh
 
 
 # /src/results/last_build.env
@@ -83,7 +80,7 @@ jobs:
 #      - name: Publish Artifact
 #        env:
 #          HAB_BLDR_URL: "https://bldr.biome.sh"
-#          HAB_AUTH_TOKEN: ${{secrets.BIOME_AUTH_TOKEN}}
+#          HAB_AUTH_TOKEN: ${{ secrets.BIOME_AUTH_TOKEN }}
 #          HAB_ORIGIN: "themelio"
 #        run: bio pkg upload /path/to/hart/file
 
