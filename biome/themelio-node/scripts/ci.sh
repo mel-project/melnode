@@ -37,7 +37,7 @@ sudo bio pkg export container "results/${pkg_artifact}"
 source results/last_container_export.env
 
 for name_tag in ${name_tags//,/ }; do
-	docker push "${name_tag}"
+	docker push "ghcr.io/themelio/themelio-node/${name_tag}"
 done
 
 #id=75a6708c4147
