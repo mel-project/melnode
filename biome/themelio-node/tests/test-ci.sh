@@ -10,18 +10,17 @@ sudo bio pkg install --binlink core/nmap
 
 source "${PLAN_DIR}/plan.sh"
 
-bio origin key download themelio
-sudo bio origin key download themelio
+sudo bio sup run &
+
+#bio origin key download themelio
+#sudo bio origin key download themelio
 
 bio pkg build "${pkg_name}"
 
 source results/last_build.env
 
-sudo bio sup run &
+sudo bio pkg install --binlink --force "results/${pkg_artifact}"
 
-sleep 5
-
-env HAB_BLDR_URL="https://bldr.biome.sh" sudo bio pkg install --binlink --force "results/${pkg_artifact}"
 sudo bio svc load "${pkg_ident}"
 
 echo "Sleeping for 5 seconds for the service to start."
