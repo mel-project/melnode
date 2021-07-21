@@ -37,7 +37,7 @@ sudo bio pkg export container "results/${pkg_artifact}"
 source results/last_container_export.env
 
 for tag in ${tags//,/ }; do
-  local_tag="ghcr.io/themelio/themelio-core:themelio-node-${tag}"
+  local_tag="ghcr.io/themeliolabs/themelio-node:${tag}"
 
   docker tag "${name}:${tag}" "${local_tag}"
 	docker push "${local_tag}"

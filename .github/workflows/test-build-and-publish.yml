@@ -64,15 +64,13 @@ jobs:
           BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
         run: echo "$BIOME_SIGNING_KEY" | sudo bio origin key import
 
+#      - name: Build, Run BATS Tests, Publish Artifact And Mark As Stable, Export And Publish Docker Image
       - name: Build, Run BATS Tests, Export Docker Image
         env:
           HAB_ORIGIN: "themelio"
           BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cd biome && ./themelio-node/scripts/ci-publish.sh
-
-
-# /src/results/last_build.env
 
 
 # I need to duplicate the publish artifacts step for https://bldr.habitat.sh as well
