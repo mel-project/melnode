@@ -21,6 +21,10 @@ source results/last_build.env
 
 sudo bio pkg install --binlink --force "results/${pkg_artifact}"
 
+sudo mkdir -p /hab/svc/themelio-node
+
+sudo chmod 777 /hab/svc/themelio-node
+
 sudo bio svc load "${pkg_ident}"
 
 echo "Sleeping for 5 seconds for the service to start."
