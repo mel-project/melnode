@@ -69,7 +69,7 @@ jobs:
           HAB_ORIGIN: "themelio"
           BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cd biome && ./themelio-node/scripts/ci.sh
+        run: cd biome && ./themelio-node/scripts/ci-publish.sh
 
 
 # /src/results/last_build.env
