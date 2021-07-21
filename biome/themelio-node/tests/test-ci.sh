@@ -21,7 +21,7 @@ sudo bio sup run &
 
 sleep 5
 
-sudo bio pkg install --binlink --force "results/${pkg_artifact}"
+env HAB_BLDR_URL="https://bldr.biome.sh" sudo bio pkg install --binlink --force "results/${pkg_artifact}"
 sudo bio svc load "${pkg_ident}"
 
 echo "Sleeping for 5 seconds for the service to start."
