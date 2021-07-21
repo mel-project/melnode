@@ -68,7 +68,7 @@ jobs:
 #          HAB_ORIGIN: "themelio"
 #        run: cd biome && bio pkg build themelio-node
 
-      - name: Run BATS Tests
+      - name: Build, Run BATS Tests, Export Docker Image
         env:
           HAB_ORIGIN: "themelio"
           BIOME_PUBLIC_KEY: ${{secrets.BIOME_PUBLIC_KEY}}
