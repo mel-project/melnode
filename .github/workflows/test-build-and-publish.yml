@@ -47,6 +47,16 @@ jobs:
           BIOME_SIGNING_KEY: ${{secrets.BIOME_SIGNING_KEY}}
         run: echo "$BIOME_SIGNING_KEY" | bio origin key import
 
+      - name: Import Public Key (sudo)
+        env:
+          BIOME_PUBLIC_KEY: ${{secrets.BIOME_PUBLIC_KEY}}
+        run: echo "$BIOME_PUBLIC_KEY" | sudo bio origin key import
+
+      - name: Import Signing Key (sudo)
+        env:
+          BIOME_SIGNING_KEY: ${{secrets.BIOME_SIGNING_KEY}}
+        run: echo "$BIOME_SIGNING_KEY" | sudo bio origin key import
+
 #      - name: Download Public Key
 #        env:
 #          HAB_BLDR_URL: "https://bldr.biome.sh"
