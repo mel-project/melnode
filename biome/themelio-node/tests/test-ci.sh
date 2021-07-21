@@ -31,3 +31,5 @@ sleep 5
 bats "${TEST_DIR}/test.bats"
 
 sudo bio svc unload "${pkg_ident}" || true
+
+bio pkg export container "results/${pkg_artifact}"
