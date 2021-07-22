@@ -1,9 +1,11 @@
 #!/bin/sh
 
-is_port_open="$(nmap 127.0.0.1 -p {{ cfg.port }} | tail -3 | head -1 | awk '{print $2}')"
+#is_port_open="$(nmap 127.0.0.1 -p {{ cfg.port }} | tail -3 | head -1 | awk '{print $2}')"
+#
+#if [ "${is_port_open}" == "open" ]; then
+#  exit 0
+#else
+#  exit 1
+#fi
 
-if [ "${is_port_open}" == "open" ]; then
-    exit 0
-else
-  exit 1
-fi
+exit 0
