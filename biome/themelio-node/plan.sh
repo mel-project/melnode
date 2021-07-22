@@ -12,12 +12,15 @@ pkg_build_deps=(
 pkg_deps=(
   core/curl
   core/gcc-libs
+  core/nmap
 )
 pkg_bin_dirs=(bin)
 pkg_exports=(
   [port]=port
 )
 pkg_exposes=(port)
+pkg_svc_user="root"
+pkg_svc_group="$pkg_svc_user"
 
 do_verify() {
   return 0

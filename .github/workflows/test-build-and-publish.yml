@@ -69,6 +69,10 @@ jobs:
         env:
           HAB_ORIGIN: "themelio"
           BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
+          HAB_BLDR_URL: "https://bldr.habitat.sh"
+          BIOME_BLDR_URL: "https://bldr.biome.sh"
+          BIOME_AUTH_TOKEN: ${{ secrets.BIOME_AUTH_TOKEN }}
+          HABITAT_AUTH_TOKEN: ${{ secrets.HABITAT_AUTH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cd biome && ./themelio-node/scripts/ci-publish.sh
 
@@ -78,7 +82,7 @@ jobs:
 #      - name: Publish Artifact
 #        env:
 #          HAB_BLDR_URL: "https://bldr.biome.sh"
-#          HAB_AUTH_TOKEN: ${{ secrets.BIOME_AUTH_TOKEN }}
+#          BIOME_AUTH_TOKEN: ${{ secrets.BIOME_AUTH_TOKEN }}
 #          HAB_ORIGIN: "themelio"
 #        run: bio pkg upload /path/to/hart/file
 
