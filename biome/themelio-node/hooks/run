@@ -2,8 +2,6 @@
 # Redirect stderr
 exec 2>&1
 
-#mkdir -p {{ pkg.svc_data_path }}
-
 
 if [ -n "${ADVERTISE_OFF}" ]; then
   exec themelio-node --database {{ pkg.svc_data_path }}/main.sqlite3 --listen 0.0.0.0:{{ cfg.port }}
@@ -16,8 +14,3 @@ else
   PUBLIC_IP_ADDRESS="$(curl -s http://checkip.amazonaws.com)"
   exec themelio-node --database {{ pkg.svc_data_path }}/main.sqlite3 --listen 0.0.0.0:{{ cfg.port }} --advertise "${PUBLIC_IP_ADDRESS}":{{ cfg.port }}
 fi
-
-
-
-
-# themelio-node --testnet --bootstrap tm-1.themelio.org:11814

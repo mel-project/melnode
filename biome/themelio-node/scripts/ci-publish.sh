@@ -38,7 +38,6 @@ bio pkg upload --auth "${BIOME_AUTH_TOKEN}" --url "${BIOME_BLDR_URL}" "${hart_fi
 
 
 echo "Exporting docker image"
-
 sudo bio pkg export container "${hart_file}"
 
 source results/last_container_export.env
