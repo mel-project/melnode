@@ -114,7 +114,7 @@ async fn attempt_blksync(client: &NodeClient, storage: &SharedStorage) -> anyhow
         return Ok(0);
     }
     let height_stream = futures_util::stream::iter((my_highest..=their_highest).skip(1));
-    let lookup_tx = |tx| storage.read().mempool().lookup(tx);
+    let lookup_tx = |tx| storage.read().mempool().lookup_recent_tx(tx);
     let mut result_stream = height_stream
         .map(Ok::<_, anyhow::Error>)
         .try_filter_map(|height| async move {

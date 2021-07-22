@@ -80,12 +80,7 @@ impl NodeStorage {
 
     /// Obtain a historical ConsensusProof.
     pub fn get_consensus(&self, height: u64) -> Option<ConsensusProof> {
-        let height = self
-            .history
-            .get_at_height(height)
-            .into_iter()
-            .next()
-            .unwrap();
+        let height = self.history.get_at_height(height).into_iter().next()?;
         stdcode::deserialize(height.metadata()).ok()
     }
 

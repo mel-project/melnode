@@ -189,6 +189,6 @@ impl BlockBuilder for StorageBlockBuilder {
     }
 
     fn get_cached_transaction(&self, txhash: TxHash) -> Option<Transaction> {
-        self.storage.read().mempool().lookup(txhash)
+        self.storage.read().mempool().lookup_recent_tx(txhash)
     }
 }

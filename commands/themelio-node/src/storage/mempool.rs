@@ -9,7 +9,7 @@ pub struct Mempool {
     provisional_state: State,
     last_rebase: State,
     txx_in_state: HashSet<TxHash>,
-    seen: LruCache<TxHash, Transaction>, // TODO: caches if benchmarks prove them helpful
+    seen: LruCache<TxHash, Transaction>,
 }
 
 impl Mempool {
@@ -59,7 +59,8 @@ impl Mempool {
         }
     }
 
-    pub fn lookup(&self, hash: TxHash) -> Option<Transaction> {
+    /// Lookups a recent transaction.
+    pub fn lookup_recent_tx(&self, hash: TxHash) -> Option<Transaction> {
         self.seen
             .peek(&hash)
             .cloned()
