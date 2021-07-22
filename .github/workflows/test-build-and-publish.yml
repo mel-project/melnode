@@ -20,8 +20,11 @@ jobs:
 #      - name: Update Apt
 #        run: sudo apt update
 #
-#      - name: Install Musl
-#        run: sudo apt install -y musl musl-tools
+#      - name: Install TzData
+#        run: env DEBIAN_FRONTEND="noninteractive" sudo apt install -y tzdata
+#
+#      - name: Install Musl And OpenStack
+#        run: sudo apt install -y musl musl-tools python3-openstackclient python3-novaclient
 #
 #      - name: Add Musl Target
 #        run: rustup target add x86_64-unknown-linux-musl
@@ -64,8 +67,7 @@ jobs:
           BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
         run: echo "$BIOME_SIGNING_KEY" | sudo bio origin key import
 
-#      - name: Build, Run BATS Tests, Publish Artifact And Mark As Stable, Export And Publish Docker Image
-      - name: Build, Run BATS Tests, Export Docker Image
+      - name: Build, Run BATS Tests, Publish Artifact And Mark As Stable, Export And Publish Docker Image
         env:
           HAB_ORIGIN: "themelio"
           BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
@@ -75,21 +77,10 @@ jobs:
           HABITAT_AUTH_TOKEN: ${{ secrets.HABITAT_AUTH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DISABLE_HEALTH_CHECK: true
+          OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
+          OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
+          OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
+          OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
+          OS_USERNAME: ${{ secrets.OS_USERNAME }}
+          OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
         run: cd biome && ./themelio-node/scripts/ci-publish.sh
-
-
-# I need to duplicate the publish artifacts step for https://bldr.habitat.sh as well
-
-#      - name: Publish Artifact
-#        env:
-#          HAB_BLDR_URL: "https://bldr.biome.sh"
-#          BIOME_AUTH_TOKEN: ${{ secrets.BIOME_AUTH_TOKEN }}
-#          HAB_ORIGIN: "themelio"
-#        run: bio pkg upload /path/to/hart/file
-
-#      - name: Mark Release As Stable In The Builder
-
-#      - name: Export Docker Image
-#        env:
-#          SKIPBUILD: true
-#        run: bio pkg export container /path/to/hart/file
