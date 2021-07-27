@@ -2,7 +2,7 @@
 
 set -ex
 
-PLAN_DIR="$(dirname "${TEST_DIR}")"
+PLAN_DIR="$(dirname "${0}")"
 
 source "${PLAN_DIR}/plan.sh"
 
