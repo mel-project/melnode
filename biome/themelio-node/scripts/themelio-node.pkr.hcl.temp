@@ -1,0 +1,225 @@
+//We use the "d2-2" flavour
+//Details are here: https://www.ovhcloud.com/en/public-cloud/prices/
+
+//We use the "Archlinux" base image
+
+//Documentation is available here: https://docs.ovh.com/gb/en/public-cloud/packer-openstack-builder/
+
+
+// The BHS, DE, GRA, SBG, UK, and WAW regions have no public endpoints, but they are here if that changes.
+
+
+//source "openstack" "themelio-node-bhs" {
+//  flavor            = "$BHS_FLAVOUR"
+//  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+//  image_name        = "themelio-node-bhs"
+//  networks          = ["$BHS_NETWORK_ID"]
+//  password          = "$OS_PASSWORD"
+//  region            = "BHS"
+//  source_image      = "$BHS_IMAGE_ID"
+//  ssh_ip_version    = "4"
+//  ssh_username      = "arch"
+//  tenant_id         = ""
+//  username          = "$OS_USERNAME"
+//}
+
+source "openstack" "themelio-node-bhs5" {
+  flavor            = "$BHS5_FLAVOUR"
+  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+  image_name        = "themelio-node-bhs5"
+  networks          = ["$BHS5_NETWORK_ID"]
+  password          = "$OS_PASSWORD"
+  region            = "BHS5"
+  source_image      = "$BHS5_IMAGE_ID"
+  ssh_ip_version    = "4"
+  ssh_username      = "arch"
+  tenant_id         = ""
+  username          = "$OS_USERNAME"
+}
+
+//source "openstack" "themelio-node-de" {
+//  flavor            = "$DE_FLAVOUR"
+//  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+//  image_name        = "themelio-node-de"
+//  networks          = ["$DE_NETWORK_ID"]
+//  password          = "$OS_PASSWORD"
+//  region            = "DE"
+//  source_image      = "$DE_IMAGE_ID"
+//  ssh_ip_version    = "4"
+//  ssh_username      = "arch"
+//  tenant_id         = ""
+//  username          = "$OS_USERNAME"
+//}
+
+source "openstack" "themelio-node-de1" {
+  flavor            = "$DE1_FLAVOUR"
+  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+  image_name        = "themelio-node-de1"
+  networks          = ["$DE1_NETWORK_ID"]
+  password          = "$OS_PASSWORD"
+  region            = "DE1"
+  source_image      = "$DE1_IMAGE_ID"
+  ssh_ip_version    = "4"
+  ssh_username      = "arch"
+  tenant_id         = ""
+  username          = "$OS_USERNAME"
+}
+
+//source "openstack" "themelio-node-gra" {
+//  flavor            = "$GRA_FLAVOUR"
+//  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+//  image_name        = "themelio-node-gra"
+//  networks          = ["$GRA_NETWORK_ID"]
+//  password          = "$OS_PASSWORD"
+//  region            = "GRA"
+//  source_image      = "$GRA_IMAGE_ID"
+//  ssh_ip_version    = "4"
+//  ssh_username      = "arch"
+//  tenant_id         = ""
+//  username          = "$OS_USERNAME"
+//}
+
+source "openstack" "themelio-node-gra5" {
+  flavor            = "$GRA5_FLAVOUR"
+  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+  image_name        = "themelio-node-gra5"
+  networks          = ["$GRA5_NETWORK_ID"]
+  password          = "$OS_PASSWORD"
+  region            = "GRA5"
+  source_image      = "$GRA5_IMAGE_ID"
+  ssh_ip_version    = "4"
+  ssh_username      = "arch"
+  tenant_id         = ""
+  username          = "$OS_USERNAME"
+}
+
+source "openstack" "themelio-node-gra11" {
+  flavor            = "$GRA11_FLAVOUR"
+  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+  image_name        = "themelio-node-gra11"
+  networks          = ["$GRA11_NETWORK_ID"]
+  password          = "$OS_PASSWORD"
+  region            = "GRA11"
+  source_image      = "$GRA11_IMAGE_ID"
+  ssh_ip_version    = "4"
+  ssh_username      = "arch"
+  tenant_id         = ""
+  username          = "$OS_USERNAME"
+}
+
+//source "openstack" "themelio-node-sbg" {
+//  flavor            = "$SBG_FLAVOUR"
+//  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+//  image_name        = "themelio-node-sbg"
+//  networks          = ["$SBG_NETWORK_ID"]
+//  password          = "$OS_PASSWORD"
+//  region            = "SBG"
+//  source_image      = "$SBG_IMAGE_ID"
+//  ssh_ip_version    = "4"
+//  ssh_username      = "arch"
+//  tenant_id         = ""
+//  username          = "$OS_USERNAME"
+//}
+
+source "openstack" "themelio-node-sbg5" {
+  flavor            = "$SBG5_FLAVOUR"
+  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+  image_name        = "themelio-node-sbg5"
+  networks          = ["$SBG5_NETWORK_ID"]
+  password          = "$OS_PASSWORD"
+  region            = "SBG5"
+  source_image      = "$SBG5_IMAGE_ID"
+  ssh_ip_version    = "4"
+  ssh_username      = "arch"
+  tenant_id         = ""
+  username          = "$OS_USERNAME"
+}
+
+//source "openstack" "themelio-node-uk" {
+//  flavor            = "$UK_FLAVOUR"
+//  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+//  image_name        = "themelio-node-uk"
+//  networks          = ["$UK_NETWORK_ID"]
+//  password          = "$OS_PASSWORD"
+//  region            = "UK"
+//  source_image      = "$UK_IMAGE_ID"
+//  ssh_ip_version    = "4"
+//  ssh_username      = "arch"
+//  tenant_id         = ""
+//  username          = "$OS_USERNAME"
+//}
+
+source "openstack" "themelio-node-uk1" {
+  flavor            = "$UK1_FLAVOUR"
+  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+  image_name        = "themelio-node-uk1"
+  networks          = ["$UK1_NETWORK_ID"]
+  password          = "$OS_PASSWORD"
+  region            = "UK1"
+  source_image      = "$UK1_IMAGE_ID"
+  ssh_ip_version    = "4"
+  ssh_username      = "arch"
+  tenant_id         = ""
+  username          = "$OS_USERNAME"
+}
+
+//source "openstack" "themelio-node-waw" {
+//  flavor            = "$WAW_FLAVOUR"
+//  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+//  image_name        = "themelio-node-waw"
+//  networks          = ["$WAW_NETWORK_ID"]
+//  password          = "$OS_PASSWORD"
+//  region            = "WAW"
+//  source_image      = "$WAW_IMAGE_ID"
+//  ssh_ip_version    = "4"
+//  ssh_username      = "arch"
+//  tenant_id         = ""
+//  username          = "$OS_USERNAME"
+//}
+
+source "openstack" "themelio-node-waw1" {
+  flavor            = "$WAW1_FLAVOUR"
+  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+  image_name        = "themelio-node-waw1"
+  networks          = ["$WAW1_NETWORK_ID"]
+  password          = "$OS_PASSWORD"
+  region            = "WAW1"
+  source_image      = "$WAW1_IMAGE_ID"
+  ssh_ip_version    = "4"
+  ssh_username      = "arch"
+  tenant_id         = ""
+  username          = "$OS_USERNAME"
+}
+
+build {
+  sources = [
+//    "source.openstack.themelio-node-bhs",
+    "source.openstack.themelio-node-bhs5",
+//    "source.openstack.themelio-node-de",
+    "source.openstack.themelio-node-de1",
+//    "source.openstack.themelio-node-gra",
+    "source.openstack.themelio-node-gra5",
+    "source.openstack.themelio-node-gra11",
+//    "source.openstack.themelio-node-sbg",
+    "source.openstack.themelio-node-sbg5",
+//    "source.openstack.themelio-node-uk",
+    "source.openstack.themelio-node-uk1",
+//    "source.openstack.themelio-node-waw",
+    "source.openstack.themelio-node-waw1",
+  ]
+
+  provisioner "shell" {
+    expect_disconnect = true
+    inline            = [
+      "sleep 30",
+      "echo 'yes' | sudo pacman -Syu",
+      "echo 'yes' | sudo pacman -S ansible",
+      "sudo reboot"
+    ]
+  }
+
+  provisioner "ansible-local" {
+    playbook_file = "ansible/install.yml"
+  }
+
+}

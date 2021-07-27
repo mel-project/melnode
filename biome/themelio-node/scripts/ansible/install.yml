@@ -1,0 +1,66 @@
+---
+
+- hosts: localhost
+
+  tasks:
+    - name: Install docker and docker-compose
+      community.general.pacman:
+        name:
+          - docker
+          - docker-compose
+        state: latest
+      become: yes
+
+    - name: Enable the docker service
+      ansible.builtin.service:
+        name: docker
+        enabled: yes
+      become: yes
+
+    - name: Add the arch user to the docker group
+      ansible.builtin.user:
+        name: arch
+        groups: docker
+        append: yes
+      become: yes
+
+    - name: Start the docker service
+      ansible.builtin.service:
+        name: docker
+        state: started
+      become: yes
+
+#    - name: Upgrade the system
+#      community.general.pacman:
+#        update_cache: yes
+#        upgrade: yes
+
+#    - name: Reboot the system to apply upgrades
+#      reboot:
+
+
+
+
+#    - name: Create the compose directory
+#      ansible.builtin.file:
+#        path: /home/arch/compose
+#        state: directory
+
+#    - name: Copy the docker-compose file to the server
+#      ansible.builtin.copy:
+#        src: docker-compose.yml
+#        dest: /home/arch/compose/docker-compose.yml
+
+#    - name: Start the docker compose cluster
+#      community.docker.docker_compose:
+#        project_src: /home/arch/compose
+#        state: present
+
+    - name: Start the themelio-node image
+      community.docker.docker_container:
+        name: themelio-node
+        image: ghcr.io/themeliolabs/themelio-node:latest
+        state: started
+        volumes: themelio-node:/hab/svc/themelio-node/data
+        container_default_behavior: compatibility
+      become: yes
