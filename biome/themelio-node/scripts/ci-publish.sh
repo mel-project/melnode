@@ -2,7 +2,10 @@
 
 set -ex
 
-PLAN_DIR="$(dirname "${0}")"
+TEST_DIR="$(dirname "${0}")"
+PLAN_DIR="$(dirname "${TEST_DIR}")"
+
+pwd
 
 source "${PLAN_DIR}/plan.sh"
 
