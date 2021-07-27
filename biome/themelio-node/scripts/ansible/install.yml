@@ -34,7 +34,7 @@
       community.docker.docker_container:
         name: themelio-node
         image: ghcr.io/themeliolabs/themelio-node:latest
-        command: ["--strategy rolling --url https://bldr.habitat.sh"]
+        command: ["--strategy rolling --url https://bldr.habitat.sh", "--group {{ openstack_region }}"]
         state: started
         volumes: themelio-node:/hab/svc/themelio-node/data
         container_default_behavior: compatibility

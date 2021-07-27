@@ -191,20 +191,284 @@ source "openstack" "themelio-node-waw1" {
   username          = "$OS_USERNAME"
 }
 
+//build {
+//  sources = [
+//    "source.openstack.themelio-node-bhs",
+//  ]
+//
+//  provisioner "shell" {
+//    expect_disconnect = true
+//    inline            = [
+//      "sleep 30",
+//      "echo 'yes' | sudo pacman -Syu",
+//      "echo 'yes' | sudo pacman -S ansible",
+//      "sudo reboot"
+//    ]
+//  }
+//
+//  provisioner "ansible-local" {
+//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+//    extra_arguments = [
+//      "--extra-vars", "openstack_region=bhs"
+//    ]
+//  }
+//}
+
 build {
   sources = [
-//    "source.openstack.themelio-node-bhs",
     "source.openstack.themelio-node-bhs5",
+  ]
+
+  provisioner "shell" {
+    expect_disconnect = true
+    inline            = [
+      "sleep 30",
+      "echo 'yes' | sudo pacman -Syu",
+      "echo 'yes' | sudo pacman -S ansible",
+      "sudo reboot"
+    ]
+  }
+
+  provisioner "ansible-local" {
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    extra_arguments = [
+      "--extra-vars", "openstack_region=bhs5"
+    ]
+  }
+}
+
+//build {
+//  sources = [
 //    "source.openstack.themelio-node-de",
+//  ]
+//
+//  provisioner "shell" {
+//    expect_disconnect = true
+//    inline            = [
+//      "sleep 30",
+//      "echo 'yes' | sudo pacman -Syu",
+//      "echo 'yes' | sudo pacman -S ansible",
+//      "sudo reboot"
+//    ]
+//  }
+//
+//  provisioner "ansible-local" {
+//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+//    extra_arguments = [
+//      "--extra-vars", "openstack_region=de"
+//    ]
+//  }
+//}
+
+build {
+  sources = [
     "source.openstack.themelio-node-de1",
+  ]
+
+  provisioner "shell" {
+    expect_disconnect = true
+    inline            = [
+      "sleep 30",
+      "echo 'yes' | sudo pacman -Syu",
+      "echo 'yes' | sudo pacman -S ansible",
+      "sudo reboot"
+    ]
+  }
+
+  provisioner "ansible-local" {
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    extra_arguments = [
+      "--extra-vars", "openstack_region=de1"
+    ]
+  }
+}
+
+//build {
+//  sources = [
 //    "source.openstack.themelio-node-gra",
+//  ]
+//
+//  provisioner "shell" {
+//    expect_disconnect = true
+//    inline            = [
+//      "sleep 30",
+//      "echo 'yes' | sudo pacman -Syu",
+//      "echo 'yes' | sudo pacman -S ansible",
+//      "sudo reboot"
+//    ]
+//  }
+//
+//  provisioner "ansible-local" {
+//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+//    extra_arguments = [
+//      "--extra-vars", "openstack_region=gra"
+//    ]
+//  }
+//}
+
+build {
+  sources = [
     "source.openstack.themelio-node-gra5",
+  ]
+
+  provisioner "shell" {
+    expect_disconnect = true
+    inline            = [
+      "sleep 30",
+      "echo 'yes' | sudo pacman -Syu",
+      "echo 'yes' | sudo pacman -S ansible",
+      "sudo reboot"
+    ]
+  }
+
+  provisioner "ansible-local" {
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    extra_arguments = [
+      "--extra-vars", "openstack_region=gra5"
+    ]
+  }
+}
+
+build {
+  sources = [
     "source.openstack.themelio-node-gra11",
+  ]
+
+  provisioner "shell" {
+    expect_disconnect = true
+    inline            = [
+      "sleep 30",
+      "echo 'yes' | sudo pacman -Syu",
+      "echo 'yes' | sudo pacman -S ansible",
+      "sudo reboot"
+    ]
+  }
+
+  provisioner "ansible-local" {
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    extra_arguments = [
+      "--extra-vars", "openstack_region=gra11"
+    ]
+  }
+}
+
+//build {
+//  sources = [
 //    "source.openstack.themelio-node-sbg",
+//  ]
+//
+//  provisioner "shell" {
+//    expect_disconnect = true
+//    inline            = [
+//      "sleep 30",
+//      "echo 'yes' | sudo pacman -Syu",
+//      "echo 'yes' | sudo pacman -S ansible",
+//      "sudo reboot"
+//    ]
+//  }
+//
+//  provisioner "ansible-local" {
+//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+//    extra_arguments = [
+//      "--extra-vars", "openstack_region=sbg"
+//    ]
+//  }
+//}
+
+build {
+  sources = [
     "source.openstack.themelio-node-sbg5",
+  ]
+
+  provisioner "shell" {
+    expect_disconnect = true
+    inline            = [
+      "sleep 30",
+      "echo 'yes' | sudo pacman -Syu",
+      "echo 'yes' | sudo pacman -S ansible",
+      "sudo reboot"
+    ]
+  }
+
+  provisioner "ansible-local" {
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    extra_arguments = [
+      "--extra-vars", "openstack_region=sbg5"
+    ]
+  }
+}
+
+//build {
+//  sources = [
 //    "source.openstack.themelio-node-uk",
+//  ]
+//
+//  provisioner "shell" {
+//    expect_disconnect = true
+//    inline            = [
+//      "sleep 30",
+//      "echo 'yes' | sudo pacman -Syu",
+//      "echo 'yes' | sudo pacman -S ansible",
+//      "sudo reboot"
+//    ]
+//  }
+//
+//  provisioner "ansible-local" {
+//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+//    extra_arguments = [
+//      "--extra-vars", "openstack_region=uk"
+//    ]
+//  }
+//}
+
+build {
+  sources = [
     "source.openstack.themelio-node-uk1",
+  ]
+
+  provisioner "shell" {
+    expect_disconnect = true
+    inline            = [
+      "sleep 30",
+      "echo 'yes' | sudo pacman -Syu",
+      "echo 'yes' | sudo pacman -S ansible",
+      "sudo reboot"
+    ]
+  }
+
+  provisioner "ansible-local" {
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    extra_arguments = [
+      "--extra-vars", "openstack_region=uk1"
+    ]
+  }
+}
+
+//build {
+//  sources = [
 //    "source.openstack.themelio-node-waw",
+//  ]
+//
+//  provisioner "shell" {
+//    expect_disconnect = true
+//    inline            = [
+//      "sleep 30",
+//      "echo 'yes' | sudo pacman -Syu",
+//      "echo 'yes' | sudo pacman -S ansible",
+//      "sudo reboot"
+//    ]
+//  }
+//
+//  provisioner "ansible-local" {
+//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+//    extra_arguments = [
+//      "--extra-vars", "openstack_region=waw"
+//    ]
+//  }
+//}
+
+build {
+  sources = [
     "source.openstack.themelio-node-waw1",
   ]
 
@@ -220,6 +484,8 @@ build {
 
   provisioner "ansible-local" {
     playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    extra_arguments = [
+      "--extra-vars", "openstack_region=waw1"
+    ]
   }
-
 }
