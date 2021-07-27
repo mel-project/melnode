@@ -219,7 +219,7 @@ build {
   }
 
   provisioner "ansible-local" {
-    playbook_file = "ansible/install.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
   }
 
 }

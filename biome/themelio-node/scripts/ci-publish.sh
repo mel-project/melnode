@@ -2,7 +2,7 @@
 
 set -ex
 
-SCRIPTS_DIRECTORY="$(dirname "${0}")"
+export SCRIPTS_DIRECTORY="$(dirname "${0}")"
 PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
 
 source "${PLAN_DIRECTORY}/plan.sh"
