@@ -2,12 +2,10 @@
 
 set -ex
 
-TEST_DIR="$(dirname "${0}")"
-PLAN_DIR="$(dirname "${TEST_DIR}")"
+SCRIPTS_DIRECTORY="$(dirname "${0}")"
+PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
 
-pwd
-
-source "${PLAN_DIR}/plan.sh"
+source "${PLAN_DIRECTORY}/plan.sh"
 
 
 bio pkg build "${pkg_name}"
@@ -69,8 +67,8 @@ export WAW1_NETWORK_ID="$(env OS_REGION_NAME=WAW1 openstack network list -f json
 
 wait
 
-envsubst < themelio-node.pkr.hcl.temp > themelio-node.pkr.hcl
+envsubst < "${SCRIPTS_DIRECTORY}/themelio-node.pkr.hcl.temp" > "${SCRIPTS_DIRECTORY}/themelio-node.pkr.hcl"
 
-packer validate themelio-node.pkr.hcl
+packer validate "${SCRIPTS_DIRECTORY}/themelio-node.pkr.hcl"
 
-packer build themelio-node.pkr.hcl
+packer build "${SCRIPTS_DIRECTORY}/themelio-node.pkr.hcl"
