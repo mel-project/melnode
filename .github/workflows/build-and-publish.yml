@@ -1,7 +1,7 @@
-name: TestAndBuild
+name: BuildAndPublish
 
 on:
-  pull_request:
+  push:
     branches: [ master ]
 
 env:
@@ -18,14 +18,18 @@ jobs:
       - name: Update Apt
         run: sudo apt update
 
-      - name: Install Musl
-        run: sudo apt install -y musl musl-tools
+      - name: Install TzData
+        run: env DEBIAN_FRONTEND="noninteractive" sudo apt install -y tzdata
 
-      - name: Add Musl Target
-        run: rustup target add x86_64-unknown-linux-musl
+      - name: Install OpenStack, Packer, JQ, and Envsubst
+        run: sudo apt install -y python3-openstackclient python3-novaclient packer jq gettext-base
 
-      - name: Run Musl Tests
-        run: cargo test --locked --target x86_64-unknown-linux-musl --verbose
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download Biome
         env:
@@ -55,9 +59,20 @@ jobs:
           BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
         run: echo "$BIOME_SIGNING_KEY" | sudo bio origin key import
 
-      - name: Build, Run BATS Tests
+      - name: Build, Publish Artifact And Mark As Stable, Export And Publish Docker Image, Create Packer Images
         env:
           HAB_ORIGIN: "themelio"
           BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
+          HAB_BLDR_URL: "https://bldr.habitat.sh"
+          BIOME_BLDR_URL: "https://bldr.biome.sh"
+          BIOME_AUTH_TOKEN: ${{ secrets.BIOME_AUTH_TOKEN }}
+          HABITAT_AUTH_TOKEN: ${{ secrets.HABITAT_AUTH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cd biome && ./themelio-node/scripts/ci-test.sh
+          DISABLE_HEALTH_CHECK: true
+          OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
+          OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
+          OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
+          OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
+          OS_USERNAME: ${{ secrets.OS_USERNAME }}
+          OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+        run: cd biome && ./themelio-node/scripts/ci-publish.sh

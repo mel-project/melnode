@@ -15,3 +15,8 @@ This repository contains the core node implementation of Themelio, as well as so
 
 - `blkdb`: a "block database" library for ergonomically and correctly working with trees of blocks
 - `novasymph`: an instantiation of the Streamlet-based Symphonia consensus protocol for use in Themelio
+
+
+## Usage
+
+Have a look in [how-to-use](/how-to-use).
