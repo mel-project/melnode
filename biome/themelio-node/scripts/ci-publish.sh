@@ -35,8 +35,8 @@ for tag in ${tags//,/ }; do
 done
 
 
-#echo "Creating packer images"
-#
+echo "Creating packer images"
+
 ## We have these run with `&` so that they run in parallel. The openstack CLI is horrifically slow.
 #
 ## Flavour per region
