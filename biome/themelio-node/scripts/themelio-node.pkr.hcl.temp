@@ -207,7 +207,7 @@ source "openstack" "themelio-node-waw1" {
 //  }
 //
 //  provisioner "ansible" {
-//  groups = ["themelio-node"]
+//  groups = ["themelio_node"]
 //    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
 //    extra_arguments = [
 //      "--extra-vars", "openstack_region=bhs"
@@ -230,7 +230,7 @@ build {
   }
 
   provisioner "ansible" {
-    groups = ["themelio-node"]
+    groups = ["themelio_node"]
     playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=bhs5"
@@ -253,7 +253,7 @@ build {
 //  }
 //
 //  provisioner "ansible" {
-//  groups = ["themelio-node"]
+//  groups = ["themelio_node"]
 //    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
 //    extra_arguments = [
 //      "--extra-vars", "openstack_region=de"
@@ -276,7 +276,7 @@ build {
   }
 
   provisioner "ansible" {
-    groups = ["themelio-node"]
+    groups = ["themelio_node"]
     playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=de1"
@@ -299,7 +299,7 @@ build {
 //  }
 //
 //  provisioner "ansible" {
-//  groups = ["themelio-node"]
+//  groups = ["themelio_node"]
 //    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
 //    extra_arguments = [
 //      "--extra-vars", "openstack_region=gra"
@@ -322,7 +322,7 @@ build {
   }
 
   provisioner "ansible" {
-    groups = ["themelio-node"]
+    groups = ["themelio_node"]
     playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra5"
@@ -345,7 +345,7 @@ build {
   }
 
   provisioner "ansible" {
-    groups = ["themelio-node"]
+    groups = ["themelio_node"]
     playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra11"
@@ -368,7 +368,7 @@ build {
 //  }
 //
 //  provisioner "ansible" {
-//  groups = ["themelio-node"]
+//  groups = ["themelio_node"]
 //    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
 //    extra_arguments = [
 //      "--extra-vars", "openstack_region=sbg"
@@ -391,7 +391,7 @@ build {
   }
 
   provisioner "ansible" {
-    groups = ["themelio-node"]
+    groups = ["themelio_node"]
     playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=sbg5"
@@ -414,7 +414,7 @@ build {
 //  }
 //
 //  provisioner "ansible" {
-//  groups = ["themelio-node"]
+//  groups = ["themelio_node"]
 //    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
 //    extra_arguments = [
 //      "--extra-vars", "openstack_region=uk"
@@ -437,7 +437,7 @@ build {
   }
 
   provisioner "ansible" {
-    groups = ["themelio-node"]
+    groups = ["themelio_node"]
     playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=uk1"
@@ -460,7 +460,7 @@ build {
 //  }
 //
 //  provisioner "ansible" {
-//  groups = ["themelio-node"]
+//  groups = ["themelio_node"]
 //    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
 //    extra_arguments = [
 //      "--extra-vars", "openstack_region=waw"
@@ -483,7 +483,7 @@ build {
   }
 
   provisioner "ansible" {
-  groups = ["themelio-node"]
+  groups = ["themelio_node"]
     playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=waw1"

@@ -1,7 +1,7 @@
 ---
 
 - name: 'Create themelio-node image'
-  hosts: themelio-node
+  hosts: themelio_node
   become: yes
 
   tasks:
