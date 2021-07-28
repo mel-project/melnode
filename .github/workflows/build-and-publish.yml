@@ -23,7 +23,9 @@ jobs:
       - name: Install TzData
         run: env DEBIAN_FRONTEND="noninteractive" sudo apt install -y tzdata
 
-      - name: Install OpenStack, Packer, And envsubst
+#      - name: Install OpenStack, Packer, JQ, Ansible, and Envsubst
+#        run: sudo apt install -y python3-openstackclient python3-novaclient packer jq ansible gettext-base
+      - name: Install OpenStack, Packer, JQ, and Envsubst
         run: sudo apt install -y python3-openstackclient python3-novaclient packer jq gettext-base
 
       - name: Login to GitHub Container Registry

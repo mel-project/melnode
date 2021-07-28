@@ -206,7 +206,8 @@ source "openstack" "themelio-node-waw1" {
 //    ]
 //  }
 //
-//  provisioner "ansible-local" {
+//  provisioner "ansible" {
+//  groups = ["themelio-node"]
 //    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
 //    extra_arguments = [
 //      "--extra-vars", "openstack_region=bhs"
@@ -224,12 +225,12 @@ build {
     inline            = [
       "sleep 30",
       "echo 'yes' | sudo pacman -Syu",
-      "echo 'yes' | sudo pacman -S ansible",
       "sudo reboot"
     ]
   }
 
-  provisioner "ansible-local" {
+  provisioner "ansible" {
+    groups = ["themelio-node"]
     playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=bhs5"
@@ -247,12 +248,12 @@ build {
 //    inline            = [
 //      "sleep 30",
 //      "echo 'yes' | sudo pacman -Syu",
-//      "echo 'yes' | sudo pacman -S ansible",
 //      "sudo reboot"
 //    ]
 //  }
 //
-//  provisioner "ansible-local" {
+//  provisioner "ansible" {
+//  groups = ["themelio-node"]
 //    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
 //    extra_arguments = [
 //      "--extra-vars", "openstack_region=de"
@@ -270,12 +271,12 @@ build {
     inline            = [
       "sleep 30",
       "echo 'yes' | sudo pacman -Syu",
-      "echo 'yes' | sudo pacman -S ansible",
       "sudo reboot"
     ]
   }
 
-  provisioner "ansible-local" {
+  provisioner "ansible" {
+    groups = ["themelio-node"]
     playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=de1"
@@ -293,12 +294,12 @@ build {
 //    inline            = [
 //      "sleep 30",
 //      "echo 'yes' | sudo pacman -Syu",
-//      "echo 'yes' | sudo pacman -S ansible",
 //      "sudo reboot"
 //    ]
 //  }
 //
-//  provisioner "ansible-local" {
+//  provisioner "ansible" {
+//  groups = ["themelio-node"]
 //    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
 //    extra_arguments = [
 //      "--extra-vars", "openstack_region=gra"
@@ -316,12 +317,12 @@ build {
     inline            = [
       "sleep 30",
       "echo 'yes' | sudo pacman -Syu",
-      "echo 'yes' | sudo pacman -S ansible",
       "sudo reboot"
     ]
   }
 
-  provisioner "ansible-local" {
+  provisioner "ansible" {
+    groups = ["themelio-node"]
     playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra5"
@@ -339,12 +340,12 @@ build {
     inline            = [
       "sleep 30",
       "echo 'yes' | sudo pacman -Syu",
-      "echo 'yes' | sudo pacman -S ansible",
       "sudo reboot"
     ]
   }
 
-  provisioner "ansible-local" {
+  provisioner "ansible" {
+    groups = ["themelio-node"]
     playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra11"
@@ -362,12 +363,12 @@ build {
 //    inline            = [
 //      "sleep 30",
 //      "echo 'yes' | sudo pacman -Syu",
-//      "echo 'yes' | sudo pacman -S ansible",
 //      "sudo reboot"
 //    ]
 //  }
 //
-//  provisioner "ansible-local" {
+//  provisioner "ansible" {
+//  groups = ["themelio-node"]
 //    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
 //    extra_arguments = [
 //      "--extra-vars", "openstack_region=sbg"
@@ -385,12 +386,12 @@ build {
     inline            = [
       "sleep 30",
       "echo 'yes' | sudo pacman -Syu",
-      "echo 'yes' | sudo pacman -S ansible",
       "sudo reboot"
     ]
   }
 
-  provisioner "ansible-local" {
+  provisioner "ansible" {
+    groups = ["themelio-node"]
     playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=sbg5"
@@ -408,12 +409,12 @@ build {
 //    inline            = [
 //      "sleep 30",
 //      "echo 'yes' | sudo pacman -Syu",
-//      "echo 'yes' | sudo pacman -S ansible",
 //      "sudo reboot"
 //    ]
 //  }
 //
-//  provisioner "ansible-local" {
+//  provisioner "ansible" {
+//  groups = ["themelio-node"]
 //    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
 //    extra_arguments = [
 //      "--extra-vars", "openstack_region=uk"
@@ -431,12 +432,12 @@ build {
     inline            = [
       "sleep 30",
       "echo 'yes' | sudo pacman -Syu",
-      "echo 'yes' | sudo pacman -S ansible",
       "sudo reboot"
     ]
   }
 
-  provisioner "ansible-local" {
+  provisioner "ansible" {
+    groups = ["themelio-node"]
     playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=uk1"
@@ -454,12 +455,12 @@ build {
 //    inline            = [
 //      "sleep 30",
 //      "echo 'yes' | sudo pacman -Syu",
-//      "echo 'yes' | sudo pacman -S ansible",
 //      "sudo reboot"
 //    ]
 //  }
 //
-//  provisioner "ansible-local" {
+//  provisioner "ansible" {
+//  groups = ["themelio-node"]
 //    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
 //    extra_arguments = [
 //      "--extra-vars", "openstack_region=waw"
@@ -477,12 +478,12 @@ build {
     inline            = [
       "sleep 30",
       "echo 'yes' | sudo pacman -Syu",
-      "echo 'yes' | sudo pacman -S ansible",
       "sudo reboot"
     ]
   }
 
-  provisioner "ansible-local" {
+  provisioner "ansible" {
+  groups = ["themelio-node"]
     playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=waw1"

@@ -11,10 +11,9 @@ services:
 #     If you would like to run on the test network, uncomment the following line
 #      - TESTNET=true
     command:
-      --strategy at-once --url https://bldr.habitat.sh
+      --strategy rolling --url https://bldr.habitat.sh
+      --group {{ openstack_region }}
       --update-condition latest
-#    environment:
-#      RUST_LOG: debug
     volumes:
       - themelio-node:/hab/svc/themelio-node/data
 

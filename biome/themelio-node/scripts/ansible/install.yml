@@ -1,6 +1,8 @@
 ---
 
-- hosts: localhost
+- name: 'Create themelio-node image'
+  hosts: themelio-node
+  become: yes
 
   tasks:
     - name: Install docker and docker-compose
@@ -9,33 +11,41 @@
           - docker
           - docker-compose
         state: latest
-      become: yes
 
     - name: Enable the docker service
       ansible.builtin.service:
         name: docker
         enabled: yes
-      become: yes
 
     - name: Add the arch user to the docker group
       ansible.builtin.user:
         name: arch
         groups: docker
         append: yes
-      become: yes
 
     - name: Start the docker service
       ansible.builtin.service:
         name: docker
         state: started
-      become: yes
 
-    - name: Start the themelio-node image
-      community.docker.docker_container:
+    - name: Create the compose directory
+      ansible.builtin.file:
+        path: /home/arch/compose
+        state: directory
+
+    - name: Copy the docker-compose template to the server
+      ansible.builtin.template:
+        src: docker-compose.yml.j2
+        dest: /home/arch/compose/docker-compose.yml
+
+    - name: Copy the themelio-node systemd service file onto the server
+      ansible.builtin.copy:
+        src: themelio-node.service
+        dest: /usr/lib/systemd/system/themelio-node.service
+
+    - name: Enable and start the themelio-node service
+      ansible.builtin.systemd:
         name: themelio-node
-        image: ghcr.io/themeliolabs/themelio-node:latest
-        command: ["--strategy rolling --url https://bldr.habitat.sh", "--group {{ openstack_region }}"]
+        daemon_reload: yes
         state: started
-        volumes: themelio-node:/hab/svc/themelio-node/data
-        container_default_behavior: compatibility
-      become: yes
+        enabled: yes

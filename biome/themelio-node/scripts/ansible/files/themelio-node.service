@@ -1,0 +1,12 @@
+[Unit]
+Description=themelio-node
+Requires=docker.service
+After=docker.service
+[Service]
+Restart=always
+User=arch
+ExecStartPre=/usr/bin/docker-compose -f /home/arch/compose/docker-compose.yml down -v
+ExecStart=/usr/bin/docker-compose -f /home/arch/compose/docker-compose.yml up
+ExecStop=/usr/bin/docker-compose -f /home/arch/compose/docker-compose.yml down -v
+[Install]
+WantedBy=multi-user.target
