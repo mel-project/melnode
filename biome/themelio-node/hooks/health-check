@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [ -n "${DISABLE_HEALTH_CHECK}" ]; then
   exit 0

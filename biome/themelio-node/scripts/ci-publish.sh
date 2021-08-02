@@ -43,8 +43,12 @@ echo "Creating packer images"
 env OS_REGION_NAME=BHS5 openstack flavor list -f json | jq -r '.[] | select(.Name == "d2-2") | .ID' > BHS5_FLAVOUR.output &
 env OS_REGION_NAME=DE1 openstack flavor list -f json | jq -r '.[] | select(.Name == "d2-2") | .ID' > DE1_FLAVOUR.output &
 env OS_REGION_NAME=GRA5 openstack flavor list -f json | jq -r '.[] | select(.Name == "d2-2") | .ID' > GRA5_FLAVOUR.output &
+env OS_REGION_NAME=GRA7 openstack flavor list -f json | jq -r '.[] | select(.Name == "d2-2") | .ID' > GRA7_FLAVOUR.output &
+env OS_REGION_NAME=GRA9 openstack flavor list -f json | jq -r '.[] | select(.Name == "d2-2") | .ID' > GRA9_FLAVOUR.output &
 env OS_REGION_NAME=GRA11 openstack flavor list -f json | jq -r '.[] | select(.Name == "d2-2") | .ID' > GRA11_FLAVOUR.output &
 env OS_REGION_NAME=SBG5 openstack flavor list -f json | jq -r '.[] | select(.Name == "d2-2") | .ID' > SBG5_FLAVOUR.output &
+env OS_REGION_NAME=SGP1 openstack flavor list -f json | jq -r '.[] | select(.Name == "d2-2") | .ID' > SGP1_FLAVOUR.output &
+env OS_REGION_NAME=SYD1 openstack flavor list -f json | jq -r '.[] | select(.Name == "d2-2") | .ID' > SYD1_FLAVOUR.output &
 env OS_REGION_NAME=UK1 openstack flavor list -f json | jq -r '.[] | select(.Name == "d2-2") | .ID' > UK1_FLAVOUR.output &
 env OS_REGION_NAME=WAW1 openstack flavor list -f json | jq -r '.[] | select(.Name == "d2-2") | .ID' > WAW1_FLAVOUR.output &
 
@@ -52,8 +56,12 @@ env OS_REGION_NAME=WAW1 openstack flavor list -f json | jq -r '.[] | select(.Nam
 env OS_REGION_NAME=BHS5 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > BHS5_IMAGE_ID.output &
 env OS_REGION_NAME=DE1 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > DE1_IMAGE_ID.output &
 env OS_REGION_NAME=GRA5 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > GRA5_IMAGE_ID.output &
+env OS_REGION_NAME=GRA7 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > GRA7_IMAGE_ID.output &
+env OS_REGION_NAME=GRA9 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > GRA9_IMAGE_ID.output &
 env OS_REGION_NAME=GRA11 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > GRA11_IMAGE_ID.output &
 env OS_REGION_NAME=SBG5 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > SBG5_IMAGE_ID.output &
+env OS_REGION_NAME=SGP1 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > SGP1_IMAGE_ID.output &
+env OS_REGION_NAME=SYD1 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > SYD1_IMAGE_ID.output &
 env OS_REGION_NAME=UK1 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > UK1_IMAGE_ID.output &
 env OS_REGION_NAME=WAW1 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > WAW1_IMAGE_ID.output &
 
@@ -61,8 +69,12 @@ env OS_REGION_NAME=WAW1 openstack image list -f json | jq -r '.[] | select(.Name
 env OS_REGION_NAME=BHS5 openstack network list -f json | jq -r '.[] | select(.Name == "Ext-Net") | .ID' > BHS5_NETWORK_ID.output &
 env OS_REGION_NAME=DE1 openstack network list -f json | jq -r '.[] | select(.Name == "Ext-Net") | .ID' > DE1_NETWORK_ID.output &
 env OS_REGION_NAME=GRA5 openstack network list -f json | jq -r '.[] | select(.Name == "Ext-Net") | .ID' > GRA5_NETWORK_ID.output &
+env OS_REGION_NAME=GRA7 openstack network list -f json | jq -r '.[] | select(.Name == "Ext-Net") | .ID' > GRA7_NETWORK_ID.output &
+env OS_REGION_NAME=GRA9 openstack network list -f json | jq -r '.[] | select(.Name == "Ext-Net") | .ID' > GRA9_NETWORK_ID.output &
 env OS_REGION_NAME=GRA11 openstack network list -f json | jq -r '.[] | select(.Name == "Ext-Net") | .ID' > GRA11_NETWORK_ID.output &
 env OS_REGION_NAME=SBG5 openstack network list -f json | jq -r '.[] | select(.Name == "Ext-Net") | .ID' > SBG5_NETWORK_ID.output &
+env OS_REGION_NAME=SGP1 openstack network list -f json | jq -r '.[] | select(.Name == "Ext-Net") | .ID' > SGP1_NETWORK_ID.output &
+env OS_REGION_NAME=SYD1 openstack network list -f json | jq -r '.[] | select(.Name == "Ext-Net") | .ID' > SYD1_NETWORK_ID.output &
 env OS_REGION_NAME=UK1 openstack network list -f json | jq -r '.[] | select(.Name == "Ext-Net") | .ID' > UK1_NETWORK_ID.output &
 env OS_REGION_NAME=WAW1 openstack network list -f json | jq -r '.[] | select(.Name == "Ext-Net") | .ID' > WAW1_NETWORK_ID.output &
 
@@ -72,8 +84,12 @@ wait
 export BHS5_FLAVOUR=$(cat BHS5_FLAVOUR.output)
 export DE1_FLAVOUR=$(cat DE1_FLAVOUR.output)
 export GRA5_FLAVOUR=$(cat GRA5_FLAVOUR.output)
+export GRA7_FLAVOUR=$(cat GRA7_FLAVOUR.output)
+export GRA9_FLAVOUR=$(cat GRA9_FLAVOUR.output)
 export GRA11_FLAVOUR=$(cat GRA11_FLAVOUR.output)
 export SBG5_FLAVOUR=$(cat SBG5_FLAVOUR.output)
+export SGP1_FLAVOUR=$(cat SGP1_FLAVOUR.output)
+export SYD1_FLAVOUR=$(cat SYD1_FLAVOUR.output)
 export UK1_FLAVOUR=$(cat UK1_FLAVOUR.output)
 export WAW1_FLAVOUR=$(cat WAW1_FLAVOUR.output)
 
@@ -81,8 +97,12 @@ export WAW1_FLAVOUR=$(cat WAW1_FLAVOUR.output)
 export BHS5_IMAGE_ID=$(cat BHS5_IMAGE_ID.output)
 export DE1_IMAGE_ID=$(cat DE1_IMAGE_ID.output)
 export GRA5_IMAGE_ID=$(cat GRA5_IMAGE_ID.output)
+export GRA7_IMAGE_ID=$(cat GRA7_IMAGE_ID.output)
+export GRA9_IMAGE_ID=$(cat GRA9_IMAGE_ID.output)
 export GRA11_IMAGE_ID=$(cat GRA11_IMAGE_ID.output)
 export SBG5_IMAGE_ID=$(cat SBG5_IMAGE_ID.output)
+export SGP1_IMAGE_ID=$(cat SGP1_IMAGE_ID.output)
+export SYD1_IMAGE_ID=$(cat SYD1_IMAGE_ID.output)
 export UK1_IMAGE_ID=$(cat UK1_IMAGE_ID.output)
 export WAW1_IMAGE_ID=$(cat WAW1_IMAGE_ID.output)
 
@@ -90,8 +110,12 @@ export WAW1_IMAGE_ID=$(cat WAW1_IMAGE_ID.output)
 export BHS5_NETWORK_ID=$(cat BHS5_NETWORK_ID.output)
 export DE1_NETWORK_ID=$(cat DE1_NETWORK_ID.output)
 export GRA5_NETWORK_ID=$(cat GRA5_NETWORK_ID.output)
+export GRA7_NETWORK_ID=$(cat GRA7_NETWORK_ID.output)
+export GRA9_NETWORK_ID=$(cat GRA9_NETWORK_ID.output)
 export GRA11_NETWORK_ID=$(cat GRA11_NETWORK_ID.output)
 export SBG5_NETWORK_ID=$(cat SBG5_NETWORK_ID.output)
+export SGP1_NETWORK_ID=$(cat SBG5_NETWORK_ID.output)
+export SYD1_NETWORK_ID=$(cat SYD5_NETWORK_ID.output)
 export UK1_NETWORK_ID=$(cat UK1_NETWORK_ID.output)
 export WAW1_NETWORK_ID=$(cat WAW1_NETWORK_ID.output)
 
