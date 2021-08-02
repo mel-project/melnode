@@ -6,25 +6,10 @@
 //Documentation is available here: https://docs.ovh.com/gb/en/public-cloud/packer-openstack-builder/
 
 
-// The BHS, DE, GRA, SBG, UK, and WAW regions have no public endpoints, but they are here if that changes.
+// The BHS, DE, GRA, SBG, SGP, SYD, UK, and WAW regions have no public endpoints.
 
 
 // MainNet Section
-
-
-//source "openstack" "themelio-node-bhs" {
-//  flavor            = "$BHS_FLAVOUR"
-//  identity_endpoint = "https://auth.cloud.ovh.net/v3"
-//  image_name        = "themelio-node-bhs"
-//  networks          = ["$BHS_NETWORK_ID"]
-//  password          = "$OS_PASSWORD"
-//  region            = "BHS"
-//  source_image      = "$BHS_IMAGE_ID"
-//  ssh_ip_version    = "4"
-//  ssh_username      = "arch"
-//  tenant_id         = ""
-//  username          = "$OS_USERNAME"
-//}
 
 source "openstack" "themelio-node-bhs5" {
   flavor            = "$BHS5_FLAVOUR"
@@ -40,20 +25,6 @@ source "openstack" "themelio-node-bhs5" {
   username          = "$OS_USERNAME"
 }
 
-//source "openstack" "themelio-node-de" {
-//  flavor            = "$DE_FLAVOUR"
-//  identity_endpoint = "https://auth.cloud.ovh.net/v3"
-//  image_name        = "themelio-node-de"
-//  networks          = ["$DE_NETWORK_ID"]
-//  password          = "$OS_PASSWORD"
-//  region            = "DE"
-//  source_image      = "$DE_IMAGE_ID"
-//  ssh_ip_version    = "4"
-//  ssh_username      = "arch"
-//  tenant_id         = ""
-//  username          = "$OS_USERNAME"
-//}
-
 source "openstack" "themelio-node-de1" {
   flavor            = "$DE1_FLAVOUR"
   identity_endpoint = "https://auth.cloud.ovh.net/v3"
@@ -68,20 +39,6 @@ source "openstack" "themelio-node-de1" {
   username          = "$OS_USERNAME"
 }
 
-//source "openstack" "themelio-node-gra" {
-//  flavor            = "$GRA_FLAVOUR"
-//  identity_endpoint = "https://auth.cloud.ovh.net/v3"
-//  image_name        = "themelio-node-gra"
-//  networks          = ["$GRA_NETWORK_ID"]
-//  password          = "$OS_PASSWORD"
-//  region            = "GRA"
-//  source_image      = "$GRA_IMAGE_ID"
-//  ssh_ip_version    = "4"
-//  ssh_username      = "arch"
-//  tenant_id         = ""
-//  username          = "$OS_USERNAME"
-//}
-
 source "openstack" "themelio-node-gra5" {
   flavor            = "$GRA5_FLAVOUR"
   identity_endpoint = "https://auth.cloud.ovh.net/v3"
@@ -90,6 +47,34 @@ source "openstack" "themelio-node-gra5" {
   password          = "$OS_PASSWORD"
   region            = "GRA5"
   source_image      = "$GRA5_IMAGE_ID"
+  ssh_ip_version    = "4"
+  ssh_username      = "arch"
+  tenant_id         = ""
+  username          = "$OS_USERNAME"
+}
+
+source "openstack" "themelio-node-gra7" {
+  flavor            = "$GRA7_FLAVOUR"
+  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+  image_name        = "themelio-node-gra7"
+  networks          = ["$GRA5_NETWORK_ID"]
+  password          = "$OS_PASSWORD"
+  region            = "GRA7"
+  source_image      = "$GRA7_IMAGE_ID"
+  ssh_ip_version    = "4"
+  ssh_username      = "arch"
+  tenant_id         = ""
+  username          = "$OS_USERNAME"
+}
+
+source "openstack" "themelio-node-gra9" {
+  flavor            = "$GRA9_FLAVOUR"
+  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+  image_name        = "themelio-node-gra9"
+  networks          = ["$GRA9_NETWORK_ID"]
+  password          = "$OS_PASSWORD"
+  region            = "GRA9"
+  source_image      = "$GRA9_IMAGE_ID"
   ssh_ip_version    = "4"
   ssh_username      = "arch"
   tenant_id         = ""
@@ -110,20 +95,6 @@ source "openstack" "themelio-node-gra11" {
   username          = "$OS_USERNAME"
 }
 
-//source "openstack" "themelio-node-sbg" {
-//  flavor            = "$SBG_FLAVOUR"
-//  identity_endpoint = "https://auth.cloud.ovh.net/v3"
-//  image_name        = "themelio-node-sbg"
-//  networks          = ["$SBG_NETWORK_ID"]
-//  password          = "$OS_PASSWORD"
-//  region            = "SBG"
-//  source_image      = "$SBG_IMAGE_ID"
-//  ssh_ip_version    = "4"
-//  ssh_username      = "arch"
-//  tenant_id         = ""
-//  username          = "$OS_USERNAME"
-//}
-
 source "openstack" "themelio-node-sbg5" {
   flavor            = "$SBG5_FLAVOUR"
   identity_endpoint = "https://auth.cloud.ovh.net/v3"
@@ -138,19 +109,33 @@ source "openstack" "themelio-node-sbg5" {
   username          = "$OS_USERNAME"
 }
 
-//source "openstack" "themelio-node-uk" {
-//  flavor            = "$UK_FLAVOUR"
-//  identity_endpoint = "https://auth.cloud.ovh.net/v3"
-//  image_name        = "themelio-node-uk"
-//  networks          = ["$UK_NETWORK_ID"]
-//  password          = "$OS_PASSWORD"
-//  region            = "UK"
-//  source_image      = "$UK_IMAGE_ID"
-//  ssh_ip_version    = "4"
-//  ssh_username      = "arch"
-//  tenant_id         = ""
-//  username          = "$OS_USERNAME"
-//}
+source "openstack" "themelio-node-sgp1" {
+  flavor            = "$SGP1_FLAVOUR"
+  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+  image_name        = "themelio-node-sgp1"
+  networks          = ["$SGP1_NETWORK_ID"]
+  password          = "$OS_PASSWORD"
+  region            = "SGP1"
+  source_image      = "$SGP1_IMAGE_ID"
+  ssh_ip_version    = "4"
+  ssh_username      = "arch"
+  tenant_id         = ""
+  username          = "$OS_USERNAME"
+}
+
+source "openstack" "themelio-node-syd1" {
+  flavor            = "$SYD1_FLAVOUR"
+  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+  image_name        = "themelio-node-syd1"
+  networks          = ["$SYD1_NETWORK_ID"]
+  password          = "$OS_PASSWORD"
+  region            = "SYD1"
+  source_image      = "$SYD1_IMAGE_ID"
+  ssh_ip_version    = "4"
+  ssh_username      = "arch"
+  tenant_id         = ""
+  username          = "$OS_USERNAME"
+}
 
 source "openstack" "themelio-node-uk1" {
   flavor            = "$UK1_FLAVOUR"
@@ -166,20 +151,6 @@ source "openstack" "themelio-node-uk1" {
   username          = "$OS_USERNAME"
 }
 
-//source "openstack" "themelio-node-waw" {
-//  flavor            = "$WAW_FLAVOUR"
-//  identity_endpoint = "https://auth.cloud.ovh.net/v3"
-//  image_name        = "themelio-node-waw"
-//  networks          = ["$WAW_NETWORK_ID"]
-//  password          = "$OS_PASSWORD"
-//  region            = "WAW"
-//  source_image      = "$WAW_IMAGE_ID"
-//  ssh_ip_version    = "4"
-//  ssh_username      = "arch"
-//  tenant_id         = ""
-//  username          = "$OS_USERNAME"
-//}
-
 source "openstack" "themelio-node-waw1" {
   flavor            = "$WAW1_FLAVOUR"
   identity_endpoint = "https://auth.cloud.ovh.net/v3"
@@ -193,30 +164,6 @@ source "openstack" "themelio-node-waw1" {
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
-
-//build {
-//  sources = [
-//    "source.openstack.themelio-node-bhs",
-//  ]
-//
-//  provisioner "shell" {
-//    expect_disconnect = true
-//    inline            = [
-//      "sleep 30",
-//      "echo 'yes' | sudo pacman -Syu",
-//      "echo 'yes' | sudo pacman -S ansible",
-//      "sudo reboot"
-//    ]
-//  }
-//
-//  provisioner "ansible" {
-//  groups = ["themelio_node"]
-//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
-//    extra_arguments = [
-//      "--extra-vars", "openstack_region=bhs"
-//    ]
-//  }
-//}
 
 build {
   sources = [
@@ -241,29 +188,6 @@ build {
   }
 }
 
-//build {
-//  sources = [
-//    "source.openstack.themelio-node-de",
-//  ]
-//
-//  provisioner "shell" {
-//    expect_disconnect = true
-//    inline            = [
-//      "sleep 30",
-//      "echo 'yes' | sudo pacman -Syu",
-//      "sudo reboot"
-//    ]
-//  }
-//
-//  provisioner "ansible" {
-//  groups = ["themelio_node"]
-//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
-//    extra_arguments = [
-//      "--extra-vars", "openstack_region=de"
-//    ]
-//  }
-//}
-
 build {
   sources = [
     "source.openstack.themelio-node-de1",
@@ -287,29 +211,6 @@ build {
   }
 }
 
-//build {
-//  sources = [
-//    "source.openstack.themelio-node-gra",
-//  ]
-//
-//  provisioner "shell" {
-//    expect_disconnect = true
-//    inline            = [
-//      "sleep 30",
-//      "echo 'yes' | sudo pacman -Syu",
-//      "sudo reboot"
-//    ]
-//  }
-//
-//  provisioner "ansible" {
-//  groups = ["themelio_node"]
-//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
-//    extra_arguments = [
-//      "--extra-vars", "openstack_region=gra"
-//    ]
-//  }
-//}
-
 build {
   sources = [
     "source.openstack.themelio-node-gra5",
@@ -329,6 +230,52 @@ build {
     playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra5"
+    ]
+  }
+}
+
+build {
+  sources = [
+    "source.openstack.themelio-node-gra7",
+  ]
+
+  provisioner "shell" {
+    expect_disconnect = true
+    inline            = [
+      "sleep 30",
+      "echo 'yes' | sudo pacman -Syu",
+      "sudo reboot"
+    ]
+  }
+
+  provisioner "ansible" {
+    groups = ["themelio_node"]
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    extra_arguments = [
+      "--extra-vars", "openstack_region=gra7"
+    ]
+  }
+}
+
+build {
+  sources = [
+    "source.openstack.themelio-node-gra9",
+  ]
+
+  provisioner "shell" {
+    expect_disconnect = true
+    inline            = [
+      "sleep 30",
+      "echo 'yes' | sudo pacman -Syu",
+      "sudo reboot"
+    ]
+  }
+
+  provisioner "ansible" {
+    groups = ["themelio_node"]
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    extra_arguments = [
+      "--extra-vars", "openstack_region=gra9"
     ]
   }
 }
@@ -356,29 +303,6 @@ build {
   }
 }
 
-//build {
-//  sources = [
-//    "source.openstack.themelio-node-sbg",
-//  ]
-//
-//  provisioner "shell" {
-//    expect_disconnect = true
-//    inline            = [
-//      "sleep 30",
-//      "echo 'yes' | sudo pacman -Syu",
-//      "sudo reboot"
-//    ]
-//  }
-//
-//  provisioner "ansible" {
-//  groups = ["themelio_node"]
-//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
-//    extra_arguments = [
-//      "--extra-vars", "openstack_region=sbg"
-//    ]
-//  }
-//}
-
 build {
   sources = [
     "source.openstack.themelio-node-sbg5",
@@ -402,28 +326,51 @@ build {
   }
 }
 
-//build {
-//  sources = [
-//    "source.openstack.themelio-node-uk",
-//  ]
-//
-//  provisioner "shell" {
-//    expect_disconnect = true
-//    inline            = [
-//      "sleep 30",
-//      "echo 'yes' | sudo pacman -Syu",
-//      "sudo reboot"
-//    ]
-//  }
-//
-//  provisioner "ansible" {
-//  groups = ["themelio_node"]
-//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
-//    extra_arguments = [
-//      "--extra-vars", "openstack_region=uk"
-//    ]
-//  }
-//}
+build {
+  sources = [
+    "source.openstack.themelio-node-sgp1",
+  ]
+
+  provisioner "shell" {
+    expect_disconnect = true
+    inline            = [
+      "sleep 30",
+      "echo 'yes' | sudo pacman -Syu",
+      "sudo reboot"
+    ]
+  }
+
+  provisioner "ansible" {
+    groups = ["themelio_node"]
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    extra_arguments = [
+      "--extra-vars", "openstack_region=sgp1"
+    ]
+  }
+}
+
+build {
+  sources = [
+    "source.openstack.themelio-node-syd1",
+  ]
+
+  provisioner "shell" {
+    expect_disconnect = true
+    inline            = [
+      "sleep 30",
+      "echo 'yes' | sudo pacman -Syu",
+      "sudo reboot"
+    ]
+  }
+
+  provisioner "ansible" {
+    groups = ["themelio_node"]
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    extra_arguments = [
+      "--extra-vars", "openstack_region=syd1"
+    ]
+  }
+}
 
 build {
   sources = [
@@ -447,29 +394,6 @@ build {
     ]
   }
 }
-
-//build {
-//  sources = [
-//    "source.openstack.themelio-node-waw",
-//  ]
-//
-//  provisioner "shell" {
-//    expect_disconnect = true
-//    inline            = [
-//      "sleep 30",
-//      "echo 'yes' | sudo pacman -Syu",
-//      "sudo reboot"
-//    ]
-//  }
-//
-//  provisioner "ansible" {
-//  groups = ["themelio_node"]
-//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
-//    extra_arguments = [
-//      "--extra-vars", "openstack_region=waw"
-//    ]
-//  }
-//}
 
 build {
   sources = [
@@ -497,21 +421,6 @@ build {
 
 // TestNet Section
 
-
-//source "openstack" "themelio-node-bhs-testnet" {
-//  flavor            = "$BHS_FLAVOUR"
-//  identity_endpoint = "https://auth.cloud.ovh.net/v3"
-//  image_name        = "themelio-node-bhs-testnet"
-//  networks          = ["$BHS_NETWORK_ID"]
-//  password          = "$OS_PASSWORD"
-//  region            = "BHS"
-//  source_image      = "$BHS_IMAGE_ID"
-//  ssh_ip_version    = "4"
-//  ssh_username      = "arch"
-//  tenant_id         = ""
-//  username          = "$OS_USERNAME"
-//}
-
 source "openstack" "themelio-node-bhs5-testnet" {
   flavor            = "$BHS5_FLAVOUR"
   identity_endpoint = "https://auth.cloud.ovh.net/v3"
@@ -525,21 +434,6 @@ source "openstack" "themelio-node-bhs5-testnet" {
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
-
-//source "openstack" "themelio-node-de-testnet" {
-//  flavor            = "$DE_FLAVOUR"
-//  identity_endpoint = "https://auth.cloud.ovh.net/v3"
-//  image_name        = "themelio-node-de-testnet"
-//  networks          = ["$DE_NETWORK_ID"]
-//  password          = "$OS_PASSWORD"
-//  region            = "DE"
-//  source_image      = "$DE_IMAGE_ID"
-//  ssh_ip_version    = "4"
-//  ssh_username      = "arch"
-//  tenant_id         = ""
-//  username          = "$OS_USERNAME"
-//}
-
 source "openstack" "themelio-node-de1-testnet" {
   flavor            = "$DE1_FLAVOUR"
   identity_endpoint = "https://auth.cloud.ovh.net/v3"
@@ -554,20 +448,6 @@ source "openstack" "themelio-node-de1-testnet" {
   username          = "$OS_USERNAME"
 }
 
-//source "openstack" "themelio-node-gra-testnet" {
-//  flavor            = "$GRA_FLAVOUR"
-//  identity_endpoint = "https://auth.cloud.ovh.net/v3"
-//  image_name        = "themelio-node-gra-testnet"
-//  networks          = ["$GRA_NETWORK_ID"]
-//  password          = "$OS_PASSWORD"
-//  region            = "GRA"
-//  source_image      = "$GRA_IMAGE_ID"
-//  ssh_ip_version    = "4"
-//  ssh_username      = "arch"
-//  tenant_id         = ""
-//  username          = "$OS_USERNAME"
-//}
-
 source "openstack" "themelio-node-gra5-testnet" {
   flavor            = "$GRA5_FLAVOUR"
   identity_endpoint = "https://auth.cloud.ovh.net/v3"
@@ -576,6 +456,34 @@ source "openstack" "themelio-node-gra5-testnet" {
   password          = "$OS_PASSWORD"
   region            = "GRA5"
   source_image      = "$GRA5_IMAGE_ID"
+  ssh_ip_version    = "4"
+  ssh_username      = "arch"
+  tenant_id         = ""
+  username          = "$OS_USERNAME"
+}
+
+source "openstack" "themelio-node-gra7-testnet" {
+  flavor            = "$GRA7_FLAVOUR"
+  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+  image_name        = "themelio-node-gra7-testnet"
+  networks          = ["$GRA5_NETWORK_ID"]
+  password          = "$OS_PASSWORD"
+  region            = "GRA7"
+  source_image      = "$GRA7_IMAGE_ID"
+  ssh_ip_version    = "4"
+  ssh_username      = "arch"
+  tenant_id         = ""
+  username          = "$OS_USERNAME"
+}
+
+source "openstack" "themelio-node-gra9-testnet" {
+  flavor            = "$GRA9_FLAVOUR"
+  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+  image_name        = "themelio-node-gra9-testnet"
+  networks          = ["$GRA9_NETWORK_ID"]
+  password          = "$OS_PASSWORD"
+  region            = "GRA9"
+  source_image      = "$GRA9_IMAGE_ID"
   ssh_ip_version    = "4"
   ssh_username      = "arch"
   tenant_id         = ""
@@ -596,20 +504,6 @@ source "openstack" "themelio-node-gra11-testnet" {
   username          = "$OS_USERNAME"
 }
 
-//source "openstack" "themelio-node-sbg-testnet" {
-//  flavor            = "$SBG_FLAVOUR"
-//  identity_endpoint = "https://auth.cloud.ovh.net/v3"
-//  image_name        = "themelio-node-sbg-testnet"
-//  networks          = ["$SBG_NETWORK_ID"]
-//  password          = "$OS_PASSWORD"
-//  region            = "SBG"
-//  source_image      = "$SBG_IMAGE_ID"
-//  ssh_ip_version    = "4"
-//  ssh_username      = "arch"
-//  tenant_id         = ""
-//  username          = "$OS_USERNAME"
-//}
-
 source "openstack" "themelio-node-sbg5-testnet" {
   flavor            = "$SBG5_FLAVOUR"
   identity_endpoint = "https://auth.cloud.ovh.net/v3"
@@ -624,19 +518,33 @@ source "openstack" "themelio-node-sbg5-testnet" {
   username          = "$OS_USERNAME"
 }
 
-//source "openstack" "themelio-node-uk-testnet" {
-//  flavor            = "$UK_FLAVOUR"
-//  identity_endpoint = "https://auth.cloud.ovh.net/v3"
-//  image_name        = "themelio-node-uk-testnet"
-//  networks          = ["$UK_NETWORK_ID"]
-//  password          = "$OS_PASSWORD"
-//  region            = "UK"
-//  source_image      = "$UK_IMAGE_ID"
-//  ssh_ip_version    = "4"
-//  ssh_username      = "arch"
-//  tenant_id         = ""
-//  username          = "$OS_USERNAME"
-//}
+source "openstack" "themelio-node-sgp1-testnet" {
+  flavor            = "$SGP1_FLAVOUR"
+  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+  image_name        = "themelio-node-sgp1-testnet"
+  networks          = ["$SGP1_NETWORK_ID"]
+  password          = "$OS_PASSWORD"
+  region            = "SGP1"
+  source_image      = "$SGP1_IMAGE_ID"
+  ssh_ip_version    = "4"
+  ssh_username      = "arch"
+  tenant_id         = ""
+  username          = "$OS_USERNAME"
+}
+
+source "openstack" "themelio-node-syd1-testnet" {
+  flavor            = "$SYD1_FLAVOUR"
+  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+  image_name        = "themelio-node-syd1-testnet"
+  networks          = ["$SYD1_NETWORK_ID"]
+  password          = "$OS_PASSWORD"
+  region            = "SYD1"
+  source_image      = "$SYD1_IMAGE_ID"
+  ssh_ip_version    = "4"
+  ssh_username      = "arch"
+  tenant_id         = ""
+  username          = "$OS_USERNAME"
+}
 
 source "openstack" "themelio-node-uk1-testnet" {
   flavor            = "$UK1_FLAVOUR"
@@ -652,20 +560,6 @@ source "openstack" "themelio-node-uk1-testnet" {
   username          = "$OS_USERNAME"
 }
 
-//source "openstack" "themelio-node-waw-testnet" {
-//  flavor            = "$WAW_FLAVOUR"
-//  identity_endpoint = "https://auth.cloud.ovh.net/v3"
-//  image_name        = "themelio-node-waw-testnet"
-//  networks          = ["$WAW_NETWORK_ID"]
-//  password          = "$OS_PASSWORD"
-//  region            = "WAW"
-//  source_image      = "$WAW_IMAGE_ID"
-//  ssh_ip_version    = "4"
-//  ssh_username      = "arch"
-//  tenant_id         = ""
-//  username          = "$OS_USERNAME"
-//}
-
 source "openstack" "themelio-node-waw1-testnet" {
   flavor            = "$WAW1_FLAVOUR"
   identity_endpoint = "https://auth.cloud.ovh.net/v3"
@@ -679,29 +573,6 @@ source "openstack" "themelio-node-waw1-testnet" {
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
-
-//build {
-//  sources = [
-//    "source.openstack.themelio-node-bhs-testnet",
-//  ]
-//
-//  provisioner "shell" {
-//    expect_disconnect = true
-//    inline            = [
-//      "sleep 30",
-//      "echo 'yes' | sudo pacman -Syu",
-//      "sudo reboot"
-//    ]
-//  }
-//
-//  provisioner "ansible" {
-//    groups = ["themelio_node"]
-//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
-//    extra_arguments = [
-//      "--extra-vars", "openstack_region=bhs-testnet"
-//    ]
-//  }
-//}
 
 build {
   sources = [
@@ -726,29 +597,6 @@ build {
   }
 }
 
-//build {
-//  sources = [
-//    "source.openstack.themelio-node-de-testnet",
-//  ]
-//
-//  provisioner "shell" {
-//    expect_disconnect = true
-//    inline            = [
-//      "sleep 30",
-//      "echo 'yes' | sudo pacman -Syu",
-//      "sudo reboot"
-//    ]
-//  }
-//
-//  provisioner "ansible" {
-//    groups = ["themelio_node"]
-//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
-//    extra_arguments = [
-//      "--extra-vars", "openstack_region=de-testnet"
-//    ]
-//  }
-//}
-
 build {
   sources = [
     "source.openstack.themelio-node-de1-testnet",
@@ -772,29 +620,6 @@ build {
   }
 }
 
-//build {
-//  sources = [
-//    "source.openstack.themelio-node-gra-testnet",
-//  ]
-//
-//  provisioner "shell" {
-//    expect_disconnect = true
-//    inline            = [
-//      "sleep 30",
-//      "echo 'yes' | sudo pacman -Syu",
-//      "sudo reboot"
-//    ]
-//  }
-//
-//  provisioner "ansible" {
-//    groups = ["themelio_node"]
-//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
-//    extra_arguments = [
-//      "--extra-vars", "openstack_region=gra-testnet"
-//    ]
-//  }
-//}
-
 build {
   sources = [
     "source.openstack.themelio-node-gra5-testnet",
@@ -814,6 +639,52 @@ build {
     playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra5-testnet"
+    ]
+  }
+}
+
+build {
+  sources = [
+    "source.openstack.themelio-node-gra7-testnet",
+  ]
+
+  provisioner "shell" {
+    expect_disconnect = true
+    inline            = [
+      "sleep 30",
+      "echo 'yes' | sudo pacman -Syu",
+      "sudo reboot"
+    ]
+  }
+
+  provisioner "ansible" {
+    groups = ["themelio_node"]
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
+    extra_arguments = [
+      "--extra-vars", "openstack_region=gra7-testnet"
+    ]
+  }
+}
+
+build {
+  sources = [
+    "source.openstack.themelio-node-gra9-testnet",
+  ]
+
+  provisioner "shell" {
+    expect_disconnect = true
+    inline            = [
+      "sleep 30",
+      "echo 'yes' | sudo pacman -Syu",
+      "sudo reboot"
+    ]
+  }
+
+  provisioner "ansible" {
+    groups = ["themelio_node"]
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
+    extra_arguments = [
+      "--extra-vars", "openstack_region=gra9-testnet"
     ]
   }
 }
@@ -841,29 +712,6 @@ build {
   }
 }
 
-//build {
-//  sources = [
-//    "source.openstack.themelio-node-sbg-testnet",
-//  ]
-//
-//  provisioner "shell" {
-//    expect_disconnect = true
-//    inline            = [
-//      "sleep 30",
-//      "echo 'yes' | sudo pacman -Syu",
-//      "sudo reboot"
-//    ]
-//  }
-//
-//  provisioner "ansible" {
-//    groups = ["themelio_node"]
-//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
-//    extra_arguments = [
-//      "--extra-vars", "openstack_region=sbg-testnet"
-//    ]
-//  }
-//}
-
 build {
   sources = [
     "source.openstack.themelio-node-sbg5-testnet",
@@ -887,28 +735,51 @@ build {
   }
 }
 
-//build {
-//  sources = [
-//    "source.openstack.themelio-node-uk-testnet",
-//  ]
-//
-//  provisioner "shell" {
-//    expect_disconnect = true
-//    inline            = [
-//      "sleep 30",
-//      "echo 'yes' | sudo pacman -Syu",
-//      "sudo reboot"
-//    ]
-//  }
-//
-//  provisioner "ansible" {
-//    groups = ["themelio_node"]
-//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
-//    extra_arguments = [
-//      "--extra-vars", "openstack_region=uk-testnet"
-//    ]
-//  }
-//}
+build {
+  sources = [
+    "source.openstack.themelio-node-sgp1-testnet",
+  ]
+
+  provisioner "shell" {
+    expect_disconnect = true
+    inline            = [
+      "sleep 30",
+      "echo 'yes' | sudo pacman -Syu",
+      "sudo reboot"
+    ]
+  }
+
+  provisioner "ansible" {
+    groups = ["themelio_node"]
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
+    extra_arguments = [
+      "--extra-vars", "openstack_region=sgp1-testnet"
+    ]
+  }
+}
+
+build {
+  sources = [
+    "source.openstack.themelio-node-syd1-testnet",
+  ]
+
+  provisioner "shell" {
+    expect_disconnect = true
+    inline            = [
+      "sleep 30",
+      "echo 'yes' | sudo pacman -Syu",
+      "sudo reboot"
+    ]
+  }
+
+  provisioner "ansible" {
+    groups = ["themelio_node"]
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
+    extra_arguments = [
+      "--extra-vars", "openstack_region=syd1-testnet"
+    ]
+  }
+}
 
 build {
   sources = [
@@ -932,49 +803,3 @@ build {
     ]
   }
 }
-
-//build {
-//  sources = [
-//    "source.openstack.themelio-node-waw-testnet",
-//  ]
-//
-//  provisioner "shell" {
-//    expect_disconnect = true
-//    inline            = [
-//      "sleep 30",
-//      "echo 'yes' | sudo pacman -Syu",
-//      "sudo reboot"
-//    ]
-//  }
-//
-//  provisioner "ansible" {
-//    groups = ["themelio_node"]
-//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
-//    extra_arguments = [
-//      "--extra-vars", "openstack_region=waw-testnet"
-//    ]
-//  }
-//}
-
-//build {
-//  sources = [
-//    "source.openstack.themelio-node-waw1-testnet",
-//  ]
-//
-//  provisioner "shell" {
-//    expect_disconnect = true
-//    inline            = [
-//      "sleep 30",
-//      "echo 'yes' | sudo pacman -Syu",
-//      "sudo reboot"
-//    ]
-//  }
-//
-//  provisioner "ansible" {
-//    groups = ["themelio_node"]
-//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
-//    extra_arguments = [
-//      "--extra-vars", "openstack_region=waw1-testnet"
-//    ]
-//  }
-//}
