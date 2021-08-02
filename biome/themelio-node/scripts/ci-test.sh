@@ -20,6 +20,8 @@ sudo bio pkg install --binlink --force "results/${pkg_artifact}"
 
 sudo useradd hab -s /bin/bash -p '*'
 
+export DISABLE_HEALTH_CHECK=true
+
 sudo bio svc load "${pkg_ident}"
 
 echo "Sleeping for 5 seconds for the service to start."

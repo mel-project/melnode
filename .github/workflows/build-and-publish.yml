@@ -68,7 +68,6 @@ jobs:
           BIOME_AUTH_TOKEN: ${{ secrets.BIOME_AUTH_TOKEN }}
           HABITAT_AUTH_TOKEN: ${{ secrets.HABITAT_AUTH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DISABLE_HEALTH_CHECK: true
           OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
           OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
           OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
