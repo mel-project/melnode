@@ -803,3 +803,26 @@ build {
     ]
   }
 }
+
+build {
+  sources = [
+    "source.openstack.themelio-node-waw1-testnet",
+  ]
+
+  provisioner "shell" {
+    expect_disconnect = true
+    inline            = [
+      "sleep 30",
+      "echo 'yes' | sudo pacman -Syu",
+      "sudo reboot"
+    ]
+  }
+
+  provisioner "ansible" {
+    groups = ["themelio_node"]
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
+    extra_arguments = [
+      "--extra-vars", "openstack_region=waw1-testnet"
+    ]
+  }
+}
