@@ -57,7 +57,7 @@ source "openstack" "themelio-node-gra7" {
   flavor            = "$GRA7_FLAVOUR"
   identity_endpoint = "https://auth.cloud.ovh.net/v3"
   image_name        = "themelio-node-gra7"
-  networks          = ["$GRA5_NETWORK_ID"]
+  networks          = ["$GRA7_NETWORK_ID"]
   password          = "$OS_PASSWORD"
   region            = "GRA7"
   source_image      = "$GRA7_IMAGE_ID"
@@ -466,7 +466,7 @@ source "openstack" "themelio-node-gra7-testnet" {
   flavor            = "$GRA7_FLAVOUR"
   identity_endpoint = "https://auth.cloud.ovh.net/v3"
   image_name        = "themelio-node-gra7-testnet"
-  networks          = ["$GRA5_NETWORK_ID"]
+  networks          = ["$GRA7_NETWORK_ID"]
   password          = "$OS_PASSWORD"
   region            = "GRA7"
   source_image      = "$GRA7_IMAGE_ID"
