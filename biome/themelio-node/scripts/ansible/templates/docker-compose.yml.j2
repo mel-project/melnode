@@ -6,6 +6,8 @@ services:
       --strategy rolling --url https://bldr.habitat.sh
       --group {{ openstack_region }}
       --update-condition latest
+    ports:
+      - 11814:11814
     volumes:
       - themelio-node:/hab/svc/themelio-node/data
 
