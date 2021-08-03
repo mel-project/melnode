@@ -72,17 +72,16 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: SharedSt
     };
     const SLOW_TIME: Duration = Duration::from_millis(5000);
     const FAST_TIME: Duration = Duration::from_millis(10);
-    let mut random_peer = network.routes().first().cloned();
     loop {
+        let random_peer = network.routes().first().cloned();
         if let Some(peer) = random_peer {
             log::trace!("{}: picked random peer {} for blksync", tag(), peer);
             let client = NodeClient::new(netid, peer);
 
-            let res = attempt_blksync(&client, &storage).await;
+            let res = attempt_blksync(peer, &client, &storage).await;
             match res {
                 Err(e) => {
                     log::warn!("{}: failed to blksync with {}: {:?}", tag(), peer, e);
-                    random_peer = network.routes().first().cloned();
                     smol::Timer::after(FAST_TIME).await;
                 }
                 Ok(blklen) => {
@@ -91,19 +90,21 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: SharedSt
                         smol::Timer::after(FAST_TIME).await;
                     } else {
                         smol::Timer::after(SLOW_TIME).await;
-                        random_peer = network.routes().first().cloned()
                     }
                 }
             }
         } else {
             smol::Timer::after(SLOW_TIME).await;
-            random_peer = network.routes().first().cloned()
         }
     }
 }
 
 /// Attempts a sync using the given given node client.
-async fn attempt_blksync(client: &NodeClient, storage: &SharedStorage) -> anyhow::Result<usize> {
+async fn attempt_blksync(
+    addr: SocketAddr,
+    client: &NodeClient,
+    storage: &SharedStorage,
+) -> anyhow::Result<usize> {
     let their_highest = client
         .get_summary()
         .await
@@ -113,7 +114,7 @@ async fn attempt_blksync(client: &NodeClient, storage: &SharedStorage) -> anyhow
     if their_highest <= my_highest {
         return Ok(0);
     }
-    let height_stream = futures_util::stream::iter((my_highest..=their_highest).skip(1));
+    let height_stream = futures_util::stream::iter((my_highest..=their_highest).skip(1).take(1024));
     let lookup_tx = |tx| storage.read().mempool().lookup_recent_tx(tx);
     let mut result_stream = height_stream
         .map(Ok::<_, anyhow::Error>)
@@ -127,7 +128,11 @@ async fn attempt_blksync(client: &NodeClient, storage: &SharedStorage) -> anyhow
     let mut toret = 0;
     while let Some(res) = result_stream.try_next().await? {
         let (block, proof): (Block, ConsensusProof) = res;
-        log::debug!("fully resolved block {} from network", block.header.height);
+        log::debug!(
+            "fully resolved block {} from peer {}",
+            block.header.height,
+            addr
+        );
         storage
             .write()
             .apply_block(block, proof)
