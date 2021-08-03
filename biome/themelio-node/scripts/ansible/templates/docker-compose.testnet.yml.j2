@@ -1,0 +1,16 @@
+version: "3.9"
+services:
+  themelio-node:
+    image: ghcr.io/themeliolabs/themelio-node:latest
+    environment:
+      - TESTNET=true
+    command:
+      --strategy rolling --url https://bldr.habitat.sh
+      --group {{ openstack_region }}
+      --update-condition latest
+    volumes:
+      - themelio-node:/hab/svc/themelio-node/data
+
+volumes:
+  themelio-node:
+    name: themelio-node
