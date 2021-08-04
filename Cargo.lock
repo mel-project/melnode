@@ -1228,9 +1228,9 @@ dependencies = [
 
 [[package]]
 name = "melnet"
-version = "0.1.2"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a07ebffa73cfdcaf51b113ec5b6bf2e5c287548652bb8e01ad9e4a0385c82a1"
+checksum = "d32539cac61d9089f152affa401b08d01d9cd2f6e150d9cee1e55faaa2780dc9"
 dependencies = [
  "anyhow",
  "async-net",
