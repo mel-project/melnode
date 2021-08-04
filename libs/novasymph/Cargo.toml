@@ -11,20 +11,20 @@ version = "1.0.1"
 features = ["serde"]
 
 [dependencies.serde]
-version = "1.0.126"
+version = "1.0.127"
 features = ["derive"]
 
 [dependencies]
 anyhow = "1.0.42"
 async-oneshot = "0.5.0"
-async-trait = "0.1.50"
+async-trait = "0.1.51"
 blkdb = { path = "../blkdb" }
 env_logger = "0.8.4"
-fastrand = "1.4.1"
-futures-util = "0.3.15"
+fastrand = "1.5.0"
+futures-util = "0.3.16"
 im = "15.0.0"
 log = "0.4.14"
-melnet = "0.1.0"
+melnet = "0.1.2"
 novasmt = "0.1.9"
 once_cell = "1.8.0"
 parking_lot = "0.11.1"
@@ -32,6 +32,6 @@ smol = "1.2.5"
 smol-timeout = "0.6.0"
 stacker = "0.1.14"
 stdcode = "0.1.2"
-themelio-stf = "0.5.0"
+themelio-stf = "0.5.3"
 thiserror = "1.0.26"
 tmelcrypt = "0.1.0"

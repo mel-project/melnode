@@ -88,7 +88,7 @@ impl ChainState {
                     last = last.next_state().seal(None);
                     to_apply.push(last.to_block());
                 }
-                if let Err(err) = last.apply_block(&proposed_block) {
+                if let Err(err) = last.apply_block(proposed_block) {
                     log::warn!("problem applying block: {:?}", err);
                     return Err(ProposalError::InvalidBlock);
                 }
@@ -102,7 +102,7 @@ impl ChainState {
         }
         self.inner
             .apply_block(
-                &proposed_block,
+                proposed_block,
                 &stdcode::serialize(&StreamletMetadata {
                     proposer,
                     proposal_sig,
