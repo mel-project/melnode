@@ -30,9 +30,14 @@ do_check() {
 }
 
 do_build() {
-  cp -R /src/commands "${pkg_full_path}"
 
-  cp -R /src/libs "${pkg_full_path}"
+  mkdir -p "${pkg_full_path}/commands"
+
+  mkdir -p "${pkg_full_path}/libs"
+
+  cp -R /src/commands/* "${pkg_full_path}/commands/"
+
+  cp -R /src/libs/* "${pkg_full_path}/libs/"
 
   cp /src/Cargo.lock "${pkg_full_path}"
 
