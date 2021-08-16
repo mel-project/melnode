@@ -13,7 +13,7 @@ source "${PLAN_DIRECTORY}/plan.sh"
 
 sudo bio sup run &
 
-bio pkg build "${pkg_name}"
+bio pkg build "biome/${pkg_name}"
 
 source results/last_build.env
 
