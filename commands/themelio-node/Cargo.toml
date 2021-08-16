@@ -1,7 +1,7 @@
 [package]
 name = "themelio-node"
 version = "0.2.0"
-authors = ["nullchinchilla <nullchinchilla@pm.me>"]
+authors = ["nullchinchilla <nullchinchilla@pm.me>", "Meade Kincke <meade@themelio.org"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
