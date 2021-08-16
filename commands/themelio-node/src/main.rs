@@ -1,16 +1,22 @@
 mod args;
+#[cfg(feature = "metrics")]
+mod prometheus;
 mod protocols;
 mod storage;
 
+use crate::protocols::{NodeProtocol, StakerProtocol};
+use crate::storage::SharedStorage;
+
 use args::Args;
+#[cfg(feature = "metrics")]
+use async_compat::Compat;
 use structopt::StructOpt;
 use tracing::instrument;
 
-use crate::protocols::{NodeProtocol, StakerProtocol};
 
-// #[cfg(unix)]
-// #[global_allocator]
-// static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+#[cfg(unix)]
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[instrument]
 fn main() -> anyhow::Result<()> {
@@ -30,7 +36,7 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
     log::info!("themelio-core v{} initializing...", VERSION);
     let genesis = opt.genesis_config().await?;
     let netid = genesis.network;
-    let storage = opt.storage().await?;
+    let storage: SharedStorage = opt.storage().await?;
     let bootstrap = opt.bootstrap().await?;
     log::info!("bootstrapping with {:?}", bootstrap);
     let _node_prot = NodeProtocol::new(
@@ -59,6 +65,12 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
     } else {
         None
     };
+
+    #[cfg(feature = "metrics")]
+    crate::prometheus::GLOBAL_STORAGE.set(storage).ok().expect("Could not write to GLOBAL_STORAGE");
+
+    #[cfg(feature = "metrics")]
+    Compat::new(crate::prometheus::prometheus()).await;
 
     smol::future::pending().await
 }

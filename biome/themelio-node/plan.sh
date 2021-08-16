@@ -1,14 +1,10 @@
 pkg_name=themelio-node
 pkg_origin=themelio
-pkg_repository_name="themelio-core"
 pkg_maintainer="Meade Kincke <meade@themelio.org>"
-pkg_version="0.1.0"
+pkg_version="0.2.0"
 pkg_license=("MPL-2.0")
-pkg_full_path="${HAB_CACHE_SRC_PATH}/${pkg_name}-${pkg_version}/${pkg_repository_name}"
-pkg_build_deps=(
-  core/git
-  core/rust
-)
+pkg_full_path="${HAB_CACHE_SRC_PATH}/${pkg_name}"
+pkg_build_deps=(core/rust)
 pkg_deps=(
   core/curl
   core/gcc-libs
@@ -17,8 +13,9 @@ pkg_deps=(
 pkg_bin_dirs=(bin)
 pkg_exports=(
   [port]=port
+  [metrics-port]=metrics-port
 )
-pkg_exposes=(port)
+pkg_exposes=(port metrics-port)
 pkg_svc_user="root"
 pkg_svc_group="$pkg_svc_user"
 
@@ -33,11 +30,17 @@ do_check() {
 }
 
 do_build() {
-  git clone "https://github.com/themeliolabs/${pkg_repository_name}.git" "${pkg_full_path}"
+  cp -r /src/commands "${pkg_full_path}"
+
+  cp -r /src/libs "${pkg_full_path}"
+
+  cp /src/Cargo.lock "${pkg_full_path}"
+
+  cp /src/Cargo.toml "${pkg_full_path}"
 
   cd "${pkg_full_path}"
 
-  cargo build --locked --release --verbose
+  cargo build --locked --release --features metrics --verbose
 }
 
 do_install() {

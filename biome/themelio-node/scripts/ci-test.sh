@@ -6,6 +6,7 @@ SCRIPTS_DIRECTORY="$(dirname "${0}")"
 PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
 
 sudo bio pkg install --binlink core/bats
+sudo bio pkg install --binlink core/curl
 sudo bio pkg install --binlink core/nmap
 
 source "${PLAN_DIRECTORY}/plan.sh"
