@@ -40,6 +40,12 @@ do_build() {
 
   cd "${pkg_full_path}"
 
+  echo "Listing ${pkg_full_path}"
+  ls -la "${pkg_full_path}"
+
+  echo "Listing ${pkg_full_path}/commands/themelio-node"
+  ls -la "${pkg_full_path}/commands/themelio-node"
+
   cargo build --locked --release --features metrics --verbose
 }
 
