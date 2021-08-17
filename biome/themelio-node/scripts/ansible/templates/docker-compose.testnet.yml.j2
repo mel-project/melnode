@@ -5,7 +5,7 @@ services:
     environment:
       - TESTNET=true
     command:
-      --strategy rolling --url https://bldr.habitat.sh
+      --strategy at-once --url https://bldr.habitat.sh
       --group {{ openstack_region }}
       --update-condition latest
     ports:
