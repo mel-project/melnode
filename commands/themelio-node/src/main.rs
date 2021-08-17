@@ -15,7 +15,7 @@ use crate::protocols::{NodeProtocol, StakerProtocol};
 #[instrument]
 fn main() -> anyhow::Result<()> {
     env_logger::Builder::from_env("RUST_LOG")
-        .parse_filters("themelio_node=debug,warn")
+        // .parse_filters("themelio_node=debug,warn")
         .init();
     let opts = Args::from_args();
 
