@@ -74,4 +74,4 @@ jobs:
           OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
           OS_USERNAME: ${{ secrets.OS_USERNAME }}
           OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
-        run: cd biome && ./themelio-node/scripts/ci-publish.sh
+        run: ./biome/themelio-node/scripts/ci-publish.sh

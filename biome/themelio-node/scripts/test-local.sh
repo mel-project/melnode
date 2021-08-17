@@ -6,6 +6,7 @@ TESTDIR="$(dirname "${0}")"
 PLANDIR="$(dirname "${TESTDIR}")"
 
 bio pkg install --binlink core/bats
+bio pkg install --binlink core/curl
 bio pkg install --binlink core/nmap
 
 source "${PLANDIR}/plan.sh"

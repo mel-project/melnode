@@ -6,13 +6,14 @@ SCRIPTS_DIRECTORY="$(dirname "${0}")"
 PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
 
 sudo bio pkg install --binlink core/bats
+sudo bio pkg install --binlink core/curl
 sudo bio pkg install --binlink core/nmap
 
 source "${PLAN_DIRECTORY}/plan.sh"
 
 sudo bio sup run &
 
-bio pkg build "${pkg_name}"
+bio pkg build "biome/${pkg_name}"
 
 source results/last_build.env
 

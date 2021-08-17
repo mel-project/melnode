@@ -20,3 +20,8 @@ This repository contains the core node implementation of Themelio, as well as so
 ## Usage
 
 Have a look in [how-to-use](/how-to-use).
+
+
+## Metrics
+
+Read [here](Metrics.md).
