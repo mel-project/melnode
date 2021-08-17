@@ -64,14 +64,32 @@ impl Args {
         self.advertise
     }
 
+    #[cfg(not(feature="metrics"))]
     /// Derives the genesis configuration from the arguments
     pub async fn genesis_config(&self) -> anyhow::Result<GenesisConfig> {
         if let Some(path) = &self.override_genesis {
-            let genesis_toml = smol::fs::read(&path)
+            let genesis_toml: Vec<u8> = smol::fs::read(&path)
                 .await
                 .context("cannot read genesis config")?;
             Ok(toml::from_slice(&genesis_toml).context("genesis config not a valid TOML file")?)
         } else if self.testnet {
+            Ok(GenesisConfig::std_testnet())
+        } else {
+            Ok(GenesisConfig::std_mainnet())
+        }
+    }
+
+    #[cfg(feature = "metrics")]
+    /// Derives the genesis configuration from the arguments
+    pub async fn genesis_config(&self) -> anyhow::Result<GenesisConfig> {
+        if let Some(path) = &self.override_genesis {
+            let genesis_toml: Vec<u8> = smol::fs::read(&path)
+                .await
+                .context("cannot read genesis config")?;
+            Ok(toml::from_slice(&genesis_toml).context("genesis config not a valid TOML file")?)
+        } else if self.testnet {
+            *crate::prometheus::NETWORK.write().expect("Could not get a write lock on NETWORK") = "testnet";
+
             Ok(GenesisConfig::std_testnet())
         } else {
             Ok(GenesisConfig::std_mainnet())

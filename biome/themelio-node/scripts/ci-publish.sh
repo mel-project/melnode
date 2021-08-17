@@ -8,7 +8,7 @@ PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
 source "${PLAN_DIRECTORY}/plan.sh"
 
 
-bio pkg build "${pkg_name}"
+bio pkg build "biome/${pkg_name}"
 
 source results/last_build.env
 

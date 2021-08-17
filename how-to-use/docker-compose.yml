@@ -17,6 +17,7 @@ services:
 #      RUST_LOG: debug
     ports:
       - 11814:11814
+      - 8080:8080
     volumes:
       - themelio-node:/hab/svc/themelio-node/data
 
