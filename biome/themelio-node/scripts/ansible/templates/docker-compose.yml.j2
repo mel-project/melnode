@@ -6,6 +6,7 @@ services:
       --strategy at-once --url https://bldr.habitat.sh
       --group {{ openstack_region }}
       --update-condition latest
+      --auto-update
     ports:
       - 11814:11814
       - 8080:8080
