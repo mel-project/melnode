@@ -44,16 +44,30 @@ do_build() {
   cp /src/Cargo.toml "${pkg_full_path}"
 
   cd "${pkg_full_path}"
-
-  cargo build --locked --release --features metrics --verbose
+  
+  if [ -n "${DEBUG_BUILD}" ]; then
+    cargo build --locked --features metrics --verbose
+  else
+    cargo build --locked --release --features metrics --verbose
+  fi
 }
 
 do_install() {
-  local release="${pkg_full_path}/target/release/${pkg_name}"
-  local target="${pkg_prefix}/target"
-  local application_path="${pkg_prefix}/bin/"
+  if [ -n "${DEBUG_BUILD}" ]; then
+    local release="${pkg_full_path}/target/debug/${pkg_name}"
+    local target="${pkg_prefix}/target"
+    local application_path="${pkg_prefix}/bin/"
 
-  mv  "$release" "$application_path"
+    mv  "$release" "$application_path"
 
-  rm -rf "$target"
+    rm -rf "$target"
+  else
+    local release="${pkg_full_path}/target/release/${pkg_name}"
+    local target="${pkg_prefix}/target"
+    local application_path="${pkg_prefix}/bin/"
+
+    mv  "$release" "$application_path"
+
+    rm -rf "$target"
+  fi
 }
