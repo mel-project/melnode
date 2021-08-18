@@ -23,6 +23,12 @@ do_verify() {
   return 0
 }
 
+do_setup_environment() {
+  if [ -n "${DEBUG_BUILD}" ]; then
+    export DEBUG_BUILD=true
+  fi
+}
+
 do_check() {
   cd "${pkg_full_path}"
 
