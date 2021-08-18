@@ -23,12 +23,6 @@ do_verify() {
   return 0
 }
 
-do_setup_environment() {
-  if [ -n "${DEBUG_BUILD}" ]; then
-    export DEBUG_BUILD=true
-  fi
-}
-
 do_check() {
   cd "${pkg_full_path}"
 
@@ -51,7 +45,7 @@ do_build() {
 
   cd "${pkg_full_path}"
   
-  if [ -n "${DEBUG_BUILD}" ]; then
+  if [ -n "${HAB_STUDIO_SECRET_DEBUG_BUILD}" ]; then
     cargo build --locked --features metrics --verbose
   else
     cargo build --locked --release --features metrics --verbose
@@ -59,7 +53,7 @@ do_build() {
 }
 
 do_install() {
-  if [ -n "${DEBUG_BUILD}" ]; then
+  if [ -n "${HAB_STUDIO_SECRET_DEBUG_BUILD}" ]; then
     local release="${pkg_full_path}/target/debug/${pkg_name}"
     local target="${pkg_prefix}/target"
     local application_path="${pkg_prefix}/bin/"

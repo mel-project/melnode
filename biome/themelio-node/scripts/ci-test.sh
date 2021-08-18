@@ -13,7 +13,9 @@ source "${PLAN_DIRECTORY}/plan.sh"
 
 sudo bio sup run &
 
-env DEBUG_BUILD=true bio pkg build "biome/${pkg_name}"
+export HAB_STUDIO_SECRET_DEBUG_BUILD=true
+
+bio pkg build "biome/${pkg_name}"
 
 source results/last_build.env
 

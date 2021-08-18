@@ -28,7 +28,7 @@ if [ -n "${SKIP_BUILD}" ]; then
   fi
 else
   pushd "${PLANDIR}"
-  env DEBUG_BUILD=true build
+  build
   popd
 
   source results/last_build.env

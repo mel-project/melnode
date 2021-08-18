@@ -18,18 +18,18 @@ jobs:
       - name: Update Apt
         run: sudo apt update
 
-      - name: Install Musl
-        run: sudo apt install -y musl musl-tools
+#      - name: Install Musl
+#        run: sudo apt install -y musl musl-tools
 
-      - name: Add Musl Target
-        run: rustup target add x86_64-unknown-linux-musl
+#      - name: Add Musl Target
+#        run: rustup target add x86_64-unknown-linux-musl
 
 #      - name: Run Musl Tests
 #        run: cargo test --locked --target x86_64-unknown-linux-musl --features metrics --verbose
 
       - name: Download Biome
         env:
-          BIOME_VERSION: "1.6.300"
+          BIOME_VERSION: "1.6.372"
         run: curl -L "https://github.com/biome-sh/biome/releases/download/$BIOME_VERSION/bio-$BIOME_VERSION-x86_64-linux.tar.gz" | tar zxv
 
       - name: Install Biome
