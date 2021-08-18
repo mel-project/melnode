@@ -13,6 +13,7 @@ services:
     command:
       --strategy at-once --url https://bldr.habitat.sh
       --update-condition latest
+      --auto-update
 #    environment:
 #      RUST_LOG: debug
     ports:

@@ -30,7 +30,6 @@ do_check() {
 }
 
 do_build() {
-
   mkdir -p "${pkg_full_path}/commands"
 
   mkdir -p "${pkg_full_path}/libs"
@@ -45,11 +44,11 @@ do_build() {
 
   cd "${pkg_full_path}"
 
-  cargo build --locked --release --features metrics --verbose
+  cargo build --locked --features metrics --verbose
 }
 
 do_install() {
-  local release="${pkg_full_path}/target/release/${pkg_name}"
+  local release="${pkg_full_path}/target/debug/${pkg_name}"
   local target="${pkg_prefix}/target"
   local application_path="${pkg_prefix}/bin/"
 

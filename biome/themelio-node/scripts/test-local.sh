@@ -3,13 +3,15 @@
 set -e
 
 TESTDIR="$(dirname "${0}")"
-PLANDIR="$(dirname "${TESTDIR}")"
+PLAN_DIRECTORY="$(dirname "${TESTDIR}")"
 
 bio pkg install --binlink core/bats
 bio pkg install --binlink core/curl
 bio pkg install --binlink core/nmap
 
-source "${PLANDIR}/plan.sh"
+cp "${PLAN_DIRECTORY}/plan-debug.sh" "${PLAN_DIRECTORY}/plan.sh"
+
+source "${PLAN_DIRECTORY}/plan.sh"
 
 if [ -n "${SKIP_BUILD}" ]; then
   source results/last_build.env
@@ -27,7 +29,7 @@ if [ -n "${SKIP_BUILD}" ]; then
     bio svc load "${pkg_ident}"
   fi
 else
-  pushd "${PLANDIR}"
+  pushd "${PLAN_DIRECTORY}"
   build
   popd
 
@@ -53,3 +55,5 @@ sleep 5
 bats "${TESTDIR}/test.bats"
 
 bio svc unload "${pkg_ident}" || true
+
+rm "${PLAN_DIRECTORY}/plan.sh"
