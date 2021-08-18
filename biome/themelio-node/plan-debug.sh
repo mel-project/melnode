@@ -30,7 +30,6 @@ do_check() {
 }
 
 do_build() {
-
   mkdir -p "${pkg_full_path}/commands"
 
   mkdir -p "${pkg_full_path}/libs"
@@ -44,30 +43,16 @@ do_build() {
   cp /src/Cargo.toml "${pkg_full_path}"
 
   cd "${pkg_full_path}"
-  
-  if [ -n "${HAB_STUDIO_SECRET_DEBUG_BUILD}" ]; then
-    cargo build --locked --features metrics --verbose
-  else
-    cargo build --locked --release --features metrics --verbose
-  fi
+
+  cargo build --locked --features metrics --verbose
 }
 
 do_install() {
-  if [ -n "${HAB_STUDIO_SECRET_DEBUG_BUILD}" ]; then
-    local release="${pkg_full_path}/target/debug/${pkg_name}"
-    local target="${pkg_prefix}/target"
-    local application_path="${pkg_prefix}/bin/"
+  local release="${pkg_full_path}/target/debug/${pkg_name}"
+  local target="${pkg_prefix}/target"
+  local application_path="${pkg_prefix}/bin/"
 
-    mv  "$release" "$application_path"
+  mv  "$release" "$application_path"
 
-    rm -rf "$target"
-  else
-    local release="${pkg_full_path}/target/release/${pkg_name}"
-    local target="${pkg_prefix}/target"
-    local application_path="${pkg_prefix}/bin/"
-
-    mv  "$release" "$application_path"
-
-    rm -rf "$target"
-  fi
+  rm -rf "$target"
 }

@@ -5,6 +5,8 @@ set -ex
 export SCRIPTS_DIRECTORY="$(dirname "${0}")"
 PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
 
+cp "${PLAN_DIRECTORY}/plan-release.sh" "${PLAN_DIRECTORY}/plan.sh"
+
 source "${PLAN_DIRECTORY}/plan.sh"
 
 
