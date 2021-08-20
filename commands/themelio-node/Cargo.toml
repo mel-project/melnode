@@ -1,6 +1,6 @@
 [package]
 name = "themelio-node"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["nullchinchilla <nullchinchilla@pm.me>", "Meade Kincke <meade@themelio.org"]
 edition = "2018"
 
@@ -26,8 +26,8 @@ default-net = "0.2.0"
 env_logger = "0.9.0"
 fastrand = "1.5.0"
 futures-util = "0.3.16"
+gethostname = "0.2.1"
 hex = "0.4.3"
-hostname = "0.3.1"
 im = "15.0.0"
 log = "0.4.14"
 lru = "0.6.6"

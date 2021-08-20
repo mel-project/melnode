@@ -1,7 +1,7 @@
 pkg_name=themelio-node
 pkg_origin=themelio
 pkg_maintainer="Meade Kincke <meade@themelio.org>"
-pkg_version="0.2.0"
+pkg_version="0.2.1"
 pkg_license=("MPL-2.0")
 pkg_full_path="${HAB_CACHE_SRC_PATH}/${pkg_name}"
 pkg_build_deps=(core/rust)
