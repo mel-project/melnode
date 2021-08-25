@@ -109,33 +109,33 @@ source "openstack" "themelio-node-sbg5" {
   username          = "$OS_USERNAME"
 }
 
-//source "openstack" "themelio-node-sgp1" {
-//  flavor            = "$SGP1_FLAVOUR"
-//  identity_endpoint = "https://auth.cloud.ovh.net/v3"
-//  image_name        = "themelio-node-sgp1"
-//  networks          = ["$SGP1_NETWORK_ID"]
-//  password          = "$OS_PASSWORD"
-//  region            = "SGP1"
-//  source_image      = "$SGP1_IMAGE_ID"
-//  ssh_ip_version    = "4"
-//  ssh_username      = "arch"
-//  tenant_id         = ""
-//  username          = "$OS_USERNAME"
-//}
-//
-//source "openstack" "themelio-node-syd1" {
-//  flavor            = "$SYD1_FLAVOUR"
-//  identity_endpoint = "https://auth.cloud.ovh.net/v3"
-//  image_name        = "themelio-node-syd1"
-//  networks          = ["$SYD1_NETWORK_ID"]
-//  password          = "$OS_PASSWORD"
-//  region            = "SYD1"
-//  source_image      = "$SYD1_IMAGE_ID"
-//  ssh_ip_version    = "4"
-//  ssh_username      = "arch"
-//  tenant_id         = ""
-//  username          = "$OS_USERNAME"
-//}
+source "openstack" "themelio-node-sgp1" {
+  flavor            = "$SGP1_FLAVOUR"
+  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+  image_name        = "themelio-node-sgp1"
+  networks          = ["$SGP1_NETWORK_ID"]
+  password          = "$OS_PASSWORD"
+  region            = "SGP1"
+  source_image      = "$SGP1_IMAGE_ID"
+  ssh_ip_version    = "4"
+  ssh_username      = "arch"
+  tenant_id         = ""
+  username          = "$OS_USERNAME"
+}
+
+source "openstack" "themelio-node-syd1" {
+  flavor            = "$SYD1_FLAVOUR"
+  identity_endpoint = "https://auth.cloud.ovh.net/v3"
+  image_name        = "themelio-node-syd1"
+  networks          = ["$SYD1_NETWORK_ID"]
+  password          = "$OS_PASSWORD"
+  region            = "SYD1"
+  source_image      = "$SYD1_IMAGE_ID"
+  ssh_ip_version    = "4"
+  ssh_username      = "arch"
+  tenant_id         = ""
+  username          = "$OS_USERNAME"
+}
 
 source "openstack" "themelio-node-uk1" {
   flavor            = "$UK1_FLAVOUR"
@@ -326,51 +326,51 @@ build {
   }
 }
 
-//build {
-//  sources = [
-//    "source.openstack.themelio-node-sgp1",
-//  ]
-//
-//  provisioner "shell" {
-//    expect_disconnect = true
-//    inline            = [
-//      "sleep 30",
-//      "echo 'yes' | sudo pacman -Syu",
-//      "sudo reboot"
-//    ]
-//  }
-//
-//  provisioner "ansible" {
-//    groups = ["themelio_node"]
-//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
-//    extra_arguments = [
-//      "--extra-vars", "openstack_region=sgp1"
-//    ]
-//  }
-//}
-//
-//build {
-//  sources = [
-//    "source.openstack.themelio-node-syd1",
-//  ]
-//
-//  provisioner "shell" {
-//    expect_disconnect = true
-//    inline            = [
-//      "sleep 30",
-//      "echo 'yes' | sudo pacman -Syu",
-//      "sudo reboot"
-//    ]
-//  }
-//
-//  provisioner "ansible" {
-//    groups = ["themelio_node"]
-//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
-//    extra_arguments = [
-//      "--extra-vars", "openstack_region=syd1"
-//    ]
-//  }
-//}
+build {
+  sources = [
+    "source.openstack.themelio-node-sgp1",
+  ]
+
+  provisioner "shell" {
+    expect_disconnect = true
+    inline            = [
+      "sleep 30",
+      "echo 'yes' | sudo pacman -Syu",
+      "sudo reboot"
+    ]
+  }
+
+  provisioner "ansible" {
+    groups = ["themelio_node"]
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    extra_arguments = [
+      "--extra-vars", "openstack_region=sgp1"
+    ]
+  }
+}
+
+build {
+  sources = [
+    "source.openstack.themelio-node-syd1",
+  ]
+
+  provisioner "shell" {
+    expect_disconnect = true
+    inline            = [
+      "sleep 30",
+      "echo 'yes' | sudo pacman -Syu",
+      "sudo reboot"
+    ]
+  }
+
+  provisioner "ansible" {
+    groups = ["themelio_node"]
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    extra_arguments = [
+      "--extra-vars", "openstack_region=syd1"
+    ]
+  }
+}
 
 build {
   sources = [
@@ -735,51 +735,51 @@ build {
   }
 }
 
-//build {
-//  sources = [
-//    "source.openstack.themelio-node-sgp1-testnet",
-//  ]
-//
-//  provisioner "shell" {
-//    expect_disconnect = true
-//    inline            = [
-//      "sleep 30",
-//      "echo 'yes' | sudo pacman -Syu",
-//      "sudo reboot"
-//    ]
-//  }
-//
-//  provisioner "ansible" {
-//    groups = ["themelio_node"]
-//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
-//    extra_arguments = [
-//      "--extra-vars", "openstack_region=sgp1-testnet"
-//    ]
-//  }
-//}
-//
-//build {
-//  sources = [
-//    "source.openstack.themelio-node-syd1-testnet",
-//  ]
-//
-//  provisioner "shell" {
-//    expect_disconnect = true
-//    inline            = [
-//      "sleep 30",
-//      "echo 'yes' | sudo pacman -Syu",
-//      "sudo reboot"
-//    ]
-//  }
-//
-//  provisioner "ansible" {
-//    groups = ["themelio_node"]
-//    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
-//    extra_arguments = [
-//      "--extra-vars", "openstack_region=syd1-testnet"
-//    ]
-//  }
-//}
+build {
+  sources = [
+    "source.openstack.themelio-node-sgp1-testnet",
+  ]
+
+  provisioner "shell" {
+    expect_disconnect = true
+    inline            = [
+      "sleep 30",
+      "echo 'yes' | sudo pacman -Syu",
+      "sudo reboot"
+    ]
+  }
+
+  provisioner "ansible" {
+    groups = ["themelio_node"]
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
+    extra_arguments = [
+      "--extra-vars", "openstack_region=sgp1-testnet"
+    ]
+  }
+}
+
+build {
+  sources = [
+    "source.openstack.themelio-node-syd1-testnet",
+  ]
+
+  provisioner "shell" {
+    expect_disconnect = true
+    inline            = [
+      "sleep 30",
+      "echo 'yes' | sudo pacman -Syu",
+      "sudo reboot"
+    ]
+  }
+
+  provisioner "ansible" {
+    groups = ["themelio_node"]
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
+    extra_arguments = [
+      "--extra-vars", "openstack_region=syd1-testnet"
+    ]
+  }
+}
 
 build {
   sources = [
