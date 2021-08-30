@@ -5,3 +5,4 @@ sql.db
 perf.data
 perf.data*
 /results
+*.output
