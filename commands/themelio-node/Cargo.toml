@@ -26,7 +26,7 @@ default-net = "0.2.0"
 env_logger = "0.9.0"
 fastrand = "1.5.0"
 futures-util = "0.3.16"
-gethostname = "0.2.1"
+gethostname = { version = "0.2.1", optional = true }
 hex = "0.4.3"
 im = "15.0.0"
 log = "0.4.14"
@@ -55,4 +55,4 @@ tracing-subscriber = "0.2.19"
 mimalloc = "0.1.26"
 
 [features]
-metrics = ["prometheus", "rweb", "systemstat"]
+metrics = ["prometheus", "gethostname", "rweb", "systemstat"]
