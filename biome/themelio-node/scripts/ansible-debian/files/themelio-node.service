@@ -1,0 +1,12 @@
+[Unit]
+Description=themelio-node
+Requires=docker.service
+After=docker.service
+[Service]
+Restart=always
+User=debian
+ExecStartPre=/usr/local/bin/docker-compose -f /home/debian/compose/docker-compose.yml down -v
+ExecStart=/usr/bin/bash -c 'HOSTNAME=$HOSTNAME exec /usr/local/bin/docker-compose -f /home/debian/compose/docker-compose.yml up'
+ExecStop=/usr/local/bin/docker-compose -f /home/debian/compose/docker-compose.yml down -v
+[Install]
+WantedBy=multi-user.target

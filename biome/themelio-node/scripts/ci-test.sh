@@ -9,9 +9,13 @@ sudo bio pkg install --binlink core/bats
 sudo bio pkg install --binlink core/curl
 sudo bio pkg install --binlink core/nmap
 
+cp "${PLAN_DIRECTORY}/plan-debug.sh" "${PLAN_DIRECTORY}/plan.sh"
+
 source "${PLAN_DIRECTORY}/plan.sh"
 
 sudo bio sup run &
+
+export HAB_STUDIO_SECRET_DEBUG_BUILD=true
 
 bio pkg build "biome/${pkg_name}"
 

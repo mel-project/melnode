@@ -16,7 +16,7 @@ pub static NETWORK: Lazy<RwLock<&str>> = Lazy::new(|| RwLock::new("mainnet"));
 
 static REGISTRY: Lazy<Registry> = Lazy::new(|| Registry::new());
 
-static HOSTNAME: Lazy<String> = Lazy::new(|| hostname::get().expect("Could not get hostname").into_string().expect("Could not convert hostname into a string."));
+static HOSTNAME: Lazy<String> = Lazy::new(|| gethostname::gethostname().into_string().expect("Could not convert hostname into a string."));
 
 static HIGHEST_BLOCK: Lazy<IntGauge> = Lazy::new(|| register_int_gauge!(opts!(
         "themelio_node_highest_block",

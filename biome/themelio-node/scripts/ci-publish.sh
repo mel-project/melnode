@@ -5,6 +5,8 @@ set -ex
 export SCRIPTS_DIRECTORY="$(dirname "${0}")"
 PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
 
+cp "${PLAN_DIRECTORY}/plan-release.sh" "${PLAN_DIRECTORY}/plan.sh"
+
 source "${PLAN_DIRECTORY}/plan.sh"
 
 
@@ -53,17 +55,17 @@ env OS_REGION_NAME=UK1 openstack flavor list -f json | jq -r '.[] | select(.Name
 env OS_REGION_NAME=WAW1 openstack flavor list -f json | jq -r '.[] | select(.Name == "d2-2") | .ID' > WAW1_FLAVOUR.output &
 
 ## Image ID per region
-env OS_REGION_NAME=BHS5 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > BHS5_IMAGE_ID.output &
-env OS_REGION_NAME=DE1 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > DE1_IMAGE_ID.output &
-env OS_REGION_NAME=GRA5 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > GRA5_IMAGE_ID.output &
-env OS_REGION_NAME=GRA7 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > GRA7_IMAGE_ID.output &
-env OS_REGION_NAME=GRA9 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > GRA9_IMAGE_ID.output &
-env OS_REGION_NAME=GRA11 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > GRA11_IMAGE_ID.output &
-env OS_REGION_NAME=SBG5 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > SBG5_IMAGE_ID.output &
-env OS_REGION_NAME=SGP1 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > SGP1_IMAGE_ID.output &
-env OS_REGION_NAME=SYD1 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > SYD1_IMAGE_ID.output &
-env OS_REGION_NAME=UK1 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > UK1_IMAGE_ID.output &
-env OS_REGION_NAME=WAW1 openstack image list -f json | jq -r '.[] | select(.Name == "Archlinux") | .ID' > WAW1_IMAGE_ID.output &
+env OS_REGION_NAME=BHS5 openstack image list -f json | jq -r '.[] | select(.Name == "Debian 10") | .ID' > BHS5_IMAGE_ID.output &
+env OS_REGION_NAME=DE1 openstack image list -f json | jq -r '.[] | select(.Name == "Debian 10") | .ID' > DE1_IMAGE_ID.output &
+env OS_REGION_NAME=GRA5 openstack image list -f json | jq -r '.[] | select(.Name == "Debian 10") | .ID' > GRA5_IMAGE_ID.output &
+env OS_REGION_NAME=GRA7 openstack image list -f json | jq -r '.[] | select(.Name == "Debian 10") | .ID' > GRA7_IMAGE_ID.output &
+env OS_REGION_NAME=GRA9 openstack image list -f json | jq -r '.[] | select(.Name == "Debian 10") | .ID' > GRA9_IMAGE_ID.output &
+env OS_REGION_NAME=GRA11 openstack image list -f json | jq -r '.[] | select(.Name == "Debian 10") | .ID' > GRA11_IMAGE_ID.output &
+env OS_REGION_NAME=SBG5 openstack image list -f json | jq -r '.[] | select(.Name == "Debian 10") | .ID' > SBG5_IMAGE_ID.output &
+env OS_REGION_NAME=SGP1 openstack image list -f json | jq -r '.[] | select(.Name == "Debian 10") | .ID' > SGP1_IMAGE_ID.output &
+env OS_REGION_NAME=SYD1 openstack image list -f json | jq -r '.[] | select(.Name == "Debian 10") | .ID' > SYD1_IMAGE_ID.output &
+env OS_REGION_NAME=UK1 openstack image list -f json | jq -r '.[] | select(.Name == "Debian 10") | .ID' > UK1_IMAGE_ID.output &
+env OS_REGION_NAME=WAW1 openstack image list -f json | jq -r '.[] | select(.Name == "Debian 10") | .ID' > WAW1_IMAGE_ID.output &
 
 ## Network ID per region
 env OS_REGION_NAME=BHS5 openstack network list -f json | jq -r '.[] | select(.Name == "Ext-Net") | .ID' > BHS5_NETWORK_ID.output &
@@ -114,13 +116,13 @@ export GRA7_NETWORK_ID=$(cat GRA7_NETWORK_ID.output)
 export GRA9_NETWORK_ID=$(cat GRA9_NETWORK_ID.output)
 export GRA11_NETWORK_ID=$(cat GRA11_NETWORK_ID.output)
 export SBG5_NETWORK_ID=$(cat SBG5_NETWORK_ID.output)
-export SGP1_NETWORK_ID=$(cat SBG5_NETWORK_ID.output)
-export SYD1_NETWORK_ID=$(cat SYD5_NETWORK_ID.output)
+export SGP1_NETWORK_ID=$(cat SGP1_NETWORK_ID.output)
+export SYD1_NETWORK_ID=$(cat SYD1_NETWORK_ID.output)
 export UK1_NETWORK_ID=$(cat UK1_NETWORK_ID.output)
 export WAW1_NETWORK_ID=$(cat WAW1_NETWORK_ID.output)
 
-envsubst < "${SCRIPTS_DIRECTORY}/themelio-node.pkr.hcl.temp" > "${SCRIPTS_DIRECTORY}/themelio-node.pkr.hcl"
+envsubst < "${SCRIPTS_DIRECTORY}/themelio-node.pkr.hcl.temp-debian" > "${SCRIPTS_DIRECTORY}/themelio-node-debian.pkr.hcl"
 
-packer validate "${SCRIPTS_DIRECTORY}/themelio-node.pkr.hcl"
+packer validate "${SCRIPTS_DIRECTORY}/themelio-node-debian.pkr.hcl"
 
-packer build "${SCRIPTS_DIRECTORY}/themelio-node.pkr.hcl"
+packer build "${SCRIPTS_DIRECTORY}/themelio-node-debian.pkr.hcl"

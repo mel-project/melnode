@@ -13,11 +13,13 @@ services:
     command:
       --strategy at-once --url https://bldr.habitat.sh
       --update-condition latest
+      --auto-update
 #    environment:
 #      RUST_LOG: debug
     ports:
       - 11814:11814
       - 8080:8080
+    hostname: ${HOSTNAME}
     volumes:
       - themelio-node:/hab/svc/themelio-node/data
 
