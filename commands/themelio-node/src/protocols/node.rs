@@ -124,7 +124,7 @@ async fn attempt_blksync(
                 Ok(client.get_full_block(height, &lookup_tx).await?)
             }))
         })
-        .try_buffered(40)
+        .try_buffered(12)
         .boxed();
     let mut toret = 0;
     while let Some(res) = result_stream.try_next().await? {

@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies.serde]
-version = "1.0.127"
+version = "1.0.130"
 features = ["derive"]
 
 [dependencies]
@@ -16,8 +16,8 @@ fastrand = "1.5.0"
 im = "15.0.0"
 log = "0.4.14"
 novasmt = "0.1.9"
-parking_lot = "0.11.1"
+parking_lot = "0.11.2"
 stdcode = "0.1.2"
 themelio-stf = "0.5.3"
-thiserror = "1.0.26"
+thiserror = "1.0.28"
 tmelcrypt = "0.1.0"

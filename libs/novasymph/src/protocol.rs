@@ -104,7 +104,7 @@ async fn protocol_loop<B: BlockBuilder>(
     let (send_finalized, recv_finalized) = smol::channel::unbounded();
 
     let cfg = Arc::new(cfg);
-    let height_to_proposer = gen_get_proposer(cfg.genesis.clone());
+    let height_to_proposer = gen_get_proposer(cfg.genesis.clone()).await;
     let network = melnet::NetState::new_with_name("symphgossip");
     for addr in &cfg.bootstrap {
         network.add_route(*addr);
@@ -590,7 +590,7 @@ fn next_height_time(
 }
 
 // a helper function that returns a proposer-calculator for a given epoch, given the SealedState before the epoch.
-fn gen_get_proposer(pre_epoch: SealedState) -> impl Fn(u64) -> Ed25519PK {
+async fn gen_get_proposer(pre_epoch: SealedState) -> impl Fn(u64) -> Ed25519PK {
     let end_height = if pre_epoch.inner_ref().height < STAKE_EPOCH {
         0
     } else if pre_epoch.inner_ref().height / STAKE_EPOCH
@@ -604,13 +604,29 @@ fn gen_get_proposer(pre_epoch: SealedState) -> impl Fn(u64) -> Ed25519PK {
         assert!(end_height % STAKE_EPOCH == STAKE_EPOCH - 1)
     }
     // majority beacon of all the blocks in the previous epoch
-    let beacon_components = if end_height >= STAKE_EPOCH {
-        (end_height - STAKE_EPOCH..=end_height)
-            .map(|height| pre_epoch.inner_ref().history.get(&height).0.unwrap().hash())
-            .collect::<Vec<_>>()
-    } else {
-        vec![HashVal::default()]
-    };
+    let beacon_components = {
+        let pre_epoch = pre_epoch.clone();
+        smol::unblock(move || {
+            if end_height >= STAKE_EPOCH {
+                (end_height - STAKE_EPOCH..end_height)
+                    .map(|height| {
+                        // log::warn!("majority beacon looking at height {}", height);
+                        pre_epoch
+                            .inner_ref()
+                            .history
+                            .get(&height)
+                            .0
+                            .expect("getting history failed")
+                            .hash()
+                    })
+                    .chain(std::iter::once(pre_epoch.header().hash()))
+                    .collect::<Vec<_>>()
+            } else {
+                vec![HashVal::default()]
+            }
+        })
+    }
+    .await;
     let seed = tmelcrypt::majority_beacon(&beacon_components);
     let stakes = pre_epoch.inner_ref().stakes.clone();
     move |height: u64| {
