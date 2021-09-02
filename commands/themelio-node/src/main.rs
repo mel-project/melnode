@@ -45,7 +45,7 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
         opt.advertise_addr(),
         bootstrap,
         storage.clone(),
-    );
+    ); 
     let _staker_prot = if let Some((
         staker_sk,
         staker_listen,

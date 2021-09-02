@@ -296,7 +296,7 @@ async fn gossiper_loop<B: BlockBuilder>(
                     // we now "fill in" everything
                     let mut full_responses = vec![];
                     for abbr_response in res {
-                        let mut known = im::HashSet::new();
+                        let mut known = imbl::HashSet::new();
                         let mut unknown = Vec::new();
                         // we assemble all the things we don't know
                         for txhash in abbr_response.abbr_block.txhashes.iter().copied() {
