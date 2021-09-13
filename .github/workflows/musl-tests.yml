@@ -1,0 +1,25 @@
+name: MuslTests
+
+on:
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Musl
+        run: sudo apt install -y musl musl-tools
+
+      - name: Add Musl Target
+        run: rustup target add x86_64-unknown-linux-musl
+
+      - name: Run Musl Tests
+        run: cargo test --locked --target x86_64-unknown-linux-musl --features metrics --verbose

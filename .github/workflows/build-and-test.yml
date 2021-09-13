@@ -1,4 +1,4 @@
-name: TestAndBuild
+name: BuildAndTest
 
 on:
   pull_request:
@@ -19,12 +19,6 @@ jobs:
         with:
           BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
           BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
-
-#      - name: Remove
-#        run: sudo rm -rf /hab
-#
-#      - name: Create Cache Directory
-#        run : sudo mkdir -p /hab/pkgs && sudo mkdir -p /hab/cache/artifacts
 
       - name: Fix Directory Permissions
         run: sudo chown -R $(whoami):$(id -ng) /hab
