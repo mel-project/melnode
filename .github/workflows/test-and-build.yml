@@ -31,7 +31,7 @@ jobs:
             /hab/pkgs
           key: ${{ runner.os }}-build-${{ env.CACHE_NAME }}-${{ hashFiles('biome/themelio-node/plan-debug.sh') }}
           restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-${{ env.CACHE_NAME }}-
             ${{ runner.os }}-build-
             ${{ runner.os }}-
 
