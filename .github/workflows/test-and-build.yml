@@ -25,7 +25,10 @@ jobs:
         env:
           CACHE_NAME: cache-biome
         with:
-          path: ~/.hab/cache
+          path: |
+            ~/.hab/cache/artifacts
+            /hab/cache/artifacts
+            /hab/pkgs
           key: ${{ runner.os }}-build-${{ env.CACHE_NAME }}-${{ hashFiles('biome/themelio-node/plan-debug.sh') }}
           restore-keys: |
             ${{ runner.os }}-build-${{ env.cache-name }}-
