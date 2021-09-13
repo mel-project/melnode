@@ -20,17 +20,11 @@ jobs:
           BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
           BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
 
-      - name: Remove
-        run: sudo rm -rf /hab
-
-      - name: Create Cache Directory
-        run : sudo mkdir -p /hab/pkgs && sudo mkdir -p /hab/cache/artifacts
-
-#      - name: Change Permissions
-#        run : sudo chmod 777 /hab && sudo chmod 777 /hab/pkgs && sudo chmod 777 /hab/cache && sudo chmod 777 /hab/cache/artifacts
+#      - name: Remove
+#        run: sudo rm -rf /hab
 #
-#      - name: Change Permissions
-#        run: sudo chmod -R a+rwx /hab && sudo chmod -R a+rwx /hab/pkgs && sudo chmod -R a+rwx /hab/cache && sudo chmod -R a+rwx /hab/cache/artifacts
+#      - name: Create Cache Directory
+#        run : sudo mkdir -p /hab/pkgs && sudo mkdir -p /hab/cache/artifacts
 
       - name: Fix Directory Permissions
         run: sudo chown -R $(whoami):$(id -ng) /hab
