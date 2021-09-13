@@ -20,6 +20,9 @@ jobs:
           BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
           BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
 
+      - name: Remove
+        run: sudo rm -rf /hab
+
       - name: Create Cache Directory
         run : sudo mkdir -p /hab/pkgs && sudo mkdir -p /hab/cache/artifacts
 
