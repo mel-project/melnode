@@ -31,33 +31,28 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Download Biome
-        env:
-          BIOME_VERSION: "1.6.372"
-        run: curl -L "https://github.com/biome-sh/biome/releases/download/v$BIOME_VERSION/bio-$BIOME_VERSION-x86_64-linux.tar.gz" | tar zxv
-
-      - name: Install Biome
-        run: sudo mv bio /usr/local/bin/bio
-
-      - name: Import Public Key
-        env:
+      - uses: themeliolabs/actions-biome@v1
+        with:
           BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
-        run: echo "$BIOME_PUBLIC_KEY" | bio origin key import
-
-      - name: Import Public Key (sudo)
-        env:
-          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
-        run: echo "$BIOME_PUBLIC_KEY" | sudo bio origin key import
-
-      - name: Import Signing Key
-        env:
           BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
-        run: echo "$BIOME_SIGNING_KEY" | bio origin key import
 
-      - name: Import Signing Key (sudo)
+      - name: Fix Directory Permissions
+        run: sudo chown -R $(whoami):$(id -ng) /hab
+
+      - name: Cache Biome
+        uses: actions/cache@v2
         env:
-          BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
-        run: echo "$BIOME_SIGNING_KEY" | sudo bio origin key import
+          CACHE_NAME: cache-biome
+        with:
+          path: |
+            ~/.hab/cache/artifacts
+            /hab/cache/artifacts
+            /hab/pkgs
+          key: ${{ runner.os }}-build-${{ env.CACHE_NAME }}-${{ hashFiles('biome/themelio-node/plan-release.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.CACHE_NAME }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
 
       - name: Build, Publish Artifact And Mark As Stable, Export And Publish Docker Image, Create Packer Images
         env:
