@@ -19,6 +19,8 @@ hart_file="results/${pkg_artifact}"
 
 echo "Publishing artifact to the stable channel"
 
+ls -la results
+
 bio pkg upload --auth "${HABITAT_AUTH_TOKEN}" --url "${HAB_BLDR_URL}" "${hart_file}"
 bio pkg upload --auth "${BIOME_AUTH_TOKEN}" --url "${BIOME_BLDR_URL}" "${hart_file}"
 
