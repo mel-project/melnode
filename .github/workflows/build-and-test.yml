@@ -7,6 +7,44 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+#jobs:
+#  biome:
+#
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#      - uses: actions/checkout@v2
+#
+#      - uses: themeliolabs/actions-biome@v1
+#        with:
+#          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
+#          BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
+#
+#      - name: Fix Directory Permissions
+#        run: sudo chown -R $(whoami):$(id -ng) /hab
+#
+#      - name: Cache Biome
+#        uses: actions/cache@v2
+#        env:
+#          CACHE_NAME: cache-biome
+#        with:
+#          path: |
+#            ~/.hab/cache/artifacts
+#            /hab/cache/artifacts
+#            /hab/pkgs
+#          key: ${{ runner.os }}-build-${{ env.CACHE_NAME }}-${{ hashFiles('biome/themelio-node/plan-debug.sh') }}
+#          restore-keys: |
+#            ${{ runner.os }}-build-${{ env.CACHE_NAME }}-
+#            ${{ runner.os }}-build-
+#            ${{ runner.os }}-
+#
+#      - name: Build, Run BATS Tests
+#        env:
+#          HAB_ORIGIN: "themelio"
+#          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        run: ./biome/themelio-node/scripts/ci-test.sh
+
 jobs:
   biome:
 
@@ -14,6 +52,22 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
+      - name: Update Apt
+        run: sudo apt update
+
+      - name: Install TzData
+        run: env DEBIAN_FRONTEND="noninteractive" sudo apt install -y tzdata
+
+      - name: Install OpenStack, Packer, JQ, and Envsubst
+        run: sudo apt install -y python3-openstackclient python3-novaclient packer jq gettext-base
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: themeliolabs/actions-biome@v1
         with:
@@ -32,15 +86,25 @@ jobs:
             ~/.hab/cache/artifacts
             /hab/cache/artifacts
             /hab/pkgs
-          key: ${{ runner.os }}-build-${{ env.CACHE_NAME }}-${{ hashFiles('biome/themelio-node/plan-debug.sh') }}
+          key: ${{ runner.os }}-build-${{ env.CACHE_NAME }}-${{ hashFiles('biome/themelio-node/plan-release.sh') }}
           restore-keys: |
             ${{ runner.os }}-build-${{ env.CACHE_NAME }}-
             ${{ runner.os }}-build-
             ${{ runner.os }}-
 
-      - name: Build, Run BATS Tests
+      - name: Build, Publish Artifact And Mark As Stable, Export And Publish Docker Image, Create Packer Images
         env:
           HAB_ORIGIN: "themelio"
           BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
+          HAB_BLDR_URL: "https://bldr.habitat.sh"
+          BIOME_BLDR_URL: "https://bldr.biome.sh"
+          BIOME_AUTH_TOKEN: ${{ secrets.BIOME_AUTH_TOKEN }}
+          HABITAT_AUTH_TOKEN: ${{ secrets.HABITAT_AUTH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./biome/themelio-node/scripts/ci-test.sh
+          OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
+          OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
+          OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
+          OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
+          OS_USERNAME: ${{ secrets.OS_USERNAME }}
+          OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+        run: ./biome/themelio-node/scripts/ci-publish-testing.sh
