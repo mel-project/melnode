@@ -20,7 +20,10 @@ hart_file="results/${pkg_artifact}"
 echo "Publishing artifact to the stable channel"
 
 bio pkg upload --auth "${HABITAT_AUTH_TOKEN}" --url "${HAB_BLDR_URL}" "${hart_file}" -c stable
-bio pkg upload --auth "${BIOME_AUTH_TOKEN}" --url "${BIOME_BLDR_URL}" "${hart_file}" -c stable
+
+# Uploading to the biome builder is currently broken.
+#This can be uncommented when this bug report is remedied: https://github.com/biome-sh/biome/issues/14
+#bio pkg upload --auth "${BIOME_AUTH_TOKEN}" --url "${BIOME_BLDR_URL}" "${hart_file}" -c stable
 
 
 echo "Exporting docker image"
