@@ -16,7 +16,7 @@ features = ["tls"]
 optional = true
 
 [dependencies]
-anyhow = "1.0.43"
+anyhow = "1.0.44"
 async-compat = "0.2.1"
 #boringdb = { path = "../../../boringdb" }
 boringdb = "0.3.10"
@@ -40,17 +40,17 @@ parking_lot = "0.11.2"
 prometheus = { version = "0.12.0", optional = true }
 serde = "1.0.130"
 smol = "1.2.5"
-smolscale = "0.3.12"
+smolscale = "0.3.16"
 smol-timeout = "0.6.0"
 stdcode = "0.1.2"
 structopt = "0.3.23"
 systemstat = { version = "0.1.8", optional = true }
 toml = "0.5.8"
 tracing = "0.1.26"
-themelio-stf = "0.5.5"
+themelio-stf = "0.6"
 tmelcrypt = "0.1.0"
-themelio-nodeprot = "0.4.1"
-tracing-subscriber = "0.2.20"
+themelio-nodeprot = "0.5"
+tracing-subscriber = "0.2.22"
 
 [target.'cfg(unix)'.dependencies]
 mimalloc = "0.1.26"

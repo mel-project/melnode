@@ -8,7 +8,7 @@ use self::mempool::Mempool;
 use blkdb::{traits::DbBackend, BlockTree};
 use parking_lot::RwLock;
 pub use smt::*;
-use themelio_stf::{ConsensusProof, GenesisConfig, SealedState};
+use themelio_stf::{BlockHeight, ConsensusProof, GenesisConfig, SealedState};
 
 /// An alias for a shared NodeStorage.
 pub type SharedStorage = Arc<RwLock<NodeStorage>>;
@@ -59,7 +59,7 @@ impl NodeStorage {
     }
 
     /// Obtain the highest height.
-    pub fn highest_height(&self) -> u64 {
+    pub fn highest_height(&self) -> BlockHeight {
         let tips = self.history.get_tips();
         if tips.len() != 1 {
             log::error!(
@@ -71,7 +71,7 @@ impl NodeStorage {
     }
 
     /// Obtain a historical SealedState.
-    pub fn get_state(&self, height: u64) -> Option<SealedState> {
+    pub fn get_state(&self, height: BlockHeight) -> Option<SealedState> {
         self.history
             .get_at_height(height)
             .get(0)
@@ -79,7 +79,7 @@ impl NodeStorage {
     }
 
     /// Obtain a historical ConsensusProof.
-    pub fn get_consensus(&self, height: u64) -> Option<ConsensusProof> {
+    pub fn get_consensus(&self, height: BlockHeight) -> Option<ConsensusProof> {
         let height = self.history.get_at_height(height).into_iter().next()?;
         stdcode::deserialize(height.metadata()).ok()
     }
@@ -91,7 +91,7 @@ impl NodeStorage {
         cproof: ConsensusProof,
     ) -> anyhow::Result<()> {
         let highest_height = self.highest_height();
-        if blk.header.height != highest_height + 1 {
+        if blk.header.height != highest_height + 1.into() {
             anyhow::bail!(
                 "cannot apply block {} to height {}",
                 blk.header.height,

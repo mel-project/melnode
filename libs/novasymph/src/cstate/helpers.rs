@@ -86,9 +86,9 @@ impl StreamletMetadata {
         let mut total_stake = 0u128;
         for stake in stakes.val_iter() {
             if epoch >= stake.e_start && epoch < stake.e_post_end {
-                total_stake += stake.syms_staked;
+                total_stake += stake.syms_staked.0;
                 if self.votes.get(&stake.pubkey).is_some() {
-                    voting_stake += stake.syms_staked;
+                    voting_stake += stake.syms_staked.0;
                 }
             }
         }

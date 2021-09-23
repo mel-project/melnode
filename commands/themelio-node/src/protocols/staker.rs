@@ -2,7 +2,7 @@ use crate::storage::SharedStorage;
 
 use once_cell::sync::Lazy;
 use themelio_stf::{
-    melvm::Address, Block, ProposerAction, SealedState, Transaction, TxHash, STAKE_EPOCH,
+    melvm::Address, Block, BlockHeight, ProposerAction, SealedState, Transaction, TxHash,
 };
 
 use novasymph::BlockBuilder;
@@ -45,12 +45,12 @@ impl StakerProtocol {
                     "delta-height = {}; must be less than 5 to start staker",
                     y - x
                 );
-                if y - x < 5 {
+                if y - x < 5.into() {
                     break;
                 }
             }
             loop {
-                let genesis_epoch = storage.read().highest_height() / STAKE_EPOCH;
+                let genesis_epoch = storage.read().highest_height().epoch();
                 for current_epoch in genesis_epoch.. {
                     log::info!("epoch transitioning into {}!", current_epoch);
                     smol::Timer::after(Duration::from_secs(1)).await;
@@ -67,7 +67,7 @@ impl StakerProtocol {
                     let epoch_termination = async {
                         loop {
                             smol::Timer::after(Duration::from_secs(1)).await;
-                            if (storage.read().highest_height() + 1) / STAKE_EPOCH != current_epoch
+                            if (storage.read().highest_height() + 1.into()).epoch() != current_epoch
                             {
                                 break Ok(());
                             }
@@ -100,6 +100,7 @@ async fn one_epoch_loop(
     let start_time = match genesis.inner_ref().network {
         themelio_stf::NetID::Mainnet => *MAINNET_START_TIME,
         themelio_stf::NetID::Testnet => *TESTNET_START_TIME,
+        _ => todo!(),
     };
     let config = novasymph::EpochConfig {
         listen: addr,
@@ -116,7 +117,7 @@ async fn one_epoch_loop(
         },
         get_confirmed: {
             let storage = storage.clone();
-            Box::new(move |height: u64| {
+            Box::new(move |height: BlockHeight| {
                 let storage = storage.read();
                 storage
                     .get_state(height)?

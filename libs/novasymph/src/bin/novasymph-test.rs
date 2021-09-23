@@ -25,11 +25,11 @@ fn main() {
         network: NetID::Testnet,
         init_coindata: CoinData {
             denom: Denom::Mel,
-            value: 1 << 64,
+            value: (1 << 64).into(),
             additional_data: vec![],
             covhash: HashVal::default().into(),
         },
-        init_fee_pool: 1 << 64,
+        init_fee_pool: (1 << 64).into(),
         stakes: TEST_SKK
             .iter()
             .map(|v| {
@@ -39,7 +39,7 @@ fn main() {
                         pubkey: v.to_public(),
                         e_start: 0,
                         e_post_end: 100000,
-                        syms_staked: 1,
+                        syms_staked: 1.into(),
                     },
                 )
             })

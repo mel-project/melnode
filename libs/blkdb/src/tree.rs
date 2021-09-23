@@ -6,7 +6,7 @@ use std::{
     collections::{BTreeSet, HashSet},
     convert::TryInto,
 };
-use themelio_stf::{Block, Header, ProposerAction, SealedState};
+use themelio_stf::{Block, BlockHeight, Header, ProposerAction, SealedState};
 use thiserror::Error;
 use tmelcrypt::HashVal;
 
@@ -65,7 +65,7 @@ impl<B: DbBackend> BlockTree<B> {
             .inner
             .get_block(
                 block.header.previous,
-                Some(block.header.height.saturating_sub(1)),
+                Some(block.header.height.0.saturating_sub(1).into()),
             )
             .ok_or(ApplyBlockErr::ParentNotFound(block.header.previous))?;
         let previous = previous.to_state(&self.forest, &self.inner.cache);
@@ -86,7 +86,7 @@ impl<B: DbBackend> BlockTree<B> {
     }
 
     /// Get all the cursors at a given height.
-    pub fn get_at_height(&self, height: u64) -> Vec<Cursor<'_, B>> {
+    pub fn get_at_height(&self, height: BlockHeight) -> Vec<Cursor<'_, B>> {
         self.inner
             .all_at_height(height)
             .into_iter()
@@ -359,7 +359,7 @@ struct Inner<B: DbBackend> {
 
 impl<B: DbBackend> Inner<B> {
     /// Gets a block from the database.
-    fn get_block(&self, blkhash: HashVal, height: Option<u64>) -> Option<InternalValue> {
+    fn get_block(&self, blkhash: HashVal, height: Option<BlockHeight>) -> Option<InternalValue> {
         self.maybe_gc_cache();
         let height = match height {
             Some(height) => height,
@@ -369,7 +369,7 @@ impl<B: DbBackend> Inner<B> {
     }
 
     /// Removes a block with no parent.
-    fn remove_orphan(&mut self, blkhash: HashVal, height: Option<u64>) {
+    fn remove_orphan(&mut self, blkhash: HashVal, height: Option<BlockHeight>) {
         let current = self
             .get_block(blkhash, height)
             .expect("trying to remove nonexistent orphan");
@@ -383,17 +383,20 @@ impl<B: DbBackend> Inner<B> {
     }
 
     /// Removes a block with no children.
-    fn remove_childless(&mut self, blkhash: HashVal, height: Option<u64>) {
+    fn remove_childless(&mut self, blkhash: HashVal, height: Option<BlockHeight>) {
         let current = self
             .get_block(blkhash, height)
             .expect("trying to remove nonexistent childless");
         // remove from tips, index, then main
         self.tip_remove(blkhash);
-        self.tip_insert(current.header.previous, current.header.height - 1);
+        self.tip_insert(current.header.previous, current.header.height - 1.into());
         self.index_remove(blkhash);
 
         let mut parent = self
-            .get_block(current.header.previous, Some(current.header.height - 1))
+            .get_block(
+                current.header.previous,
+                Some(current.header.height - 1.into()),
+            )
             .unwrap();
         parent.next.remove(&blkhash);
         self.internal_insert(current.header.previous, parent.header.height, parent);
@@ -431,9 +434,10 @@ impl<B: DbBackend> Inner<B> {
             InternalValue::from_state(&state, action, init_metadata.to_vec()),
         );
         // insert into parent
-        if let Some(mut parent) =
-            self.get_block(header.previous, Some(header.height.saturating_sub(1)))
-        {
+        if let Some(mut parent) = self.get_block(
+            header.previous,
+            Some(header.height.0.saturating_sub(1).into()),
+        ) {
             parent.next.insert(blkhash);
             self.internal_insert(header.previous, parent.header.height, parent);
         }
@@ -458,35 +462,35 @@ impl<B: DbBackend> Inner<B> {
         }
     }
 
-    fn internal_insert(&mut self, blkhash: HashVal, height: u64, value: InternalValue) {
+    fn internal_insert(&mut self, blkhash: HashVal, height: BlockHeight, value: InternalValue) {
         self.backend.insert(
             &main_key(blkhash, height),
             &stdcode::serialize(&value).unwrap(),
         );
     }
 
-    fn index_insert(&mut self, blkhash: HashVal, height: u64) {
+    fn index_insert(&mut self, blkhash: HashVal, height: BlockHeight) {
         self.backend
             .insert(&index_key(blkhash), &stdcode::serialize(&height).unwrap());
     }
 
-    fn tip_insert(&mut self, blkhash: HashVal, height: u64) {
+    fn tip_insert(&mut self, blkhash: HashVal, height: BlockHeight) {
         self.backend
             .insert(&tip_key(blkhash), &stdcode::serialize(&height).unwrap());
     }
 
-    fn internal_get(&self, blkhash: HashVal, height: u64) -> Option<InternalValue> {
+    fn internal_get(&self, blkhash: HashVal, height: BlockHeight) -> Option<InternalValue> {
         Some(
             stdcode::deserialize(&self.backend.get(&main_key(blkhash, height))?)
                 .expect("cannot deserialize internal value"),
         )
     }
 
-    fn internal_remove(&mut self, blkhash: HashVal, height: u64) {
+    fn internal_remove(&mut self, blkhash: HashVal, height: BlockHeight) {
         self.backend.remove(&main_key(blkhash, height));
     }
 
-    fn index_get(&self, blkhash: HashVal) -> Option<u64> {
+    fn index_get(&self, blkhash: HashVal) -> Option<BlockHeight> {
         Some(
             stdcode::deserialize(&self.backend.get(&index_key(blkhash))?)
                 .expect("cannot deserialize index value"),
@@ -510,7 +514,7 @@ impl<B: DbBackend> Inner<B> {
             .collect()
     }
 
-    fn all_at_height(&self, height: u64) -> Vec<HashVal> {
+    fn all_at_height(&self, height: BlockHeight) -> Vec<HashVal> {
         let raw = self.backend.key_range(
             &main_key(HashVal([0x00; 32]), height),
             &main_key(HashVal([0xff; 32]), height),
@@ -555,17 +559,17 @@ impl InternalValue {
     }
 }
 
-fn main_key(blkhash: HashVal, height: u64) -> [u8; 40] {
+fn main_key(blkhash: HashVal, height: BlockHeight) -> [u8; 40] {
     let mut toret = [0u8; 40];
-    toret[..8].copy_from_slice(&height.to_be_bytes());
+    toret[..8].copy_from_slice(&height.0.to_be_bytes());
     toret[8..].copy_from_slice(&blkhash);
     toret
 }
 
 fn tip_key(blkhash: HashVal) -> [u8; 40] {
-    main_key(blkhash, u64::MAX - 1)
+    main_key(blkhash, (u64::MAX - 1).into())
 }
 
 fn index_key(blkhash: HashVal) -> [u8; 40] {
-    main_key(blkhash, u64::MAX)
+    main_key(blkhash, (u64::MAX).into())
 }

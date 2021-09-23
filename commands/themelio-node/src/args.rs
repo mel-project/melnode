@@ -2,7 +2,7 @@ use std::{net::SocketAddr, path::PathBuf};
 
 use anyhow::Context;
 use structopt::StructOpt;
-use themelio_stf::{melvm::Address, GenesisConfig};
+use themelio_stf::{melvm::Address, BlockHeight, GenesisConfig};
 use tmelcrypt::Ed25519SK;
 
 use crate::storage::{NodeStorage, SharedStorage};
@@ -55,7 +55,7 @@ pub struct Args {
 
     /// Reset last block to the given height.
     #[structopt(long)]
-    emergency_reset_block: Option<u64>,
+    emergency_reset_block: Option<BlockHeight>,
 }
 
 impl Args {
@@ -64,7 +64,7 @@ impl Args {
         self.advertise
     }
 
-    #[cfg(not(feature="metrics"))]
+    #[cfg(not(feature = "metrics"))]
     /// Derives the genesis configuration from the arguments
     pub async fn genesis_config(&self) -> anyhow::Result<GenesisConfig> {
         if let Some(path) = &self.override_genesis {
@@ -88,7 +88,9 @@ impl Args {
                 .context("cannot read genesis config")?;
             Ok(toml::from_slice(&genesis_toml).context("genesis config not a valid TOML file")?)
         } else if self.testnet {
-            *crate::prometheus::NETWORK.write().expect("Could not get a write lock on NETWORK") = "testnet";
+            *crate::prometheus::NETWORK
+                .write()
+                .expect("Could not get a write lock on NETWORK") = "testnet";
 
             Ok(GenesisConfig::std_testnet())
         } else {

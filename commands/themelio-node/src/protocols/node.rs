@@ -7,7 +7,9 @@ use std::{
 use anyhow::Context;
 use futures_util::{StreamExt, TryStreamExt};
 use novasmt::CompressedProof;
-use themelio_stf::{AbbrBlock, Block, ConsensusProof, NetID, SealedState, Transaction};
+use themelio_stf::{
+    AbbrBlock, Block, BlockHeight, ConsensusProof, NetID, SealedState, Transaction,
+};
 
 use crate::storage::SharedStorage;
 use melnet::MelnetError;
@@ -26,6 +28,7 @@ fn netname(network: NetID) -> &'static str {
     match network {
         NetID::Mainnet => "mainnet-node",
         NetID::Testnet => "testnet-node",
+        _ => Box::leak(Box::new(format!("{:?}", network))),
     }
 }
 
@@ -115,7 +118,9 @@ async fn attempt_blksync(
     if their_highest <= my_highest {
         return Ok(0);
     }
-    let height_stream = futures_util::stream::iter((my_highest..=their_highest).skip(1).take(1024));
+    let height_stream =
+        futures_util::stream::iter((my_highest.0..=their_highest.0).skip(1).take(1024))
+            .map(BlockHeight);
     let lookup_tx = |tx| storage.read().mempool().lookup_recent_tx(tx);
     let mut result_stream = height_stream
         .map(Ok::<_, anyhow::Error>)
@@ -180,7 +185,7 @@ impl NodeServer for AuditorResponder {
         Ok(())
     }
 
-    fn get_abbr_block(&self, height: u64) -> melnet::Result<(AbbrBlock, ConsensusProof)> {
+    fn get_abbr_block(&self, height: BlockHeight) -> melnet::Result<(AbbrBlock, ConsensusProof)> {
         let storage = self.storage.read();
         let state = storage
             .get_state(height)
@@ -205,7 +210,7 @@ impl NodeServer for AuditorResponder {
         })
     }
 
-    fn get_state(&self, height: u64) -> melnet::Result<SealedState> {
+    fn get_state(&self, height: BlockHeight) -> melnet::Result<SealedState> {
         self.storage
             .read()
             .get_state(height)
@@ -214,7 +219,7 @@ impl NodeServer for AuditorResponder {
 
     fn get_smt_branch(
         &self,
-        height: u64,
+        height: BlockHeight,
         elem: Substate,
         key: HashVal,
     ) -> melnet::Result<(Vec<u8>, CompressedProof)> {
@@ -242,7 +247,7 @@ impl NodeServer for AuditorResponder {
         Ok((v.to_vec(), proof.compress()))
     }
 
-    fn get_stakers_raw(&self, height: u64) -> melnet::Result<BTreeMap<HashVal, Vec<u8>>> {
+    fn get_stakers_raw(&self, height: BlockHeight) -> melnet::Result<BTreeMap<HashVal, Vec<u8>>> {
         let state =
             self.storage.read().get_state(height).ok_or_else(|| {
                 MelnetError::Custom(format!("block {} not confirmed yet", height))

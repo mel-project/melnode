@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 mod helpers;
 use blkdb::{backends::InMemoryDb, BlockTree, Cursor};
 use helpers::*;
-use themelio_stf::{Block, SealedState, StakeMapping, STAKE_EPOCH};
+use themelio_stf::{Block, BlockHeight, SealedState, StakeMapping};
 
 pub mod gossip;
 use gossip::*;
@@ -18,13 +18,13 @@ pub struct ChainState {
     inner: BlockTree<InMemoryDb>,
     forest: novasmt::Forest,
 
-    drained_height: u64,
+    drained_height: BlockHeight,
 }
 
 impl ChainState {
     /// Create a new ChainState with the given genesis state.
     pub fn new(genesis: SealedState, forest: novasmt::Forest) -> Self {
-        let epoch = genesis.inner_ref().height / STAKE_EPOCH;
+        let epoch = genesis.inner_ref().height.epoch();
         let stakes = genesis.inner_ref().stakes.clone();
         let mut inner = BlockTree::new(InMemoryDb::default(), forest.clone(), false);
         inner.set_genesis(genesis, &[]);
@@ -34,7 +34,7 @@ impl ChainState {
             inner,
             forest,
 
-            drained_height: 0,
+            drained_height: 0.into(),
         }
     }
 
@@ -79,9 +79,11 @@ impl ChainState {
                 return Err(ProposalError::IncorrectHeight);
             }
             // okay time to fill with empty blocks
-            if last_nonempty_cursor.header().height + 1 < proposed_block.header.height {
-                let empty_count =
-                    proposed_block.header.height - last_nonempty_cursor.header().height - 1;
+            if last_nonempty_cursor.header().height + 1.into() < proposed_block.header.height {
+                let empty_count = (proposed_block.header.height
+                    - last_nonempty_cursor.header().height
+                    - 1.into())
+                .0;
                 log::debug!("filling in {} empty blocks", empty_count);
                 let mut last = last_nonempty_cursor.to_state();
                 for _ in 0..empty_count {

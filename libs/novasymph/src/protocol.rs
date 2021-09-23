@@ -12,8 +12,8 @@ use std::{
     time::{Duration, SystemTime},
 };
 use themelio_stf::{
-    Block, ConfirmedState, ConsensusProof, ProposerAction, SealedState, StakeMapping, Transaction,
-    TxHash, STAKE_EPOCH,
+    Block, BlockHeight, ConfirmedState, ConsensusProof, ProposerAction, SealedState, StakeMapping,
+    Transaction, TxHash, STAKE_EPOCH,
 };
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
@@ -55,7 +55,7 @@ pub struct EpochConfig<B: BlockBuilder> {
     pub interval: Duration,
     pub signing_sk: Ed25519SK,
     pub builder: B,
-    pub get_confirmed: Box<dyn Fn(u64) -> Option<ConfirmedState> + Sync + Send + 'static>,
+    pub get_confirmed: Box<dyn Fn(BlockHeight) -> Option<ConfirmedState> + Sync + Send + 'static>,
 }
 
 /// Represents a running instance of the Symphonia protocol for a particular epoch.
@@ -110,7 +110,7 @@ async fn protocol_loop<B: BlockBuilder>(
         network.add_route(*addr);
     }
 
-    let my_epoch = (cfg.genesis.inner_ref().height + 1) / STAKE_EPOCH;
+    let my_epoch = (cfg.genesis.inner_ref().height + 1.into()).epoch();
 
     // melnet server
     {
@@ -193,16 +193,16 @@ async fn protocol_loop<B: BlockBuilder>(
             }
             let last_nonempty_hash = build_upon.header().hash();
             // fill in a bunch of empty blocks until the height matches
-            while build_upon.inner_ref().height + 1 < height {
+            while build_upon.inner_ref().height + BlockHeight(1) < height {
                 build_upon = build_upon.next_state().seal(None);
             }
 
             // am i out of bounds?
-            let out_of_bounds = (build_upon.inner_ref().height + 1) / STAKE_EPOCH > my_epoch;
+            let out_of_bounds = (build_upon.inner_ref().height + 1.into()).epoch() > my_epoch;
             if out_of_bounds {
                 log::warn!(
                     "novasymph running out of bounds: {} is out of epoch {}",
-                    build_upon.inner_ref().height + 1,
+                    build_upon.inner_ref().height + 1.into(),
                     my_epoch
                 )
             };
@@ -396,7 +396,7 @@ async fn confirmer_loop(
     let known_votes = Arc::new(RwLock::new(BTreeMap::new()));
     network.listen("confirm_block", {
         let known_votes = known_votes.clone();
-        move |req: Request<u64, BTreeMap<Ed25519PK, Vec<u8>>>| {
+        move |req: Request<BlockHeight, BTreeMap<Ed25519PK, Vec<u8>>>| {
             let known_votes = known_votes.clone();
             NS_EXECUTOR
                 .spawn(async move {
@@ -449,7 +449,7 @@ async fn confirmer_loop(
 
     loop {
         let finalized = recv_finalized.recv().await.ok()?;
-        if finalized.inner_ref().height / STAKE_EPOCH > my_epoch {
+        if finalized.inner_ref().height.epoch() > my_epoch {
             log::warn!("skipping out-of-bounds finalized block");
             continue;
         }
@@ -514,7 +514,7 @@ async fn confirmer_loop(
                                 if cstate
                                     .read()
                                     .stakes()
-                                    .vote_power(sigs.state.inner_ref().height / STAKE_EPOCH, key)
+                                    .vote_power(sigs.state.inner_ref().height.epoch(), key)
                                     > 0.0
                                     && key.verify(&sigs.state.header().hash(), &signature)
                                 {
@@ -552,7 +552,7 @@ impl UnconfirmedBlock {
         let mut sum_weights = 0.0;
         for (k, v) in self.signatures.iter() {
             assert!(k.verify(&self.state.header().hash(), v));
-            sum_weights += stakes.vote_power(self.state.inner_ref().height / STAKE_EPOCH, *k);
+            sum_weights += stakes.vote_power(self.state.inner_ref().height.epoch(), *k);
         }
         sum_weights > 0.67
     }
@@ -569,52 +569,51 @@ async fn wait_until_sys(sys: SystemTime) {
 
 /// waits until the next block height, then returns that height
 fn next_height_time(
-    current_height: u64,
+    current_height: BlockHeight,
     start_time: SystemTime,
     interval: Duration,
-) -> (u64, SystemTime) {
+) -> (BlockHeight, SystemTime) {
     let now = SystemTime::now();
     let elapsed_time = now
         .duration_since(start_time)
         .expect("clock randomly jumped, that breaks streamlet");
-    let next_height = elapsed_time.as_millis() / interval.as_millis();
-    if dbg!(next_height) < (dbg!(current_height) + 500).into() {
-        let next_height = next_height as u64;
-        let next_time = start_time + interval * (next_height as u32 + 1);
+    let next_height = BlockHeight((elapsed_time.as_millis() / interval.as_millis()) as u64);
+    if next_height < current_height + 500.into() {
+        let next_time = start_time + interval * (next_height.0 as u32 + 1);
         (next_height, next_time)
     } else {
         let pseudoheight = elapsed_time.as_millis() / (interval.as_millis() / 4);
         let next_time = start_time + (interval / 4) * (pseudoheight as u32 + 1);
-        (current_height + 1, next_time)
+        (current_height + 1.into(), next_time)
     }
 }
 
 // a helper function that returns a proposer-calculator for a given epoch, given the SealedState before the epoch.
-async fn gen_get_proposer(pre_epoch: SealedState) -> impl Fn(u64) -> Ed25519PK {
-    let end_height = if pre_epoch.inner_ref().height < STAKE_EPOCH {
-        0
-    } else if pre_epoch.inner_ref().height / STAKE_EPOCH
-        != (pre_epoch.inner_ref().height + 1) / STAKE_EPOCH
+async fn gen_get_proposer(pre_epoch: SealedState) -> impl Fn(BlockHeight) -> Ed25519PK {
+    let end_height = if pre_epoch.inner_ref().height.epoch() == 0 {
+        BlockHeight(0)
+    } else if pre_epoch.inner_ref().height.epoch()
+        != (pre_epoch.inner_ref().height + 1.into()).epoch()
     {
         pre_epoch.inner_ref().height
     } else {
-        (pre_epoch.inner_ref().height / STAKE_EPOCH * STAKE_EPOCH) - 1
+        BlockHeight((pre_epoch.inner_ref().height.0 / STAKE_EPOCH * STAKE_EPOCH) - 1)
     };
-    if end_height > 0 {
-        assert!(end_height % STAKE_EPOCH == STAKE_EPOCH - 1)
+    if end_height > BlockHeight(0) {
+        assert!(end_height.0 % STAKE_EPOCH == STAKE_EPOCH - 1)
     }
     // majority beacon of all the blocks in the previous epoch
     let beacon_components = {
         let pre_epoch = pre_epoch.clone();
         smol::unblock(move || {
-            if end_height >= STAKE_EPOCH {
-                (end_height - STAKE_EPOCH..end_height)
+            if end_height.0 >= STAKE_EPOCH {
+                (end_height.0 - STAKE_EPOCH..end_height.0)
                     .map(|height| {
                         // log::warn!("majority beacon looking at height {}", height);
                         pre_epoch
                             .inner_ref()
                             .history
-                            .get(&height)
+                            .get(&BlockHeight(height))
                             .0
                             .expect("getting history failed")
                             .hash()
@@ -629,14 +628,14 @@ async fn gen_get_proposer(pre_epoch: SealedState) -> impl Fn(u64) -> Ed25519PK {
     .await;
     let seed = tmelcrypt::majority_beacon(&beacon_components);
     let stakes = pre_epoch.inner_ref().stakes.clone();
-    move |height: u64| {
+    move |height: BlockHeight| {
         // we sum the number of µsyms staked
         // TODO: overflow?
         let total_staked = stakes
             .val_iter()
             .filter_map(|v| {
-                if v.e_post_end > height / STAKE_EPOCH && v.e_start <= height / STAKE_EPOCH {
-                    Some(v.syms_staked)
+                if v.e_post_end > height.epoch() && v.e_start <= height.epoch() {
+                    Some(v.syms_staked.0)
                 } else {
                     None
                 }
@@ -644,10 +643,10 @@ async fn gen_get_proposer(pre_epoch: SealedState) -> impl Fn(u64) -> Ed25519PK {
             .sum::<u128>();
         // "clamp" the subseed
         // we hash the seed with the height
-        let mut seed = tmelcrypt::hash_keyed(&height.to_be_bytes(), &seed);
+        let mut seed = tmelcrypt::hash_keyed(&height.0.to_be_bytes(), &seed);
         let seed = loop {
             let numseed = u128::from_be_bytes(
-                (&tmelcrypt::hash_keyed(&height.to_be_bytes(), &seed).0[0..16])
+                (&tmelcrypt::hash_keyed(&height.0.to_be_bytes(), &seed).0[0..16])
                     .try_into()
                     .unwrap(),
             );
@@ -662,8 +661,8 @@ async fn gen_get_proposer(pre_epoch: SealedState) -> impl Fn(u64) -> Ed25519PK {
         stake_docs.sort_by_key(|v| v.pubkey);
         let mut sum = 0;
         for stake in stake_docs {
-            if stake.e_post_end > height / STAKE_EPOCH && stake.e_start <= height / STAKE_EPOCH {
-                sum += stake.syms_staked;
+            if stake.e_post_end > height.epoch() && stake.e_start <= height.epoch() {
+                sum += stake.syms_staked.0;
                 if seed <= sum {
                     return stake.pubkey;
                 }
