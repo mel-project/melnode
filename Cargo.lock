@@ -2995,7 +2995,6 @@ dependencies = [
  "gethostname",
  "hex",
  "hostname",
- "im",
  "log",
  "lru",
  "melnet",
@@ -3008,6 +3007,7 @@ dependencies = [
  "rusqlite",
  "rweb",
  "serde",
+ "serde_json",
  "smol",
  "smol-timeout",
  "smolscale",
@@ -3017,7 +3017,6 @@ dependencies = [
  "themelio-nodeprot 0.5.0",
  "themelio-stf 0.6.1",
  "tmelcrypt",
- "toml",
  "tracing",
  "tracing-subscriber",
 ]

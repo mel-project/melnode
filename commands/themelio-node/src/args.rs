@@ -41,7 +41,7 @@ pub struct Args {
     #[structopt(long)]
     staker_payout_addr: Option<Address>,
 
-    /// If given, uses this TOML file to configure the network genesis rather than following the known testnet/mainnet genesis.
+    /// If given, uses this JSON file to configure the network genesis rather than following the known testnet/mainnet genesis.
     #[structopt(long)]
     override_genesis: Option<PathBuf>,
 
@@ -71,7 +71,8 @@ impl Args {
             let genesis_toml: Vec<u8> = smol::fs::read(&path)
                 .await
                 .context("cannot read genesis config")?;
-            Ok(toml::from_slice(&genesis_toml).context("genesis config not a valid TOML file")?)
+            Ok(serde_json::from_slice(&genesis_toml)
+                .context("genesis config not a valid TOML file")?)
         } else if self.testnet {
             Ok(GenesisConfig::std_testnet())
         } else {
