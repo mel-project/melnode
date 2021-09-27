@@ -46,11 +46,12 @@ stdcode = "0.1.2"
 structopt = "0.3.23"
 systemstat = { version = "0.1.8", optional = true }
 toml = "0.5.8"
-tracing = "0.1.26"
+tracing = "0.1.26" 
 themelio-stf = "0.6"
 tmelcrypt = "0.1.0"
-themelio-nodeprot = "0.5"
+themelio-nodeprot = "0.5.1"
 tracing-subscriber = "0.2.22"
+themelio-bootstrap="0.1.0"
 
 [target.'cfg(unix)'.dependencies]
 mimalloc = "0.1.26"

@@ -8,7 +8,39 @@ use self::mempool::Mempool;
 use blkdb::{traits::DbBackend, BlockTree};
 use parking_lot::RwLock;
 pub use smt::*;
+use themelio_nodeprot::TrustStore;
 use themelio_stf::{BlockHeight, ConsensusProof, GenesisConfig, SealedState};
+
+#[derive(Clone)]
+pub struct NodeTrustStore(pub SharedStorage);
+
+impl TrustStore for NodeTrustStore {
+    fn set(&self, netid: themelio_stf::NetID, trusted: themelio_nodeprot::TrustedHeight) {
+        self.0
+            .read()
+            .metadata
+            .insert(
+                stdcode::serialize(&netid).expect("cannot serialize netid"),
+                stdcode::serialize(&(trusted.height, trusted.header_hash))
+                    .expect("Cannot serialize trusted height"),
+            )
+            .expect("could not set trusted height");
+    }
+
+    fn get(&self, netid: themelio_stf::NetID) -> Option<themelio_nodeprot::TrustedHeight> {
+        let pair: (BlockHeight, tmelcrypt::HashVal) = self
+            .0
+            .read()
+            .metadata
+            .get(&stdcode::serialize(&netid).expect("cannot serialize netid"))
+            .expect("cannot get")
+            .map(|b| stdcode::deserialize(&b).expect("cannot deserialize"))?;
+        Some(themelio_nodeprot::TrustedHeight {
+            height: pair.0,
+            header_hash: pair.1,
+        })
+    }
+}
 
 /// An alias for a shared NodeStorage.
 pub type SharedStorage = Arc<RwLock<NodeStorage>>;
@@ -16,6 +48,7 @@ pub type SharedStorage = Arc<RwLock<NodeStorage>>;
 /// NodeStorage encapsulates all storage used by a Themelio full node (auditor or staker).
 pub struct NodeStorage {
     mempool: Mempool,
+    metadata: boringdb::Dict,
 
     history: BlockTree<BoringDbBackend>,
     forest: novasmt::Forest,
@@ -37,6 +70,9 @@ impl NodeStorage {
         // Identify the genesis by the genesis ID
         let genesis_id = tmelcrypt::hash_single(stdcode::serialize(&genesis).unwrap());
         let dict = db.open_dict(&format!("genesis{}", genesis_id)).unwrap();
+        let metadata = db
+            .open_dict(&format!("meta_genesis{}", genesis_id))
+            .unwrap();
         let forest = novasmt::Forest::new(BoringDbSmt::new(dict.clone()));
         let mut history = BlockTree::new(BoringDbBackend { dict }, forest.clone(), true);
 
@@ -50,6 +86,7 @@ impl NodeStorage {
             mempool: Mempool::new(mempool_state),
             history,
             forest,
+            metadata,
         }
     }
 

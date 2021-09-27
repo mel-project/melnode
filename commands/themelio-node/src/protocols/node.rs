@@ -76,10 +76,16 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: SharedSt
     const SLOW_TIME: Duration = Duration::from_millis(5000);
     const FAST_TIME: Duration = Duration::from_millis(10);
     loop {
-        let random_peer = network.routes().first().cloned();
-        dbg!(network.routes());
+        let routes = network.routes();
+        let random_peer = routes.first().cloned();
         if let Some(peer) = random_peer {
-            log::trace!("{}: picked random peer {} for blksync", tag(), peer);
+            log::debug!(
+                "{}: picked random peer {} out of {} peers {:?} for blksync",
+                tag(),
+                peer,
+                routes.len(),
+                routes
+            );
             let client = NodeClient::new(netid, peer);
 
             let res = attempt_blksync(peer, &client, &storage).await;

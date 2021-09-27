@@ -13,7 +13,6 @@ use async_compat::Compat;
 use structopt::StructOpt;
 use tracing::instrument;
 
-
 #[cfg(unix)]
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
@@ -45,7 +44,7 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
         opt.advertise_addr(),
         bootstrap,
         storage.clone(),
-    ); 
+    );
     let _staker_prot = if let Some((
         staker_sk,
         staker_listen,
@@ -67,7 +66,10 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
     };
 
     #[cfg(feature = "metrics")]
-    crate::prometheus::GLOBAL_STORAGE.set(storage).ok().expect("Could not write to GLOBAL_STORAGE");
+    crate::prometheus::GLOBAL_STORAGE
+        .set(storage)
+        .ok()
+        .expect("Could not write to GLOBAL_STORAGE");
 
     #[cfg(feature = "metrics")]
     Compat::new(crate::prometheus::prometheus()).await;
