@@ -19,7 +19,7 @@ optional = true
 anyhow = "1.0.44"
 async-compat = "0.2.1"
 #boringdb = { path = "../../../boringdb" }
-boringdb = "0.3.10"
+boringdb = "0.3.11"
 blkdb = { path = "../../libs/blkdb" }
 dashmap = "4.0.2"
 default-net = "0.3.0"

@@ -125,7 +125,7 @@ async fn attempt_blksync(
         return Ok(0);
     }
     let height_stream =
-        futures_util::stream::iter((my_highest.0..=their_highest.0).skip(1).take(1024))
+        futures_util::stream::iter((my_highest.0..=their_highest.0).skip(1).take(256))
             .map(BlockHeight);
     let lookup_tx = |tx| storage.read().mempool().lookup_recent_tx(tx);
     let mut result_stream = height_stream
@@ -135,7 +135,7 @@ async fn attempt_blksync(
                 Ok(client.get_full_block(height, &lookup_tx).await?)
             }))
         })
-        .try_buffered(12)
+        .try_buffered(32)
         .boxed();
     let mut toret = 0;
     while let Some(res) = result_stream.try_next().await? {

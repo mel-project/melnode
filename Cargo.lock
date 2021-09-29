@@ -392,16 +392,17 @@ dependencies = [
 
 [[package]]
 name = "boringdb"
-version = "0.3.10"
+version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e29be0cae6da658040514ea3c2160b36dc3c29949e91f7a843dac307526ec20"
+checksum = "57b3eaafc380efe418555dd06e1c66197e2f9e9c2252d740a931ab1fae757f06"
 dependencies = [
  "bytes",
+ "dashmap",
+ "fastrand",
  "flume",
  "genawaiter",
  "itertools",
  "log",
- "nanorand 0.5.2",
  "parking_lot",
  "priority-queue",
  "rusqlite",
@@ -846,7 +847,7 @@ checksum = "24c3fd473b3a903a62609e413ed7538f99e10b665ecb502b5e481a95283f8ab4"
 dependencies = [
  "futures-core",
  "futures-sink",
- "nanorand 0.6.1",
+ "nanorand",
  "pin-project",
  "spin 0.9.2",
 ]
@@ -1639,12 +1640,6 @@ dependencies = [
  "tempfile",
  "twoway",
 ]
-
-[[package]]
-name = "nanorand"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac1378b66f7c93a1c0f8464a19bf47df8795083842e5090f4b7305973d5a22d0"
 
 [[package]]
 name = "nanorand"
