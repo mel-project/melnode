@@ -52,7 +52,7 @@ fi
 echo "Sleeping for 5 seconds for the service to start."
 sleep 5
 
-if bats "${SCRIPTS_DIRECTORY}/test-local.bats"; then
+if bats "${TESTDIR}/test-local.bats"; then
   rm "${PLAN_DIRECTORY}/plan.sh"
   bio svc unload "${pkg_ident}"
 else

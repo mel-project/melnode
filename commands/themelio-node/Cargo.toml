@@ -11,7 +11,7 @@ version = "0.25.3"
 features = ["bundled"]
 
 [dependencies.rweb]
-version = "0.14.0"
+version = "0.14.1"
 features = ["tls"]
 optional = true
 
