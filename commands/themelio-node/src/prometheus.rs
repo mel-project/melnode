@@ -19,7 +19,7 @@ pub static NETWORK: Lazy<RwLock<&str>> = Lazy::new(|| RwLock::new("mainnet"));
 
 static REGISTRY: Lazy<Registry> = Lazy::new(|| Registry::new());
 
-static HOSTNAME: Lazy<String> = Lazy::new(|| {
+pub static HOSTNAME: Lazy<String> = Lazy::new(|| {
     gethostname::gethostname()
         .into_string()
         .expect("Could not convert hostname into a string.")
