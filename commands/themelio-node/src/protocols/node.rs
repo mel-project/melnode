@@ -79,6 +79,7 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: SharedSt
         let routes = network.routes();
         let random_peer = routes.first().cloned();
         if let Some(peer) = random_peer {
+            #[cfg(not(feature = "metrics"))]
             log::debug!(
                 "{}: picked random peer {} out of {} peers {:?} for blksync",
                 tag(),
@@ -86,17 +87,33 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: SharedSt
                 routes.len(),
                 routes
             );
+            #[cfg(feature = "metrics")]
+            log::debug!(
+                "hostname={} public_ip={} {}: picked random peer {} out of {} peers {:?} for blksync",
+                crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+                tag(),
+                peer,
+                routes.len(),
+                routes
+            );
+
             let client = NodeClient::new(netid, peer);
 
             let res = attempt_blksync(peer, &client, &storage).await;
             match res {
                 Err(e) => {
+                    #[cfg(not(feature = "metrics"))]
                     log::warn!("{}: failed to blksync with {}: {:?}", tag(), peer, e);
+                    #[cfg(feature = "metrics")]
+                    log::warn!("hostname={} public_ip={} {}: failed to blksync with {}: {:?}", crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), tag(), peer, e);
                     smol::Timer::after(FAST_TIME).await;
                 }
                 Ok(blklen) => {
                     if blklen > 0 {
+                        #[cfg(not(feature = "metrics"))]
                         log::debug!("synced to height {}", storage.read().highest_height());
+                        #[cfg(feature = "metrics")]
+                        log::warn!("hostname={} public_ip={} synced to height {}", crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), storage.read().highest_height());
                         smol::Timer::after(FAST_TIME).await;
                     } else {
                         smol::Timer::after(SLOW_TIME).await;
@@ -140,11 +157,20 @@ async fn attempt_blksync(
     let mut toret = 0;
     while let Some(res) = result_stream.try_next().await? {
         let (block, proof): (Block, ConsensusProof) = res;
+        #[cfg(not(feature = "metrics"))]
         log::debug!(
             "fully resolved block {} from peer {}",
             block.header.height,
             addr
         );
+        #[cfg(feature = "metrics")]
+        log::debug!(
+            "hostname={} public_ip={} fully resolved block {} from peer {}",
+            crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+            block.header.height,
+            addr
+        );
+
         storage
             .write()
             .apply_block(block, proof)
@@ -168,6 +194,7 @@ impl NodeServer for AuditorResponder {
             // log::warn!("cannot apply tx: {:?}", e);
             MelnetError::Custom(e.to_string())
         })?;
+        #[cfg(not(feature = "metrics"))]
         log::debug!(
             "txhash {}.. inserted ({:?}, {:?} locking, {:?} applying)",
             &tx.hash_nosigs().to_string()[..10],
@@ -175,6 +202,16 @@ impl NodeServer for AuditorResponder {
             post_lock - start,
             post_lock.elapsed()
         );
+        #[cfg(feature = "metrics")]
+        log::debug!(
+            "hostname={} public_ip={} txhash {}.. inserted ({:?}, {:?} locking, {:?} applying)",
+            crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+            &tx.hash_nosigs().to_string()[..10],
+            start.elapsed(),
+            post_lock - start,
+            post_lock.elapsed()
+        );
+
         // log::debug!("about to broadcast txhash {:?}", tx.hash_nosigs());
         for neigh in state.routes().iter().take(4).cloned() {
             let tx = tx.clone();
