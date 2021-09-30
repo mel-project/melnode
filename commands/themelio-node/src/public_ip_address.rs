@@ -6,7 +6,5 @@ use once_cell::sync::Lazy;
 
 
 pub static PUBLIC_IP_ADDRESS: Lazy<String> = Lazy::new(|| {
-    // Compat::new(crate::prometheus::prometheus()).await;
     smol::future::block_on(public_ip::addr().compat()).expect("Could not obtain the public IP address.").to_string()
-    // smol::future::block_on(some_future.compat())
 });
