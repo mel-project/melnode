@@ -34,12 +34,18 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Runs the main function for a node.
 #[instrument(skip(opt))]
 pub async fn main_async(opt: Args) -> anyhow::Result<()> {
+    #[cfg(not(feature = "metrics"))]
     log::info!("themelio-core v{} initializing...", VERSION);
+    #[cfg(feature = "metrics")]
+    log::info!("hostname={} public_ip={} themelio-core v{} initializing...", crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), VERSION);
     let genesis = opt.genesis_config().await?;
     let netid = genesis.network;
     let storage: SharedStorage = opt.storage().await?;
     let bootstrap = opt.bootstrap().await?;
+    #[cfg(not(feature = "metrics"))]
     log::info!("bootstrapping with {:?}", bootstrap);
+    #[cfg(feature = "metrics")]
+    log::info!("hostname={} public_ip={} bootstrapping with {:?}", crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), bootstrap);
     let _node_prot = NodeProtocol::new(
         netid,
         opt.listen_addr(),
