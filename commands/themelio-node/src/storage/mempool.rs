@@ -43,8 +43,16 @@ impl Mempool {
     /// Forcibly replaces the internal state of the mempool with the given state.
     pub fn rebase(&mut self, state: State) {
         if state.height > self.provisional_state.height {
+            #[cfg(not(feature = "metrics"))]
             log::trace!(
                 "rebasing mempool {} => {}",
+                self.provisional_state.height,
+                state.height
+            );
+            #[cfg(feature = "metrics")]
+            log::trace!(
+                "hostname={} public_ip={} rebasing mempool {} => {}",
+                crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
                 self.provisional_state.height,
                 state.height
             );
