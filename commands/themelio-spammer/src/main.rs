@@ -82,11 +82,11 @@ async fn spammer(
             inputs: vec![],
             outputs: vec![CoinData {
                 denom: Denom::Mel,
-                value: 1 << 40,
+                value: (1 << 40).into(),
                 additional_data: vec![],
                 covhash: my_covenant.hash(),
             }],
-            fee: MICRO_CONVERTER,
+            fee: MICRO_CONVERTER.into(),
             data: buf,
             scripts: vec![],
             sigs: vec![],
@@ -127,7 +127,7 @@ async fn spammer(
                 let (pk, sk) = tmelcrypt::ed25519_keygen();
                 (
                     CoinData {
-                        value,
+                        value: value.into(),
                         denom: Denom::Mel,
                         covhash: Covenant::std_ed25519_pk_new(pk).hash(),
                         additional_data: vec![],
@@ -136,13 +136,13 @@ async fn spammer(
                 )
             })
             .collect::<Vec<_>>();
-        let fee = total_input - outputs.iter().map(|v| v.0.value).sum::<u128>();
+        let fee: u128 = total_input - outputs.iter().map(|v| u128::from(v.0.value)).sum::<u128>();
 
         let mut new_tx = Transaction {
             kind: TxKind::Normal,
             inputs: inputs.iter().map(|v| v.coinid).collect(),
             outputs: outputs.iter().map(|v| v.0.clone()).collect(),
-            fee,
+            fee: fee.into(),
             scripts: inputs
                 .iter()
                 .map(|v| Covenant::std_ed25519_pk_new(v.unlock_key.to_public()))
@@ -159,7 +159,7 @@ async fn spammer(
                     txhash: new_tx.hash_nosigs(),
                     index: index as u8,
                 },
-                value: output.value,
+                value: output.value.into(),
                 unlock_key: *unlock_key,
             };
             coin_queue.push(entry, rand::random::<u64>());
