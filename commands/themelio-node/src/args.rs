@@ -109,7 +109,10 @@ impl Args {
         // Reset block. This is used to roll back history in emergencies
         if let Some(height) = self.emergency_reset_block {
             let mut storage = storage.write();
+            #[cfg(not(feature = "metrics"))]
             log::warn!("*** EMERGENCY RESET TO BLOCK {} ***", height);
+            #[cfg(feature = "metrics")]
+            log::warn!("hostname={} public_ip={} *** EMERGENCY RESET TO BLOCK {} ***", crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), height);
             let history = storage.history_mut();
             while history
                 .get_tips()
@@ -120,7 +123,10 @@ impl Args {
             }
         }
 
+        #[cfg(not(feature = "metrics"))]
         log::debug!("node storage opened");
+        #[cfg(feature = "metrics")]
+        log::debug!("hostname={} public_ip={} node storage opened", crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str());
         Ok(storage)
     }
 
