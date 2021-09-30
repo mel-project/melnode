@@ -34,7 +34,10 @@ impl novasmt::BackendDB for BoringDbSmt {
     fn set_batch(&self, kvv: &[(Hashed, BackendNode)]) {
         let mut tree = self.disk_tree.transaction().unwrap();
         let mut increment = Vec::new();
+        #[cfg(not(feature = "metrics"))]
         log::trace!("inserting {} pairs", kvv.len());
+        #[cfg(feature = "metrics")]
+        log::trace!("hostname={} public_ip={} inserting {} pairs", crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), kvv.len());
         // first insert all the new elements with refcount 0, while keeping track of what to increment
         for (k, v) in kvv {
             if let BackendNode::Internal(left, right) = v {
@@ -67,7 +70,10 @@ impl novasmt::BackendDB for BoringDbSmt {
             if top != [0; 32] {
                 let (bnode, mut rcount): BackendNodeRc =
                     stdcode::deserialize(&tree.get(&top).unwrap().unwrap()).unwrap();
+                #[cfg(not(feature = "metrics"))]
                 log::debug!("rcount {}", rcount);
+                #[cfg(feature = "metrics")]
+                log::debug!("hostname={} public_ip={} rcount {}", crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), rcount);
                 rcount = rcount.saturating_sub(1);
                 if rcount == 0 {
                     log::debug!("deleting {}", hex::encode(&top));
