@@ -15,8 +15,6 @@ source "${PLAN_DIRECTORY}/plan.sh"
 
 sudo bio sup run &
 
-export HAB_STUDIO_SECRET_DEBUG_BUILD=true
-
 bio pkg build "biome/${pkg_name}"
 
 source results/last_build.env
@@ -32,6 +30,9 @@ sudo bio svc load "${pkg_ident}"
 echo "Sleeping for 5 seconds for the service to start."
 sleep 5
 
-bats "${SCRIPTS_DIRECTORY}/test.bats"
-
-sudo bio svc unload "${pkg_ident}" || true
+if bats "${SCRIPTS_DIRECTORY}/test.bats"; then
+  sudo bio svc unload "${pkg_ident}"
+else
+  sudo bio svc unload "${pkg_ident}"
+  exit 1
+fi
