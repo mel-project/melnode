@@ -1,6 +1,8 @@
 mod args;
 #[cfg(feature = "metrics")]
 mod prometheus;
+#[cfg(feature = "metrics")]
+mod public_ip_address;
 mod protocols;
 mod storage;
 
