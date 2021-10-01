@@ -99,10 +99,18 @@ impl NodeStorage {
     pub fn highest_height(&self) -> BlockHeight {
         let tips = self.history.get_tips();
         if tips.len() != 1 {
+            #[cfg(not(feature = "metrics"))]
             log::error!(
                 "multiple tips: {:#?}",
                 tips.iter().map(|v| v.header()).collect::<Vec<_>>()
             );
+            #[cfg(feature = "metrics")]
+            log::error!(
+                "hostname={} public_ip={} multiple tips: {:#?}",
+                crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+                tips.iter().map(|v| v.header()).collect::<Vec<_>>()
+            );
+
         }
         tips.into_iter().map(|v| v.header().height).max().unwrap()
     }
@@ -138,7 +146,10 @@ impl NodeStorage {
 
         self.history
             .apply_block(&blk, &stdcode::serialize(&cproof).unwrap())?;
+        #[cfg(not(feature = "metrics"))]
         log::debug!("applied block {}", blk.header.height);
+        #[cfg(feature = "metrics")]
+        log::debug!("hostname={} public_ip={} applied block {}", crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), blk.header.height);
         let next = self.highest_state().next_state();
         self.mempool_mut().rebase(next);
         Ok(())
