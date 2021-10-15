@@ -54,7 +54,7 @@ fn main() {
         }
         Args::RewardCoin(opts) => {
             print_header("REWARD PSEUDO-COINID");
-            println!("{}", CoinID::proposer_reward(opts.height))
+            println!("{}", CoinID::proposer_reward(opts.height.into()))
         }
     }
 }

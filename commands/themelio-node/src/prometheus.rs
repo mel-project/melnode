@@ -19,7 +19,7 @@ pub static NETWORK: Lazy<RwLock<&str>> = Lazy::new(|| RwLock::new("mainnet"));
 
 static REGISTRY: Lazy<Registry> = Lazy::new(|| Registry::new());
 
-static HOSTNAME: Lazy<String> = Lazy::new(|| {
+pub static HOSTNAME: Lazy<String> = Lazy::new(|| {
     gethostname::gethostname()
         .into_string()
         .expect("Could not convert hostname into a string.")
@@ -149,8 +149,8 @@ fn metrics() -> Result<String, rweb::http::Error> {
         Ok(output) => output,
         Err(error) => {
             log::error!(
-                "Metrics could not be made into a string from UTF8: {}",
-                error
+                "hostname={} public_ip={} Metrics could not be made into a string from UTF8: {}",
+                crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), error
             );
 
             String::from("There is an error with the metrics")
@@ -198,7 +198,7 @@ fn set_system_metrics() {
         Ok(uptime) => {
             UPTIME_SECONDS.set(uptime.as_secs() as i64);
         }
-        Err(error) => log::debug!("There was an error retrieving system uptime: {}", error),
+        Err(error) => log::debug!("hostname={} public_ip={} There was an error retrieving system uptime: {}", crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), error),
     }
 
     let default_network_interface: String = default_net::get_default_interface_name()
@@ -214,8 +214,8 @@ fn set_system_metrics() {
             NETWORK_RECEIVED_BYTES.set(received_bytes as i64);
         }
         Err(error) => log::debug!(
-            "There was an error retrieving network traffic information: {}",
-            error
+            "hostname={} public_ip={} There was an error retrieving network traffic information: {}",
+            crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), error
         ),
     }
 
@@ -238,14 +238,14 @@ fn set_system_metrics() {
                 });
         }
         Err(error) => log::debug!(
-            "There was an error retrieving filesystem information: {}",
-            error
+            "hostname={} public_ip={} There was an error retrieving filesystem information: {}",
+            crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), error
         ),
     }
 }
 
 pub async fn prometheus() {
-    log::debug!("Prometheus metrics listening on http://127.0.0.1:8080");
+    log::debug!("hostname={} public_ip={} Prometheus metrics listening on http://127.0.0.1:8080", crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str());
 
     REGISTRY
         .register(Box::new(HIGHEST_BLOCK.clone()))

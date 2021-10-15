@@ -11,10 +11,12 @@ bio pkg install --binlink core/nmap
 
 cp "${PLAN_DIRECTORY}/plan-debug.sh" "${PLAN_DIRECTORY}/plan.sh"
 
-source "${PLAN_DIRECTORY}/plan.sh"
+pushd "${PLAN_DIRECTORY}"
+
+source "plan.sh"
 
 if [ -n "${SKIP_BUILD}" ]; then
-  source results/last_build.env
+  source "results/last_build.env"
 
   BIO_SVC_STATUS="$(bio svc status)"
   NO_SERVICES_LOADED="No services loaded."
@@ -29,11 +31,9 @@ if [ -n "${SKIP_BUILD}" ]; then
     bio svc load "${pkg_ident}"
   fi
 else
-  pushd "${PLAN_DIRECTORY}"
   build
-  popd
 
-  source results/last_build.env
+  source "results/last_build.env"
 
   BIO_SVC_STATUS="$(bio svc status)"
   NO_SERVICES_LOADED="No services loaded."
@@ -52,8 +52,13 @@ fi
 echo "Sleeping for 5 seconds for the service to start."
 sleep 5
 
-bats "${TESTDIR}/test.bats"
+if bats "scripts/test-local.bats"; then
+  rm "plan.sh"
+  bio svc unload "${pkg_ident}"
+else
+  rm "plan.sh"
+  bio svc unload "${pkg_ident}"
+  exit 1
+fi
 
-bio svc unload "${pkg_ident}" || true
-
-rm "${PLAN_DIRECTORY}/plan.sh"
+popd
