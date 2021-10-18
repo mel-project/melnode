@@ -19,7 +19,7 @@ static MAINNET_START_TIME: Lazy<SystemTime> =
     Lazy::new(|| std::time::UNIX_EPOCH + Duration::from_secs(1619758800)); // Apr 30 2021
 
 static TESTNET_START_TIME: Lazy<SystemTime> =
-    Lazy::new(|| std::time::UNIX_EPOCH + Duration::from_secs(1617249600)); // Apr 01 2021
+    Lazy::new(|| std::time::UNIX_EPOCH + Duration::from_secs(1617640600)); // Apr 05 2021
 
 /// This encapsulates the staker-specific peer-to-peer.
 pub struct StakerProtocol {
@@ -63,7 +63,12 @@ impl StakerProtocol {
                     #[cfg(not(feature = "metrics"))]
                     log::info!("epoch transitioning into {}!", current_epoch);
                     #[cfg(feature = "metrics")]
-                    log::info!("hostname={} public_ip={} epoch transitioning into {}!", crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), current_epoch);
+                    log::info!(
+                        "hostname={} public_ip={} epoch transitioning into {}!",
+                        crate::prometheus::HOSTNAME.as_str(),
+                        crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+                        current_epoch
+                    );
 
                     smol::Timer::after(Duration::from_secs(1)).await;
                     // we race the staker loop with epoch termination. epoch termination for now is just a sleep loop that waits until the last block in the epoch is confirmed.
@@ -89,7 +94,12 @@ impl StakerProtocol {
                         #[cfg(not(feature = "metrics"))]
                         log::warn!("staker rebooting: {:?}", err);
                         #[cfg(feature = "metrics")]
-                        log::warn!("hostname={} public_ip={} staker rebooting: {:?}", crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), err);
+                        log::warn!(
+                            "hostname={} public_ip={} staker rebooting: {:?}",
+                            crate::prometheus::HOSTNAME.as_str(),
+                            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+                            err
+                        );
 
                         break;
                     }
