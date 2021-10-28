@@ -4,7 +4,7 @@ pkg_maintainer="Meade Kincke <meade@themelio.org>"
 pkg_version="0.3.0"
 pkg_license=("MPL-2.0")
 pkg_full_path="${HAB_CACHE_SRC_PATH}/${pkg_name}"
-pkg_build_deps=(core/rust)
+pkg_build_deps=(themelio/rust)
 pkg_deps=(
   core/curl
   core/gcc-libs
