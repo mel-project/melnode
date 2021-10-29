@@ -2,7 +2,7 @@
 name = "themelio-node"
 version = "0.3.0"
 authors = ["nullchinchilla <nullchinchilla@pm.me>", "Meade Kincke <meade@themelio.org"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

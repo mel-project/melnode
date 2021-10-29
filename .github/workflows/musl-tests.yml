@@ -28,6 +28,9 @@ jobs:
       - name: Install Musl
         run: sudo apt install -y musl musl-tools
 
+      - name: Update Rust
+        run: rustup update
+
       - name: Add Musl Target
         run: rustup target add x86_64-unknown-linux-musl
 
