@@ -64,7 +64,6 @@ impl Args {
         self.advertise
     }
 
-    #[cfg(not(feature = "metrics"))]
     /// Derives the genesis configuration from the arguments
     pub async fn genesis_config(&self) -> anyhow::Result<GenesisConfig> {
         if let Some(path) = &self.override_genesis {
