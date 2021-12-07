@@ -1,6 +1,6 @@
 [package]
 name = "themelio-node"
-version = "0.2.1"
+version = "0.3.1"
 authors = ["nullchinchilla <nullchinchilla@pm.me>", "Meade Kincke <meade@themelio.org"]
 edition = "2018"
 
@@ -11,7 +11,7 @@ version = "0.25.3"
 features = ["bundled"]
 
 [dependencies.rweb]
-version = "0.13.0"
+version = "0.14.1"
 features = ["tls"]
 optional = true
 
@@ -52,6 +52,7 @@ themelio-stf = "0.6"
 tmelcrypt = "0.1.0"
 themelio-nodeprot = "0.5"
 tracing-subscriber = "0.2.22"
+themelio-bootstrap = "0.1.0"
 
 [target.'cfg(unix)'.dependencies]
 mimalloc = "0.1.26"

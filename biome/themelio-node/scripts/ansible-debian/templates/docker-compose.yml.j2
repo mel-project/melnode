@@ -14,6 +14,13 @@ services:
     volumes:
       - themelio-node:/hab/svc/themelio-node/data
 
+  promtail:
+    image: ghcr.io/themeliolabs/promtail:latest
+    ports:
+      - 9080:9080
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers
+
 volumes:
   themelio-node:
     name: themelio-node

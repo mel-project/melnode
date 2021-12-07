@@ -5,8 +5,8 @@ After=docker.service
 [Service]
 Restart=always
 User=arch
-ExecStartPre=/usr/bin/docker-compose -f /home/arch/compose/docker-compose.yml down -v
+ExecStartPre=/usr/bin/docker-compose -f /home/arch/compose/docker-compose.yml down
 ExecStart=env HOSTNAME=%H /usr/bin/docker-compose -f /home/arch/compose/docker-compose.yml up
-ExecStop=/usr/bin/docker-compose -f /home/arch/compose/docker-compose.yml down -v
+ExecStop=/usr/bin/docker-compose -f /home/arch/compose/docker-compose.yml down
 [Install]
 WantedBy=multi-user.target

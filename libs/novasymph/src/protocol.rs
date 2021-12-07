@@ -176,12 +176,14 @@ async fn protocol_loop<B: BlockBuilder>(
             cfg.start_time,
             cfg.interval,
         );
+        log::debug!("waiting until height_time {:?}", height_time);
         wait_until_sys(height_time).or(vote_loop).await;
 
         log::debug!("entering height {}", height);
 
         let mut cstate = cstate.write();
         if height_to_proposer(height) == cfg.signing_sk.to_public() {
+            log::debug!("we are the proposer for height {}", height);
             let mut build_upon = cstate.get_lnc_state();
             if build_upon.inner_ref().height >= height {
                 log::warn!(
@@ -195,6 +197,7 @@ async fn protocol_loop<B: BlockBuilder>(
             // fill in a bunch of empty blocks until the height matches
             while build_upon.inner_ref().height + BlockHeight(1) < height {
                 build_upon = build_upon.next_state().seal(None);
+                log::debug!("building empty block for {}", build_upon.inner_ref().height)
             }
 
             // am i out of bounds?
@@ -263,6 +266,8 @@ async fn protocol_loop<B: BlockBuilder>(
             }
             // vote for it myself
             cstate.vote_all(cfg.signing_sk);
+        } else {
+            log::debug!("we are NOT the proposer for height {}", height);
         }
     }
 }
@@ -578,14 +583,12 @@ fn next_height_time(
         .duration_since(start_time)
         .expect("clock randomly jumped, that breaks streamlet");
     let next_height = BlockHeight((elapsed_time.as_millis() / interval.as_millis()) as u64);
-    if next_height < current_height + 500.into() {
-        let next_time = start_time + interval * (next_height.0 as u32 + 1);
-        (next_height, next_time)
-    } else {
-        let pseudoheight = elapsed_time.as_millis() / (interval.as_millis() / 4);
-        let next_time = start_time + (interval / 4) * (pseudoheight as u32 + 1);
-        (current_height + 1.into(), next_time)
-    }
+    let next_time = start_time + interval * (next_height.0 as u32 + 1);
+    // if next_height < current_height + 50.into() {
+    (next_height, next_time)
+    // } else {
+    //     ((current_height / 50) * 50 + 50.into(), next_time)
+    // }
 }
 
 // a helper function that returns a proposer-calculator for a given epoch, given the SealedState before the epoch.
@@ -608,15 +611,21 @@ async fn gen_get_proposer(pre_epoch: SealedState) -> impl Fn(BlockHeight) -> Ed2
         smol::unblock(move || {
             if end_height.0 >= STAKE_EPOCH {
                 (end_height.0 - STAKE_EPOCH..end_height.0)
-                    .map(|height| {
-                        // log::warn!("majority beacon looking at height {}", height);
-                        pre_epoch
-                            .inner_ref()
-                            .history
-                            .get(&BlockHeight(height))
-                            .0
-                            .expect("getting history failed")
-                            .hash()
+                    .filter_map(|height| {
+                        if height % 197 != 0 {
+                            None
+                        } else {
+                            log::warn!("majority beacon looking at height {}", height);
+                            Some(
+                                pre_epoch
+                                    .inner_ref()
+                                    .history
+                                    .get(&BlockHeight(height))
+                                    .0
+                                    .expect("getting history failed")
+                                    .hash(),
+                            )
+                        }
                     })
                     .chain(std::iter::once(pre_epoch.header().hash()))
                     .collect::<Vec<_>>()
@@ -651,7 +660,7 @@ async fn gen_get_proposer(pre_epoch: SealedState) -> impl Fn(BlockHeight) -> Ed2
                     .unwrap(),
             );
             let numseed = numseed >> total_staked.leading_zeros();
-            if numseed < total_staked {
+            if numseed <= total_staked {
                 break numseed;
             }
             seed = tmelcrypt::hash_single(&seed);
@@ -663,6 +672,7 @@ async fn gen_get_proposer(pre_epoch: SealedState) -> impl Fn(BlockHeight) -> Ed2
         for stake in stake_docs {
             if stake.e_post_end > height.epoch() && stake.e_start <= height.epoch() {
                 sum += stake.syms_staked.0;
+                dbg!(seed, sum);
                 if seed <= sum {
                     return stake.pubkey;
                 }

@@ -17,7 +17,7 @@ pub struct Args {
     #[structopt(long)]
     advertise: Option<SocketAddr>,
 
-    /// Bootstrap addresses. May be given as a DNS name.
+    /// Override bootstrap addresses. May be given as a DNS name.
     #[structopt(long, default_value = "mainnet-bootstrap.themelio.org:11814")]
     bootstrap: Vec<String>,
 
@@ -68,30 +68,18 @@ impl Args {
     /// Derives the genesis configuration from the arguments
     pub async fn genesis_config(&self) -> anyhow::Result<GenesisConfig> {
         if let Some(path) = &self.override_genesis {
-            let genesis_toml: Vec<u8> = smol::fs::read(&path)
+            let genesis_json: Vec<u8> = smol::fs::read(&path)
                 .await
                 .context("cannot read genesis config")?;
-            Ok(serde_json::from_slice(&genesis_toml)
+            Ok(serde_json::from_slice(&genesis_json)
                 .context("genesis config not a valid TOML file")?)
         } else if self.testnet {
-            Ok(GenesisConfig::std_testnet())
-        } else {
-            Ok(GenesisConfig::std_mainnet())
-        }
-    }
-
-    #[cfg(feature = "metrics")]
-    /// Derives the genesis configuration from the arguments
-    pub async fn genesis_config(&self) -> anyhow::Result<GenesisConfig> {
-        if let Some(path) = &self.override_genesis {
-            let genesis_toml: Vec<u8> = smol::fs::read(&path)
-                .await
-                .context("cannot read genesis config")?;
-            Ok(toml::from_slice(&genesis_toml).context("genesis config not a valid TOML file")?)
-        } else if self.testnet {
-            *crate::prometheus::NETWORK
-                .write()
-                .expect("Could not get a write lock on NETWORK") = "testnet";
+            #[cfg(feature = "metrics")]
+            {
+                *crate::prometheus::NETWORK
+                    .write()
+                    .expect("Could not get a write lock on NETWORK") = "testnet";
+            }
 
             Ok(GenesisConfig::std_testnet())
         } else {
@@ -110,7 +98,15 @@ impl Args {
         // Reset block. This is used to roll back history in emergencies
         if let Some(height) = self.emergency_reset_block {
             let mut storage = storage.write();
+            #[cfg(not(feature = "metrics"))]
             log::warn!("*** EMERGENCY RESET TO BLOCK {} ***", height);
+            #[cfg(feature = "metrics")]
+            log::warn!(
+                "hostname={} public_ip={} *** EMERGENCY RESET TO BLOCK {} ***",
+                crate::prometheus::HOSTNAME.as_str(),
+                crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+                height
+            );
             let history = storage.history_mut();
             while history
                 .get_tips()
@@ -121,20 +117,33 @@ impl Args {
             }
         }
 
+        #[cfg(not(feature = "metrics"))]
         log::debug!("node storage opened");
+        #[cfg(feature = "metrics")]
+        log::debug!(
+            "hostname={} public_ip={} node storage opened",
+            crate::prometheus::HOSTNAME.as_str(),
+            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str()
+        );
         Ok(storage)
     }
 
     /// Derives a list of bootstrap addresses
     pub async fn bootstrap(&self) -> anyhow::Result<Vec<SocketAddr>> {
-        let mut bootstrap = vec![];
-        for name in self.bootstrap.iter() {
-            let addrs = smol::net::resolve(&name)
-                .await
-                .context("cannot resolve DNS bootstrap")?;
-            bootstrap.extend(addrs);
+        if !self.bootstrap.is_empty() {
+            let mut bootstrap = vec![];
+            for name in self.bootstrap.iter() {
+                let addrs = smol::net::resolve(&name)
+                    .await
+                    .context("cannot resolve DNS bootstrap")?;
+                bootstrap.extend(addrs);
+            }
+            Ok(bootstrap)
+        } else {
+            Ok(themelio_bootstrap::bootstrap_routes(
+                self.genesis_config().await?.network,
+            ))
         }
-        Ok(bootstrap)
     }
 
     /// Listening address
