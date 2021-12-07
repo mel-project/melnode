@@ -100,7 +100,7 @@ async fn one_epoch_loop(
     let start_time = match genesis.inner_ref().network {
         themelio_stf::NetID::Mainnet => *MAINNET_START_TIME,
         themelio_stf::NetID::Testnet => *TESTNET_START_TIME,
-        _ => SystemTime::now(),
+        _ => SystemTime::now() - Duration::from_secs(storage.read().highest_height().0 * 30),
     };
     let config = novasymph::EpochConfig {
         listen: addr,

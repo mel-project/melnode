@@ -42,7 +42,12 @@ impl NodeStorage {
 
         // initialize stuff
         if history.get_tips().is_empty() {
-            history.set_genesis(genesis.realize(&forest).seal(None), &[]);
+            let first_state = genesis.realize(&forest).seal(None);
+            log::info!(
+                "initializing network with 0:{}",
+                first_state.header().hash()
+            );
+            history.set_genesis(first_state, &[]);
         }
 
         let mempool_state = history.get_tips()[0].to_state().next_state();
@@ -101,7 +106,7 @@ impl NodeStorage {
 
         self.history
             .apply_block(&blk, &stdcode::serialize(&cproof).unwrap())?;
-        log::debug!("applied block {}", blk.header.height);
+        log::debug!("applied block {}:{}", blk.header.height, blk.header.hash());
         let next = self.highest_state().next_state();
         self.mempool_mut().rebase(next);
         Ok(())
