@@ -1,11 +1,11 @@
 use crate::traits::DbBackend;
+
+use std::fmt::Write;
+use std::collections::{BTreeSet, HashMap, HashSet};
+use std::convert::TryInto;
+
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fmt::Write};
-use std::{
-    collections::{BTreeSet, HashSet},
-    convert::TryInto,
-};
 use themelio_stf::{Block, BlockHeight, Header, ProposerAction, SealedState};
 use thiserror::Error;
 use tmelcrypt::HashVal;
@@ -37,22 +37,26 @@ impl<B: DbBackend> BlockTree<B> {
     /// Initial cleanup: delete tips that are ancestors of other tips.
     fn initial_tip_cleanup(&mut self) {
         let mut tips = HashMap::new();
-        for tip in self.get_tips() {
+
+        self.get_tips().iter().for_each(|tip| {
             let hash = tip.header().hash();
             tips.insert(hash, tip.to_state().inner_ref().history.clone());
-        }
+        });
+
         let mut to_delete = Vec::new();
-        for tip in self.get_tips() {
+
+        self.get_tips().iter().for_each(|tip| {
             if tips
                 .iter()
                 .any(|(_, history)| history.get(&tip.header().height).0 == Some(tip.header()))
             {
                 to_delete.push(tip.header().hash())
             }
-        }
-        for to_delete in to_delete {
-            self.inner.tip_remove(to_delete);
-        }
+        });
+
+        to_delete.into_iter().for_each(|to_delete_single| {
+            self.inner.tip_remove(to_delete_single);
+        });
     }
 
     /// Attempts to apply a block.
@@ -147,12 +151,13 @@ impl<B: DbBackend> BlockTree<B> {
                 .expect("just-set genesis is gone?!")];
             while let Some(top) = stack.pop() {
                 descendants.insert(top.header().hash());
-                for child in top.children() {
+
+                top.children().into_iter().for_each(|child| {
                     stack.push(child);
-                }
+                });
             }
         }
-        let mut todel = HashSet::new();
+        let mut to_delete = HashSet::new();
         if let Some(old_genesis) = old_genesis {
             if old_genesis.header().hash() != state_hash {
                 // use this cursor to traverse
@@ -160,28 +165,30 @@ impl<B: DbBackend> BlockTree<B> {
                 while let Some(top) = stack.pop() {
                     if !descendants.contains(&top.header().hash()) {
                         // this is a damned one!
-                        todel.insert(top.header());
-                        for child in top.children() {
-                            stack.push(child)
-                        }
+                        to_delete.insert(top.header());
+
+                        top.children().into_iter().for_each(|child| {
+                            stack.push(child);
+                        });
                     }
                 }
             }
         }
-        // okay now we go through the whole todel sequence
-        let mut todel = todel.into_iter().collect::<Vec<_>>();
-        todel.sort_unstable_by_key(|v| v.height);
-        for todel in todel {
-            self.inner.remove_orphan(todel.hash(), Some(todel.height));
+        // okay now we go through the whole to_delete sequence
+        let mut to_delete = to_delete.into_iter().collect::<Vec<_>>();
+        to_delete.sort_unstable_by_key(|v| v.height);
+
+        to_delete.into_iter().for_each(|to_delete_single| {
+            self.inner.remove_orphan(to_delete_single.hash(), Some(to_delete_single.height));
             if self.canonical {
                 // we also delete all the SMTs
-                self.forest.delete_tree(todel.coins_hash.0);
-                self.forest.delete_tree(todel.pools_hash.0);
-                self.forest.delete_tree(todel.stakes_hash.0);
-                self.forest.delete_tree(todel.transactions_hash.0);
-                self.forest.delete_tree(todel.history_hash.0);
+                self.forest.delete_tree(to_delete_single.coins_hash.0);
+                self.forest.delete_tree(to_delete_single.pools_hash.0);
+                self.forest.delete_tree(to_delete_single.stakes_hash.0);
+                self.forest.delete_tree(to_delete_single.transactions_hash.0);
+                self.forest.delete_tree(to_delete_single.history_hash.0);
             }
-        }
+        });
     }
 
     /// Deletes all the tips.
@@ -191,9 +198,10 @@ impl<B: DbBackend> BlockTree<B> {
             .iter()
             .map(|v| v.header().hash())
             .collect::<Vec<_>>();
-        for tip in tips {
+
+        tips.into_iter().for_each(|tip| {
             self.inner.remove_childless(tip, None);
-        }
+        });
     }
 
     /// Creates a GraphViz string that represents all the blocks in the tree.
