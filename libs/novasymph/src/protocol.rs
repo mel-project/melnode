@@ -584,11 +584,11 @@ fn next_height_time(
         .expect("clock randomly jumped, that breaks streamlet");
     let next_height = BlockHeight((elapsed_time.as_millis() / interval.as_millis()) as u64);
     let next_time = start_time + interval * (next_height.0 as u32 + 1);
-    // if next_height < current_height + 50.into() {
-    (next_height, next_time)
-    // } else {
-    //     ((current_height / 50) * 50 + 50.into(), next_time)
-    // }
+    if next_height < current_height + 50.into() {
+        (next_height, next_time)
+    } else {
+        ((current_height / 50) * 50 + 50.into(), next_time)
+    }
 }
 
 // a helper function that returns a proposer-calculator for a given epoch, given the SealedState before the epoch.
@@ -650,6 +650,9 @@ async fn gen_get_proposer(pre_epoch: SealedState) -> impl Fn(BlockHeight) -> Ed2
                 }
             })
             .sum::<u128>();
+        if total_staked == 0 {
+            panic!("BLOCK {} DOES NOT HAVE STAKERS", height);
+        }
         // "clamp" the subseed
         // we hash the seed with the height
         let mut seed = tmelcrypt::hash_keyed(&height.0.to_be_bytes(), &seed);

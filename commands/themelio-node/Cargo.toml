@@ -48,11 +48,11 @@ systemstat = { version = "0.1.8", optional = true }
 # toml = "0.5.8"
 serde_json="1"
 tracing = "0.1.26"
-themelio-stf = "0.6"
-tmelcrypt = "0.1.0"
-themelio-nodeprot = "0.5"
+themelio-stf = "0.6.11"
+tmelcrypt = "0.2.3"
+themelio-nodeprot = "0.6.0"
 tracing-subscriber = "0.2.22"
-themelio-bootstrap = "0.1.0"
+themelio-bootstrap = "0.2.0"
 public-ip = "0.2.1"
 
 [target.'cfg(unix)'.dependencies]
