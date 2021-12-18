@@ -587,7 +587,14 @@ fn next_height_time(
     if next_height < current_height + 50.into() {
         (next_height, next_time)
     } else {
-        ((current_height / 50) * 50 + 50.into(), next_time)
+        // if current_height.0 % 10 > 5 {
+        //     ((current_height / 10) * 10 + 10.into(), next_time)
+        // } else {
+        (
+            current_height + BlockHeight(1),
+            now + Duration::from_secs(5),
+        )
+        // }
     }
 }
 
@@ -635,6 +642,7 @@ async fn gen_get_proposer(pre_epoch: SealedState) -> impl Fn(BlockHeight) -> Ed2
         })
     }
     .await;
+    let epoch = pre_epoch.inner_ref().height.epoch();
     let seed = tmelcrypt::majority_beacon(&beacon_components);
     let stakes = pre_epoch.inner_ref().stakes.clone();
     move |height: BlockHeight| {
@@ -643,7 +651,7 @@ async fn gen_get_proposer(pre_epoch: SealedState) -> impl Fn(BlockHeight) -> Ed2
         let total_staked = stakes
             .val_iter()
             .filter_map(|v| {
-                if v.e_post_end > height.epoch() && v.e_start <= height.epoch() {
+                if v.e_post_end > epoch && v.e_start <= epoch {
                     Some(v.syms_staked.0)
                 } else {
                     None
@@ -673,7 +681,7 @@ async fn gen_get_proposer(pre_epoch: SealedState) -> impl Fn(BlockHeight) -> Ed2
         stake_docs.sort_by_key(|v| v.pubkey);
         let mut sum = 0;
         for stake in stake_docs {
-            if stake.e_post_end > height.epoch() && stake.e_start <= height.epoch() {
+            if stake.e_post_end > epoch && stake.e_start <= epoch {
                 sum += stake.syms_staked.0;
                 dbg!(seed, sum);
                 if seed <= sum {
