@@ -48,7 +48,7 @@ systemstat = { version = "0.1.8", optional = true }
 # toml = "0.5.8"
 serde_json="1"
 tracing = "0.1.26"
-themelio-stf = "0.6.11"
+themelio-stf = "0.6.15"
 tmelcrypt = "0.2.3"
 themelio-nodeprot = "0.6.0"
 tracing-subscriber = "0.2.22"

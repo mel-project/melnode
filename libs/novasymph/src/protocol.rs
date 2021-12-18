@@ -458,7 +458,11 @@ async fn confirmer_loop(
             log::warn!("skipping out-of-bounds finalized block");
             continue;
         }
-        log::info!("[[[ {} FINALIZED ]]]", finalized.inner_ref().height);
+        log::info!(
+            "[[[ {} FINALIZED (epoch {}) ]]]",
+            finalized.inner_ref().height,
+            my_epoch
+        );
         let my_header = finalized.header();
         let own_signature = signing_sk.sign(&finalized.header().hash());
         let sigs = UnconfirmedBlock {
@@ -598,23 +602,22 @@ fn next_height_time(
     }
 }
 
-// a helper function that returns a proposer-calculator for a given epoch, given the SealedState before the epoch.
-async fn gen_get_proposer(pre_epoch: SealedState) -> impl Fn(BlockHeight) -> Ed25519PK {
-    let end_height = if pre_epoch.inner_ref().height.epoch() == 0 {
+// a helper function that returns a proposer-calculator for a given epoch
+async fn gen_get_proposer(genesis: SealedState) -> impl Fn(BlockHeight) -> Ed25519PK {
+    let end_height = if genesis.inner_ref().height.epoch() == 0 {
         BlockHeight(0)
-    } else if pre_epoch.inner_ref().height.epoch()
-        != (pre_epoch.inner_ref().height + 1.into()).epoch()
+    } else if genesis.inner_ref().height.epoch() != (genesis.inner_ref().height + 1.into()).epoch()
     {
-        pre_epoch.inner_ref().height
+        genesis.inner_ref().height
     } else {
-        BlockHeight((pre_epoch.inner_ref().height.0 / STAKE_EPOCH * STAKE_EPOCH) - 1)
+        BlockHeight((genesis.inner_ref().height.0 / STAKE_EPOCH * STAKE_EPOCH) - 1)
     };
     if end_height > BlockHeight(0) {
         assert!(end_height.0 % STAKE_EPOCH == STAKE_EPOCH - 1)
     }
     // majority beacon of all the blocks in the previous epoch
     let beacon_components = {
-        let pre_epoch = pre_epoch.clone();
+        let genesis = genesis.clone();
         smol::unblock(move || {
             if end_height.0 >= STAKE_EPOCH {
                 (end_height.0 - STAKE_EPOCH..end_height.0)
@@ -624,7 +627,7 @@ async fn gen_get_proposer(pre_epoch: SealedState) -> impl Fn(BlockHeight) -> Ed2
                         } else {
                             log::warn!("majority beacon looking at height {}", height);
                             Some(
-                                pre_epoch
+                                genesis
                                     .inner_ref()
                                     .history
                                     .get(&BlockHeight(height))
@@ -634,7 +637,7 @@ async fn gen_get_proposer(pre_epoch: SealedState) -> impl Fn(BlockHeight) -> Ed2
                             )
                         }
                     })
-                    .chain(std::iter::once(pre_epoch.header().hash()))
+                    // .chain(std::iter::once(genesis.header().hash()))
                     .collect::<Vec<_>>()
             } else {
                 vec![HashVal::default()]
@@ -642,9 +645,13 @@ async fn gen_get_proposer(pre_epoch: SealedState) -> impl Fn(BlockHeight) -> Ed2
         })
     }
     .await;
-    let epoch = pre_epoch.inner_ref().height.epoch();
+    let epoch = (genesis.inner_ref().height + BlockHeight(1)).epoch();
     let seed = tmelcrypt::majority_beacon(&beacon_components);
-    let stakes = pre_epoch.inner_ref().stakes.clone();
+    let stakes = genesis.inner_ref().stakes.clone();
+
+    dbg!(stakes.val_iter().collect::<Vec<_>>());
+    dbg!(genesis.inner_ref().height);
+
     move |height: BlockHeight| {
         // we sum the number of µsyms staked
         // TODO: overflow?
@@ -659,8 +666,14 @@ async fn gen_get_proposer(pre_epoch: SealedState) -> impl Fn(BlockHeight) -> Ed2
             })
             .sum::<u128>();
         if total_staked == 0 {
-            panic!("BLOCK {} DOES NOT HAVE STAKERS", height);
+            panic!(
+                "BLOCK {} (epoch {}, pre_epoch {}) DOES NOT HAVE STAKERS",
+                height,
+                epoch,
+                genesis.inner_ref().height
+            );
         }
+        log::debug!("{} staked for epoch {}", total_staked, epoch);
         // "clamp" the subseed
         // we hash the seed with the height
         let mut seed = tmelcrypt::hash_keyed(&height.0.to_be_bytes(), &seed);
