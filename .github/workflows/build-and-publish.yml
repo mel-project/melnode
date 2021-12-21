@@ -36,6 +36,15 @@ jobs:
           BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
           BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
 
+      - name: Remove Rust
+        run: sudo rm -rf /usr/share/rust/
+
+      - name: Remove Rustc
+        run: sudo rm -rf /home/runner/.cargo/bin/rustc
+
+      - name: Remove Cargo
+        run: sudo rm -rf /home/runner/.cargo/bin/cargo
+
       - name: Fix Directory Permissions
         run: sudo chown -R $(whoami):$(id -ng) /hab
 
