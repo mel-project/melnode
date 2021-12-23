@@ -23,6 +23,15 @@ jobs:
       - name: Fix Directory Permissions
         run: sudo chown -R $(whoami):$(id -ng) /hab
 
+      - name: Remove Rust
+        run: sudo rm -rf /usr/share/rust/
+
+      - name: Remove Rustc
+        run: sudo rm -rf /home/runner/.cargo/bin/rustc
+
+      - name: Remove Cargo
+        run: sudo rm -rf /home/runner/.cargo/bin/cargo
+
       - name: Cache Biome
         uses: actions/cache@v2
         env:

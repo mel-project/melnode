@@ -201,7 +201,7 @@ fn set_system_metrics() {
         Err(error) => log::debug!("hostname={} public_ip={} There was an error retrieving system uptime: {}", crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), error),
     }
 
-    let default_network_interface: String = default_net::get_default_interface_name()
+    let default_network_interface: String = default_net::interface::get_default_interface_name()
         .expect("Could not get default network interface name.");
 
     match system.network_stats(&default_network_interface) {
