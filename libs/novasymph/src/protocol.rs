@@ -1,22 +1,3 @@
-use futures_util::stream::FuturesOrdered;
-use melnet::Request;
-use parking_lot::RwLock;
-use smol::{channel::Receiver, future::Boxed};
-use smol::{channel::Sender, prelude::*};
-use smol_timeout::TimeoutExt;
-use std::{
-    collections::BTreeMap,
-    convert::TryInto,
-    net::SocketAddr,
-    sync::Arc,
-    time::{Duration, SystemTime},
-};
-use themelio_stf::{
-    Block, BlockHeight, ConfirmedState, ConsensusProof, ProposerAction, SealedState, StakeMapping,
-    Transaction, TxHash, STAKE_EPOCH,
-};
-use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
-
 use crate::{
     cstate::{
         gossip::{
@@ -28,15 +9,35 @@ use crate::{
     msg::ProposalSig,
     NS_EXECUTOR,
 };
+use derivative::Derivative;
+use futures_util::stream::FuturesOrdered;
+use melnet::Request;
+use novasmt::ContentAddrStore;
+use parking_lot::RwLock;
+use smol::{channel::Receiver, future::Boxed};
+use smol::{channel::Sender, prelude::*};
+use smol_timeout::TimeoutExt;
+use std::{
+    collections::{BTreeMap, HashSet},
+    convert::TryInto,
+    net::SocketAddr,
+    sync::Arc,
+    time::{Duration, SystemTime},
+};
+use themelio_stf::{
+    Block, BlockHeight, ConfirmedState, ConsensusProof, ProposerAction, SealedState, StakeMapping,
+    Transaction, TxHash, STAKE_EPOCH,
+};
+use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
 /// A trait that represents a "mempool".
-pub trait BlockBuilder: 'static + Send + Sync {
+pub trait BlockBuilder<C: ContentAddrStore>: 'static + Send + Sync {
     /// Given a previous state, build a block that extends it
-    fn build_block(&self, tip: SealedState) -> Block;
+    fn build_block(&self, tip: SealedState<C>) -> Block;
 
     /// Sets a "hint" that the next block will extend from a particular state.
     #[allow(unused_variables)]
-    fn hint_next_build(&self, tip: SealedState) {}
+    fn hint_next_build(&self, tip: SealedState<C>) {}
 
     /// Gets a cached transaction if available.
     #[allow(unused_variables)]
@@ -46,28 +47,29 @@ pub trait BlockBuilder: 'static + Send + Sync {
 }
 
 /// Configuration for a running protocol.
-pub struct EpochConfig<B: BlockBuilder> {
+pub struct EpochConfig<B: BlockBuilder<C>, C: ContentAddrStore> {
     pub listen: SocketAddr,
     pub bootstrap: Vec<SocketAddr>,
-    pub genesis: SealedState,
-    pub forest: novasmt::Forest,
+    pub genesis: SealedState<C>,
+    pub forest: novasmt::Database<C>,
     pub start_time: SystemTime,
     pub interval: Duration,
     pub signing_sk: Ed25519SK,
     pub builder: B,
-    pub get_confirmed: Box<dyn Fn(BlockHeight) -> Option<ConfirmedState> + Sync + Send + 'static>,
+    pub get_confirmed:
+        Box<dyn Fn(BlockHeight) -> Option<ConfirmedState<C>> + Sync + Send + 'static>,
 }
 
 /// Represents a running instance of the Symphonia protocol for a particular epoch.
-pub struct EpochProtocol {
+pub struct EpochProtocol<C: ContentAddrStore> {
     _task: smol::Task<()>,
-    cstate: Arc<RwLock<ChainState>>,
-    recv_confirmed: Receiver<ConfirmedState>,
+    cstate: Arc<RwLock<ChainState<C>>>,
+    recv_confirmed: Receiver<ConfirmedState<C>>,
 }
 
-impl EpochProtocol {
+impl<C: ContentAddrStore> EpochProtocol<C> {
     /// Create a new instance of the protocol over melnet.
-    pub fn new<B: BlockBuilder>(cfg: EpochConfig<B>) -> Self {
+    pub fn new<B: BlockBuilder<C>>(cfg: EpochConfig<B, C>) -> Self {
         let (send_confirmed, recv_confirmed) = smol::channel::unbounded();
         let cstate = Arc::new(RwLock::new(ChainState::new(
             cfg.genesis.clone(),
@@ -86,20 +88,20 @@ impl EpochProtocol {
     }
 
     /// Receives the next fully-confirmed state.
-    pub async fn next_confirmed(&self) -> ConfirmedState {
+    pub async fn next_confirmed(&self) -> ConfirmedState<C> {
         self.recv_confirmed.recv().await.unwrap()
     }
 
     /// Forces the given state to be genesis.
-    pub fn reset_genesis(&self, genesis: SealedState) {
+    pub fn reset_genesis(&self, genesis: SealedState<C>) {
         self.cstate.write().reset_genesis(genesis)
     }
 }
 
-async fn protocol_loop<B: BlockBuilder>(
-    cfg: EpochConfig<B>,
-    cstate: Arc<RwLock<ChainState>>,
-    send_confirmed: Sender<ConfirmedState>,
+async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
+    cfg: EpochConfig<B, C>,
+    cstate: Arc<RwLock<ChainState<C>>>,
+    send_confirmed: Sender<ConfirmedState<C>>,
 ) -> ! {
     let (send_finalized, recv_finalized) = smol::channel::unbounded();
 
@@ -273,10 +275,10 @@ async fn protocol_loop<B: BlockBuilder>(
 }
 
 // "gossiper" thread
-async fn gossiper_loop<B: BlockBuilder>(
+async fn gossiper_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
     network: melnet::NetState,
-    cstate: Arc<RwLock<ChainState>>,
-    cfg: Arc<EpochConfig<B>>,
+    cstate: Arc<RwLock<ChainState<C>>>,
+    cfg: Arc<EpochConfig<B, C>>,
 ) -> ! {
     'mainloop: loop {
         smol::Timer::after(Duration::from_millis(300)).await;
@@ -301,7 +303,7 @@ async fn gossiper_loop<B: BlockBuilder>(
                     // we now "fill in" everything
                     let mut full_responses = vec![];
                     for abbr_response in res {
-                        let mut known = imbl::HashSet::new();
+                        let mut known = HashSet::new();
                         let mut unknown = Vec::new();
                         // we assemble all the things we don't know
                         for txhash in abbr_response.abbr_block.txhashes.iter().copied() {
@@ -390,13 +392,13 @@ async fn gossiper_loop<B: BlockBuilder>(
 }
 
 // "gossiper" thread
-async fn confirmer_loop(
+async fn confirmer_loop<C: ContentAddrStore>(
     my_epoch: u64,
     signing_sk: Ed25519SK,
     network: melnet::NetState,
-    cstate: Arc<RwLock<ChainState>>,
-    recv_finalized: Receiver<SealedState>,
-    send_confirmed: Sender<ConfirmedState>,
+    cstate: Arc<RwLock<ChainState<C>>>,
+    recv_finalized: Receiver<SealedState<C>>,
+    send_confirmed: Sender<ConfirmedState<C>>,
 ) -> Option<()> {
     let known_votes = Arc::new(RwLock::new(BTreeMap::new()));
     network.listen("confirm_block", {
@@ -410,7 +412,7 @@ async fn confirmer_loop(
                         .read()
                         .get(&height)
                         .cloned()
-                        .map(|v: UnconfirmedBlock| v.signatures)
+                        .map(|v: UnconfirmedBlock<C>| v.signatures)
                         .unwrap_or_default();
                     log::debug!(
                         "responding to confirm request for {} with {} sigs",
@@ -424,7 +426,7 @@ async fn confirmer_loop(
     });
 
     let (send_fut, recv_fut) = smol::channel::bounded(128);
-    let mut confirmed_generator = FuturesOrdered::<Boxed<Option<ConfirmedState>>>::new();
+    let mut confirmed_generator = FuturesOrdered::<Boxed<Option<ConfirmedState<C>>>>::new();
     let _piper = {
         // let cstate = cstate.clone();
         // let known_votes = known_votes.clone();
@@ -550,14 +552,15 @@ async fn confirmer_loop(
     }
 }
 
-#[derive(Clone, Debug)]
-struct UnconfirmedBlock {
-    state: SealedState,
+#[derive(Derivative, Debug)]
+#[derivative(Clone(bound = ""))]
+struct UnconfirmedBlock<C: ContentAddrStore> {
+    state: SealedState<C>,
     signatures: ConsensusProof,
 }
 
-impl UnconfirmedBlock {
-    fn is_confirmed(&self, stakes: &StakeMapping) -> bool {
+impl<C: ContentAddrStore> UnconfirmedBlock<C> {
+    fn is_confirmed(&self, stakes: &StakeMapping<C>) -> bool {
         let mut sum_weights = 0.0;
         for (k, v) in self.signatures.iter() {
             assert!(k.verify(&self.state.header().hash(), v));
@@ -603,7 +606,9 @@ fn next_height_time(
 }
 
 // a helper function that returns a proposer-calculator for a given epoch
-async fn gen_get_proposer(genesis: SealedState) -> impl Fn(BlockHeight) -> Ed25519PK {
+async fn gen_get_proposer<C: ContentAddrStore>(
+    genesis: SealedState<C>,
+) -> impl Fn(BlockHeight) -> Ed25519PK {
     let end_height = if genesis.inner_ref().height.epoch() == 0 {
         BlockHeight(0)
     } else if genesis.inner_ref().height.epoch() != (genesis.inner_ref().height + 1.into()).epoch()

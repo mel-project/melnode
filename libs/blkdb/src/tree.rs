@@ -1,25 +1,26 @@
 use crate::traits::DbBackend;
 
-use std::fmt::Write;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::convert::TryInto;
+use std::fmt::Write;
 
 use dashmap::DashMap;
+use novasmt::ContentAddrStore;
 use serde::{Deserialize, Serialize};
 use themelio_stf::{Block, BlockHeight, Header, ProposerAction, SealedState};
 use thiserror::Error;
 use tmelcrypt::HashVal;
 
 /// A block tree, stored on a particular backend.
-pub struct BlockTree<B: DbBackend> {
-    inner: Inner<B>,
-    forest: novasmt::Forest,
+pub struct BlockTree<B: DbBackend, C: ContentAddrStore> {
+    inner: Inner<B, C>,
+    forest: novasmt::Database<C>,
     canonical: bool,
 }
 
-impl<B: DbBackend> BlockTree<B> {
+impl<B: DbBackend, C: ContentAddrStore> BlockTree<B, C> {
     /// Create a new BlockTree.
-    pub fn new(backend: B, forest: novasmt::Forest, canonical: bool) -> Self {
+    pub fn new(backend: B, forest: novasmt::Database<C>, canonical: bool) -> Self {
         let inner = Inner {
             backend,
             canonical,
@@ -79,18 +80,12 @@ impl<B: DbBackend> BlockTree<B> {
 
         // apply block should already have checked this
         assert_eq!(next_state.header(), block.header);
-        log::trace!(
-            "inserted block with coin delta {}, history delta {} onto previous with history delta {}",
-            next_state.inner_ref().coins.mapping.delta_count(),
-            next_state.inner_ref().history.mapping.delta_count(),
-            previous.inner_ref().history.mapping.delta_count(),
-        );
         self.inner.insert_block(next_state, init_metadata);
         Ok(())
     }
 
     /// Get all the cursors at a given height.
-    pub fn get_at_height(&self, height: BlockHeight) -> Vec<Cursor<'_, B>> {
+    pub fn get_at_height(&self, height: BlockHeight) -> Vec<Cursor<'_, B, C>> {
         self.inner
             .all_at_height(height)
             .into_iter()
@@ -102,7 +97,7 @@ impl<B: DbBackend> BlockTree<B> {
     }
 
     /// Obtains a *cursor* pointing to a particular block in the tree. The cursor has a lifetime bound that prevents the blocktree from mutating when cursors exist.
-    pub fn get_cursor(&self, hash: HashVal) -> Option<Cursor<'_, B>> {
+    pub fn get_cursor(&self, hash: HashVal) -> Option<Cursor<'_, B, C>> {
         let internal = self.inner.get_block(hash, None)?;
         Some(Cursor {
             tree: self,
@@ -111,7 +106,7 @@ impl<B: DbBackend> BlockTree<B> {
     }
 
     /// Obtains a *mutable cursor* pointing to a particular block in the tree. The cursor has a lifetime bound that prevents the blocktree from mutating when cursors exist.
-    pub fn get_cursor_mut(&mut self, hash: HashVal) -> Option<CursorMut<'_, B>> {
+    pub fn get_cursor_mut(&mut self, hash: HashVal) -> Option<CursorMut<'_, B, C>> {
         let internal = self.inner.get_block(hash, None)?;
         Some(CursorMut {
             tree: self,
@@ -120,7 +115,7 @@ impl<B: DbBackend> BlockTree<B> {
     }
 
     /// Get a vector of "tips" in the blockchain
-    pub fn get_tips(&self) -> Vec<Cursor<'_, B>> {
+    pub fn get_tips(&self) -> Vec<Cursor<'_, B, C>> {
         let tip_keys = self.inner.all_tips();
         tip_keys
             .into_iter()
@@ -129,7 +124,7 @@ impl<B: DbBackend> BlockTree<B> {
     }
 
     /// Sets the genesis block of the tree. This also prunes all elements that do not belong to the given genesis block.
-    pub fn set_genesis(&mut self, state: SealedState, init_metadata: &[u8]) {
+    pub fn set_genesis(&mut self, state: SealedState<C>, init_metadata: &[u8]) {
         let state_hash = state.header().hash();
         if self.get_cursor(state.header().hash()).is_none() {
             self.inner.insert_block(state, init_metadata);
@@ -146,7 +141,7 @@ impl<B: DbBackend> BlockTree<B> {
         // remove all non-descendants
         let mut descendants = HashSet::new();
         {
-            let mut stack: Vec<Cursor<_>> = vec![self
+            let mut stack: Vec<Cursor<_, _>> = vec![self
                 .get_cursor(state_hash)
                 .expect("just-set genesis is gone?!")];
             while let Some(top) = stack.pop() {
@@ -161,7 +156,7 @@ impl<B: DbBackend> BlockTree<B> {
         if let Some(old_genesis) = old_genesis {
             if old_genesis.header().hash() != state_hash {
                 // use this cursor to traverse
-                let mut stack: Vec<Cursor<_>> = vec![old_genesis];
+                let mut stack: Vec<Cursor<_, _>> = vec![old_genesis];
                 while let Some(top) = stack.pop() {
                     if !descendants.contains(&top.header().hash()) {
                         // this is a damned one!
@@ -179,15 +174,8 @@ impl<B: DbBackend> BlockTree<B> {
         to_delete.sort_unstable_by_key(|v| v.height);
 
         to_delete.into_iter().for_each(|to_delete_single| {
-            self.inner.remove_orphan(to_delete_single.hash(), Some(to_delete_single.height));
-            if self.canonical {
-                // we also delete all the SMTs
-                self.forest.delete_tree(to_delete_single.coins_hash.0);
-                self.forest.delete_tree(to_delete_single.pools_hash.0);
-                self.forest.delete_tree(to_delete_single.stakes_hash.0);
-                self.forest.delete_tree(to_delete_single.transactions_hash.0);
-                self.forest.delete_tree(to_delete_single.history_hash.0);
-            }
+            self.inner
+                .remove_orphan(to_delete_single.hash(), Some(to_delete_single.height));
         });
     }
 
@@ -205,7 +193,7 @@ impl<B: DbBackend> BlockTree<B> {
     }
 
     /// Creates a GraphViz string that represents all the blocks in the tree.
-    pub fn debug_graphviz(&self, visitor: impl Fn(&Cursor<'_, B>) -> String) -> String {
+    pub fn debug_graphviz(&self, visitor: impl Fn(&Cursor<'_, B, C>) -> String) -> String {
         let mut stack = self.get_tips();
         let tips = self
             .get_tips()
@@ -253,12 +241,12 @@ impl<B: DbBackend> BlockTree<B> {
 }
 
 /// A cursor, pointing to something inside the block tree.
-pub struct Cursor<'a, B: DbBackend> {
-    tree: &'a BlockTree<B>,
+pub struct Cursor<'a, B: DbBackend, C: ContentAddrStore> {
+    tree: &'a BlockTree<B, C>,
     internal: InternalValue,
 }
 
-impl<'a, B: DbBackend> Clone for Cursor<'a, B> {
+impl<'a, B: DbBackend, C: ContentAddrStore> Clone for Cursor<'a, B, C> {
     fn clone(&self) -> Self {
         Self {
             tree: self.tree,
@@ -267,9 +255,9 @@ impl<'a, B: DbBackend> Clone for Cursor<'a, B> {
     }
 }
 
-impl<'a, B: DbBackend> Cursor<'a, B> {
+impl<'a, B: DbBackend, C: ContentAddrStore> Cursor<'a, B, C> {
     /// Converts to a SealedState.
-    pub fn to_state(&self) -> SealedState {
+    pub fn to_state(&self) -> SealedState<C> {
         self.internal
             .to_state(&self.tree.forest, &self.tree.inner.cache)
     }
@@ -300,14 +288,14 @@ impl<'a, B: DbBackend> Cursor<'a, B> {
 }
 
 /// A mutable cursor, pointing to something inside the block tree.
-pub struct CursorMut<'a, B: DbBackend> {
-    tree: &'a mut BlockTree<B>,
+pub struct CursorMut<'a, B: DbBackend, C: ContentAddrStore> {
+    tree: &'a mut BlockTree<B, C>,
     internal: InternalValue,
 }
 
-impl<'a, B: DbBackend> CursorMut<'a, B> {
+impl<'a, B: DbBackend, C: ContentAddrStore> CursorMut<'a, B, C> {
     /// Converts to a SealedState.
-    pub fn to_state(&self) -> SealedState {
+    pub fn to_state(&self) -> SealedState<C> {
         self.internal
             .to_state(&self.tree.forest, &self.tree.inner.cache)
     }
@@ -338,7 +326,7 @@ impl<'a, B: DbBackend> CursorMut<'a, B> {
     }
 
     /// "Downgrades" the cursor to an immutable cursor.
-    pub fn downgrade(self) -> Cursor<'a, B> {
+    pub fn downgrade(self) -> Cursor<'a, B, C> {
         Cursor {
             tree: self.tree,
             internal: self.internal,
@@ -358,14 +346,14 @@ pub enum ApplyBlockErr {
 }
 
 /// Lower-level helper struct that provides fail-safe basic operations.
-struct Inner<B: DbBackend> {
+struct Inner<B: DbBackend, C: ContentAddrStore> {
     backend: B,
     canonical: bool,
     // cached SealedStates. this is also required so that inserted blocks in non-canonical mode are persistent.
-    cache: DashMap<HashVal, SealedState>,
+    cache: DashMap<HashVal, SealedState<C>>,
 }
 
-impl<B: DbBackend> Inner<B> {
+impl<B: DbBackend, C: ContentAddrStore> Inner<B, C> {
     /// Gets a block from the database.
     fn get_block(&self, blkhash: HashVal, height: Option<BlockHeight>) -> Option<InternalValue> {
         self.maybe_gc_cache();
@@ -417,7 +405,7 @@ impl<B: DbBackend> Inner<B> {
     /// Inserts a block into the database
     fn insert_block(
         &mut self,
-        mut state: SealedState,
+        mut state: SealedState<C>,
         init_metadata: &[u8],
     ) -> Option<InternalValue> {
         // if let Some(val) = self.get_block(state.header().hash(), Some(state.inner_ref().height)) {
@@ -431,10 +419,6 @@ impl<B: DbBackend> Inner<B> {
         // - then we update the tips list
         let header = state.header();
         let blkhash = header.hash();
-        // stabilize the block onto disk
-        if self.canonical {
-            state.save_smts();
-        }
         // insert the block
         self.internal_insert(
             blkhash,
@@ -543,7 +527,11 @@ struct InternalValue {
 }
 
 impl InternalValue {
-    fn from_state(state: &SealedState, action: Option<ProposerAction>, metadata: Vec<u8>) -> Self {
+    fn from_state<C: ContentAddrStore>(
+        state: &SealedState<C>,
+        action: Option<ProposerAction>,
+        metadata: Vec<u8>,
+    ) -> Self {
         Self {
             header: state.header(),
             partial_state: state.partial_encoding(),
@@ -553,11 +541,11 @@ impl InternalValue {
         }
     }
 
-    fn to_state(
+    fn to_state<C: ContentAddrStore>(
         &self,
-        forest: &novasmt::Forest,
-        cache: &DashMap<HashVal, SealedState>,
-    ) -> SealedState {
+        forest: &novasmt::Database<C>,
+        cache: &DashMap<HashVal, SealedState<C>>,
+    ) -> SealedState<C> {
         cache
             .get(&self.header.hash())
             .map(|f| f.clone())

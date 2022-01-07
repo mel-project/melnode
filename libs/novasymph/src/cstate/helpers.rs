@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use blkdb::{backends::InMemoryDb, Cursor};
+use novasmt::ContentAddrStore;
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
@@ -31,12 +32,12 @@ pub enum VoteError {
 }
 
 /// An extension trait for dealing with Cursors.
-pub trait CursorExt {
+pub trait CursorExt<C: ContentAddrStore> {
     fn get_streamlet(&self) -> Option<StreamletMetadata>;
     fn chain_weight(&self) -> u64;
 }
 
-impl<'a> CursorExt for Cursor<'a, InMemoryDb> {
+impl<'a, C: ContentAddrStore> CursorExt<C> for Cursor<'a, InMemoryDb, C> {
     fn get_streamlet(&self) -> Option<StreamletMetadata> {
         let metadata = self.metadata();
         if metadata.is_empty() {
@@ -80,7 +81,7 @@ pub struct StreamletMetadata {
 
 impl StreamletMetadata {
     /// Returns whether or not this block is notarized, given the stake mapping and epoch.
-    pub fn is_notarized(&self, epoch: u64, stakes: &StakeMapping) -> bool {
+    pub fn is_notarized(&self, epoch: u64, stakes: &StakeMapping<impl ContentAddrStore>) -> bool {
         // count the votes
         let mut voting_stake = 0u128;
         let mut total_stake = 0u128;

@@ -4,6 +4,7 @@ use std::{
 };
 
 use env_logger::Env;
+use novasmt::ContentAddrStore;
 use novasymph::{BlockBuilder, EpochConfig, EpochProtocol};
 use once_cell::sync::Lazy;
 use themelio_stf::{
@@ -20,7 +21,7 @@ static TEST_SKK: Lazy<Vec<Ed25519SK>> =
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("novasymph")).init();
-    let forest = novasmt::Forest::new(novasmt::InMemoryBackend::default());
+    let forest = novasmt::Database::new(novasmt::InMemoryCas::default());
     let genesis = GenesisConfig {
         network: NetID::Testnet,
         init_coindata: CoinData {
@@ -61,7 +62,11 @@ fn idx_to_addr(idx: usize) -> SocketAddr {
     format!("127.0.0.1:{}", idx + 20000).parse().unwrap()
 }
 
-async fn run_staker(idx: usize, genesis: SealedState, forest: novasmt::Forest) {
+async fn run_staker<C: ContentAddrStore>(
+    idx: usize,
+    genesis: SealedState<C>,
+    forest: novasmt::Database<C>,
+) {
     let protocol = EpochProtocol::new(EpochConfig {
         listen: idx_to_addr(idx),
         bootstrap: (0..COUNT).map(idx_to_addr).collect(),
@@ -86,8 +91,8 @@ struct TrivialBlockBuilder {
     pk: Ed25519PK,
 }
 
-impl BlockBuilder for TrivialBlockBuilder {
-    fn build_block(&self, tip: SealedState) -> Block {
+impl<C: ContentAddrStore> BlockBuilder<C> for TrivialBlockBuilder {
+    fn build_block(&self, tip: SealedState<C>) -> Block {
         tip.next_state()
             .seal(Some(ProposerAction {
                 fee_multiplier_delta: 0,

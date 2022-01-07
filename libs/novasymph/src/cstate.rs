@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 mod helpers;
 use blkdb::{backends::InMemoryDb, BlockTree, Cursor};
 use helpers::*;
+use novasmt::ContentAddrStore;
 use themelio_stf::{Block, BlockHeight, SealedState, StakeMapping};
 
 pub mod gossip;
@@ -12,18 +13,18 @@ use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 use crate::msg::{ProposalSig, VoteSig};
 
 /// A representation of the chain state internal to Symphonia.
-pub struct ChainState {
+pub struct ChainState<C: ContentAddrStore> {
     epoch: u64,
-    stakes: StakeMapping,
-    inner: BlockTree<InMemoryDb>,
-    forest: novasmt::Forest,
+    stakes: StakeMapping<C>,
+    inner: BlockTree<InMemoryDb, C>,
+    forest: novasmt::Database<C>,
 
     drained_height: BlockHeight,
 }
 
-impl ChainState {
+impl<C: ContentAddrStore> ChainState<C> {
     /// Create a new ChainState with the given genesis state.
-    pub fn new(genesis: SealedState, forest: novasmt::Forest) -> Self {
+    pub fn new(genesis: SealedState<C>, forest: novasmt::Database<C>) -> Self {
         let epoch = genesis.inner_ref().height.epoch();
         let stakes = genesis.inner_ref().stakes.clone();
         let mut inner = BlockTree::new(InMemoryDb::default(), forest.clone(), false);
@@ -232,7 +233,7 @@ impl ChainState {
     }
 
     /// Forcibly resets the genesis to something with the given HashVal.
-    pub fn reset_genesis(&mut self, genesis: SealedState) {
+    pub fn reset_genesis(&mut self, genesis: SealedState<C>) {
         // We use a full copying approach to avoid lingering cache garbage. This may eventually be the "correct" way to do so in blkdb.
         let mut new_inner = BlockTree::new(InMemoryDb::default(), self.forest.clone(), false);
         // DFS into the new thing.
@@ -279,13 +280,13 @@ impl ChainState {
     }
 
     /// Gets an arbitrary LNC tip, fully "realized", for building the next block.
-    pub fn get_lnc_state(&self) -> SealedState {
+    pub fn get_lnc_state(&self) -> SealedState<C> {
         let lowest_lnc_hash = self.get_lnc_tips().into_iter().min().unwrap();
         self.inner.get_cursor(lowest_lnc_hash).unwrap().to_state()
     }
 
     /// Gets the stake mapping.
-    pub fn stakes(&self) -> &StakeMapping {
+    pub fn stakes(&self) -> &StakeMapping<C> {
         &self.stakes
     }
 
@@ -307,7 +308,7 @@ impl ChainState {
     }
 
     /// "Drain" all finalized blocks from the chainstate.
-    pub fn drain_finalized(&mut self) -> Vec<SealedState> {
+    pub fn drain_finalized(&mut self) -> Vec<SealedState<C>> {
         if let Some(final_tip) = self.get_final_tip() {
             let mut finalized = self.inner.get_cursor(final_tip).unwrap();
             let new_drained_height = finalized.header().height;
@@ -392,7 +393,7 @@ impl ChainState {
 
     fn get_nonempty_descendants(
         &self,
-        mut stack: Vec<Cursor<'_, InMemoryDb>>,
+        mut stack: Vec<Cursor<'_, InMemoryDb, C>>,
     ) -> BTreeSet<HashVal> {
         let mut toret = BTreeSet::new();
         while let Some(top) = stack.pop() {
@@ -416,7 +417,7 @@ mod tests {
 
     #[test]
     fn simple_sequence() {
-        let forest = novasmt::Forest::new(novasmt::InMemoryBackend::default());
+        let forest = novasmt::Database::new(novasmt::InMemoryCas::default());
         let genesis = GenesisConfig::std_testnet().realize(&forest).seal(None);
         let cstate = ChainState::new(genesis, forest);
         dbg!(cstate.get_lnc_tips());
