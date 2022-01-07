@@ -39,7 +39,7 @@ impl StakerProtocol {
         let _network_task = smolscale::spawn(async move {
             loop {
                 let x = storage.read().highest_height();
-                smol::Timer::after(Duration::from_secs(10)).await;
+                smol::Timer::after(Duration::from_secs(60)).await;
                 let y = storage.read().highest_height();
                 #[cfg(not(feature = "metrics"))]
                 log::info!(
