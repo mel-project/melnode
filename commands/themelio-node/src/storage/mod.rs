@@ -2,14 +2,18 @@
 
 mod mempool;
 mod smt;
-use std::sync::Arc;
+use std::{sync::Arc, time::Instant};
 
 use self::mempool::Mempool;
 use blkdb::{traits::DbBackend, BlockTree};
+use dashmap::DashMap;
 use parking_lot::RwLock;
 pub use smt::*;
+use std::collections::BTreeMap;
 use themelio_nodeprot::TrustStore;
-use themelio_stf::{BlockHeight, ConsensusProof, GenesisConfig, SealedState};
+use themelio_stf::{
+    BlockHeight, ConsensusProof, GenesisConfig, ProposerAction, SealedState, State,
+};
 
 #[derive(Clone)]
 pub struct NodeTrustStore(pub SharedStorage);
@@ -49,9 +53,9 @@ pub type SharedStorage = Arc<RwLock<NodeStorage>>;
 pub struct NodeStorage {
     mempool: Mempool,
     metadata: boringdb::Dict,
+    highest: SealedState<MeshaCas>,
 
-    history: BlockTree<BoringDbBackend>,
-    forest: novasmt::Forest,
+    forest: novasmt::Database<MeshaCas>,
 }
 
 impl NodeStorage {
@@ -66,67 +70,53 @@ impl NodeStorage {
     }
 
     /// Opens a NodeStorage, given a sled database.
-    pub fn new(db: boringdb::Database, genesis: GenesisConfig) -> Self {
+    pub fn new(mdb: meshanina::Mapping, bdb: boringdb::Database, genesis: GenesisConfig) -> Self {
         // Identify the genesis by the genesis ID
         let genesis_id = tmelcrypt::hash_single(stdcode::serialize(&genesis).unwrap());
-        let dict = db.open_dict(&format!("genesis{}", genesis_id)).unwrap();
-        let metadata = db
+        let metadata = bdb
             .open_dict(&format!("meta_genesis{}", genesis_id))
             .unwrap();
-        let forest = novasmt::Forest::new(BoringDbSmt::new(dict.clone()));
-        let mut history = BlockTree::new(BoringDbBackend { dict }, forest.clone(), true);
-
-        // initialize stuff
-        if history.get_tips().is_empty() {
-            history.set_genesis(genesis.realize(&forest).seal(None), &[]);
-        }
-
-        let mempool_state = history.get_tips()[0].to_state().next_state();
+        let forest = novasmt::Database::new(MeshaCas::new(mdb));
+        let highest = metadata
+            .get(b"last_confirmed")
+            .expect("db failed")
+            .map(|b| SealedState::from_partial_encoding_infallible(&b, &forest))
+            .unwrap_or_else(|| genesis.realize(&forest).seal(None));
         Self {
-            mempool: Mempool::new(mempool_state),
-            history,
+            mempool: Mempool::new(highest.next_state()),
+            highest,
             forest,
             metadata,
         }
     }
 
     /// Obtain the highest state.
-    pub fn highest_state(&self) -> SealedState {
-        self.get_state(self.highest_height()).unwrap()
+    pub fn highest_state(&self) -> SealedState<MeshaCas> {
+        self.highest.clone()
     }
 
     /// Obtain the highest height.
     pub fn highest_height(&self) -> BlockHeight {
-        let tips = self.history.get_tips();
-        if tips.len() != 1 {
-            #[cfg(not(feature = "metrics"))]
-            log::error!(
-                "multiple tips: {:#?}",
-                tips.iter().map(|v| v.header()).collect::<Vec<_>>()
-            );
-            #[cfg(feature = "metrics")]
-            log::error!(
-                "hostname={} public_ip={} multiple tips: {:#?}",
-                crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-                tips.iter().map(|v| v.header()).collect::<Vec<_>>()
-            );
-
-        }
-        tips.into_iter().map(|v| v.header().height).max().unwrap()
+        self.highest.inner_ref().height
     }
 
     /// Obtain a historical SealedState.
-    pub fn get_state(&self, height: BlockHeight) -> Option<SealedState> {
-        self.history
-            .get_at_height(height)
-            .get(0)
-            .map(|v| v.to_state())
+    pub fn get_state(&self, height: BlockHeight) -> Option<SealedState<MeshaCas>> {
+        let old_blob = &self
+            .metadata
+            .get(format!("state-{}", height).as_bytes())
+            .unwrap()?;
+        let old_state = SealedState::from_partial_encoding_infallible(&old_blob, &self.forest);
+        Some(old_state)
     }
 
     /// Obtain a historical ConsensusProof.
     pub fn get_consensus(&self, height: BlockHeight) -> Option<ConsensusProof> {
-        let height = self.history.get_at_height(height).into_iter().next()?;
-        stdcode::deserialize(height.metadata()).ok()
+        let height = self
+            .metadata
+            .get(format!("cproof-{}", height).as_bytes())
+            .unwrap()?;
+        stdcode::deserialize(&height).ok()
     }
 
     /// Consumes a block, applying it to the current state.
@@ -143,13 +133,31 @@ impl NodeStorage {
                 highest_height
             );
         }
+        // TODO!!!! CHECK INTEGRITY?!!?!?!!
+        let new_state = self.highest.apply_block(&blk)?;
+        self.highest = new_state.clone();
+        self.metadata.insert(
+            format!("state-{}", new_state.inner_ref().height)
+                .as_bytes()
+                .to_vec(),
+            new_state.partial_encoding(),
+        )?;
+        self.metadata.insert(
+            format!("cproof-{}", new_state.inner_ref().height)
+                .as_bytes()
+                .to_vec(),
+            stdcode::serialize(&cproof)?,
+        )?;
 
-        self.history
-            .apply_block(&blk, &stdcode::serialize(&cproof).unwrap())?;
         #[cfg(not(feature = "metrics"))]
         log::debug!("applied block {}", blk.header.height);
         #[cfg(feature = "metrics")]
-        log::debug!("hostname={} public_ip={} applied block {}", crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), blk.header.height);
+        log::debug!(
+            "hostname={} public_ip={} applied block {}",
+            crate::prometheus::HOSTNAME.as_str(),
+            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+            blk.header.height
+        );
         let next = self.highest_state().next_state();
         self.mempool_mut().rebase(next);
         Ok(())
@@ -157,17 +165,29 @@ impl NodeStorage {
 
     /// Convenience method to "share" storage.
     pub fn share(self) -> SharedStorage {
-        Arc::new(RwLock::new(self))
+        let toret = Arc::new(RwLock::new(self));
+        let copy = toret.clone();
+        // start a background thread to periodically sync
+        std::thread::Builder::new()
+            .name("storage-sync".into())
+            .spawn(move || loop {
+                std::thread::sleep(std::time::Duration::from_secs(10));
+                let start = Instant::now();
+                let highest = copy.read().highest_state();
+                copy.read().forest().storage().flush();
+                copy.read()
+                    .metadata
+                    .insert(b"last_confirmed".to_vec(), highest.partial_encoding())
+                    .unwrap();
+                log::warn!("**** FLUSHED IN {:?} ****", start.elapsed());
+            })
+            .unwrap();
+        toret
     }
 
     /// Gets the forest.
-    pub fn forest(&self) -> novasmt::Forest {
+    pub fn forest(&self) -> novasmt::Database<MeshaCas> {
         self.forest.clone()
-    }
-
-    /// Gets the blockdb.
-    pub fn history_mut(&mut self) -> &mut blkdb::BlockTree<impl DbBackend> {
-        &mut self.history
     }
 }
 

@@ -11,7 +11,7 @@ use themelio_stf::{
     AbbrBlock, Block, BlockHeight, ConsensusProof, NetID, SealedState, Transaction,
 };
 
-use crate::storage::SharedStorage;
+use crate::storage::{MeshaCas, SharedStorage};
 use melnet::MelnetError;
 use smol::net::TcpListener;
 use smol_timeout::TimeoutExt;
@@ -105,7 +105,14 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: SharedSt
                     #[cfg(not(feature = "metrics"))]
                     log::warn!("{}: failed to blksync with {}: {:?}", tag(), peer, e);
                     #[cfg(feature = "metrics")]
-                    log::warn!("hostname={} public_ip={} {}: failed to blksync with {}: {:?}", crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), tag(), peer, e);
+                    log::warn!(
+                        "hostname={} public_ip={} {}: failed to blksync with {}: {:?}",
+                        crate::prometheus::HOSTNAME.as_str(),
+                        crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+                        tag(),
+                        peer,
+                        e
+                    );
                     smol::Timer::after(FAST_TIME).await;
                 }
                 Ok(blklen) => {
@@ -113,7 +120,12 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: SharedSt
                         #[cfg(not(feature = "metrics"))]
                         log::debug!("synced to height {}", storage.read().highest_height());
                         #[cfg(feature = "metrics")]
-                        log::warn!("hostname={} public_ip={} synced to height {}", crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), storage.read().highest_height());
+                        log::warn!(
+                            "hostname={} public_ip={} synced to height {}",
+                            crate::prometheus::HOSTNAME.as_str(),
+                            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+                            storage.read().highest_height()
+                        );
                         smol::Timer::after(FAST_TIME).await;
                     } else {
                         smol::Timer::after(SLOW_TIME).await;
@@ -166,7 +178,8 @@ async fn attempt_blksync(
         #[cfg(feature = "metrics")]
         log::debug!(
             "hostname={} public_ip={} fully resolved block {} from peer {}",
-            crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+            crate::prometheus::HOSTNAME.as_str(),
+            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
             block.header.height,
             addr
         );
@@ -185,7 +198,7 @@ struct AuditorResponder {
     storage: SharedStorage,
 }
 
-impl NodeServer for AuditorResponder {
+impl NodeServer<MeshaCas> for AuditorResponder {
     fn send_tx(&self, state: melnet::NetState, tx: Transaction) -> melnet::Result<()> {
         let start = Instant::now();
         let mut storage = self.storage.write();
@@ -205,7 +218,8 @@ impl NodeServer for AuditorResponder {
         #[cfg(feature = "metrics")]
         log::debug!(
             "hostname={} public_ip={} txhash {}.. inserted ({:?}, {:?} locking, {:?} applying)",
-            crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+            crate::prometheus::HOSTNAME.as_str(),
+            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
             &tx.hash_nosigs().to_string()[..10],
             start.elapsed(),
             post_lock - start,
@@ -253,7 +267,7 @@ impl NodeServer for AuditorResponder {
         })
     }
 
-    fn get_state(&self, height: BlockHeight) -> melnet::Result<SealedState> {
+    fn get_state(&self, height: BlockHeight) -> melnet::Result<SealedState<MeshaCas>> {
         self.storage
             .read()
             .get_state(height)

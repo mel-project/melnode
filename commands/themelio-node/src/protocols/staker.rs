@@ -1,4 +1,4 @@
-use crate::storage::SharedStorage;
+use crate::storage::{MeshaCas, SharedStorage};
 
 use once_cell::sync::Lazy;
 use themelio_stf::{
@@ -193,8 +193,8 @@ struct StorageBlockBuilder {
     target_fee_multiplier: u128,
 }
 
-impl BlockBuilder for StorageBlockBuilder {
-    fn build_block(&self, tip: SealedState) -> Block {
+impl BlockBuilder<MeshaCas> for StorageBlockBuilder {
+    fn build_block(&self, tip: SealedState<MeshaCas>) -> Block {
         let mut storage = self.storage.write();
         let proposer_action = ProposerAction {
             fee_multiplier_delta: if tip.header().fee_multiplier > self.target_fee_multiplier {
@@ -227,7 +227,7 @@ impl BlockBuilder for StorageBlockBuilder {
         }
     }
 
-    fn hint_next_build(&self, tip: SealedState) {
+    fn hint_next_build(&self, tip: SealedState<MeshaCas>) {
         self.storage.write().mempool_mut().rebase(tip.next_state());
     }
 

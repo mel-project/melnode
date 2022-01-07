@@ -2,6 +2,7 @@ use std::{net::SocketAddr, path::PathBuf};
 
 use anyhow::Context;
 use structopt::StructOpt;
+use tap::Tap;
 use themelio_stf::{melvm::Address, BlockHeight, GenesisConfig};
 use tmelcrypt::Ed25519SK;
 
@@ -22,7 +23,7 @@ pub struct Args {
     bootstrap: Vec<String>,
 
     /// Database path
-    #[structopt(long, default_value = "/var/themelio-node/main.sqlite3")]
+    #[structopt(long, default_value = "/var/themelio-node/")]
     database: String,
 
     /// Specifies the secret key for staking.
@@ -88,32 +89,26 @@ impl Args {
 
     /// Derives a SharedStorage from the arguments
     pub async fn storage(&self) -> anyhow::Result<SharedStorage> {
-        let database =
-            boringdb::Database::open(&self.database).context("cannot open boringdb database")?;
+        let database_base_path = PathBuf::from(self.database.to_string());
+        let meta_db = boringdb::Database::open(
+            database_base_path
+                .clone()
+                .tap_mut(|path| path.push("metadata.db")),
+        )
+        .context("cannot open boringdb database")?;
+        let smt_db = meshanina::Mapping::open(
+            &database_base_path
+                .clone()
+                .tap_mut(|path| path.push("smt.db")),
+        )
+        .context("cannot open meshanina database")?;
         log::debug!("database opened at {}", self.database);
 
-        let storage = NodeStorage::new(database, self.genesis_config().await?).share();
+        let storage = NodeStorage::new(smt_db, meta_db, self.genesis_config().await?).share();
 
         // Reset block. This is used to roll back history in emergencies
         if let Some(height) = self.emergency_reset_block {
-            let mut storage = storage.write();
-            #[cfg(not(feature = "metrics"))]
-            log::warn!("*** EMERGENCY RESET TO BLOCK {} ***", height);
-            #[cfg(feature = "metrics")]
-            log::warn!(
-                "hostname={} public_ip={} *** EMERGENCY RESET TO BLOCK {} ***",
-                crate::prometheus::HOSTNAME.as_str(),
-                crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-                height
-            );
-            let history = storage.history_mut();
-            while history
-                .get_tips()
-                .iter()
-                .any(|f| f.header().height > height)
-            {
-                history.delete_tips();
-            }
+            todo!()
         }
 
         #[cfg(not(feature = "metrics"))]

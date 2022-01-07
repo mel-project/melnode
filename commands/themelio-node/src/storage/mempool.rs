@@ -4,17 +4,19 @@ use lru::LruCache;
 use themelio_stf::{State, StateError, Transaction, TxHash};
 use tmelcrypt::HashVal;
 
+use super::MeshaCas;
+
 /// Mempool encapsulates a "mempool" --- a provisional state that is used to form new blocks by stakers, or provisionally validate transactions by auditors.
 pub struct Mempool {
-    provisional_state: State,
-    last_rebase: State,
+    provisional_state: State<MeshaCas>,
+    last_rebase: State<MeshaCas>,
     txx_in_state: HashSet<TxHash>,
     seen: LruCache<TxHash, Transaction>,
 }
 
 impl Mempool {
     /// Create sa new mempool based on a provisional state.
-    pub fn new(state: State) -> Self {
+    pub fn new(state: State<MeshaCas>) -> Self {
         Self {
             provisional_state: state.clone(),
             last_rebase: state,
@@ -23,7 +25,7 @@ impl Mempool {
         }
     }
     /// Creates a State based on the present state of the mempool.
-    pub fn to_state(&self) -> State {
+    pub fn to_state(&self) -> State<MeshaCas> {
         self.provisional_state.clone()
     }
 
@@ -41,7 +43,7 @@ impl Mempool {
     }
 
     /// Forcibly replaces the internal state of the mempool with the given state.
-    pub fn rebase(&mut self, state: State) {
+    pub fn rebase(&mut self, state: State<MeshaCas>) {
         if state.height > self.provisional_state.height {
             #[cfg(not(feature = "metrics"))]
             log::trace!(
@@ -52,7 +54,8 @@ impl Mempool {
             #[cfg(feature = "metrics")]
             log::trace!(
                 "hostname={} public_ip={} rebasing mempool {} => {}",
-                crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+                crate::prometheus::HOSTNAME.as_str(),
+                crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
                 self.provisional_state.height,
                 state.height
             );

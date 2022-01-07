@@ -370,7 +370,7 @@ dependencies = [
  "parking_lot",
  "serde",
  "stdcode",
- "themelio-stf 0.7.1",
+ "themelio-stf 0.7.2",
  "thiserror",
  "tmelcrypt",
 ]
@@ -591,6 +591,21 @@ checksum = "95059428f66df56b63431fdb4e1947ed2190586af5c5a8a8b71122bdf5a7f469"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "crc"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "49fc9a695bca7f35f5f4c15cddc84415f66a74ea78eef08e90c5024f2b540e23"
+dependencies = [
+ "crc-catalog",
+]
+
+[[package]]
+name = "crc-catalog"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ccaeedb56da03b09f598226e25e80088cb4cd25f316e6e4df7d695f0feeb1403"
 
 [[package]]
 name = "crossbeam-channel"
@@ -998,6 +1013,16 @@ checksum = "5fc25a87fa4fd2094bffb06925852034d90a17f0d1e05197d4956d3555752191"
 dependencies = [
  "matches",
  "percent-encoding",
+]
+
+[[package]]
+name = "fs2"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9564fc758e15025b46aa6643b1b77d047d1a56a1aea6e01002ac0c7026876213"
+dependencies = [
+ "libc",
+ "winapi",
 ]
 
 [[package]]
@@ -1690,6 +1715,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "meshanina"
+version = "0.1.2-alpha.0"
+dependencies = [
+ "blake3 1.2.0",
+ "cache-padded",
+ "crc",
+ "ethnum",
+ "fastrand",
+ "fs2",
+ "log",
+ "memmap",
+ "parking_lot",
+ "zeroize",
+]
+
+[[package]]
 name = "mimalloc"
 version = "0.1.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1885,7 +1926,7 @@ dependencies = [
  "smol-timeout",
  "stacker",
  "stdcode",
- "themelio-stf 0.7.1",
+ "themelio-stf 0.7.2",
  "thiserror",
  "tmelcrypt",
 ]
@@ -3087,13 +3128,13 @@ dependencies = [
 
 [[package]]
 name = "themelio-bootstrap"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edfd96ec707da4e7577e9c308d225dd64febe959b169f1a0530a6049a63b6c08"
+checksum = "9192be889e40cc31f07d6ba5841de8c1457a8e80aac4a0b68ea5f6678c692773"
 dependencies = [
  "once_cell",
- "themelio-nodeprot",
- "themelio-stf 0.6.19",
+ "themelio-nodeprot 0.7.0",
+ "themelio-stf 0.7.2",
 ]
 
 [[package]]
@@ -3118,6 +3159,7 @@ dependencies = [
  "dashmap 5.0.0",
  "default-net",
  "env_logger 0.9.0",
+ "ethnum",
  "fastrand",
  "futures-util",
  "gethostname",
@@ -3126,8 +3168,9 @@ dependencies = [
  "log",
  "lru",
  "melnet",
+ "meshanina",
  "mimalloc",
- "novasmt 0.1.10",
+ "novasmt 0.2.8",
  "novasymph",
  "once_cell",
  "parking_lot",
@@ -3143,9 +3186,10 @@ dependencies = [
  "stdcode",
  "structopt",
  "systemstat",
+ "tap",
  "themelio-bootstrap",
- "themelio-nodeprot",
- "themelio-stf 0.6.19",
+ "themelio-nodeprot 0.7.0",
+ "themelio-stf 0.7.2",
  "tmelcrypt",
  "tracing",
  "tracing-subscriber",
@@ -3172,6 +3216,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "themelio-nodeprot"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "337a603430e6cbb5d9b957965ac8a715530fda9050f091e3405017469e6c3be3"
+dependencies = [
+ "cached",
+ "hex",
+ "log",
+ "melnet",
+ "novasmt 0.2.8",
+ "serde",
+ "smol",
+ "smolscale",
+ "stdcode",
+ "themelio-stf 0.7.2",
+ "thiserror",
+ "tmelcrypt",
+]
+
+[[package]]
 name = "themelio-spammer"
 version = "0.1.0"
 dependencies = [
@@ -3182,7 +3246,7 @@ dependencies = [
  "smol",
  "smol-timeout",
  "structopt",
- "themelio-nodeprot",
+ "themelio-nodeprot 0.6.5",
  "themelio-stf 0.6.19",
  "tmelcrypt",
 ]
@@ -3226,9 +3290,9 @@ dependencies = [
 
 [[package]]
 name = "themelio-stf"
-version = "0.7.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2460baf3bb978b1241ce9b23ffc85afef761eb7978ca1174619ac10fdbbd658"
+checksum = "7fb09b9ff89ccce994cf38dbd2d7012d2188873e5cbc89c9b6dbbcc3b320c1e6"
 dependencies = [
  "arbitrary",
  "catvec",
