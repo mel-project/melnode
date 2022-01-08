@@ -107,7 +107,7 @@ impl Args {
         let storage = NodeStorage::new(smt_db, meta_db, self.genesis_config().await?).share();
 
         // Reset block. This is used to roll back history in emergencies
-        if let Some(height) = self.emergency_reset_block {
+        if let Some(_height) = self.emergency_reset_block {
             todo!()
         }
 

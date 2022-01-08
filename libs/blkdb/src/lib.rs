@@ -14,7 +14,7 @@ mod tests {
     fn simple_test() {
         let backend = InMemoryDb::default();
         let forest = Database::new(InMemoryCas::default());
-        let mut tree = BlockTree::new(backend, forest.clone(), false);
+        let mut tree = BlockTree::new(backend, forest.clone());
         assert!(tree.get_tips().is_empty());
         let genesis = GenesisConfig::std_testnet().realize(&forest).seal(None);
         tree.set_genesis(genesis.clone(), &[]);

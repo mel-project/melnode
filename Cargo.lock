@@ -3154,7 +3154,6 @@ version = "0.4.0"
 dependencies = [
  "anyhow",
  "async-compat",
- "blkdb",
  "boringdb",
  "dashmap 5.0.0",
  "default-net",

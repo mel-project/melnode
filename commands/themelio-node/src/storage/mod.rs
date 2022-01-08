@@ -5,15 +5,12 @@ mod smt;
 use std::{sync::Arc, time::Instant};
 
 use self::mempool::Mempool;
-use blkdb::{traits::DbBackend, BlockTree};
-use dashmap::DashMap;
+
 use parking_lot::RwLock;
 pub use smt::*;
-use std::collections::BTreeMap;
+
 use themelio_nodeprot::TrustStore;
-use themelio_stf::{
-    BlockHeight, ConsensusProof, GenesisConfig, ProposerAction, SealedState, State,
-};
+use themelio_stf::{BlockHeight, ConsensusProof, GenesisConfig, SealedState};
 
 #[derive(Clone)]
 pub struct NodeTrustStore(pub SharedStorage);
@@ -171,10 +168,11 @@ impl NodeStorage {
         std::thread::Builder::new()
             .name("storage-sync".into())
             .spawn(move || loop {
-                std::thread::sleep(std::time::Duration::from_secs(10));
+                std::thread::sleep(std::time::Duration::from_secs(30));
                 let start = Instant::now();
                 let highest = copy.read().highest_state();
-                copy.read().forest().storage().flush();
+                let forest = copy.read().forest().clone();
+                forest.storage().flush();
                 copy.read()
                     .metadata
                     .insert(b"last_confirmed".to_vec(), highest.partial_encoding())
@@ -188,34 +186,5 @@ impl NodeStorage {
     /// Gets the forest.
     pub fn forest(&self) -> novasmt::Database<MeshaCas> {
         self.forest.clone()
-    }
-}
-
-struct BoringDbBackend {
-    dict: boringdb::Dict,
-}
-
-impl DbBackend for BoringDbBackend {
-    fn insert(&mut self, key: &[u8], value: &[u8]) -> Option<Vec<u8>> {
-        self.dict
-            .insert(key.to_vec(), value.to_vec())
-            .unwrap()
-            .map(|v| v.to_vec())
-    }
-
-    fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
-        self.dict.get(key).unwrap().map(|v| v.to_vec())
-    }
-
-    fn remove(&mut self, key: &[u8]) -> Option<Vec<u8>> {
-        self.dict.remove(key).unwrap().map(|v| v.to_vec())
-    }
-
-    fn key_range(&self, start: &[u8], end: &[u8]) -> Vec<Vec<u8>> {
-        self.dict
-            .range(start..=end)
-            .unwrap()
-            .map(|v| v.unwrap().0.to_vec())
-            .collect()
     }
 }

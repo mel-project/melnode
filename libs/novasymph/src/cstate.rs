@@ -27,7 +27,7 @@ impl<C: ContentAddrStore> ChainState<C> {
     pub fn new(genesis: SealedState<C>, forest: novasmt::Database<C>) -> Self {
         let epoch = genesis.inner_ref().height.epoch();
         let stakes = genesis.inner_ref().stakes.clone();
-        let mut inner = BlockTree::new(InMemoryDb::default(), forest.clone(), false);
+        let mut inner = BlockTree::new(InMemoryDb::default(), forest.clone());
         inner.set_genesis(genesis, &[]);
         Self {
             epoch,
@@ -235,7 +235,7 @@ impl<C: ContentAddrStore> ChainState<C> {
     /// Forcibly resets the genesis to something with the given HashVal.
     pub fn reset_genesis(&mut self, genesis: SealedState<C>) {
         // We use a full copying approach to avoid lingering cache garbage. This may eventually be the "correct" way to do so in blkdb.
-        let mut new_inner = BlockTree::new(InMemoryDb::default(), self.forest.clone(), false);
+        let mut new_inner = BlockTree::new(InMemoryDb::default(), self.forest.clone());
         // DFS into the new thing.
         let cursor = self.inner.get_cursor(genesis.header().hash());
         new_inner.set_genesis(

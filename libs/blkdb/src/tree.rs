@@ -15,22 +15,17 @@ use tmelcrypt::HashVal;
 pub struct BlockTree<B: DbBackend, C: ContentAddrStore> {
     inner: Inner<B, C>,
     forest: novasmt::Database<C>,
-    canonical: bool,
 }
 
 impl<B: DbBackend, C: ContentAddrStore> BlockTree<B, C> {
     /// Create a new BlockTree.
-    pub fn new(backend: B, forest: novasmt::Database<C>, canonical: bool) -> Self {
+    pub fn new(backend: B, forest: novasmt::Database<C>) -> Self {
         let inner = Inner {
             backend,
-            canonical,
+
             cache: Default::default(),
         };
-        let mut toret = Self {
-            inner,
-            forest,
-            canonical,
-        };
+        let mut toret = Self { inner, forest };
         toret.initial_tip_cleanup();
         toret
     }
@@ -348,7 +343,6 @@ pub enum ApplyBlockErr {
 /// Lower-level helper struct that provides fail-safe basic operations.
 struct Inner<B: DbBackend, C: ContentAddrStore> {
     backend: B,
-    canonical: bool,
     // cached SealedStates. this is also required so that inserted blocks in non-canonical mode are persistent.
     cache: DashMap<HashVal, SealedState<C>>,
 }
@@ -356,7 +350,6 @@ struct Inner<B: DbBackend, C: ContentAddrStore> {
 impl<B: DbBackend, C: ContentAddrStore> Inner<B, C> {
     /// Gets a block from the database.
     fn get_block(&self, blkhash: HashVal, height: Option<BlockHeight>) -> Option<InternalValue> {
-        self.maybe_gc_cache();
         let height = match height {
             Some(height) => height,
             None => self.index_get(blkhash)?,
@@ -405,7 +398,7 @@ impl<B: DbBackend, C: ContentAddrStore> Inner<B, C> {
     /// Inserts a block into the database
     fn insert_block(
         &mut self,
-        mut state: SealedState<C>,
+        state: SealedState<C>,
         init_metadata: &[u8],
     ) -> Option<InternalValue> {
         // if let Some(val) = self.get_block(state.header().hash(), Some(state.inner_ref().height)) {
@@ -438,20 +431,8 @@ impl<B: DbBackend, C: ContentAddrStore> Inner<B, C> {
         // update tips list
         self.tip_insert(blkhash, header.height);
         self.tip_remove(header.previous);
-        // update cache
-        if !self.canonical {
-            self.cache.insert(state.header().hash(), state);
-            self.maybe_gc_cache();
-        }
-        None
-    }
 
-    fn maybe_gc_cache(&self) {
-        if self.canonical && self.cache.len() > 10000 {
-            // in canonical mode we are sure that the stuff is all on disk, so it's safe to do this.
-            log::warn!("GC-ing the blkdb");
-            self.cache.clear()
-        }
+        None
     }
 
     fn internal_insert(&mut self, blkhash: HashVal, height: BlockHeight, value: InternalValue) {

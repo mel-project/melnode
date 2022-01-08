@@ -73,7 +73,7 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: SharedSt
             storage.read().highest_state().header().height
         )
     };
-    const SLOW_TIME: Duration = Duration::from_millis(5000);
+    const SLOW_TIME: Duration = Duration::from_millis(500);
     const FAST_TIME: Duration = Duration::from_millis(10);
     loop {
         let routes = network.routes();
@@ -154,17 +154,21 @@ async fn attempt_blksync(
         return Ok(0);
     }
     let height_stream =
-        futures_util::stream::iter((my_highest.0..=their_highest.0).skip(1).take(256))
+        futures_util::stream::iter((my_highest.0..=their_highest.0).skip(1).take(1024))
             .map(BlockHeight);
     let lookup_tx = |tx| storage.read().mempool().lookup_recent_tx(tx);
     let mut result_stream = height_stream
         .map(Ok::<_, anyhow::Error>)
         .try_filter_map(|height| async move {
             Ok(Some(async move {
-                Ok(client.get_full_block(height, &lookup_tx).await?)
+                Ok(client
+                    .get_full_block(height, &lookup_tx)
+                    .timeout(Duration::from_secs(15))
+                    .await
+                    .context("timeout")??)
             }))
         })
-        .try_buffered(32)
+        .try_buffered(16)
         .boxed();
     let mut toret = 0;
     while let Some(res) = result_stream.try_next().await? {
