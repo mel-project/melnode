@@ -2,10 +2,17 @@
 
 mod mempool;
 mod smt;
-use std::{sync::Arc, time::Instant};
+use std::{
+    ops::{Deref, DerefMut},
+    sync::Arc,
+    time::Instant,
+};
 
 use self::mempool::Mempool;
 
+use anyhow::Context;
+use arc_swap::ArcSwap;
+use dashmap::DashMap;
 use parking_lot::RwLock;
 pub use smt::*;
 
@@ -18,7 +25,6 @@ pub struct NodeTrustStore(pub SharedStorage);
 impl TrustStore for NodeTrustStore {
     fn set(&self, netid: themelio_stf::NetID, trusted: themelio_nodeprot::TrustedHeight) {
         self.0
-            .read()
             .metadata
             .insert(
                 stdcode::serialize(&netid).expect("cannot serialize netid"),
@@ -31,7 +37,6 @@ impl TrustStore for NodeTrustStore {
     fn get(&self, netid: themelio_stf::NetID) -> Option<themelio_nodeprot::TrustedHeight> {
         let pair: (BlockHeight, tmelcrypt::HashVal) = self
             .0
-            .read()
             .metadata
             .get(&stdcode::serialize(&netid).expect("cannot serialize netid"))
             .expect("cannot get")
@@ -44,26 +49,26 @@ impl TrustStore for NodeTrustStore {
 }
 
 /// An alias for a shared NodeStorage.
-pub type SharedStorage = Arc<RwLock<NodeStorage>>;
+pub type SharedStorage = Arc<NodeStorage>;
 
 /// NodeStorage encapsulates all storage used by a Themelio full node (auditor or staker).
 pub struct NodeStorage {
-    mempool: Mempool,
+    mempool: RwLock<Mempool>,
     metadata: boringdb::Dict,
-    highest: SealedState<MeshaCas>,
-
+    highest: ArcSwap<SealedState<MeshaCas>>,
+    old_cache: DashMap<BlockHeight, SealedState<MeshaCas>>,
     forest: novasmt::Database<MeshaCas>,
 }
 
 impl NodeStorage {
     /// Gets an immutable reference to the mempool.
-    pub fn mempool(&self) -> &Mempool {
-        &self.mempool
+    pub fn mempool(&self) -> impl Deref<Target = Mempool> + '_ {
+        self.mempool.read()
     }
 
     /// Gets a mutable reference to the mempool.
-    pub fn mempool_mut(&mut self) -> &mut Mempool {
-        &mut self.mempool
+    pub fn mempool_mut(&self) -> impl DerefMut<Target = Mempool> + '_ {
+        self.mempool.write()
     }
 
     /// Opens a NodeStorage, given a sled database.
@@ -80,31 +85,40 @@ impl NodeStorage {
             .map(|b| SealedState::from_partial_encoding_infallible(&b, &forest))
             .unwrap_or_else(|| genesis.realize(&forest).seal(None));
         Self {
-            mempool: Mempool::new(highest.next_state()),
-            highest,
+            mempool: Mempool::new(highest.next_state()).into(),
+            highest: Arc::new(highest).into(),
             forest,
+            old_cache: Default::default(),
             metadata,
         }
     }
 
     /// Obtain the highest state.
     pub fn highest_state(&self) -> SealedState<MeshaCas> {
-        self.highest.clone()
+        self.highest.load_full().deref().clone()
     }
 
     /// Obtain the highest height.
     pub fn highest_height(&self) -> BlockHeight {
-        self.highest.inner_ref().height
+        self.highest.load().inner_ref().height
     }
 
     /// Obtain a historical SealedState.
     pub fn get_state(&self, height: BlockHeight) -> Option<SealedState<MeshaCas>> {
-        let old_blob = &self
-            .metadata
-            .get(format!("state-{}", height).as_bytes())
-            .unwrap()?;
-        let old_state = SealedState::from_partial_encoding_infallible(&old_blob, &self.forest);
-        Some(old_state)
+        self.old_cache
+            .entry(height)
+            .or_try_insert_with(|| {
+                let old_blob = self
+                    .metadata
+                    .get(format!("state-{}", height).as_bytes())
+                    .unwrap()
+                    .context("no such height")?;
+                let old_state =
+                    SealedState::from_partial_encoding_infallible(&old_blob, &self.forest);
+                Ok::<_, anyhow::Error>(old_state)
+            })
+            .ok()
+            .map(|r| r.clone())
     }
 
     /// Obtain a historical ConsensusProof.
@@ -118,21 +132,20 @@ impl NodeStorage {
 
     /// Consumes a block, applying it to the current state.
     pub fn apply_block(
-        &mut self,
+        &self,
         blk: themelio_stf::Block,
         cproof: ConsensusProof,
     ) -> anyhow::Result<()> {
-        let highest_height = self.highest_height();
-        if blk.header.height != highest_height + 1.into() {
+        let highest_state = self.highest_state();
+        if blk.header.height != highest_state.inner_ref().height + 1.into() {
             anyhow::bail!(
                 "cannot apply block {} to height {}",
                 blk.header.height,
-                highest_height
+                highest_state.inner_ref().height
             );
         }
         // TODO!!!! CHECK INTEGRITY?!!?!?!!
-        let new_state = self.highest.apply_block(&blk)?;
-        self.highest = new_state.clone();
+        let new_state = highest_state.apply_block(&blk)?;
         self.metadata.insert(
             format!("state-{}", new_state.inner_ref().height)
                 .as_bytes()
@@ -145,7 +158,7 @@ impl NodeStorage {
                 .to_vec(),
             stdcode::serialize(&cproof)?,
         )?;
-
+        self.highest.store(new_state.into());
         #[cfg(not(feature = "metrics"))]
         log::debug!("applied block {}", blk.header.height);
         #[cfg(feature = "metrics")]
@@ -162,7 +175,7 @@ impl NodeStorage {
 
     /// Convenience method to "share" storage.
     pub fn share(self) -> SharedStorage {
-        let toret = Arc::new(RwLock::new(self));
+        let toret = Arc::new(self);
         let copy = toret.clone();
         // start a background thread to periodically sync
         std::thread::Builder::new()
@@ -170,11 +183,10 @@ impl NodeStorage {
             .spawn(move || loop {
                 std::thread::sleep(std::time::Duration::from_secs(30));
                 let start = Instant::now();
-                let highest = copy.read().highest_state();
-                let forest = copy.read().forest().clone();
+                let highest = copy.highest_state();
+                let forest = copy.forest().clone();
                 forest.storage().flush();
-                copy.read()
-                    .metadata
+                copy.metadata
                     .insert(b"last_confirmed".to_vec(), highest.partial_encoding())
                     .unwrap();
                 log::warn!("**** FLUSHED IN {:?} ****", start.elapsed());

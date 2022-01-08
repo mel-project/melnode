@@ -67,14 +67,9 @@ impl NodeProtocol {
 
 #[tracing::instrument(skip(network, storage))]
 async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: SharedStorage) {
-    let tag = || {
-        format!(
-            "blksync@{:?}",
-            storage.read().highest_state().header().height
-        )
-    };
+    let tag = || format!("blksync@{:?}", storage.highest_state().header().height);
     const SLOW_TIME: Duration = Duration::from_millis(500);
-    const FAST_TIME: Duration = Duration::from_millis(10);
+    const FAST_TIME: Duration = Duration::from_millis(500);
     loop {
         let routes = network.routes();
         let random_peer = routes.first().cloned();
@@ -118,13 +113,13 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: SharedSt
                 Ok(blklen) => {
                     if blklen > 0 {
                         #[cfg(not(feature = "metrics"))]
-                        log::debug!("synced to height {}", storage.read().highest_height());
+                        log::debug!("synced to height {}", storage.highest_height());
                         #[cfg(feature = "metrics")]
                         log::warn!(
                             "hostname={} public_ip={} synced to height {}",
                             crate::prometheus::HOSTNAME.as_str(),
                             crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-                            storage.read().highest_height()
+                            storage.highest_height()
                         );
                         smol::Timer::after(FAST_TIME).await;
                     } else {
@@ -149,14 +144,14 @@ async fn attempt_blksync(
         .await
         .context("cannot get their highest block")?
         .height;
-    let my_highest = storage.read().highest_height();
+    let my_highest = storage.highest_height();
     if their_highest <= my_highest {
         return Ok(0);
     }
     let height_stream =
         futures_util::stream::iter((my_highest.0..=their_highest.0).skip(1).take(1024))
             .map(BlockHeight);
-    let lookup_tx = |tx| storage.read().mempool().lookup_recent_tx(tx);
+    let lookup_tx = |tx| storage.mempool().lookup_recent_tx(tx);
     let mut result_stream = height_stream
         .map(Ok::<_, anyhow::Error>)
         .try_filter_map(|height| async move {
@@ -189,7 +184,6 @@ async fn attempt_blksync(
         );
 
         storage
-            .write()
             .apply_block(block, proof)
             .context("could not apply a resolved block")?;
         toret += 1;
@@ -205,12 +199,14 @@ struct AuditorResponder {
 impl NodeServer<MeshaCas> for AuditorResponder {
     fn send_tx(&self, state: melnet::NetState, tx: Transaction) -> melnet::Result<()> {
         let start = Instant::now();
-        let mut storage = self.storage.write();
         let post_lock = Instant::now();
-        storage.mempool_mut().apply_transaction(&tx).map_err(|e| {
-            // log::warn!("cannot apply tx: {:?}", e);
-            MelnetError::Custom(e.to_string())
-        })?;
+        self.storage
+            .mempool_mut()
+            .apply_transaction(&tx)
+            .map_err(|e| {
+                // log::warn!("cannot apply tx: {:?}", e);
+                MelnetError::Custom(e.to_string())
+            })?;
         #[cfg(not(feature = "metrics"))]
         log::debug!(
             "txhash {}.. inserted ({:?}, {:?} locking, {:?} applying)",
@@ -247,25 +243,26 @@ impl NodeServer<MeshaCas> for AuditorResponder {
     }
 
     fn get_abbr_block(&self, height: BlockHeight) -> melnet::Result<(AbbrBlock, ConsensusProof)> {
-        let storage = self.storage.read();
-        let state = storage
+        let state = self
+            .storage
             .get_state(height)
             .ok_or_else(|| MelnetError::Custom(format!("block {} not confirmed yet", height)))?;
-        let proof = storage
+        let proof = self
+            .storage
             .get_consensus(height)
             .ok_or_else(|| MelnetError::Custom(format!("block {} not confirmed yet", height)))?;
         Ok((state.to_block().abbreviate(), proof))
     }
 
     fn get_summary(&self) -> melnet::Result<StateSummary> {
-        let storage = self.storage.read();
-        let highest = storage.highest_state();
-        let proof = storage
+        let highest = self.storage.highest_state();
+        let proof = self
+            .storage
             .get_consensus(highest.header().height)
             .unwrap_or_default();
         Ok(StateSummary {
             netid: self.network,
-            height: storage.highest_height(),
+            height: self.storage.highest_height(),
             header: highest.header(),
             proof,
         })
@@ -273,7 +270,6 @@ impl NodeServer<MeshaCas> for AuditorResponder {
 
     fn get_state(&self, height: BlockHeight) -> melnet::Result<SealedState<MeshaCas>> {
         self.storage
-            .read()
             .get_state(height)
             .ok_or_else(|| melnet::MelnetError::Custom("no such height".into()))
     }
@@ -284,10 +280,10 @@ impl NodeServer<MeshaCas> for AuditorResponder {
         elem: Substate,
         key: HashVal,
     ) -> melnet::Result<(Vec<u8>, CompressedProof)> {
-        let state =
-            self.storage.read().get_state(height).ok_or_else(|| {
-                MelnetError::Custom(format!("block {} not confirmed yet", height))
-            })?;
+        let state = self
+            .storage
+            .get_state(height)
+            .ok_or_else(|| MelnetError::Custom(format!("block {} not confirmed yet", height)))?;
         let tree = match elem {
             Substate::Coins => &state.inner_ref().coins.mapping,
             Substate::History => &state.inner_ref().history.mapping,
@@ -309,10 +305,10 @@ impl NodeServer<MeshaCas> for AuditorResponder {
     }
 
     fn get_stakers_raw(&self, height: BlockHeight) -> melnet::Result<BTreeMap<HashVal, Vec<u8>>> {
-        let state =
-            self.storage.read().get_state(height).ok_or_else(|| {
-                MelnetError::Custom(format!("block {} not confirmed yet", height))
-            })?;
+        let state = self
+            .storage
+            .get_state(height)
+            .ok_or_else(|| MelnetError::Custom(format!("block {} not confirmed yet", height)))?;
         let mut accum = BTreeMap::new();
         for (k, v) in state.inner_ref().stakes.mapping.iter() {
             accum.insert(HashVal(k), v.to_vec());

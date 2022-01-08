@@ -38,9 +38,9 @@ impl StakerProtocol {
     ) -> anyhow::Result<Self> {
         let _network_task = smolscale::spawn(async move {
             loop {
-                let x = storage.read().highest_height();
+                let x = storage.highest_height();
                 smol::Timer::after(Duration::from_secs(60)).await;
-                let y = storage.read().highest_height();
+                let y = storage.highest_height();
                 #[cfg(not(feature = "metrics"))]
                 log::info!(
                     "delta-height = {}; must be less than 5 to start staker",
@@ -58,7 +58,7 @@ impl StakerProtocol {
                 }
             }
             loop {
-                let genesis_epoch = storage.read().highest_height().epoch();
+                let genesis_epoch = storage.highest_height().epoch();
                 for current_epoch in genesis_epoch.. {
                     #[cfg(not(feature = "metrics"))]
                     log::info!("epoch transitioning into {}!", current_epoch);
@@ -84,8 +84,7 @@ impl StakerProtocol {
                     let epoch_termination = async {
                         loop {
                             smol::Timer::after(Duration::from_secs(1)).await;
-                            if (storage.read().highest_height() + 1.into()).epoch() != current_epoch
-                            {
+                            if (storage.highest_height() + 1.into()).epoch() != current_epoch {
                                 break Ok(());
                             }
                         }
@@ -121,12 +120,12 @@ async fn one_epoch_loop(
     payout_covhash: Address,
     target_fee_multiplier: u128,
 ) -> anyhow::Result<()> {
-    let genesis = storage.read().highest_state();
-    let forest = storage.clone().read().forest();
+    let genesis = storage.highest_state();
+    let forest = storage.clone().forest();
     let start_time = match genesis.inner_ref().network {
         themelio_stf::NetID::Mainnet => *MAINNET_START_TIME,
         themelio_stf::NetID::Testnet => *TESTNET_START_TIME,
-        _ => SystemTime::now() - Duration::from_secs(storage.read().highest_height().0 * 30),
+        _ => SystemTime::now() - Duration::from_secs(storage.highest_height().0 * 30),
     };
     let config = novasymph::EpochConfig {
         listen: addr,
@@ -144,7 +143,6 @@ async fn one_epoch_loop(
         get_confirmed: {
             let storage = storage.clone();
             Box::new(move |height: BlockHeight| {
-                let storage = storage.read();
                 storage
                     .get_state(height)?
                     .confirm(storage.get_consensus(height)?, None)
@@ -156,7 +154,6 @@ async fn one_epoch_loop(
         loop {
             let confirmed = protocol.next_confirmed().await;
             let height = confirmed.inner().inner_ref().height;
-            let mut storage = storage.write();
             if let Err(err) =
                 storage.apply_block(confirmed.inner().to_block(), confirmed.cproof().clone())
             {
@@ -178,7 +175,7 @@ async fn one_epoch_loop(
     };
     let reset_loop = async {
         loop {
-            let latest_known = storage.read().highest_state();
+            let latest_known = storage.highest_state();
             let protocol = protocol.clone();
             smol::unblock(move || protocol.reset_genesis(latest_known)).await;
             smol::Timer::after(Duration::from_secs(5)).await;
@@ -195,7 +192,6 @@ struct StorageBlockBuilder {
 
 impl BlockBuilder<MeshaCas> for StorageBlockBuilder {
     fn build_block(&self, tip: SealedState<MeshaCas>) -> Block {
-        let mut storage = self.storage.write();
         let proposer_action = ProposerAction {
             fee_multiplier_delta: if tip.header().fee_multiplier > self.target_fee_multiplier {
                 i8::MIN
@@ -204,7 +200,11 @@ impl BlockBuilder<MeshaCas> for StorageBlockBuilder {
             },
             reward_dest: self.payout_covhash,
         };
-        let mempool_state = storage.mempool().to_state().seal(Some(proposer_action));
+        let mempool_state = self
+            .storage
+            .mempool()
+            .to_state()
+            .seal(Some(proposer_action));
         if mempool_state.header().previous != tip.header().hash() {
             #[cfg(not(feature = "metrics"))]
             log::warn!(
@@ -222,16 +222,18 @@ impl BlockBuilder<MeshaCas> for StorageBlockBuilder {
             let next = tip.next_state().seal(Some(proposer_action));
             next.to_block()
         } else {
-            storage.mempool_mut().rebase(mempool_state.next_state());
+            self.storage
+                .mempool_mut()
+                .rebase(mempool_state.next_state());
             mempool_state.to_block()
         }
     }
 
     fn hint_next_build(&self, tip: SealedState<MeshaCas>) {
-        self.storage.write().mempool_mut().rebase(tip.next_state());
+        self.storage.mempool_mut().rebase(tip.next_state());
     }
 
     fn get_cached_transaction(&self, txhash: TxHash) -> Option<Transaction> {
-        self.storage.read().mempool().lookup_recent_tx(txhash)
+        self.storage.mempool().lookup_recent_tx(txhash)
     }
 }
