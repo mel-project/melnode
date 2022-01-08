@@ -63,7 +63,7 @@ tmelcrypt = "0.2.3"
 themelio-bootstrap = "0.3"
 themelio-nodeprot = "0.7"
 tracing-subscriber = "0.3.3"
-meshanina={path="../../../meshanina"}
+meshanina="0.2"
 ethnum="1"
 tap="1"
 arc-swap = "1.5.0"

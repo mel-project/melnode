@@ -24,3 +24,7 @@ debug=0
 
 # [patch.crates-io]
 # themelio-stf={path="../themelio-stf"}  
+
+[profile.release-dbg]
+inherits = "release"
+debug=2  

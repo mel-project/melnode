@@ -155,14 +155,18 @@ async fn attempt_blksync(
         .map(Ok::<_, anyhow::Error>)
         .try_filter_map(|height| async move {
             Ok(Some(async move {
-                Ok(client
+                let result = client
                     .get_full_block(height, &lookup_tx)
                     .timeout(Duration::from_secs(15))
                     .await
-                    .context("timeout")??)
+                    .context("timeout")??;
+                if result.0.header.height != height {
+                    anyhow::bail!("WANTED BLK {}, got {}", height, result.0.header.height);
+                }
+                Ok(result)
             }))
         })
-        .try_buffered(16)
+        .try_buffered(32)
         .boxed();
     let mut toret = 0;
     while let Some(res) = result_stream.try_next().await? {

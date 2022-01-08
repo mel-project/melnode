@@ -90,6 +90,7 @@ impl Args {
     /// Derives a NodeStorage from the arguments
     pub async fn storage(&self) -> anyhow::Result<NodeStorage> {
         let database_base_path = PathBuf::from(self.database.to_string());
+        std::fs::create_dir_all(&database_base_path)?;
         let meta_db = boringdb::Database::open(
             database_base_path
                 .clone()
