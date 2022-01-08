@@ -1,4 +1,4 @@
-use crate::storage::{MeshaCas, SharedStorage};
+use crate::storage::{MeshaCas, NodeStorage};
 
 use once_cell::sync::Lazy;
 use themelio_stf::{
@@ -31,7 +31,7 @@ impl StakerProtocol {
     pub fn new(
         addr: SocketAddr,
         bootstrap: Vec<SocketAddr>,
-        storage: SharedStorage,
+        storage: NodeStorage,
         my_sk: Ed25519SK,
         payout_address: Address,
         target_fee_multiplier: u128,
@@ -115,13 +115,13 @@ async fn one_epoch_loop(
     epoch: u64,
     addr: SocketAddr,
     bootstrap: Vec<SocketAddr>,
-    storage: SharedStorage,
+    storage: NodeStorage,
     my_sk: Ed25519SK,
     payout_covhash: Address,
     target_fee_multiplier: u128,
 ) -> anyhow::Result<()> {
     let genesis = storage.highest_state();
-    let forest = storage.clone().forest();
+    let forest = storage.clone().forest().clone();
     let start_time = match genesis.inner_ref().network {
         themelio_stf::NetID::Mainnet => *MAINNET_START_TIME,
         themelio_stf::NetID::Testnet => *TESTNET_START_TIME,
@@ -185,7 +185,7 @@ async fn one_epoch_loop(
 }
 
 struct StorageBlockBuilder {
-    storage: SharedStorage,
+    storage: NodeStorage,
     payout_covhash: Address,
     target_fee_multiplier: u128,
 }

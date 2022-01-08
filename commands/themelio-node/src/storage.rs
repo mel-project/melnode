@@ -20,7 +20,7 @@ use themelio_nodeprot::TrustStore;
 use themelio_stf::{BlockHeight, ConsensusProof, GenesisConfig, SealedState};
 
 #[derive(Clone)]
-pub struct NodeTrustStore(pub SharedStorage);
+pub struct NodeTrustStore(pub NodeStorage);
 
 impl TrustStore for NodeTrustStore {
     fn set(&self, netid: themelio_stf::NetID, trusted: themelio_nodeprot::TrustedHeight) {
@@ -48,16 +48,14 @@ impl TrustStore for NodeTrustStore {
     }
 }
 
-/// An alias for a shared NodeStorage.
-pub type SharedStorage = Arc<NodeStorage>;
-
 /// NodeStorage encapsulates all storage used by a Themelio full node (auditor or staker).
+#[derive(Clone)]
 pub struct NodeStorage {
-    mempool: RwLock<Mempool>,
+    mempool: Arc<RwLock<Mempool>>,
     metadata: boringdb::Dict,
-    highest: ArcSwap<SealedState<MeshaCas>>,
-    old_cache: DashMap<BlockHeight, SealedState<MeshaCas>>,
-    forest: novasmt::Database<MeshaCas>,
+    highest: Arc<ArcSwap<SealedState<MeshaCas>>>,
+    old_cache: Arc<DashMap<BlockHeight, SealedState<MeshaCas>>>,
+    forest: Arc<novasmt::Database<MeshaCas>>,
 }
 
 impl NodeStorage {
@@ -84,13 +82,29 @@ impl NodeStorage {
             .expect("db failed")
             .map(|b| SealedState::from_partial_encoding_infallible(&b, &forest))
             .unwrap_or_else(|| genesis.realize(&forest).seal(None));
-        Self {
-            mempool: Mempool::new(highest.next_state()).into(),
-            highest: Arc::new(highest).into(),
-            forest,
+        let r = Self {
+            mempool: Arc::new(Mempool::new(highest.next_state()).into()),
+            highest: ArcSwap::new(Arc::new(highest)).into(),
+            forest: forest.into(),
             old_cache: Default::default(),
             metadata,
-        }
+        };
+        let copy = r.clone();
+        std::thread::Builder::new()
+            .name("storage-sync".into())
+            .spawn(move || loop {
+                std::thread::sleep(std::time::Duration::from_secs(30));
+                let start = Instant::now();
+                let highest = copy.highest_state();
+                let forest = copy.forest().clone();
+                forest.storage().flush();
+                copy.metadata
+                    .insert(b"last_confirmed".to_vec(), highest.partial_encoding())
+                    .unwrap();
+                log::warn!("**** FLUSHED IN {:?} ****", start.elapsed());
+            })
+            .unwrap();
+        r
     }
 
     /// Obtain the highest state.
@@ -173,30 +187,17 @@ impl NodeStorage {
         Ok(())
     }
 
-    /// Convenience method to "share" storage.
-    pub fn share(self) -> SharedStorage {
-        let toret = Arc::new(self);
-        let copy = toret.clone();
-        // start a background thread to periodically sync
-        std::thread::Builder::new()
-            .name("storage-sync".into())
-            .spawn(move || loop {
-                std::thread::sleep(std::time::Duration::from_secs(30));
-                let start = Instant::now();
-                let highest = copy.highest_state();
-                let forest = copy.forest().clone();
-                forest.storage().flush();
-                copy.metadata
-                    .insert(b"last_confirmed".to_vec(), highest.partial_encoding())
-                    .unwrap();
-                log::warn!("**** FLUSHED IN {:?} ****", start.elapsed());
-            })
-            .unwrap();
-        toret
-    }
+    // /// Convenience method to "share" storage.
+    // pub fn share(self) -> NodeStorage {
+    //     let toret = Arc::new(self);
+    //     let copy = toret.clone();
+    //     // start a background thread to periodically sync
+
+    //     toret
+    // }
 
     /// Gets the forest.
-    pub fn forest(&self) -> novasmt::Database<MeshaCas> {
-        self.forest.clone()
+    pub fn forest(&self) -> &novasmt::Database<MeshaCas> {
+        &self.forest
     }
 }

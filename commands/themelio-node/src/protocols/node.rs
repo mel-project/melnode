@@ -11,7 +11,7 @@ use themelio_stf::{
     AbbrBlock, Block, BlockHeight, ConsensusProof, NetID, SealedState, Transaction,
 };
 
-use crate::storage::{MeshaCas, SharedStorage};
+use crate::storage::{MeshaCas, NodeStorage};
 use melnet::MelnetError;
 use smol::net::TcpListener;
 use smol_timeout::TimeoutExt;
@@ -39,7 +39,7 @@ impl NodeProtocol {
         listen_addr: SocketAddr,
         advertise_addr: Option<SocketAddr>,
         bootstrap: Vec<SocketAddr>,
-        storage: SharedStorage,
+        storage: NodeStorage,
     ) -> Self {
         let network = melnet::NetState::new_with_name(netname(netid));
         for addr in bootstrap {
@@ -66,7 +66,7 @@ impl NodeProtocol {
 }
 
 #[tracing::instrument(skip(network, storage))]
-async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: SharedStorage) {
+async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStorage) {
     let tag = || format!("blksync@{:?}", storage.highest_state().header().height);
     const SLOW_TIME: Duration = Duration::from_millis(500);
     const FAST_TIME: Duration = Duration::from_millis(500);
@@ -137,7 +137,7 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: SharedSt
 async fn attempt_blksync(
     addr: SocketAddr,
     client: &NodeClient,
-    storage: &SharedStorage,
+    storage: &NodeStorage,
 ) -> anyhow::Result<usize> {
     let their_highest = client
         .get_summary()
@@ -149,8 +149,7 @@ async fn attempt_blksync(
         return Ok(0);
     }
     let height_stream =
-        futures_util::stream::iter((my_highest.0..=their_highest.0).skip(1).take(1024))
-            .map(BlockHeight);
+        futures_util::stream::iter((my_highest.0..=their_highest.0).skip(1)).map(BlockHeight);
     let lookup_tx = |tx| storage.mempool().lookup_recent_tx(tx);
     let mut result_stream = height_stream
         .map(Ok::<_, anyhow::Error>)
@@ -193,7 +192,7 @@ async fn attempt_blksync(
 
 struct AuditorResponder {
     network: NetID,
-    storage: SharedStorage,
+    storage: NodeStorage,
 }
 
 impl NodeServer<MeshaCas> for AuditorResponder {
@@ -318,7 +317,7 @@ impl NodeServer<MeshaCas> for AuditorResponder {
 }
 
 impl AuditorResponder {
-    fn new(network: NetID, storage: SharedStorage) -> Self {
+    fn new(network: NetID, storage: NodeStorage) -> Self {
         Self { network, storage }
     }
 }

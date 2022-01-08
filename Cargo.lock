@@ -3169,7 +3169,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9192be889e40cc31f07d6ba5841de8c1457a8e80aac4a0b68ea5f6678c692773"
 dependencies = [
  "once_cell",
- "themelio-nodeprot 0.7.0",
+ "themelio-nodeprot 0.7.1",
  "themelio-stf 0.7.7",
 ]
 
@@ -3224,7 +3224,7 @@ dependencies = [
  "systemstat",
  "tap",
  "themelio-bootstrap",
- "themelio-nodeprot 0.7.0",
+ "themelio-nodeprot 0.7.1",
  "themelio-stf 0.7.7",
  "tmelcrypt",
  "tracing",
@@ -3253,9 +3253,9 @@ dependencies = [
 
 [[package]]
 name = "themelio-nodeprot"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "337a603430e6cbb5d9b957965ac8a715530fda9050f091e3405017469e6c3be3"
+checksum = "94eeae4e9379d908349d7fbece741e4845808806db58b8ed2a67a1a5014ce726"
 dependencies = [
  "cached",
  "hex",

@@ -6,7 +6,7 @@ use tap::Tap;
 use themelio_stf::{melvm::Address, BlockHeight, GenesisConfig};
 use tmelcrypt::Ed25519SK;
 
-use crate::storage::{NodeStorage, SharedStorage};
+use crate::storage::NodeStorage;
 
 #[derive(Debug, StructOpt)]
 pub struct Args {
@@ -87,8 +87,8 @@ impl Args {
         }
     }
 
-    /// Derives a SharedStorage from the arguments
-    pub async fn storage(&self) -> anyhow::Result<SharedStorage> {
+    /// Derives a NodeStorage from the arguments
+    pub async fn storage(&self) -> anyhow::Result<NodeStorage> {
         let database_base_path = PathBuf::from(self.database.to_string());
         let meta_db = boringdb::Database::open(
             database_base_path
@@ -104,7 +104,7 @@ impl Args {
         .context("cannot open meshanina database")?;
         log::debug!("database opened at {}", self.database);
 
-        let storage = NodeStorage::new(smt_db, meta_db, self.genesis_config().await?).share();
+        let storage = NodeStorage::new(smt_db, meta_db, self.genesis_config().await?);
 
         // Reset block. This is used to roll back history in emergencies
         if let Some(_height) = self.emergency_reset_block {

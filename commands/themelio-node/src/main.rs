@@ -7,7 +7,7 @@ mod public_ip_address;
 mod storage;
 
 use crate::protocols::{NodeProtocol, StakerProtocol};
-use crate::storage::SharedStorage;
+use crate::storage::NodeStorage;
 
 use args::Args;
 #[cfg(feature = "metrics")]
@@ -45,7 +45,7 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
     );
     let genesis = opt.genesis_config().await?;
     let netid = genesis.network;
-    let storage: SharedStorage = opt.storage().await?;
+    let storage: NodeStorage = opt.storage().await?;
     let bootstrap = opt.bootstrap().await?;
     #[cfg(not(feature = "metrics"))]
     log::info!("bootstrapping with {:?}", bootstrap);

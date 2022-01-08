@@ -1,4 +1,4 @@
-use crate::storage::SharedStorage;
+use crate::storage::NodeStorage;
 
 use std::sync::RwLock;
 use std::thread;
@@ -13,7 +13,7 @@ use rweb::{get, serve};
 use systemstat::platform::PlatformImpl;
 use systemstat::{CPULoad, Memory, Platform, System};
 
-pub static GLOBAL_STORAGE: OnceCell<SharedStorage> = OnceCell::new();
+pub static GLOBAL_STORAGE: OnceCell<NodeStorage> = OnceCell::new();
 
 pub static NETWORK: Lazy<RwLock<&str>> = Lazy::new(|| RwLock::new("mainnet"));
 
@@ -150,7 +150,9 @@ fn metrics() -> Result<String, rweb::http::Error> {
         Err(error) => {
             log::error!(
                 "hostname={} public_ip={} Metrics could not be made into a string from UTF8: {}",
-                crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), error
+                crate::prometheus::HOSTNAME.as_str(),
+                crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+                error
             );
 
             String::from("There is an error with the metrics")
@@ -161,7 +163,7 @@ fn metrics() -> Result<String, rweb::http::Error> {
 }
 
 fn set_highest_block() {
-    let storage: &SharedStorage = GLOBAL_STORAGE
+    let storage: &NodeStorage = GLOBAL_STORAGE
         .get()
         .expect("Could not get a lock on GLOBAL_STORAGE");
 
@@ -198,7 +200,12 @@ fn set_system_metrics() {
         Ok(uptime) => {
             UPTIME_SECONDS.set(uptime.as_secs() as i64);
         }
-        Err(error) => log::debug!("hostname={} public_ip={} There was an error retrieving system uptime: {}", crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), error),
+        Err(error) => log::debug!(
+            "hostname={} public_ip={} There was an error retrieving system uptime: {}",
+            crate::prometheus::HOSTNAME.as_str(),
+            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+            error
+        ),
     }
 
     let default_network_interface: String = default_net::interface::get_default_interface_name()
@@ -239,13 +246,19 @@ fn set_system_metrics() {
         }
         Err(error) => log::debug!(
             "hostname={} public_ip={} There was an error retrieving filesystem information: {}",
-            crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), error
+            crate::prometheus::HOSTNAME.as_str(),
+            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+            error
         ),
     }
 }
 
 pub async fn prometheus() {
-    log::debug!("hostname={} public_ip={} Prometheus metrics listening on http://127.0.0.1:8080", crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str());
+    log::debug!(
+        "hostname={} public_ip={} Prometheus metrics listening on http://127.0.0.1:8080",
+        crate::prometheus::HOSTNAME.as_str(),
+        crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str()
+    );
 
     REGISTRY
         .register(Box::new(HIGHEST_BLOCK.clone()))
