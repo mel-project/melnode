@@ -74,23 +74,23 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStor
         let routes = network.routes();
         let random_peer = routes.first().cloned();
         if let Some(peer) = random_peer {
-            #[cfg(not(feature = "metrics"))]
-            log::debug!(
-                "{}: picked random peer {} out of {} peers {:?} for blksync",
-                tag(),
-                peer,
-                routes.len(),
-                routes
-            );
-            #[cfg(feature = "metrics")]
-            log::debug!(
-                "hostname={} public_ip={} {}: picked random peer {} out of {} peers {:?} for blksync",
-                crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-                tag(),
-                peer,
-                routes.len(),
-                routes
-            );
+            // #[cfg(not(feature = "metrics"))]
+            // log::debug!(
+            //     "{}: picked random peer {} out of {} peers {:?} for blksync",
+            //     tag(),
+            //     peer,
+            //     routes.len(),
+            //     routes
+            // );
+            // #[cfg(feature = "metrics")]
+            // log::debug!(
+            //     "hostname={} public_ip={} {}: picked random peer {} out of {} peers {:?} for blksync",
+            //     crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+            //     tag(),
+            //     peer,
+            //     routes.len(),
+            //     routes
+            // );
 
             let client = NodeClient::new(netid, peer);
 

@@ -132,7 +132,10 @@ impl NodeStorage {
                 Ok::<_, anyhow::Error>(old_state)
             })
             .ok()
-            .map(|r| r.clone())
+            .map(|r| {
+                assert_eq!(r.inner_ref().height, height);
+                r.clone()
+            })
     }
 
     /// Obtain a historical ConsensusProof.
