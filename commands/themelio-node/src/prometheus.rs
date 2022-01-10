@@ -167,7 +167,7 @@ fn set_highest_block() {
         .get()
         .expect("Could not get a lock on GLOBAL_STORAGE");
 
-    let current_block_count: u64 = storage.read().highest_height().0;
+    let current_block_count: u64 = storage.highest_height().0;
 
     HIGHEST_BLOCK.set(current_block_count as i64);
 }
