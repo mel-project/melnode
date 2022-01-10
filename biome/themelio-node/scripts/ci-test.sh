@@ -30,6 +30,8 @@ sudo bio svc load "${pkg_ident}"
 echo "Sleeping for 5 seconds for the service to start."
 sleep 5
 
+nmap 127.0.0.1 -p 11814
+
 if bats --print-output-on-failure "${SCRIPTS_DIRECTORY}/test.bats"; then
   sudo bio svc unload "${pkg_ident}"
 else

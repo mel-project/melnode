@@ -62,5 +62,3 @@ else
 fi
 
 popd
-
-rm "${PLAN_DIRECTORY}/plan.sh"
