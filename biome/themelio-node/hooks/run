@@ -2,7 +2,6 @@
 # Redirect stderr
 exec 2>&1
 
-
 if [ -n "${ADVERTISE_OFF}" ]; then
   exec themelio-node --database {{ pkg.svc_data_path }}/main.sqlite3 --listen 0.0.0.0:{{ cfg.port }}
 elif [ -n "${ADVERTISE_MANUAL}" ]; then
