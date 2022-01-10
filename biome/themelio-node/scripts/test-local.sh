@@ -5,7 +5,7 @@ set -e
 TESTDIR="$(dirname "${0}")"
 PLAN_DIRECTORY="$(dirname "${TESTDIR}")"
 
-bio pkg install --binlink core/bats
+bio pkg install --binlink themelio/bats
 bio pkg install --binlink core/curl
 bio pkg install --binlink core/nmap
 
@@ -52,7 +52,7 @@ fi
 echo "Sleeping for 5 seconds for the service to start."
 sleep 5
 
-if bats "scripts/test-local.bats"; then
+if bats --print-output-on-failure "scripts/test-local.bats"; then
   rm "plan.sh"
   bio svc unload "${pkg_ident}"
 else
