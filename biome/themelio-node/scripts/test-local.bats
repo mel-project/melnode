@@ -12,7 +12,7 @@ source "${BATS_TEST_DIRNAME}/../plan.sh"
 
 @test "Service is running (via nmap)" {
   output="$(nmap 127.0.0.1 -p 11814 | tail -3 | head -1 | awk '{print $2}')"
-  [ "output" = "open" ]
+  [ "$output" = "open" ]
 }
 
 @test "Service is running" {
