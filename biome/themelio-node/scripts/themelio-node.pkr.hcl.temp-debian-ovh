@@ -1,7 +1,7 @@
 //We use the "d2-2" flavour
 //Details are here: https://www.ovhcloud.com/en/public-cloud/prices/
 
-//We use the "Archlinux" base image
+//We use the "Debian 10" base image
 
 //Documentation is available here: https://docs.ovh.com/gb/en/public-cloud/packer-openstack-builder/
 
@@ -20,7 +20,7 @@ source "openstack" "themelio-node-bhs5" {
   region            = "BHS5"
   source_image      = "$BHS5_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -34,7 +34,7 @@ source "openstack" "themelio-node-de1" {
   region            = "DE1"
   source_image      = "$DE1_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -48,7 +48,7 @@ source "openstack" "themelio-node-gra5" {
   region            = "GRA5"
   source_image      = "$GRA5_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -62,7 +62,7 @@ source "openstack" "themelio-node-gra7" {
   region            = "GRA7"
   source_image      = "$GRA7_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -76,7 +76,7 @@ source "openstack" "themelio-node-gra9" {
   region            = "GRA9"
   source_image      = "$GRA9_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -90,7 +90,7 @@ source "openstack" "themelio-node-gra11" {
   region            = "GRA11"
   source_image      = "$GRA11_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -104,7 +104,7 @@ source "openstack" "themelio-node-sbg5" {
   region            = "SBG5"
   source_image      = "$SBG5_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -118,7 +118,7 @@ source "openstack" "themelio-node-sgp1" {
   region            = "SGP1"
   source_image      = "$SGP1_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -132,7 +132,7 @@ source "openstack" "themelio-node-syd1" {
   region            = "SYD1"
   source_image      = "$SYD1_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -146,7 +146,7 @@ source "openstack" "themelio-node-uk1" {
   region            = "UK1"
   source_image      = "$UK1_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -160,7 +160,7 @@ source "openstack" "themelio-node-waw1" {
   region            = "WAW1"
   source_image      = "$WAW1_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -174,14 +174,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=bhs5"
     ]
@@ -197,14 +197,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=de1"
     ]
@@ -220,14 +220,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra5"
     ]
@@ -243,14 +243,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra7"
     ]
@@ -266,14 +266,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra9"
     ]
@@ -289,14 +289,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra11"
     ]
@@ -312,14 +312,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=sbg5"
     ]
@@ -335,14 +335,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=sgp1"
     ]
@@ -358,14 +358,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=syd1"
     ]
@@ -381,14 +381,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=uk1"
     ]
@@ -404,14 +404,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
   groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=waw1"
     ]
@@ -430,7 +430,7 @@ source "openstack" "themelio-node-bhs5-testnet" {
   region            = "BHS5"
   source_image      = "$BHS5_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -444,7 +444,7 @@ source "openstack" "themelio-node-de1-testnet" {
   region            = "DE1"
   source_image      = "$DE1_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -458,7 +458,7 @@ source "openstack" "themelio-node-gra5-testnet" {
   region            = "GRA5"
   source_image      = "$GRA5_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -472,7 +472,7 @@ source "openstack" "themelio-node-gra7-testnet" {
   region            = "GRA7"
   source_image      = "$GRA7_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -486,7 +486,7 @@ source "openstack" "themelio-node-gra9-testnet" {
   region            = "GRA9"
   source_image      = "$GRA9_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -500,7 +500,7 @@ source "openstack" "themelio-node-gra11-testnet" {
   region            = "GRA11"
   source_image      = "$GRA11_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -514,7 +514,7 @@ source "openstack" "themelio-node-sbg5-testnet" {
   region            = "SBG5"
   source_image      = "$SBG5_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -528,7 +528,7 @@ source "openstack" "themelio-node-sgp1-testnet" {
   region            = "SGP1"
   source_image      = "$SGP1_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -542,7 +542,7 @@ source "openstack" "themelio-node-syd1-testnet" {
   region            = "SYD1"
   source_image      = "$SYD1_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -556,7 +556,7 @@ source "openstack" "themelio-node-uk1-testnet" {
   region            = "UK1"
   source_image      = "$UK1_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -570,7 +570,7 @@ source "openstack" "themelio-node-waw1-testnet" {
   region            = "WAW1"
   source_image      = "$WAW1_IMAGE_ID"
   ssh_ip_version    = "4"
-  ssh_username      = "arch"
+  ssh_username      = "debian"
   tenant_id         = ""
   username          = "$OS_USERNAME"
 }
@@ -584,14 +584,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=bhs5-testnet"
     ]
@@ -607,14 +607,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=de1-testnet"
     ]
@@ -630,14 +630,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra5-testnet"
     ]
@@ -653,14 +653,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra7-testnet"
     ]
@@ -676,14 +676,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra9-testnet"
     ]
@@ -699,14 +699,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra11-testnet"
     ]
@@ -722,14 +722,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=sbg5-testnet"
     ]
@@ -745,14 +745,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=sgp1-testnet"
     ]
@@ -768,14 +768,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=syd1-testnet"
     ]
@@ -791,14 +791,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=uk1-testnet"
     ]
@@ -814,14 +814,14 @@ build {
     expect_disconnect = true
     inline            = [
       "sleep 30",
-      "echo 'yes' | sudo pacman -Syu",
+      "sudo apt-get update && sudo apt-get -y upgrade",
       "sudo reboot"
     ]
   }
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=waw1-testnet"
     ]

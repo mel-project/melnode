@@ -5,7 +5,7 @@ set -ex
 SCRIPTS_DIRECTORY="$(dirname "${0}")"
 PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
 
-sudo bio pkg install --binlink core/bats
+sudo bio pkg install --binlink themelio/bats
 sudo bio pkg install --binlink core/curl
 sudo bio pkg install --binlink core/nmap
 
@@ -30,7 +30,7 @@ sudo bio svc load "${pkg_ident}"
 echo "Sleeping for 5 seconds for the service to start."
 sleep 5
 
-if bats "${SCRIPTS_DIRECTORY}/test.bats"; then
+if bats --print-output-on-failure "${SCRIPTS_DIRECTORY}/test.bats"; then
   sudo bio svc unload "${pkg_ident}"
 else
   sudo bio svc unload "${pkg_ident}"
