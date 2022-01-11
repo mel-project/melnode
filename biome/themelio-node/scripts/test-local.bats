@@ -10,9 +10,13 @@ source "${BATS_TEST_DIRNAME}/../plan.sh"
   [ $status -eq 0 ]
 }
 
-@test "Service is running" {
+@test "Service is running (via nmap)" {
   output="$(nmap 127.0.0.1 -p 11814 | tail -3 | head -1 | awk '{print $2}')"
-  [ "$output" = "open" ]
+  [ "output" = "open" ]
+}
+
+@test "Service is running" {
+  [ "$(bio svc status | grep "themelio-node\.default" | awk '{print $4}' | grep up)" ]
 }
 
 @test "Metrics webserver is running" {
