@@ -15,6 +15,10 @@ source "${BATS_TEST_DIRNAME}/../plan.sh"
   [ "output" = "open" ]
 }
 
+@test "Service is running" {
+  [ "$(sudo bio svc status | grep "themelio-node\.default" | awk '{print $4}' | grep up)" ]
+}
+
 @test "Metrics webserver is running" {
   result="$(nmap 127.0.0.1 -p 8080 | tail -3 | head -1 | awk '{print $2}')"
   [ "output" = "open" ]

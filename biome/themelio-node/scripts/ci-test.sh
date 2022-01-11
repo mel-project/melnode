@@ -32,6 +32,19 @@ sleep 5
 
 nmap 127.0.0.1 -p 11814
 
+nmap 127.0.0.1 -p 11814 | tail -3 | head -1 | awk '{print $2}'
+
+themelio-node --version
+
+themelio-node --version | head -1 | awk '{print $2}'
+
+nmap 127.0.0.1 -p 8080
+
+nmap 127.0.0.1 -p 8080 | tail -3 | head -1 | awk '{print $2}'
+
+curl http://127.0.0.1:8080/metrics
+
+
 if bats --print-output-on-failure "${SCRIPTS_DIRECTORY}/test.bats"; then
   sudo bio svc unload "${pkg_ident}"
 else
