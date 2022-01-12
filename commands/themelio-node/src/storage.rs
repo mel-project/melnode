@@ -93,7 +93,7 @@ impl NodeStorage {
         std::thread::Builder::new()
             .name("storage-sync".into())
             .spawn(move || loop {
-                std::thread::sleep(std::time::Duration::from_secs(30));
+                std::thread::sleep(std::time::Duration::from_secs(5));
                 let start = Instant::now();
                 let highest = copy.highest_state();
                 let forest = copy.forest().clone();

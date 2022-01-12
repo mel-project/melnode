@@ -900,9 +900,9 @@ dependencies = [
 
 [[package]]
 name = "flume"
-version = "0.10.9"
+version = "0.10.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24c3fd473b3a903a62609e413ed7538f99e10b665ecb502b5e481a95283f8ab4"
+checksum = "5d04dafd11240188e146b6f6476a898004cace3be31d4ec5e08e216bf4947ac0"
 dependencies = [
  "futures-core",
  "futures-sink",
@@ -1627,9 +1627,9 @@ dependencies = [
 
 [[package]]
 name = "meshanina"
-version = "0.2.5"
+version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e06cc6714088ed50f6ed0796c61cd86c63411a0a9d391f48cb702f30d159be10"
+checksum = "3aa6edcff3c36935237caf94cd424f7875665fed836bbed42c228d2c24cf0629"
 dependencies = [
  "blake3",
  "cache-padded",
@@ -1638,6 +1638,7 @@ dependencies = [
  "ethnum",
  "fastrand",
  "fs2",
+ "libc",
  "log",
  "memmap",
  "parking_lot",
