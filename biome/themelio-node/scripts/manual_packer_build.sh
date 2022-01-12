@@ -91,7 +91,7 @@ export SYD1_NETWORK_ID=$(cat SYD1_NETWORK_ID.output)
 export UK1_NETWORK_ID=$(cat UK1_NETWORK_ID.output)
 export WAW1_NETWORK_ID=$(cat WAW1_NETWORK_ID.output)
 
-envsubst < "${SCRIPTS_DIRECTORY}/themelio-node.pkr.hcl.temp-debian" > "${SCRIPTS_DIRECTORY}/themelio-node-debian.pkr.hcl"
+envsubst < "${SCRIPTS_DIRECTORY}/themelio-node.pkr.hcl.temp-debian-ovh" > "${SCRIPTS_DIRECTORY}/themelio-node-debian-ovh.pkr.hcl"
 
 #packer validate "${SCRIPTS_DIRECTORY}/themelio-node-debian.pkr.hcl"
 
