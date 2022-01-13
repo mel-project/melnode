@@ -1601,6 +1601,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "melnet"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ca4e8089b49f639a83d4d40a0671c83c474cb5776c9d9704a5cb07edd26a0f6"
+dependencies = [
+ "anyhow",
+ "async-net",
+ "async-trait",
+ "dashmap 5.0.0",
+ "deadpool",
+ "derivative",
+ "env_logger 0.8.4",
+ "lazy_static",
+ "log",
+ "once_cell",
+ "parking_lot",
+ "rand 0.8.4",
+ "serde",
+ "smol",
+ "smol-timeout",
+ "smolscale",
+ "stdcode",
+ "tap",
+ "thiserror",
+]
+
+[[package]]
 name = "memchr"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1627,10 +1654,11 @@ dependencies = [
 
 [[package]]
 name = "meshanina"
-version = "0.2.9"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3aa6edcff3c36935237caf94cd424f7875665fed836bbed42c228d2c24cf0629"
+checksum = "94df702ecfa16410f5e1b1913fd4a04e511818746071cfebd3dbf51be9c3c5aa"
 dependencies = [
+ "arrayref",
  "blake3",
  "cache-padded",
  "crc",
@@ -1809,7 +1837,7 @@ dependencies = [
  "futures-util",
  "imbl",
  "log",
- "melnet",
+ "melnet 0.1.15",
  "novasmt",
  "once_cell",
  "parking_lot",
@@ -3025,7 +3053,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9192be889e40cc31f07d6ba5841de8c1457a8e80aac4a0b68ea5f6678c692773"
 dependencies = [
  "once_cell",
- "themelio-nodeprot",
+ "themelio-nodeprot 0.7.2",
  "themelio-stf",
 ]
 
@@ -3059,7 +3087,7 @@ dependencies = [
  "hostname",
  "log",
  "lru",
- "melnet",
+ "melnet 0.2.0",
  "meshanina",
  "mimalloc",
  "novasmt",
@@ -3080,7 +3108,7 @@ dependencies = [
  "systemstat",
  "tap",
  "themelio-bootstrap",
- "themelio-nodeprot",
+ "themelio-nodeprot 0.8.0",
  "themelio-stf",
  "tmelcrypt",
  "tracing",
@@ -3095,7 +3123,28 @@ checksum = "e9d9d36ccf2180c904529a6cd5fb0fb0665621f4cda195f196475d6f2e19bcf2"
 dependencies = [
  "hex",
  "log",
- "melnet",
+ "melnet 0.1.15",
+ "novasmt",
+ "serde",
+ "smol",
+ "smolscale",
+ "stdcode",
+ "themelio-stf",
+ "thiserror",
+ "tmelcrypt",
+]
+
+[[package]]
+name = "themelio-nodeprot"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "211904570b1c726d86abba8ae9b8b8ff5e2ee737779d2611f5b1df963bde4cb1"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "hex",
+ "log",
+ "melnet 0.2.0",
  "novasmt",
  "serde",
  "smol",
@@ -3117,7 +3166,7 @@ dependencies = [
  "smol",
  "smol-timeout",
  "structopt",
- "themelio-nodeprot",
+ "themelio-nodeprot 0.7.2",
  "themelio-stf",
  "tmelcrypt",
 ]

@@ -200,7 +200,7 @@ struct AuditorResponder {
 }
 
 impl NodeServer<MeshaCas> for AuditorResponder {
-    fn send_tx(&self, state: melnet::NetState, tx: Transaction) -> melnet::Result<()> {
+    fn send_tx(&self, state: melnet::NetState, tx: Transaction) -> anyhow::Result<()> {
         let start = Instant::now();
         let post_lock = Instant::now();
         self.storage
@@ -245,19 +245,19 @@ impl NodeServer<MeshaCas> for AuditorResponder {
         Ok(())
     }
 
-    fn get_abbr_block(&self, height: BlockHeight) -> melnet::Result<(AbbrBlock, ConsensusProof)> {
+    fn get_abbr_block(&self, height: BlockHeight) -> anyhow::Result<(AbbrBlock, ConsensusProof)> {
         let state = self
             .storage
             .get_state(height)
-            .ok_or_else(|| MelnetError::Custom(format!("block {} not confirmed yet", height)))?;
+            .context(format!("block {} not confirmed yet", height))?;
         let proof = self
             .storage
             .get_consensus(height)
-            .ok_or_else(|| MelnetError::Custom(format!("block {} not confirmed yet", height)))?;
+            .context(format!("block {} not confirmed yet", height))?;
         Ok((state.to_block().abbreviate(), proof))
     }
 
-    fn get_summary(&self) -> melnet::Result<StateSummary> {
+    fn get_summary(&self) -> anyhow::Result<StateSummary> {
         let highest = self.storage.highest_state();
         let proof = self
             .storage
@@ -271,10 +271,8 @@ impl NodeServer<MeshaCas> for AuditorResponder {
         })
     }
 
-    fn get_state(&self, height: BlockHeight) -> melnet::Result<SealedState<MeshaCas>> {
-        self.storage
-            .get_state(height)
-            .ok_or_else(|| melnet::MelnetError::Custom("no such height".into()))
+    fn get_state(&self, height: BlockHeight) -> anyhow::Result<SealedState<MeshaCas>> {
+        self.storage.get_state(height).context("no such height")
     }
 
     fn get_smt_branch(
@@ -282,7 +280,7 @@ impl NodeServer<MeshaCas> for AuditorResponder {
         height: BlockHeight,
         elem: Substate,
         key: HashVal,
-    ) -> melnet::Result<(Vec<u8>, CompressedProof)> {
+    ) -> anyhow::Result<(Vec<u8>, CompressedProof)> {
         let state = self
             .storage
             .get_state(height)
@@ -307,11 +305,8 @@ impl NodeServer<MeshaCas> for AuditorResponder {
         Ok((v.to_vec(), proof.compress()))
     }
 
-    fn get_stakers_raw(&self, height: BlockHeight) -> melnet::Result<BTreeMap<HashVal, Vec<u8>>> {
-        let state = self
-            .storage
-            .get_state(height)
-            .ok_or_else(|| MelnetError::Custom(format!("block {} not confirmed yet", height)))?;
+    fn get_stakers_raw(&self, height: BlockHeight) -> anyhow::Result<BTreeMap<HashVal, Vec<u8>>> {
+        let state = self.storage.get_state(height).context("no such height")?;
         let mut accum = BTreeMap::new();
         for (k, v) in state.inner_ref().stakes.mapping.iter() {
             accum.insert(HashVal(k), v.to_vec());

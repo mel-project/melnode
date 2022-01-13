@@ -93,7 +93,7 @@ impl NodeStorage {
         std::thread::Builder::new()
             .name("storage-sync".into())
             .spawn(move || loop {
-                std::thread::sleep(std::time::Duration::from_secs(5));
+                std::thread::sleep(std::time::Duration::from_secs(10));
                 let start = Instant::now();
                 let highest = copy.highest_state();
                 let forest = copy.forest().clone();
@@ -101,7 +101,10 @@ impl NodeStorage {
                 copy.metadata
                     .insert(b"last_confirmed".to_vec(), highest.partial_encoding())
                     .unwrap();
-                log::warn!("**** FLUSHED IN {:?} ****", start.elapsed());
+                let elapsed = start.elapsed();
+                if elapsed.as_secs() > 5 {
+                    log::warn!("**** FLUSHED IN {:?} ****", elapsed);
+                }
             })
             .unwrap();
         r
