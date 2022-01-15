@@ -1,0 +1,26 @@
+version: "3.9"
+services:
+  themelio-node:
+    image: ghcr.io/themeliolabs/themelio-node:latest
+    command:
+      --strategy at-once --url https://bldr.habitat.sh
+      --group {{ aws_region }}
+      --update-condition latest
+      --auto-update
+    ports:
+      - 11814:11814
+      - 8080:8080
+    hostname: ${HOSTNAME}
+    volumes:
+      - themelio-node:/hab/svc/themelio-node/data
+
+  promtail:
+    image: ghcr.io/themeliolabs/promtail:latest
+    ports:
+      - 9080:9080
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers
+
+volumes:
+  themelio-node:
+    name: themelio-node
