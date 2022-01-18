@@ -3,11 +3,12 @@ mod helpers;
 use blkdb::{backends::InMemoryDb, BlockTree, Cursor};
 use helpers::*;
 use novasmt::ContentAddrStore;
-use themelio_stf::{Block, BlockHeight, SealedState, StakeMapping};
+use themelio_stf::{SealedState, StakeMapping};
 
 pub mod gossip;
 use gossip::*;
 
+use themelio_structs::{Block, BlockHeight};
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
 use crate::msg::{ProposalSig, VoteSig};

@@ -24,10 +24,11 @@ use std::{
     sync::Arc,
     time::{Duration, SystemTime},
 };
-use themelio_stf::{
-    Block, BlockHeight, ConfirmedState, ConsensusProof, ProposerAction, SealedState, StakeMapping,
-    Transaction, TxHash, STAKE_EPOCH,
+use themelio_stf::{ConfirmedState, SealedState, StakeMapping};
+use themelio_structs::{
+    Block, BlockHeight, ConsensusProof, ProposerAction, Transaction, TxHash, STAKE_EPOCH,
 };
+
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
 /// A trait that represents a "mempool".

@@ -7,10 +7,8 @@ use env_logger::Env;
 use novasmt::ContentAddrStore;
 use novasymph::{BlockBuilder, EpochConfig, EpochProtocol};
 use once_cell::sync::Lazy;
-use themelio_stf::{
-    melvm::Covenant, Block, CoinData, Denom, GenesisConfig, NetID, ProposerAction, SealedState,
-    StakeDoc,
-};
+use themelio_stf::{melvm::Covenant, GenesisConfig, SealedState};
+use themelio_structs::{Block, CoinData, Denom, NetID, ProposerAction, StakeDoc};
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
 const COUNT: usize = 20;

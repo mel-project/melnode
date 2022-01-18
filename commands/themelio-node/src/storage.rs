@@ -13,17 +13,23 @@ use self::mempool::Mempool;
 use anyhow::Context;
 use arc_swap::ArcSwap;
 use dashmap::DashMap;
+use futures_util::Stream;
 use parking_lot::RwLock;
+use smol::{channel::Sender, prelude::*};
+use smol_timeout::TimeoutExt;
 pub use smt::*;
+use std::time::Duration;
 
+use stdcode::StdcodeSerializeExt;
 use themelio_nodeprot::TrustStore;
-use themelio_stf::{BlockHeight, ConsensusProof, GenesisConfig, SealedState};
+use themelio_stf::{CoinMapping, GenesisConfig, SealedState, SmtMapping, State};
+use themelio_structs::{Block, BlockHeight, ConsensusProof, Header, NetID, ProposerAction};
 
 #[derive(Clone)]
 pub struct NodeTrustStore(pub NodeStorage);
 
 impl TrustStore for NodeTrustStore {
-    fn set(&self, netid: themelio_stf::NetID, trusted: themelio_nodeprot::TrustedHeight) {
+    fn set(&self, netid: NetID, trusted: themelio_nodeprot::TrustedHeight) {
         self.0
             .metadata
             .insert(
@@ -34,7 +40,7 @@ impl TrustStore for NodeTrustStore {
             .expect("could not set trusted height");
     }
 
-    fn get(&self, netid: themelio_stf::NetID) -> Option<themelio_nodeprot::TrustedHeight> {
+    fn get(&self, netid: NetID) -> Option<themelio_nodeprot::TrustedHeight> {
         let pair: (BlockHeight, tmelcrypt::HashVal) = self
             .0
             .metadata
@@ -56,6 +62,7 @@ pub struct NodeStorage {
     highest: Arc<ArcSwap<SealedState<MeshaCas>>>,
     old_cache: Arc<DashMap<BlockHeight, SealedState<MeshaCas>>>,
     forest: Arc<novasmt::Database<MeshaCas>>,
+    _death: Sender<()>,
 }
 
 impl NodeStorage {
@@ -69,7 +76,7 @@ impl NodeStorage {
         self.mempool.write()
     }
 
-    /// Opens a NodeStorage, given a sled database.
+    /// Opens a NodeStorage, given a meshanina and boringdb database.
     pub fn new(mdb: meshanina::Mapping, bdb: boringdb::Database, genesis: GenesisConfig) -> Self {
         // Identify the genesis by the genesis ID
         let genesis_id = tmelcrypt::hash_single(stdcode::serialize(&genesis).unwrap());
@@ -80,34 +87,203 @@ impl NodeStorage {
         let highest = metadata
             .get(b"last_confirmed")
             .expect("db failed")
-            .map(|b| SealedState::from_partial_encoding_infallible(&b, &forest))
+            .map(|b| {
+                log::warn!("ACTUALLY LOADING DB");
+                SealedState::from_partial_encoding_infallible(&b, &forest)
+            })
             .unwrap_or_else(|| genesis.realize(&forest).seal(None));
+        log::info!("HIGHEST AT {}", highest.inner_ref().height);
+        let (send, recv) = smol::channel::bounded(1);
         let r = Self {
             mempool: Arc::new(Mempool::new(highest.next_state()).into()),
             highest: ArcSwap::new(Arc::new(highest)).into(),
             forest: forest.into(),
             old_cache: Default::default(),
-            metadata,
+            metadata: metadata.clone(),
+            _death: send,
         };
-        let copy = r.clone();
-        std::thread::Builder::new()
-            .name("storage-sync".into())
-            .spawn(move || loop {
-                std::thread::sleep(std::time::Duration::from_secs(10));
+        let highest = r.highest.clone();
+        let metadata = metadata.clone();
+        let forest = r.forest.clone();
+        smolscale::spawn(async move {
+            loop {
+                if recv.recv().timeout(Duration::from_secs(1)).await.is_some() {
+                    log::warn!("syncer dying");
+                    break;
+                };
                 let start = Instant::now();
-                let highest = copy.highest_state();
-                let forest = copy.forest().clone();
-                forest.storage().flush();
-                copy.metadata
+                let highest = highest.load_full();
+                let forest = forest.clone();
+                smol::unblock(move || forest.storage().flush()).await;
+                metadata
                     .insert(b"last_confirmed".to_vec(), highest.partial_encoding())
                     .unwrap();
                 let elapsed = start.elapsed();
                 if elapsed.as_secs() > 5 {
                     log::warn!("**** FLUSHED IN {:?} ****", elapsed);
                 }
-            })
-            .unwrap();
+            }
+        })
+        .detach();
         r
+    }
+
+    /// Restores from a backup. Requires *exclusive* access to the storage, so do this before sharing the storage.
+    pub async fn restore_pruned<S: Stream<Item = String> + Unpin>(
+        &mut self,
+        mut backup: S,
+    ) -> anyhow::Result<()> {
+        defmac::defmac!(read_tree => {
+            let mut empty_tree = self.forest().get_tree(Default::default()).unwrap();
+            async {
+                let count: u64 = backup.next().await.context("cannot read count")?.parse()?;
+                for _ in 0..count {
+                    let line = backup.next().await.context("cannot read tree element")?;
+                    let mut splitted = line.split(';');
+                    let key_base64 = splitted.next().context("no first half")?;
+                    let value_base64 = splitted.next().context("no first half")?;
+                    let key: [u8; 32] = base64::decode(key_base64)?
+                        .try_into()
+                        .ok()
+                        .context("key not 32 bytes")?;
+                    let value = base64::decode(value_base64)?;
+                    empty_tree.insert(key, &value);
+                }
+                Ok::<_, anyhow::Error>(empty_tree)
+            }
+        });
+        let header: Header = stdcode::deserialize(&base64::decode(
+            &backup.next().await.context("cannot read header")?,
+        )?)?;
+        let prop_action: Option<ProposerAction> = stdcode::deserialize(&base64::decode(
+            &backup.next().await.context("cannot read prop action")?,
+        )?)?;
+        let history = read_tree!().await?;
+        let coins = read_tree!().await?;
+        let transactions = read_tree!().await?;
+        let pools = read_tree!().await?;
+        let stakes = read_tree!().await?;
+        let new_state = State {
+            network: header.network,
+            height: header.height,
+            history: SmtMapping::new(history),
+            coins: CoinMapping::new(coins),
+            transactions: SmtMapping::new(transactions),
+            fee_pool: header.fee_pool,
+            fee_multiplier: header.fee_multiplier,
+            tips: Default::default(),
+            dosc_speed: header.dosc_speed,
+            pools: SmtMapping::new(pools),
+            stakes: SmtMapping::new(stakes),
+        };
+        let new_highest = SealedState::from_parts(new_state, prop_action);
+        self.highest.store(Arc::new(new_highest));
+        let block_count: u64 = backup.next().await.context("cannot read count")?.parse()?;
+        for i in 0..block_count {
+            log::info!("additional block {}", i);
+            let block: Block = stdcode::deserialize(&base64::decode(
+                &backup.next().await.context("cannot read block")?,
+            )?)?;
+            let cproof: ConsensusProof = stdcode::deserialize(&base64::decode(
+                &backup.next().await.context("cannot read cproof")?,
+            )?)?;
+            self.apply_block(block, cproof)?;
+        }
+        smol::Timer::after(Duration::from_secs(3)).await;
+        Ok(())
+    }
+
+    /// Serializes the storage in a pruned, textual form that discards history.
+    pub fn backup_pruned(&self) -> impl Stream<Item = String> {
+        let (send, recv) = smol::channel::bounded::<String>(128);
+        let this = self.clone();
+        smolscale::spawn(async move {
+            let send_tree = {
+                let send = &send;
+                move |tree: novasmt::Tree<MeshaCas>| async move {
+                    log::info!("** backing up tree with {} elements **", tree.count());
+                    send.send(format!("{}", tree.count()).into()).await?;
+                    let count = tree.count();
+                    for (i, (k, v)) in tree.iter().enumerate() {
+                        let s = format!(
+                            "{};{}",
+                            base64::encode_config(&k, base64::STANDARD_NO_PAD),
+                            base64::encode_config(&v, base64::STANDARD_NO_PAD)
+                        );
+                        send.send(s).await?;
+                        if i as u64 % (count / 1000).max(1) == 0 {
+                            log::debug!(
+                                "** {}% done **",
+                                ((i as u64 * 1000) / count) as f64 / 10.0
+                            );
+                        }
+                    }
+                    Ok::<_, anyhow::Error>(())
+                }
+            };
+            let base_state = if this.highest_height().0 <= 10000 {
+                this.highest_state()
+            } else {
+                this.get_state(this.highest_height() - BlockHeight(10000))
+                    .unwrap_or_else(|| this.highest_state())
+            };
+            log::info!(
+                "** backup base state at height {} **",
+                base_state.inner_ref().height
+            );
+            send.send(
+                base64::encode_config(base_state.header().stdcode(), base64::STANDARD_NO_PAD)
+                    .into(),
+            )
+            .await?;
+            send.send(
+                base64::encode_config(
+                    base_state.proposer_action().stdcode(),
+                    base64::STANDARD_NO_PAD,
+                )
+                .into(),
+            )
+            .await?;
+            for tree in [
+                base_state.inner_ref().history.mapping.clone(),
+                base_state.inner_ref().coins.inner().clone(),
+                base_state.inner_ref().transactions.mapping.clone(),
+                base_state.inner_ref().pools.mapping.clone(),
+                base_state.inner_ref().stakes.mapping.clone(),
+            ] {
+                send_tree(tree).await?;
+            }
+            // then for every state up to the highest state, we send the whole block
+            let highest = this.highest_height();
+            let count = (base_state.inner_ref().height.0..=highest.0)
+                .skip(1)
+                .count();
+            log::info!("total number of blocks {}", count);
+            send.send(format!("{}", count).into()).await?;
+            for later_height in (base_state.inner_ref().height.0..=highest.0).skip(1) {
+                log::info!("** backing up subsequent block {} **", later_height);
+                let block = this
+                    .get_state(later_height.into())
+                    .expect("cannot get older state while backing up")
+                    .to_block();
+                let cproof = this
+                    .get_consensus(later_height.into())
+                    .expect("cannot get older cproof while backing up");
+                send.send(base64::encode_config(
+                    &block.stdcode(),
+                    base64::STANDARD_NO_PAD,
+                ))
+                .await?;
+                send.send(base64::encode_config(
+                    &cproof.stdcode(),
+                    base64::STANDARD_NO_PAD,
+                ))
+                .await?;
+            }
+            Ok::<_, anyhow::Error>(())
+        })
+        .detach();
+        recv
     }
 
     /// Obtain the highest state.
@@ -122,6 +298,10 @@ impl NodeStorage {
 
     /// Obtain a historical SealedState.
     pub fn get_state(&self, height: BlockHeight) -> Option<SealedState<MeshaCas>> {
+        let highest = self.highest_state();
+        if height == highest.inner_ref().height {
+            return Some(highest);
+        }
         self.old_cache
             .entry(height)
             .or_try_insert_with(|| {
@@ -151,11 +331,7 @@ impl NodeStorage {
     }
 
     /// Consumes a block, applying it to the current state.
-    pub fn apply_block(
-        &self,
-        blk: themelio_stf::Block,
-        cproof: ConsensusProof,
-    ) -> anyhow::Result<()> {
+    pub fn apply_block(&self, blk: Block, cproof: ConsensusProof) -> anyhow::Result<()> {
         let highest_state = self.highest_state();
         if blk.header.height != highest_state.inner_ref().height + 1.into() {
             anyhow::bail!(

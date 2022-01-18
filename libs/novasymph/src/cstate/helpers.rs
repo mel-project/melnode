@@ -5,7 +5,8 @@ use novasmt::ContentAddrStore;
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use themelio_stf::{AbbrBlock, StakeMapping};
+use themelio_stf::StakeMapping;
+use themelio_structs::AbbrBlock;
 use thiserror::Error;
 use tmelcrypt::{Ed25519PK, HashVal};
 

@@ -1,7 +1,8 @@
 use std::collections::HashSet;
 
 use lru::LruCache;
-use themelio_stf::{State, StateError, Transaction, TxHash};
+use themelio_stf::{State, StateError};
+use themelio_structs::{Transaction, TxHash};
 use tmelcrypt::HashVal;
 
 use super::MeshaCas;

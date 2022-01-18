@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use serde::{Deserialize, Serialize};
-use themelio_stf::{AbbrBlock, Block, Transaction, TxHash};
+use themelio_structs::{AbbrBlock, Block, Transaction, TxHash};
 use tmelcrypt::HashVal;
 
 use super::helpers::StreamletMetadata;

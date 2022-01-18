@@ -27,4 +27,5 @@ debug=0
 
 [profile.release-dbg]
 inherits = "release"
-debug=2  
+debug=2
+panic = "abort"

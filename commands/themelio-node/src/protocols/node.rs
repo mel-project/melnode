@@ -7,9 +7,8 @@ use std::{
 use anyhow::Context;
 use futures_util::{StreamExt, TryStreamExt};
 use novasmt::CompressedProof;
-use themelio_stf::{
-    AbbrBlock, Block, BlockHeight, ConsensusProof, NetID, SealedState, Transaction,
-};
+use themelio_stf::SealedState;
+use themelio_structs::{AbbrBlock, Block, BlockHeight, ConsensusProof, NetID, Transaction};
 
 use crate::storage::{MeshaCas, NodeStorage};
 use melnet::MelnetError;
@@ -286,7 +285,7 @@ impl NodeServer<MeshaCas> for AuditorResponder {
             .get_state(height)
             .ok_or_else(|| MelnetError::Custom(format!("block {} not confirmed yet", height)))?;
         let tree = match elem {
-            Substate::Coins => &state.inner_ref().coins.mapping,
+            Substate::Coins => &state.inner_ref().coins.inner(),
             Substate::History => &state.inner_ref().history.mapping,
             Substate::Pools => &state.inner_ref().pools.mapping,
             Substate::Stakes => &state.inner_ref().stakes.mapping,

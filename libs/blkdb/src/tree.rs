@@ -7,7 +7,8 @@ use std::fmt::Write;
 use dashmap::DashMap;
 use novasmt::ContentAddrStore;
 use serde::{Deserialize, Serialize};
-use themelio_stf::{Block, BlockHeight, Header, ProposerAction, SealedState};
+use themelio_stf::SealedState;
+use themelio_structs::{Block, BlockHeight, Header, ProposerAction};
 use thiserror::Error;
 use tmelcrypt::HashVal;
 

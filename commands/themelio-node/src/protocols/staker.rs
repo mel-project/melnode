@@ -1,9 +1,6 @@
 use crate::storage::{MeshaCas, NodeStorage};
 
 use once_cell::sync::Lazy;
-use themelio_stf::{
-    melvm::Address, Block, BlockHeight, ProposerAction, SealedState, Transaction, TxHash,
-};
 
 use novasymph::BlockBuilder;
 use smol::prelude::*;
@@ -12,6 +9,8 @@ use std::{
     sync::Arc,
     time::{Duration, SystemTime},
 };
+use themelio_stf::SealedState;
+use themelio_structs::{Address, Block, BlockHeight, NetID, ProposerAction, Transaction, TxHash};
 use tmelcrypt::Ed25519SK;
 use tracing::instrument;
 
@@ -123,8 +122,8 @@ async fn one_epoch_loop(
     let genesis = storage.highest_state();
     let forest = storage.clone().forest().clone();
     let start_time = match genesis.inner_ref().network {
-        themelio_stf::NetID::Mainnet => *MAINNET_START_TIME,
-        themelio_stf::NetID::Testnet => *TESTNET_START_TIME,
+        NetID::Mainnet => *MAINNET_START_TIME,
+        NetID::Testnet => *TESTNET_START_TIME,
         _ => SystemTime::now() - Duration::from_secs(storage.highest_height().0 * 30),
     };
     let config = novasymph::EpochConfig {
