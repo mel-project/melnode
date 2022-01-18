@@ -1,0 +1,34 @@
+source "amazon-ebs" "themelio-node-$AWS_REGION-mainnet" {
+  ami_name = "themelio-node-mainnet"
+  instance_type = "t2.micro"
+  region = "$AWS_REGION"
+  source_ami = data.amazon-ami.debian-bullseye.id
+
+  launch_block_device_mappings {
+    delete_on_termination = true
+    device_name = "/dev/xvda"
+    volume_size = 50
+    volume_type = "gp2"
+  }
+
+  ssh_username = "admin"
+}
+
+build {
+  sources = [
+    "source.amazon-ebs.themelio-node-$AWS_REGION-mainnet",
+  ]
+
+  provisioner "ansible" {
+    groups = ["themelio_node"]
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-aws/install-mainnet.yml"
+    user = "admin"
+    extra_arguments = [
+      "--extra-vars", "aws_region=$AWS_REGION"
+    ]
+    ansible_env_vars = [
+      "ANSIBLE_SSH_ARGS='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o AddKeysToAgent=no -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa'",
+      "ANSIBLE_HOST_KEY_CHECKING=False"
+    ]
+  }
+}
