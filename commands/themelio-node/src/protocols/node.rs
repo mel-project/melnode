@@ -187,6 +187,7 @@ async fn attempt_blksync(
 
         storage
             .apply_block(block, proof)
+            .await
             .context("could not apply a resolved block")?;
         toret += 1;
     }

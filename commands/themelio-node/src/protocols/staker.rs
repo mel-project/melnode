@@ -153,8 +153,9 @@ async fn one_epoch_loop(
         loop {
             let confirmed = protocol.next_confirmed().await;
             let height = confirmed.inner().inner_ref().height;
-            if let Err(err) =
-                storage.apply_block(confirmed.inner().to_block(), confirmed.cproof().clone())
+            if let Err(err) = storage
+                .apply_block(confirmed.inner().to_block(), confirmed.cproof().clone())
+                .await
             {
                 #[cfg(not(feature = "metrics"))]
                 log::warn!(

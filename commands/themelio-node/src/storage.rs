@@ -187,7 +187,7 @@ impl NodeStorage {
             let cproof: ConsensusProof = stdcode::deserialize(&base64::decode(
                 &backup.next().await.context("cannot read cproof")?,
             )?)?;
-            self.apply_block(block, cproof)?;
+            self.apply_block(block, cproof).await?;
         }
         smol::Timer::after(Duration::from_secs(3)).await;
         Ok(())
@@ -195,7 +195,7 @@ impl NodeStorage {
 
     /// Serializes the storage in a pruned, textual form that discards history.
     pub fn backup_pruned(&self) -> impl Stream<Item = String> {
-        let (send, recv) = smol::channel::bounded::<String>(128);
+        let (send, recv) = smol::channel::bounded::<String>(1);
         let this = self.clone();
         smolscale::spawn(async move {
             let send_tree = {
@@ -204,6 +204,7 @@ impl NodeStorage {
                     log::info!("** backing up tree with {} elements **", tree.count());
                     send.send(format!("{}", tree.count()).into()).await?;
                     let count = tree.count();
+                    let start = Instant::now();
                     for (i, (k, v)) in tree.iter().enumerate() {
                         let s = format!(
                             "{};{}",
@@ -213,8 +214,9 @@ impl NodeStorage {
                         send.send(s).await?;
                         if i as u64 % (count / 1000).max(1) == 0 {
                             log::debug!(
-                                "** {}% done **",
-                                ((i as u64 * 1000) / count) as f64 / 10.0
+                                "** {}% done ({} Hz) **",
+                                ((i as u64 * 1000) / count) as f64 / 10.0,
+                                (i as f64) / start.elapsed().as_secs_f64()
                             );
                         }
                     }
@@ -331,17 +333,18 @@ impl NodeStorage {
     }
 
     /// Consumes a block, applying it to the current state.
-    pub fn apply_block(&self, blk: Block, cproof: ConsensusProof) -> anyhow::Result<()> {
+    pub async fn apply_block(&self, blk: Block, cproof: ConsensusProof) -> anyhow::Result<()> {
         let highest_state = self.highest_state();
-        if blk.header.height != highest_state.inner_ref().height + 1.into() {
+        let header = blk.header;
+        if header.height != highest_state.inner_ref().height + 1.into() {
             anyhow::bail!(
                 "cannot apply block {} to height {}",
-                blk.header.height,
+                header.height,
                 highest_state.inner_ref().height
             );
         }
         // TODO!!!! CHECK INTEGRITY?!!?!?!!
-        let new_state = highest_state.apply_block(&blk)?;
+        let new_state = smol::unblock(move || highest_state.apply_block(&blk)).await?;
         self.metadata.insert(
             format!("state-{}", new_state.inner_ref().height)
                 .as_bytes()
@@ -356,13 +359,13 @@ impl NodeStorage {
         )?;
         self.highest.store(new_state.into());
         #[cfg(not(feature = "metrics"))]
-        log::debug!("applied block {}", blk.header.height);
+        log::debug!("applied block {}", header.height);
         #[cfg(feature = "metrics")]
         log::debug!(
             "hostname={} public_ip={} applied block {}",
             crate::prometheus::HOSTNAME.as_str(),
             crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-            blk.header.height
+            header.height
         );
         let next = self.highest_state().next_state();
         self.mempool_mut().rebase(next);
