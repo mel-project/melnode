@@ -71,6 +71,11 @@
         src: docker-compose.testnet.yml.j2
         dest: /home/admin/compose/docker-compose.yml
 
+    - name: Copy the promtail configuration to the server
+      ansible.builtin.template:
+        src: promtail.toml.j2
+        dest: /home/admin/compose/promtail.toml
+
     - name: Copy the themelio-node systemd service file onto the server
       ansible.builtin.copy:
         src: themelio-node.service

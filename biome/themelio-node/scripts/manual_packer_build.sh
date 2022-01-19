@@ -2,6 +2,20 @@
 
 set -ex
 
+if [ -z "${PROMTAIL_USERNAME}" ]; then
+  echo "The PROMTAIL_USERNAME environment variable must be set."
+  echo "Exiting."
+
+  exit 1
+fi
+
+if [ -z "${PROMTAIL_PASSWORD}" ]; then
+  echo "The PROMTAIL_PASSWORD environment variable must be set."
+  echo "Exiting."
+
+  exit 1
+fi
+
 export SCRIPTS_DIRECTORY="$(dirname "${0}")"
 
 mkdir -p ${SCRIPTS_DIRECTORY}/packer/temporary-templates

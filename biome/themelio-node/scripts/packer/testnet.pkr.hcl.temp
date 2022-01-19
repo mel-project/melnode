@@ -1,5 +1,5 @@
 source "amazon-ebs" "themelio-node-$AWS_REGION-testnet" {
-  ami_name = "themelio-node-testnet"
+  ami_name = format("themelio-node-testnet-%s", formatdate("YYYYMMDD-hhmmss", timestamp()))
   instance_type = "t2.micro"
   region = "$AWS_REGION"
   source_ami = data.amazon-ami.debian-bullseye.id
@@ -24,7 +24,7 @@ build {
     playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-aws/install-testnet.yml"
     user = "admin"
     extra_arguments = [
-      "--extra-vars", "aws_region=$AWS_REGION"
+      "--extra-vars", "aws_region=$AWS_REGION promtail_username=$PROMTAIL_USERNAME promtail_password=$PROMTAIL_PASSWORD"
     ]
     ansible_env_vars = [
       "ANSIBLE_SSH_ARGS='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o AddKeysToAgent=no -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa'",

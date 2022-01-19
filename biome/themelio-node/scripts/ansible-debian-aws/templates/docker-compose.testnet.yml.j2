@@ -22,6 +22,7 @@ services:
       - 9080:9080
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers
+      - /home/admin/compose/promtail.toml:/hab/user/promtail/config/user.toml
 
 volumes:
   themelio-node:
