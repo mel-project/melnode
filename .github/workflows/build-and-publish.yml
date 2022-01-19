@@ -74,6 +74,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
           PROMTAIL_PASSWORD: ${{ secrets.PROMTAIL_PASSWORD }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
 #          OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
 #          OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
 #          OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
