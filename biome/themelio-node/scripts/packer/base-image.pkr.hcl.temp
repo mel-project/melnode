@@ -1,4 +1,6 @@
-data "amazon-ami" "debian-bullseye" {
+data "amazon-ami" "debian-bullseye-$AWS_REGION" {
+  region = "$AWS_REGION"
+
   filters = {
     virtualization-type = "hvm"
     name = "debian-11-amd64-*"

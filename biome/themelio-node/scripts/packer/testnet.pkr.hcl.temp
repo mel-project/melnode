@@ -2,7 +2,7 @@ source "amazon-ebs" "themelio-node-$AWS_REGION-testnet" {
   ami_name = format("themelio-node-testnet-%s", formatdate("YYYYMMDD-hhmmss", timestamp()))
   instance_type = "t2.micro"
   region = "$AWS_REGION"
-  source_ami = data.amazon-ami.debian-bullseye.id
+  source_ami = data.amazon-ami.debian-bullseye-$AWS_REGION.id
 
   launch_block_device_mappings {
     delete_on_termination = true
