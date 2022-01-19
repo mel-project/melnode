@@ -52,4 +52,6 @@ jobs:
           HAB_ORIGIN: "themelio"
           BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
+          PROMTAIL_PASSWORD: ${{ secrets.PROMTAIL_PASSWORD }}
         run: ./biome/themelio-node/scripts/ci-test.sh
