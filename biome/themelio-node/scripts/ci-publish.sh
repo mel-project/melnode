@@ -2,6 +2,10 @@
 
 set -ex
 
+export AWS_ACCESS_KEY_ID
+export AWS_SECRET_ACCESS_KEY
+export AWS_DEFAULT_REGION
+
 if [ -z "${PROMTAIL_USERNAME}" ]; then
   echo "The PROMTAIL_USERNAME environment variable must be set."
   echo "Exiting."
