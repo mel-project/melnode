@@ -29,11 +29,10 @@ for region in $(cat $SCRIPTS_DIRECTORY/packer/aws_regions); do
 
   export AWS_REGION=${region}
 
+  envsubst < "${SCRIPTS_DIRECTORY}/packer/base-image.pkr.hcl.temp" > "${SCRIPTS_DIRECTORY}/packer/temporary-templates/base-image-$region.pkr.hcl"
   envsubst < "${SCRIPTS_DIRECTORY}/packer/mainnet.pkr.hcl.temp" > "${SCRIPTS_DIRECTORY}/packer/temporary-templates/mainnet-$region.pkr.hcl"
   envsubst < "${SCRIPTS_DIRECTORY}/packer/testnet.pkr.hcl.temp" > "${SCRIPTS_DIRECTORY}/packer/temporary-templates/testnet-$region.pkr.hcl"
 done
-
-cp ${SCRIPTS_DIRECTORY}/packer/00-base-image.pkr.hcl ${SCRIPTS_DIRECTORY}/packer/temporary-templates/
 
 echo "Joining packer templates"
 sed -e '$s/$/\n/' -s ${SCRIPTS_DIRECTORY}/packer/temporary-templates/*.hcl > ${SCRIPTS_DIRECTORY}/themelio-node-debian-aws.pkr.hcl.temp
