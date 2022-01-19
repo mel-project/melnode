@@ -2,7 +2,7 @@
 
 set -ex
 
-SCRIPTS_DIRECTORY="$(dirname "${0}")"
+export SCRIPTS_DIRECTORY="$(dirname "${0}")"
 PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
 
 sudo bio pkg install --binlink themelio/bats
