@@ -58,7 +58,7 @@ sed -e '$s/$/\n/' -s ${SCRIPTS_DIRECTORY}/packer/temporary-templates/*.hcl > ${S
 envsubst < "${SCRIPTS_DIRECTORY}/themelio-node-debian-aws.pkr.hcl.temp" > "${SCRIPTS_DIRECTORY}/themelio-node-debian-aws.pkr.hcl"
 
 echo "Cleaning up temporary files"
-rm themelio-node-debian-aws.pkr.hcl.temp
+rm ${SCRIPTS_DIRECTORY}/themelio-node-debian-aws.pkr.hcl.temp
 rm -rf ${SCRIPTS_DIRECTORY}/packer/temporary-templates
 
 echo "Validating packer template"
