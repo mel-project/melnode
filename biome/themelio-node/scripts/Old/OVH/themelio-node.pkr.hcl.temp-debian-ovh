@@ -181,7 +181,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=bhs5"
     ]
@@ -204,7 +204,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=de1"
     ]
@@ -227,7 +227,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra5"
     ]
@@ -250,7 +250,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra7"
     ]
@@ -273,7 +273,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra9"
     ]
@@ -296,7 +296,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra11"
     ]
@@ -319,7 +319,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=sbg5"
     ]
@@ -342,7 +342,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=sgp1"
     ]
@@ -365,7 +365,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=syd1"
     ]
@@ -388,7 +388,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=uk1"
     ]
@@ -411,7 +411,7 @@ build {
 
   provisioner "ansible" {
   groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-mainnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-mainnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=waw1"
     ]
@@ -591,7 +591,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=bhs5-testnet"
     ]
@@ -614,7 +614,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=de1-testnet"
     ]
@@ -637,7 +637,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra5-testnet"
     ]
@@ -660,7 +660,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra7-testnet"
     ]
@@ -683,7 +683,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra9-testnet"
     ]
@@ -706,7 +706,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=gra11-testnet"
     ]
@@ -729,7 +729,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=sbg5-testnet"
     ]
@@ -752,7 +752,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=sgp1-testnet"
     ]
@@ -775,7 +775,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=syd1-testnet"
     ]
@@ -798,7 +798,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=uk1-testnet"
     ]
@@ -821,7 +821,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian/install-testnet.yml"
+    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-ovh/install-testnet.yml"
     extra_arguments = [
       "--extra-vars", "openstack_region=waw1-testnet"
     ]
