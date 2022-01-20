@@ -94,7 +94,6 @@ impl Args {
         }
     }
 
-    /// Derives a NodeStorage from the arguments
     pub async fn storage(&self) -> anyhow::Result<NodeStorage> {
         let database_base_path = PathBuf::from(self.database.to_string());
         let metadata_path = database_base_path

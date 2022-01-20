@@ -118,31 +118,21 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
     // melnet server
     {
         let cstate_inner = cstate.clone();
-        network.listen(
-            "get_blocks",
-            move |breq: Request<BlockRequest, Vec<AbbrBlockResponse>>| {
-                let cstate_inner = cstate_inner.clone();
-                NS_EXECUTOR
-                    .spawn(async move {
-                        let response = cstate_inner.read().new_block_responses(breq.body);
-                        breq.response.send(Ok(response))
-                    })
-                    .detach();
-            },
-        );
+        network.listen("get_blocks", move |breq: Request<BlockRequest>| {
+            let cstate_inner = cstate_inner.clone();
+            async move {
+                let response = cstate_inner.read().new_block_responses(breq.body);
+                Ok(response)
+            }
+        });
         let cstate_inner = cstate.clone();
-        network.listen(
-            "get_txx",
-            move |breq: Request<TransactionRequest, TransactionResponse>| {
-                let cstate_inner = cstate_inner.clone();
-                NS_EXECUTOR
-                    .spawn(async move {
-                        let resp = cstate_inner.read().new_transaction_response(breq.body);
-                        breq.response.send(Ok(resp))
-                    })
-                    .detach();
-            },
-        )
+        network.listen("get_txx", move |breq: Request<TransactionRequest>| {
+            let cstate_inner = cstate_inner.clone();
+            async move {
+                let resp = cstate_inner.read().new_transaction_response(breq.body);
+                Ok(resp)
+            }
+        })
     }
     // melnet client
     let _gossiper = NS_EXECUTOR.spawn(gossiper_loop(network.clone(), cstate.clone(), cfg.clone()));
@@ -404,25 +394,23 @@ async fn confirmer_loop<C: ContentAddrStore>(
     let known_votes = Arc::new(RwLock::new(BTreeMap::new()));
     network.listen("confirm_block", {
         let known_votes = known_votes.clone();
-        move |req: Request<BlockHeight, BTreeMap<Ed25519PK, Vec<u8>>>| {
+        move |req: Request<BlockHeight>| {
             let known_votes = known_votes.clone();
-            NS_EXECUTOR
-                .spawn(async move {
-                    let height = req.body;
-                    let res = known_votes
-                        .read()
-                        .get(&height)
-                        .cloned()
-                        .map(|v: UnconfirmedBlock<C>| v.signatures)
-                        .unwrap_or_default();
-                    log::debug!(
-                        "responding to confirm request for {} with {} sigs",
-                        height,
-                        res.len()
-                    );
-                    req.response.send(Ok(res))
-                })
-                .detach();
+            async move {
+                let height = req.body;
+                let res = known_votes
+                    .read()
+                    .get(&height)
+                    .cloned()
+                    .map(|v: UnconfirmedBlock<C>| v.signatures)
+                    .unwrap_or_default();
+                log::debug!(
+                    "responding to confirm request for {} with {} sigs",
+                    height,
+                    res.len()
+                );
+                Ok(res)
+            }
         }
     });
 

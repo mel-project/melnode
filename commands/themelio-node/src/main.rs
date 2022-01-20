@@ -15,12 +15,30 @@ use async_compat::Compat;
 use structopt::StructOpt;
 use tracing::instrument;
 
-#[cfg(unix)]
-#[global_allocator]
-static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+// #[cfg(unix)]
+// #[global_allocator]
+// static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[instrument]
 fn main() -> anyhow::Result<()> {
+    // Create a background thread which checks for deadlocks every 10s
+    std::thread::spawn(move || loop {
+        std::thread::sleep(std::time::Duration::from_secs(10));
+        let deadlocks = parking_lot::deadlock::check_deadlock();
+        if deadlocks.is_empty() {
+            continue;
+        }
+
+        log::error!("{} deadlocks detected", deadlocks.len());
+        for (i, threads) in deadlocks.iter().enumerate() {
+            log::error!("Deadlock #{}", i);
+            for t in threads {
+                log::error!("Thread Id {:#?}", t.thread_id());
+                log::error!("{:#?}", t.backtrace());
+            }
+        }
+    });
+
     env_logger::Builder::from_env("RUST_LOG")
         .parse_filters("themelio_node=debug,warn,novasymph")
         .init();
