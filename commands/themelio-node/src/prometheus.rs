@@ -17,7 +17,7 @@ pub static GLOBAL_STORAGE: OnceCell<NodeStorage> = OnceCell::new();
 
 pub static NETWORK: Lazy<RwLock<&str>> = Lazy::new(|| RwLock::new("mainnet"));
 
-static REGISTRY: Lazy<Registry> = Lazy::new(|| Registry::new());
+static REGISTRY: Lazy<Registry> = Lazy::new(Registry::new);
 
 pub static HOSTNAME: Lazy<String> = Lazy::new(|| {
     gethostname::gethostname()
@@ -234,15 +234,12 @@ fn set_system_metrics() {
 
     match system.mounts() {
         Ok(mounts) => {
-            mounts
-                .iter()
-                .for_each(|mount| match mount.fs_mounted_on.as_ref() {
-                    "/" => {
-                        ROOT_FILESYSTEM_TOTAL_BYTES.set(mount.total.as_u64() as i64);
-                        ROOT_FILESYSTEM_FREE_BYTES.set(mount.avail.as_u64() as i64);
-                    }
-                    _ => {}
-                });
+            mounts.iter().for_each(|mount| {
+                if mount.fs_mounted_on == "/" {
+                    ROOT_FILESYSTEM_TOTAL_BYTES.set(mount.total.as_u64() as i64);
+                    ROOT_FILESYSTEM_FREE_BYTES.set(mount.avail.as_u64() as i64);
+                }
+            });
         }
         Err(error) => log::debug!(
             "hostname={} public_ip={} There was an error retrieving filesystem information: {}",

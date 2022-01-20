@@ -19,9 +19,8 @@ use rand::prelude::*;
 use smol_timeout::TimeoutExt;
 use structopt::StructOpt;
 use themelio_nodeprot::NodeClient;
-use themelio_stf::{
-    melvm::Covenant, CoinData, CoinID, Denom, Transaction, TxKind, MICRO_CONVERTER,
-};
+use themelio_stf::melvm::Covenant;
+use themelio_structs::{CoinData, CoinID, Denom, NetID, Transaction, TxKind, MICRO_CONVERTER};
 use tmelcrypt::Ed25519SK;
 
 #[derive(StructOpt)]
@@ -46,7 +45,7 @@ async fn main_async() -> anyhow::Result<()> {
             .allow_burst(NonZeroU32::new(1).unwrap()),
     ));
     for wkr in 0..args.tps.max(100) {
-        let client = NodeClient::new(themelio_stf::NetID::Testnet, args.connect);
+        let client = NodeClient::new(NetID::Testnet, args.connect);
         let lim = lim.clone();
         smol::spawn(async move {
             loop {
@@ -88,7 +87,7 @@ async fn spammer(
             }],
             fee: MICRO_CONVERTER.into(),
             data: buf,
-            scripts: vec![],
+            covenants: vec![],
             sigs: vec![],
         };
 
@@ -143,9 +142,9 @@ async fn spammer(
             inputs: inputs.iter().map(|v| v.coinid).collect(),
             outputs: outputs.iter().map(|v| v.0.clone()).collect(),
             fee: fee.into(),
-            scripts: inputs
+            covenants: inputs
                 .iter()
-                .map(|v| Covenant::std_ed25519_pk_new(v.unlock_key.to_public()))
+                .map(|v| Covenant::std_ed25519_pk_new(v.unlock_key.to_public()).0)
                 .collect(),
             sigs: vec![],
             data: vec![],

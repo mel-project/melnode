@@ -286,7 +286,7 @@ impl NodeServer<MeshaCas> for AuditorResponder {
             .get_state(height)
             .ok_or_else(|| MelnetError::Custom(format!("block {} not confirmed yet", height)))?;
         let tree = match elem {
-            Substate::Coins => &state.inner_ref().coins.inner(),
+            Substate::Coins => state.inner_ref().coins.inner(),
             Substate::History => &state.inner_ref().history.mapping,
             Substate::Pools => &state.inner_ref().pools.mapping,
             Substate::Stakes => &state.inner_ref().stakes.mapping,

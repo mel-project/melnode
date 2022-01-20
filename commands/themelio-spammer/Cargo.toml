@@ -8,12 +8,14 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.52"
-governor = "0.4.0"
+governor = "0.3.0"
 priority-queue = "1.2.1"
 rand = "0.8.4"
 smol = "1.2.5"
 smol-timeout = "0.6.0"
 structopt = "0.3.26"
-themelio-nodeprot = "0.7.2"
-themelio-stf = "0.7.8"
+themelio-nodeprot = "0.10.1"
+themelio-stf = "0.9.1"
+themelio-structs = "0.2.0"
 tmelcrypt = "0.2.4"
+ 

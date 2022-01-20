@@ -1,5 +1,6 @@
 use structopt::StructOpt;
-use themelio_stf::{melvm::Covenant, CoinID, Transaction};
+use themelio_stf::melvm::Covenant;
+use themelio_structs::{CoinID, Transaction};
 #[derive(Debug, StructOpt)]
 enum Args {
     /// Generate a ed25519 keypair

@@ -103,7 +103,6 @@ impl NodeStorage {
             _death: send,
         };
         let highest = r.highest.clone();
-        let metadata = metadata.clone();
         let forest = r.forest.clone();
         smolscale::spawn(async move {
             loop {
@@ -202,7 +201,7 @@ impl NodeStorage {
                 let send = &send;
                 move |tree: novasmt::Tree<MeshaCas>| async move {
                     log::info!("** backing up tree with {} elements **", tree.count());
-                    send.send(format!("{}", tree.count()).into()).await?;
+                    send.send(format!("{}", tree.count())).await?;
                     let count = tree.count();
                     let start = Instant::now();
                     for (i, (k, v)) in tree.iter().enumerate() {
@@ -233,18 +232,15 @@ impl NodeStorage {
                 "** backup base state at height {} **",
                 base_state.inner_ref().height
             );
-            send.send(
-                base64::encode_config(base_state.header().stdcode(), base64::STANDARD_NO_PAD)
-                    .into(),
-            )
+            send.send(base64::encode_config(
+                base_state.header().stdcode(),
+                base64::STANDARD_NO_PAD,
+            ))
             .await?;
-            send.send(
-                base64::encode_config(
-                    base_state.proposer_action().stdcode(),
-                    base64::STANDARD_NO_PAD,
-                )
-                .into(),
-            )
+            send.send(base64::encode_config(
+                base_state.proposer_action().stdcode(),
+                base64::STANDARD_NO_PAD,
+            ))
             .await?;
             for tree in [
                 base_state.inner_ref().history.mapping.clone(),
@@ -261,7 +257,7 @@ impl NodeStorage {
                 .skip(1)
                 .count();
             log::info!("total number of blocks {}", count);
-            send.send(format!("{}", count).into()).await?;
+            send.send(format!("{}", count)).await?;
             for later_height in (base_state.inner_ref().height.0..=highest.0).skip(1) {
                 log::info!("** backing up subsequent block {} **", later_height);
                 let block = this
