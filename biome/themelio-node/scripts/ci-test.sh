@@ -2,7 +2,25 @@
 
 set -ex
 
-SCRIPTS_DIRECTORY="$(dirname "${0}")"
+export AWS_ACCESS_KEY_ID
+export AWS_SECRET_ACCESS_KEY
+export AWS_DEFAULT_REGION
+
+if [ -z "${PROMTAIL_USERNAME}" ]; then
+  echo "The PROMTAIL_USERNAME environment variable must be set."
+  echo "Exiting."
+
+  exit 1
+fi
+
+if [ -z "${PROMTAIL_PASSWORD}" ]; then
+  echo "The PROMTAIL_PASSWORD environment variable must be set."
+  echo "Exiting."
+
+  exit 1
+fi
+
+export SCRIPTS_DIRECTORY="$(dirname "${0}")"
 PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
 
 sudo bio pkg install --binlink themelio/bats
@@ -36,3 +54,26 @@ else
   sudo bio svc unload "${pkg_ident}"
   exit 1
 fi
+
+mkdir -p ${SCRIPTS_DIRECTORY}/packer/temporary-templates
+
+for region in $(cat $SCRIPTS_DIRECTORY/packer/aws_regions); do
+  echo "Creating packer templates for the $region region."
+
+  export AWS_REGION=${region}
+
+  envsubst < "${SCRIPTS_DIRECTORY}/packer/base-image.pkr.hcl.temp" > "${SCRIPTS_DIRECTORY}/packer/temporary-templates/base-image-$region.pkr.hcl"
+  envsubst < "${SCRIPTS_DIRECTORY}/packer/mainnet.pkr.hcl.temp" > "${SCRIPTS_DIRECTORY}/packer/temporary-templates/mainnet-$region.pkr.hcl"
+  envsubst < "${SCRIPTS_DIRECTORY}/packer/testnet.pkr.hcl.temp" > "${SCRIPTS_DIRECTORY}/packer/temporary-templates/testnet-$region.pkr.hcl"
+done
+
+echo "Joining packer templates"
+sed -e '$s/$/\n/' -s ${SCRIPTS_DIRECTORY}/packer/temporary-templates/*.hcl > ${SCRIPTS_DIRECTORY}/themelio-node-debian-aws.pkr.hcl.temp
+envsubst < "${SCRIPTS_DIRECTORY}/themelio-node-debian-aws.pkr.hcl.temp" > "${SCRIPTS_DIRECTORY}/themelio-node-debian-aws.pkr.hcl"
+
+echo "Cleaning up temporary files"
+rm ${SCRIPTS_DIRECTORY}/themelio-node-debian-aws.pkr.hcl.temp
+rm -rf ${SCRIPTS_DIRECTORY}/packer/temporary-templates
+
+echo "Validating packer template"
+packer validate "${SCRIPTS_DIRECTORY}/themelio-node-debian-aws.pkr.hcl"

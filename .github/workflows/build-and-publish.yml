@@ -72,10 +72,15 @@ jobs:
           BIOME_AUTH_TOKEN: ${{ secrets.BIOME_AUTH_TOKEN }}
           HABITAT_AUTH_TOKEN: ${{ secrets.HABITAT_AUTH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
-          OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
-          OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
-          OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
-          OS_USERNAME: ${{ secrets.OS_USERNAME }}
-          OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+          PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
+          PROMTAIL_PASSWORD: ${{ secrets.PROMTAIL_PASSWORD }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+#          OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
+#          OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
+#          OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
+#          OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
+#          OS_USERNAME: ${{ secrets.OS_USERNAME }}
+#          OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
         run: ./biome/themelio-node/scripts/ci-publish.sh

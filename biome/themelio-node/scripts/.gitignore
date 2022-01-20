@@ -1,2 +1,3 @@
 themelio-node.pkr.hcl
 themelio-node-debian.pkr.hcl
+themelio-node-debian-aws.pkr.hcl
