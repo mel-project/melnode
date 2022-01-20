@@ -105,10 +105,11 @@ impl NodeStorage {
         let highest = r.highest.clone();
         let forest = r.forest.clone();
         smolscale::spawn(async move {
-            loop {
-                if recv.recv().timeout(Duration::from_secs(1)).await.is_some() {
+            let mut dead = false;
+            while !dead {
+                if recv.recv().timeout(Duration::from_secs(30)).await.is_some() {
                     log::warn!("syncer dying");
-                    break;
+                    dead = true;
                 };
                 let start = Instant::now();
                 let highest = highest.load_full();
