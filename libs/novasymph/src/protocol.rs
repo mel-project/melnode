@@ -592,18 +592,18 @@ fn next_height_time(
         .expect("clock randomly jumped, that breaks streamlet");
     let next_height = BlockHeight((elapsed_time.as_millis() / interval.as_millis()) as u64);
     let next_time = start_time + interval * (next_height.0 as u32 + 1);
-    if next_height < current_height + 50.into() {
-        (next_height, next_time)
-    } else {
-        // if current_height.0 % 10 > 5 {
-        //     ((current_height / 10) * 10 + 10.into(), next_time)
-        // } else {
-        (
-            current_height + BlockHeight(1),
-            now + Duration::from_secs(5),
-        )
-        // }
-    }
+    // if next_height < current_height + 50.into() {
+    (next_height, next_time)
+    // } else {
+    //     // if current_height.0 % 10 > 5 {
+    //     //     ((current_height / 10) * 10 + 10.into(), next_time)
+    //     // } else {
+    //     (
+    //         current_height + BlockHeight(1),
+    //         now + Duration::from_secs(5),
+    //     )
+    //     // }
+    // }
 }
 
 // a helper function that returns a proposer-calculator for a given epoch

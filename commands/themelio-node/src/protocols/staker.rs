@@ -18,7 +18,7 @@ static MAINNET_START_TIME: Lazy<SystemTime> =
     Lazy::new(|| std::time::UNIX_EPOCH + Duration::from_secs(1619758800)); // Apr 30 2021
 
 static TESTNET_START_TIME: Lazy<SystemTime> =
-    Lazy::new(|| std::time::UNIX_EPOCH + Duration::from_secs(1617640600)); // Apr 05 2021
+    Lazy::new(|| std::time::UNIX_EPOCH + Duration::from_secs(1617979590)); // Apr 09 2021
 
 /// This encapsulates the staker-specific peer-to-peer.
 pub struct StakerProtocol {
@@ -38,7 +38,7 @@ impl StakerProtocol {
         let _network_task = smolscale::spawn(async move {
             loop {
                 let x = storage.highest_height();
-                smol::Timer::after(Duration::from_secs(60)).await;
+                smol::Timer::after(Duration::from_secs(10)).await;
                 let y = storage.highest_height();
                 #[cfg(not(feature = "metrics"))]
                 log::info!(

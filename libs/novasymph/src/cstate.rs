@@ -60,6 +60,7 @@ impl<C: ContentAddrStore> ChainState<C> {
             last_nonempty
         );
         if !proposal_sig.verify(proposer, &proposed_block.abbreviate()) {
+            log::warn!("proposal signature would not verify");
             return Err(ProposalError::InvalidBlock);
         }
 
