@@ -47,8 +47,10 @@ impl StakerProtocol {
                 );
                 #[cfg(feature = "metrics")]
                 log::info!(
-                    "hostname={} public_ip={} delta-height = {}; must be less than 5 to start staker",
-                    crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+                    "hostname={} public_ip={} network={} delta-height = {}; must be less than 5 to start staker",
+                    crate::prometheus::HOSTNAME.as_str(),
+                    crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+                    crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
                     y - x
                 );
 
@@ -63,9 +65,10 @@ impl StakerProtocol {
                     log::info!("epoch transitioning into {}!", current_epoch);
                     #[cfg(feature = "metrics")]
                     log::info!(
-                        "hostname={} public_ip={} epoch transitioning into {}!",
+                        "hostname={} public_ip={} network={} epoch transitioning into {}!",
                         crate::prometheus::HOSTNAME.as_str(),
                         crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+                        crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
                         current_epoch
                     );
 
@@ -93,9 +96,10 @@ impl StakerProtocol {
                         log::warn!("staker rebooting: {:?}", err);
                         #[cfg(feature = "metrics")]
                         log::warn!(
-                            "hostname={} public_ip={} staker rebooting: {:?}",
+                            "hostname={} public_ip={} network={} staker rebooting: {:?}",
                             crate::prometheus::HOSTNAME.as_str(),
                             crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+                            crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
                             err
                         );
 
@@ -165,8 +169,10 @@ async fn one_epoch_loop(
                 );
                 #[cfg(feature = "metrics")]
                 log::warn!(
-                    "hostname={} public_ip={} could not apply confirmed block {} from novasymph: {:?}",
-                    crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+                    "hostname={} public_ip={} network={} could not apply confirmed block {} from novasymph: {:?}",
+                    crate::prometheus::HOSTNAME.as_str(),
+                    crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+                    crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
                     height,
                     err
                 );
@@ -214,8 +220,10 @@ impl BlockBuilder<MeshaCas> for StorageBlockBuilder {
             );
             #[cfg(feature = "metrics")]
             log::warn!(
-                "hostname={} public_ip={} mempool {} doesn't extend from tip {}; building quasiempty block",
-                crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+                "hostname={} public_ip={} network={} mempool {} doesn't extend from tip {}; building quasiempty block",
+                crate::prometheus::HOSTNAME.as_str(),
+                crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+                crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
                 mempool_state.header().height,
                 tip.header().height
             );
