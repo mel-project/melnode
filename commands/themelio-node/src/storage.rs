@@ -359,9 +359,10 @@ impl NodeStorage {
         log::debug!("applied block {}", header.height);
         #[cfg(feature = "metrics")]
         log::debug!(
-            "hostname={} public_ip={} applied block {}",
+            "hostname={} public_ip={} network={} applied block {}",
             crate::prometheus::HOSTNAME.as_str(),
             crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+            crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
             header.height
         );
         let next = self.highest_state().next_state();
