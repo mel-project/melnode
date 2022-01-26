@@ -57,9 +57,10 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
     log::info!("themelio-core v{} initializing...", VERSION);
     #[cfg(feature = "metrics")]
     log::info!(
-        "hostname={} public_ip={} themelio-core v{} initializing...",
+        "hostname={} public_ip={} network={} themelio-core v{} initializing...",
         crate::prometheus::HOSTNAME.as_str(),
         crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+        crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
         VERSION
     );
     let genesis = opt.genesis_config().await?;
@@ -70,9 +71,10 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
     log::info!("bootstrapping with {:?}", bootstrap);
     #[cfg(feature = "metrics")]
     log::info!(
-        "hostname={} public_ip={} bootstrapping with {:?}",
+        "hostname={} public_ip={} network={} bootstrapping with {:?}",
         crate::prometheus::HOSTNAME.as_str(),
         crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+        crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
         bootstrap
     );
     let _node_prot = NodeProtocol::new(

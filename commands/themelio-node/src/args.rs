@@ -177,9 +177,10 @@ impl Args {
         log::debug!("node storage opened");
         #[cfg(feature = "metrics")]
         log::debug!(
-            "hostname={} public_ip={} node storage opened",
+            "hostname={} public_ip={} network={} node storage opened",
             crate::prometheus::HOSTNAME.as_str(),
-            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str()
+            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+            crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK.")
         );
         Ok(storage)
     }

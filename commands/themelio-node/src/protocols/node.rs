@@ -87,8 +87,10 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStor
             // );
             // #[cfg(feature = "metrics")]
             // log::debug!(
-            //     "hostname={} public_ip={} {}: picked random peer {} out of {} peers {:?} for blksync",
-            //     crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+            //     "hostname={} public_ip={} network={} {}: picked random peer {} out of {} peers {:?} for blksync",
+            //     crate::prometheus::HOSTNAME.as_str(),
+            //     crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+            //     crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
             //     tag(),
             //     peer,
             //     routes.len(),
@@ -104,9 +106,10 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStor
                     log::warn!("{}: failed to blksync with {}: {:?}", tag(), peer, e);
                     #[cfg(feature = "metrics")]
                     log::warn!(
-                        "hostname={} public_ip={} {}: failed to blksync with {}: {:?}",
+                        "hostname={} public_ip={} network={} {}: failed to blksync with {}: {:?}",
                         crate::prometheus::HOSTNAME.as_str(),
                         crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+                        crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
                         tag(),
                         peer,
                         e
@@ -119,9 +122,10 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStor
                         log::debug!("synced to height {}", storage.highest_height());
                         #[cfg(feature = "metrics")]
                         log::warn!(
-                            "hostname={} public_ip={} synced to height {}",
+                            "hostname={} public_ip={} network={} synced to height {}",
                             crate::prometheus::HOSTNAME.as_str(),
                             crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+                            crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
                             storage.highest_height()
                         );
                         smol::Timer::after(FAST_TIME).await;
@@ -183,9 +187,10 @@ async fn attempt_blksync(
         );
         #[cfg(feature = "metrics")]
         log::debug!(
-            "hostname={} public_ip={} fully resolved block {} from peer {}",
+            "hostname={} public_ip={} network={} fully resolved block {} from peer {}",
             crate::prometheus::HOSTNAME.as_str(),
             crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+            crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
             block.header.height,
             addr
         );
@@ -226,9 +231,10 @@ impl NodeServer<MeshaCas> for AuditorResponder {
         );
         #[cfg(feature = "metrics")]
         log::debug!(
-            "hostname={} public_ip={} txhash {}.. inserted ({:?}, {:?} locking, {:?} applying)",
+            "hostname={} public_ip={} network={} txhash {}.. inserted ({:?}, {:?} locking, {:?} applying)",
             crate::prometheus::HOSTNAME.as_str(),
             crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+            crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
             &tx.hash_nosigs().to_string()[..10],
             start.elapsed(),
             post_lock - start,

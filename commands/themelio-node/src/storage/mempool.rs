@@ -54,9 +54,10 @@ impl Mempool {
             );
             #[cfg(feature = "metrics")]
             log::trace!(
-                "hostname={} public_ip={} rebasing mempool {} => {}",
+                "hostname={} public_ip={} network={} rebasing mempool {} => {}",
                 crate::prometheus::HOSTNAME.as_str(),
                 crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
+                crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
                 self.provisional_state.height,
                 state.height
             );
