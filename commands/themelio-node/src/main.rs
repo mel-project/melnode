@@ -1,4 +1,5 @@
 mod args;
+mod blkidx;
 #[cfg(feature = "metrics")]
 mod prometheus;
 mod protocols;
@@ -15,9 +16,9 @@ use async_compat::Compat;
 use structopt::StructOpt;
 use tracing::instrument;
 
-// #[cfg(unix)]
-// #[global_allocator]
-// static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+#[cfg(unix)]
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[instrument]
 fn main() -> anyhow::Result<()> {
@@ -80,6 +81,7 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
         opt.advertise_addr(),
         bootstrap,
         storage.clone(),
+        opt.index_coins,
     );
     let _staker_prot = if let Some((
         staker_sk,

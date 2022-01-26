@@ -432,7 +432,8 @@ impl<B: DbBackend, C: ContentAddrStore> Inner<B, C> {
         // update tips list
         self.tip_insert(blkhash, header.height);
         self.tip_remove(header.previous);
-
+        // cache
+        self.cache.insert(blkhash, state);
         None
     }
 

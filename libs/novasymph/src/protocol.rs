@@ -9,6 +9,7 @@ use crate::{
     msg::ProposalSig,
     NS_EXECUTOR,
 };
+use binary_search::{binary_search, Direction};
 use derivative::Derivative;
 use futures_util::stream::FuturesOrdered;
 use melnet::Request;
@@ -24,7 +25,7 @@ use std::{
     sync::Arc,
     time::{Duration, SystemTime},
 };
-use themelio_stf::{ConfirmedState, SealedState, StakeMapping};
+use themelio_stf::{tip_heights::TIP_906_HEIGHT, ConfirmedState, SealedState, StakeMapping};
 use themelio_structs::{
     Block, BlockHeight, ConsensusProof, ProposerAction, Transaction, TxHash, STAKE_EPOCH,
 };
@@ -174,10 +175,10 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
 
         log::debug!("entering height {}", height);
 
-        let mut cstate = cstate.write();
+        // let mut cstate = cstate.write();
         if height_to_proposer(height) == cfg.signing_sk.to_public() {
             log::debug!("we are the proposer for height {}", height);
-            let mut build_upon = cstate.get_lnc_state();
+            let mut build_upon = cstate.read().get_lnc_state();
             if build_upon.inner_ref().height >= height {
                 log::warn!(
                     "already have height {} > {}, skipping this round",
@@ -189,7 +190,7 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
             let last_nonempty_hash = build_upon.header().hash();
             // fill in a bunch of empty blocks until the height matches
             while build_upon.inner_ref().height + BlockHeight(1) < height {
-                build_upon = build_upon.next_state().seal(None);
+                build_upon = smol::unblock(move || build_upon.next_state().seal(None)).await;
                 log::debug!("building empty block for {}", build_upon.inner_ref().height)
             }
 
@@ -215,7 +216,7 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
                 cfg.builder.build_block(build_upon.clone())
             };
             // inject proposal
-            if let Err(err) = cstate.inject_proposal(
+            if let Err(err) = cstate.write().inject_proposal(
                 &proposed_block,
                 cfg.signing_sk.to_public(),
                 ProposalSig::generate(cfg.signing_sk, &proposed_block.abbreviate()),
@@ -258,7 +259,7 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
                 panic!("PANIK PANIK");
             }
             // vote for it myself
-            cstate.vote_all(cfg.signing_sk);
+            cstate.write().vote_all(cfg.signing_sk);
         } else {
             log::debug!("we are NOT the proposer for height {}", height);
         }
@@ -575,23 +576,32 @@ fn next_height_time(
     interval: Duration,
 ) -> (BlockHeight, SystemTime) {
     let now = SystemTime::now();
-    let elapsed_time = now
-        .duration_since(start_time)
-        .expect("clock randomly jumped, that breaks streamlet");
-    let next_height = BlockHeight((elapsed_time.as_millis() / interval.as_millis()) as u64);
-    let next_time = start_time + interval * (next_height.0 as u32 + 1);
-    // if next_height < current_height + 50.into() {
+    let next_height = time_to_height(start_time, interval, now) + BlockHeight(1);
+    let next_time = height_to_time(start_time, interval, next_height);
     (next_height, next_time)
-    // } else {
-    //     // if current_height.0 % 10 > 5 {
-    //     //     ((current_height / 10) * 10 + 10.into(), next_time)
-    //     // } else {
-    //     (
-    //         current_height + BlockHeight(1),
-    //         now + Duration::from_secs(5),
-    //     )
-    //     // }
-    // }
+}
+
+fn height_to_time(start_time: SystemTime, interval: Duration, height: BlockHeight) -> SystemTime {
+    let normal = (interval * (height.0 as u32)).as_secs_f64();
+    let smeared = normal + 600.0;
+    if height >= TIP_906_HEIGHT {
+        start_time + Duration::from_secs_f64(smeared)
+    } else {
+        start_time + Duration::from_secs_f64(normal)
+    }
+}
+
+fn time_to_height(start_time: SystemTime, interval: Duration, time: SystemTime) -> BlockHeight {
+    binary_search((0, ()), (1u64 << 28, ()), |h| {
+        if height_to_time(start_time, interval, BlockHeight(h)) < time {
+            Direction::Low(())
+        } else {
+            Direction::High(())
+        }
+    })
+    .0
+     .0
+    .into()
 }
 
 // a helper function that returns a proposer-calculator for a given epoch

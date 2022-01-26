@@ -64,6 +64,10 @@ pub struct Args {
     /// Reset last block to the given height.
     #[structopt(long)]
     emergency_reset_block: Option<BlockHeight>,
+
+    /// Create an in-memory coin index.
+    #[structopt(long)]
+    pub index_coins: bool,
 }
 
 impl Args {

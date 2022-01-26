@@ -10,7 +10,10 @@ use novasmt::CompressedProof;
 use themelio_stf::SealedState;
 use themelio_structs::{AbbrBlock, Block, BlockHeight, ConsensusProof, NetID, Transaction};
 
-use crate::storage::{MeshaCas, NodeStorage};
+use crate::{
+    blkidx::BlockIndexer,
+    storage::{MeshaCas, NodeStorage},
+};
 use melnet::MelnetError;
 use smol::net::TcpListener;
 use smol_timeout::TimeoutExt;
@@ -39,6 +42,7 @@ impl NodeProtocol {
         advertise_addr: Option<SocketAddr>,
         bootstrap: Vec<SocketAddr>,
         storage: NodeStorage,
+        index: bool,
     ) -> Self {
         let network = melnet::NetState::new_with_name(netname(netid));
         for addr in bootstrap {
@@ -47,7 +51,7 @@ impl NodeProtocol {
         if let Some(advertise_addr) = advertise_addr {
             network.add_route(advertise_addr);
         }
-        let responder = AuditorResponder::new(netid, storage.clone());
+        let responder = AuditorResponder::new(netid, storage.clone(), index);
         network.listen("node", NodeResponder::new(responder));
         let _network_task = smolscale::spawn({
             let network = network.clone();
@@ -198,6 +202,7 @@ async fn attempt_blksync(
 struct AuditorResponder {
     network: NetID,
     storage: NodeStorage,
+    indexer: Option<BlockIndexer>,
 }
 
 impl NodeServer<MeshaCas> for AuditorResponder {
@@ -314,10 +319,29 @@ impl NodeServer<MeshaCas> for AuditorResponder {
         }
         Ok(accum)
     }
+
+    fn get_some_coins(
+        &self,
+        height: BlockHeight,
+        covhash: themelio_structs::Address,
+    ) -> anyhow::Result<Option<Vec<themelio_structs::CoinID>>> {
+        Ok(self
+            .indexer
+            .as_ref()
+            .and_then(|s| s.get(height).map(|idx| idx.lookup(covhash))))
+    }
 }
 
 impl AuditorResponder {
-    fn new(network: NetID, storage: NodeStorage) -> Self {
-        Self { network, storage }
+    fn new(network: NetID, storage: NodeStorage, index: bool) -> Self {
+        Self {
+            network,
+            storage: storage.clone(),
+            indexer: if index {
+                Some(BlockIndexer::new(storage))
+            } else {
+                None
+            },
+        }
     }
 }

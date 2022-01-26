@@ -65,17 +65,18 @@ stdcode = "0.1.7"
 structopt = "0.3.26"
 tap = "1.0.1"
 tracing = "0.1.29"
-themelio-stf = "0.9"
+themelio-stf = "0.9.3"
 tmelcrypt = "0.2.4"
 themelio-bootstrap = "0.5"
-themelio-nodeprot = { version = "0.10", features = ["server"] } 
+themelio-nodeprot = { version = "0.10.4", features = ["server"] } 
 tracing-subscriber = "0.3.6"
 themelio-structs= "0.2"
 smol_str = "0.1.21"
 base64 = "0.13.0"
+imbl="1"
 
-# [target.'cfg(unix)'.dependencies]
-# mimalloc = "0.1.27"
+[target.'cfg(unix)'.dependencies]
+mimalloc = "0.1.27"
 
 [features]
 metrics = ["prometheus", "gethostname", "public-ip", "rweb", "systemstat"]
