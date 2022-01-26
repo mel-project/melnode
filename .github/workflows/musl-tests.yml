@@ -2,10 +2,9 @@ name: MuslTests
 
 on:
   pull_request:
-    branches: [
-        master,
-        testnet
-    ]
+    branches:
+      - master
+      - testnet
 
 env:
   CARGO_TERM_COLOR: always
