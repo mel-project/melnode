@@ -40,13 +40,12 @@ sudo bio pkg install --binlink themelio/bats
 sudo bio pkg install --binlink core/curl
 sudo bio pkg install --binlink core/nmap
 
-pushd "${PLAN_DIRECTORY}"
 
-source "plan.sh"
+source "${PLAN_DIRECTORY}/plan.sh"
 
 sudo bio sup run &
 
-bio pkg build .
+bio pkg build "${PLAN_DIRECTORY}"
 
 source results/last_build.env
 
@@ -63,37 +62,35 @@ sleep 5
 
 if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
   if bats --print-output-on-failure "${SCRIPTS_DIRECTORY}/test-local-mainnet.bats"; then
-    rm "plan.sh"
-    rm -rf "hooks"
+    rm "${PLAN_DIRECTORY}/plan.sh"
+    rm -rf "${PLAN_DIRECTORY}/hooks"
     bio svc unload "${pkg_ident}"
   else
-    rm "plan.sh"
-    rm -rf "hooks"
+    rm "${PLAN_DIRECTORY}/plan.sh"
+    rm -rf "${PLAN_DIRECTORY}/hooks"
     bio svc unload "${pkg_ident}"
     exit 1
   fi
 
 elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
   if bats --print-output-on-failure "${SCRIPTS_DIRECTORY}/test-local-testnet.bats"; then
-    rm "plan.sh"
-    rm -rf "hooks"
+    rm "${PLAN_DIRECTORY}/plan.sh"
+    rm -rf "${PLAN_DIRECTORY}/hooks"
     bio svc unload "${pkg_ident}"
   else
-    rm "plan.sh"
-    rm -rf "hooks"
+    rm "${PLAN_DIRECTORY}/plan.sh"
+    rm -rf "${PLAN_DIRECTORY}/hooks"
     bio svc unload "${pkg_ident}"
     exit 1
   fi
 
 else
-  rm "plan.sh"
-  rm -rf "hooks"
+  rm "${PLAN_DIRECTORY}/plan.sh"
+  rm -rf "${PLAN_DIRECTORY}/hooks"
   bio svc unload "${pkg_ident}"
   echo "No network specified with NETWORK_TO_BUILD. Exiting."
   exit 1
 fi
-
-popd
 
 mkdir -p ${SCRIPTS_DIRECTORY}/packer/temporary-templates
 
