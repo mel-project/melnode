@@ -75,7 +75,6 @@ if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
     exit 1
   fi
 
-
 elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
   if bats --print-output-on-failure "scripts/test-local-testnet.bats"; then
     rm "plan.sh"

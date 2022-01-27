@@ -48,10 +48,35 @@ sudo bio svc load "${pkg_ident}"
 echo "Sleeping for 5 seconds for the service to start."
 sleep 5
 
-if bats --print-output-on-failure "${SCRIPTS_DIRECTORY}/test.bats"; then
-  sudo bio svc unload "${pkg_ident}"
+if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
+  if bats --print-output-on-failure "${SCRIPTS_DIRECTORY}/test-local-mainnet.bats"; then
+    rm "${PLAN_DIRECTORY}/plan.sh"
+    rm -rf "${PLAN_DIRECTORY}/hooks"
+    bio svc unload "${pkg_ident}"
+  else
+    rm "${PLAN_DIRECTORY}/plan.sh"
+    rm -rf "${PLAN_DIRECTORY}/hooks"
+    bio svc unload "${pkg_ident}"
+    exit 1
+  fi
+
+elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
+  if bats --print-output-on-failure "${SCRIPTS_DIRECTORY}/test-local-testnet.bats"; then
+    rm "${PLAN_DIRECTORY}/plan.sh"
+    rm -rf "${PLAN_DIRECTORY}/hooks"
+    bio svc unload "${pkg_ident}"
+  else
+    rm "${PLAN_DIRECTORY}/plan.sh"
+    rm -rf "${PLAN_DIRECTORY}/hooks"
+    bio svc unload "${pkg_ident}"
+    exit 1
+  fi
+
 else
-  sudo bio svc unload "${pkg_ident}"
+  rm "${PLAN_DIRECTORY}/plan.sh"
+  rm -rf "${PLAN_DIRECTORY}/hooks"
+  bio svc unload "${pkg_ident}"
+  echo "No network specified with NETWORK_TO_BUILD. Exiting."
   exit 1
 fi
 
