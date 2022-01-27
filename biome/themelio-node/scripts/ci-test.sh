@@ -20,9 +20,9 @@ if [ -z "${PROMTAIL_PASSWORD}" ]; then
   exit 1
 fi
 
-#export SCRIPTS_DIRECTORY="$(dirname "${0}")"
-#PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
-#
+export SCRIPTS_DIRECTORY="$(dirname "${0}")"
+PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
+
 #sudo bio pkg install --binlink themelio/bats
 #sudo bio pkg install --binlink core/curl
 #sudo bio pkg install --binlink core/nmap
