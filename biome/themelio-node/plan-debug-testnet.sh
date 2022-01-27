@@ -35,13 +35,13 @@ do_build() {
 
   mkdir -p "${pkg_full_path}/libs"
 
-  cp -R commands/* "${pkg_full_path}/commands/"
+  cp -R /src/commands/* "${pkg_full_path}/commands/"
 
-  cp -R libs/* "${pkg_full_path}/libs/"
+  cp -R /src/libs/* "${pkg_full_path}/libs/"
 
-  cp Cargo.lock "${pkg_full_path}"
+  cp /src/Cargo.lock "${pkg_full_path}"
 
-  cp Cargo.toml "${pkg_full_path}"
+  cp /src/Cargo.toml "${pkg_full_path}"
 
   cd "${pkg_full_path}"
 
