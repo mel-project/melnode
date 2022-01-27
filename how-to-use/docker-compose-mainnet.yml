@@ -8,8 +8,6 @@ services:
 #      - ADVERTISE_OFF=true
 #     If you would like to manually set the IP address to advertise, uncomment the following line and change the IP address to whatever you would like.
 #      - ADVERTISE_MANUAL=1.2.3.4
-#     If you would like to run on the test network, uncomment the following line
-#      - TESTNET=true
     command:
       --strategy at-once --url https://bldr.habitat.sh
       --update-condition latest
