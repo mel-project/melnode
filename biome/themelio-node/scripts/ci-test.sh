@@ -75,7 +75,7 @@ if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
   rm ${SCRIPTS_DIRECTORY}/themelio-node-mainnet-debian-aws.pkr.hcl.temp
   rm -rf ${SCRIPTS_DIRECTORY}/packer/temporary-templates
 
-  echo "Validating packer template"
+  echo "Validating packer mainnet template"
   packer validate "${SCRIPTS_DIRECTORY}/themelio-node-mainnet-debian-aws.pkr.hcl"
 
 elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
@@ -96,7 +96,7 @@ elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
     rm ${SCRIPTS_DIRECTORY}/themelio-node-testnet-debian-aws.pkr.hcl.temp
     rm -rf ${SCRIPTS_DIRECTORY}/packer/temporary-templates
 
-    echo "Validating packer template"
+    echo "Validating packer testnet template"
     packer validate "${SCRIPTS_DIRECTORY}/themelio-node-testnet-debian-aws.pkr.hcl"
 
 else
