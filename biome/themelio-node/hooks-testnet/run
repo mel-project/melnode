@@ -1,0 +1,12 @@
+#!/bin/sh
+# Redirect stderr
+exec 2>&1
+
+if [ -n "${ADVERTISE_OFF}" ]; then
+  exec themelio-node --database {{ pkg.svc_data_path }}/main.sqlite3 --testnet --bootstrap tm-1.themelio.org:{{ cfg.port }}
+elif [ -n "${ADVERTISE_MANUAL}" ]; then
+  exec themelio-node --database {{ pkg.svc_data_path }}/main.sqlite3 --testnet --bootstrap tm-1.themelio.org:{{ cfg.port }} --advertise "${ADVERTISE_MANUAL}":{{ cfg.port }}
+else
+  PUBLIC_IP_ADDRESS="$(curl -s http://checkip.amazonaws.com)"
+  exec themelio-node --database {{ pkg.svc_data_path }}/main.sqlite3 --testnet --bootstrap tm-1.themelio.org:{{ cfg.port }} --advertise "${PUBLIC_IP_ADDRESS}":{{ cfg.port }}
+fi

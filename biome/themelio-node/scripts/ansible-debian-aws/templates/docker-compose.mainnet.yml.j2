@@ -1,7 +1,7 @@
 version: "3.9"
 services:
   themelio-node:
-    image: ghcr.io/themeliolabs/themelio-node:latest
+    image: ghcr.io/themeliolabs/themelio-node-mainnet:latest
     command:
       --strategy at-once --url https://bldr.habitat.sh
       --group {{ aws_region }}
@@ -23,5 +23,5 @@ services:
       - /home/admin/compose/promtail.toml:/hab/user/promtail/config/user.toml
 
 volumes:
-  themelio-node:
-    name: themelio-node
+  themelio-node-mainnet:
+    name: themelio-node-mainnet

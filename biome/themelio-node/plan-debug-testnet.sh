@@ -1,4 +1,5 @@
 pkg_name=themelio-node-testnet
+binary_name=themelio-node
 pkg_origin=themelio
 pkg_maintainer="Meade Kincke <meade@themelio.org>"
 pkg_version="0.4.0"
@@ -48,7 +49,7 @@ do_build() {
 }
 
 do_install() {
-  local release="${pkg_full_path}/target/debug/${pkg_name}"
+  local release="${pkg_full_path}/target/debug/${binary_name}"
   local target="${pkg_prefix}/target"
   local application_path="${pkg_prefix}/bin/"
 
