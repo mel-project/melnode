@@ -12,7 +12,7 @@ services:
       - 8080:8080
     hostname: ${HOSTNAME}
     volumes:
-      - themelio-node:/hab/svc/themelio-node/data
+      - themelio-node-mainnet:/hab/svc/themelio-node/data
 
   promtail:
     image: ghcr.io/themeliolabs/promtail:latest
