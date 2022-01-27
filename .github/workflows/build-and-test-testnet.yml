@@ -1,0 +1,62 @@
+name: BuildAndTestTestNet
+
+on:
+  pull_request:
+    branches:
+      - testnet
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  biome:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: themeliolabs/actions-biome@v1
+        with:
+          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
+          BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
+
+      - name: Fix Directory Permissions
+        run: sudo chown -R $(whoami):$(id -ng) /hab
+
+      - name: Remove Rust
+        run: sudo rm -rf /usr/share/rust/
+
+      - name: Remove Rustc
+        run: sudo rm -rf /home/runner/.cargo/bin/rustc
+
+      - name: Remove Cargo
+        run: sudo rm -rf /home/runner/.cargo/bin/cargo
+
+      - name: Cache Biome
+        uses: actions/cache@v2
+        env:
+          CACHE_NAME: cache-biome
+        with:
+          path: |
+            ~/.hab/cache/artifacts
+            /hab/cache/artifacts
+            /hab/pkgs
+          key: ${{ runner.os }}-build-${{ env.CACHE_NAME }}-${{ hashFiles('biome/themelio-node/plan-debug.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.CACHE_NAME }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: Build, Run BATS Tests
+        env:
+          HAB_ORIGIN: "themelio"
+          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
+          PROMTAIL_PASSWORD: ${{ secrets.PROMTAIL_PASSWORD }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+          NETWORK_TO_BUILD: "testnet"
+        run: ./biome/themelio-node/scripts/ci-test.sh
