@@ -23,11 +23,22 @@ fi
 export SCRIPTS_DIRECTORY="$(dirname "${0}")"
 PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
 
+if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
+  cp "${PLAN_DIRECTORY}/plan-debug-mainnet.sh" "${PLAN_DIRECTORY}/plan.sh"
+  cp -r "${PLAN_DIRECTORY}/hooks-mainnet" "${PLAN_DIRECTORY}/hooks"
+
+elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
+  cp "${PLAN_DIRECTORY}/plan-debug-testnet.sh" "${PLAN_DIRECTORY}/plan.sh"
+  cp -r "${PLAN_DIRECTORY}/hooks-testnet" "${PLAN_DIRECTORY}/hooks"
+
+else
+  echo "No network specified with NETWORK_TO_BUILD. Exiting."
+  exit 1
+fi
+
 sudo bio pkg install --binlink themelio/bats
 sudo bio pkg install --binlink core/curl
 sudo bio pkg install --binlink core/nmap
-
-cp "${PLAN_DIRECTORY}/plan-debug.sh" "${PLAN_DIRECTORY}/plan.sh"
 
 source "${PLAN_DIRECTORY}/plan.sh"
 
