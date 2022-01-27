@@ -6,6 +6,9 @@ export AWS_ACCESS_KEY_ID
 export AWS_SECRET_ACCESS_KEY
 export AWS_DEFAULT_REGION
 
+export SCRIPTS_DIRECTORY="$(dirname "${0}")"
+PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
+
 if [ -z "${PROMTAIL_USERNAME}" ]; then
   echo "The PROMTAIL_USERNAME environment variable must be set."
   echo "Exiting."
@@ -19,9 +22,6 @@ if [ -z "${PROMTAIL_PASSWORD}" ]; then
 
   exit 1
 fi
-
-export SCRIPTS_DIRECTORY="$(dirname "${0}")"
-PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
 
 if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
   cp "${PLAN_DIRECTORY}/plan-debug-mainnet.sh" "${PLAN_DIRECTORY}/plan.sh"
@@ -40,11 +40,13 @@ sudo bio pkg install --binlink themelio/bats
 sudo bio pkg install --binlink core/curl
 sudo bio pkg install --binlink core/nmap
 
-source "${PLAN_DIRECTORY}/plan.sh"
+pushd "${PLAN_DIRECTORY}"
+
+source "plan.sh"
 
 sudo bio sup run &
 
-bio pkg build "biome/${pkg_name}"
+bio pkg build .
 
 source results/last_build.env
 
@@ -61,35 +63,37 @@ sleep 5
 
 if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
   if bats --print-output-on-failure "${SCRIPTS_DIRECTORY}/test-local-mainnet.bats"; then
-    rm "${PLAN_DIRECTORY}/plan.sh"
-    rm -rf "${PLAN_DIRECTORY}/hooks"
+    rm "plan.sh"
+    rm -rf "hooks"
     bio svc unload "${pkg_ident}"
   else
-    rm "${PLAN_DIRECTORY}/plan.sh"
-    rm -rf "${PLAN_DIRECTORY}/hooks"
+    rm "plan.sh"
+    rm -rf "hooks"
     bio svc unload "${pkg_ident}"
     exit 1
   fi
 
 elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
   if bats --print-output-on-failure "${SCRIPTS_DIRECTORY}/test-local-testnet.bats"; then
-    rm "${PLAN_DIRECTORY}/plan.sh"
-    rm -rf "${PLAN_DIRECTORY}/hooks"
+    rm "plan.sh"
+    rm -rf "hooks"
     bio svc unload "${pkg_ident}"
   else
-    rm "${PLAN_DIRECTORY}/plan.sh"
-    rm -rf "${PLAN_DIRECTORY}/hooks"
+    rm "plan.sh"
+    rm -rf "hooks"
     bio svc unload "${pkg_ident}"
     exit 1
   fi
 
 else
-  rm "${PLAN_DIRECTORY}/plan.sh"
-  rm -rf "${PLAN_DIRECTORY}/hooks"
+  rm "plan.sh"
+  rm -rf "hooks"
   bio svc unload "${pkg_ident}"
   echo "No network specified with NETWORK_TO_BUILD. Exiting."
   exit 1
 fi
+
+popd
 
 mkdir -p ${SCRIPTS_DIRECTORY}/packer/temporary-templates
 
