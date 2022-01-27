@@ -60,26 +60,55 @@ done
 
 mkdir -p ${SCRIPTS_DIRECTORY}/packer/temporary-templates
 
-for region in $(cat $SCRIPTS_DIRECTORY/packer/aws_regions); do
-  echo "Creating packer templates for the $region region."
+if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
+  for region in $(cat $SCRIPTS_DIRECTORY/packer/aws_regions); do
+    echo "Creating packer templates for $region-$NETWORK_TO_BUILD."
 
-  export AWS_REGION=${region}
+    export AWS_REGION=${region}
 
-  envsubst < "${SCRIPTS_DIRECTORY}/packer/base-image.pkr.hcl.temp" > "${SCRIPTS_DIRECTORY}/packer/temporary-templates/base-image-$region.pkr.hcl"
-  envsubst < "${SCRIPTS_DIRECTORY}/packer/mainnet.pkr.hcl.temp" > "${SCRIPTS_DIRECTORY}/packer/temporary-templates/mainnet-$region.pkr.hcl"
-  envsubst < "${SCRIPTS_DIRECTORY}/packer/testnet.pkr.hcl.temp" > "${SCRIPTS_DIRECTORY}/packer/temporary-templates/testnet-$region.pkr.hcl"
-done
+    envsubst < "${SCRIPTS_DIRECTORY}/packer/base-image.pkr.hcl.temp" > "${SCRIPTS_DIRECTORY}/packer/temporary-templates/base-image-$region.pkr.hcl"
+    envsubst < "${SCRIPTS_DIRECTORY}/packer/mainnet.pkr.hcl.temp" > "${SCRIPTS_DIRECTORY}/packer/temporary-templates/mainnet-$region.pkr.hcl"
+  done
 
-echo "Joining packer templates"
-sed -e '$s/$/\n/' -s ${SCRIPTS_DIRECTORY}/packer/temporary-templates/*.hcl > ${SCRIPTS_DIRECTORY}/themelio-node-debian-aws.pkr.hcl.temp
-envsubst < "${SCRIPTS_DIRECTORY}/themelio-node-debian-aws.pkr.hcl.temp" > "${SCRIPTS_DIRECTORY}/themelio-node-debian-aws.pkr.hcl"
+  echo "Joining packer templates"
+  sed -e '$s/$/\n/' -s ${SCRIPTS_DIRECTORY}/packer/temporary-templates/*.hcl > ${SCRIPTS_DIRECTORY}/themelio-node-mainnet-debian-aws.pkr.hcl.temp
+  envsubst < "${SCRIPTS_DIRECTORY}/themelio-node-mainnet-debian-aws.pkr.hcl.temp" > "${SCRIPTS_DIRECTORY}/themelio-node-mainnet-debian-aws.pkr.hcl"
 
-echo "Cleaning up temporary files"
-rm ${SCRIPTS_DIRECTORY}/themelio-node-debian-aws.pkr.hcl.temp
-rm -rf ${SCRIPTS_DIRECTORY}/packer/temporary-templates
+  echo "Cleaning up temporary files"
+  rm ${SCRIPTS_DIRECTORY}/themelio-node-mainnet-debian-aws.pkr.hcl.temp
+  rm -rf ${SCRIPTS_DIRECTORY}/packer/temporary-templates
 
-echo "Validating packer template"
-packer validate "${SCRIPTS_DIRECTORY}/themelio-node-debian-aws.pkr.hcl"
+  echo "Validating packer mainnet template"
+  packer validate "${SCRIPTS_DIRECTORY}/themelio-node-mainnet-debian-aws.pkr.hcl"
 
-echo "Building packer images"
-packer build "${SCRIPTS_DIRECTORY}/themelio-node-debian-aws.pkr.hcl"
+  echo "Building packer mainnet images"
+  packer build "${SCRIPTS_DIRECTORY}/themelio-node-mainnet-debian-aws.pkr.hcl"
+
+elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
+  for region in $(cat $SCRIPTS_DIRECTORY/packer/aws_regions); do
+      echo "Creating packer templates for $region-$NETWORK_TO_BUILD."
+
+      export AWS_REGION=${region}
+
+      envsubst < "${SCRIPTS_DIRECTORY}/packer/base-image.pkr.hcl.temp" > "${SCRIPTS_DIRECTORY}/packer/temporary-templates/base-image-$region.pkr.hcl"
+      envsubst < "${SCRIPTS_DIRECTORY}/packer/testnet.pkr.hcl.temp" > "${SCRIPTS_DIRECTORY}/packer/temporary-templates/testnet-$region.pkr.hcl"
+    done
+
+    echo "Joining packer templates"
+    sed -e '$s/$/\n/' -s ${SCRIPTS_DIRECTORY}/packer/temporary-templates/*.hcl > ${SCRIPTS_DIRECTORY}/themelio-node-testnet-debian-aws.pkr.hcl.temp
+    envsubst < "${SCRIPTS_DIRECTORY}/themelio-node-testnet-debian-aws.pkr.hcl.temp" > "${SCRIPTS_DIRECTORY}/themelio-node-testnet-debian-aws.pkr.hcl"
+
+    echo "Cleaning up temporary files"
+    rm ${SCRIPTS_DIRECTORY}/themelio-node-testnet-debian-aws.pkr.hcl.temp
+    rm -rf ${SCRIPTS_DIRECTORY}/packer/temporary-templates
+
+    echo "Validating packer testnet template"
+    packer validate "${SCRIPTS_DIRECTORY}/themelio-node-testnet-debian-aws.pkr.hcl"
+
+    echo "Building packer testnet images"
+    packer build "${SCRIPTS_DIRECTORY}/themelio-node-testnet-debian-aws.pkr.hcl"
+
+else
+  echo "No network specified with NETWORK_TO_BUILD. Exiting."
+  exit 1
+fi
