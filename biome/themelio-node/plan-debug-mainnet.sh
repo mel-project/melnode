@@ -1,4 +1,4 @@
-pkg_name=themelio-node
+pkg_name=themelio-node-mainnet
 pkg_origin=themelio
 pkg_maintainer="Meade Kincke <meade@themelio.org>"
 pkg_version="0.4.0"
@@ -44,11 +44,11 @@ do_build() {
 
   cd "${pkg_full_path}"
 
-  cargo build --locked --release --features metrics --verbose
+  cargo build --locked --features metrics --verbose
 }
 
 do_install() {
-  local release="${pkg_full_path}/target/release/${pkg_name}"
+  local release="${pkg_full_path}/target/debug/${pkg_name}"
   local target="${pkg_prefix}/target"
   local application_path="${pkg_prefix}/bin/"
 
