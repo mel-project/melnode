@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -ex
 
 TESTDIR="$(dirname "${0}")"
 PLAN_DIRECTORY="$(dirname "${TESTDIR}")"
@@ -9,7 +9,20 @@ bio pkg install --binlink themelio/bats
 bio pkg install --binlink core/curl
 bio pkg install --binlink core/nmap
 
-cp "${PLAN_DIRECTORY}/plan-debug.sh" "${PLAN_DIRECTORY}/plan.sh"
+rm -rf ${PLAN_DIRECTORY}/hooks
+
+if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
+  cp "${PLAN_DIRECTORY}/plan-debug-mainnet.sh" "${PLAN_DIRECTORY}/plan.sh"
+  cp -r "${PLAN_DIRECTORY}/hooks-mainnet" "${PLAN_DIRECTORY}/hooks"
+
+elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
+  cp "${PLAN_DIRECTORY}/plan-debug-testnet.sh" "${PLAN_DIRECTORY}/plan.sh"
+  cp -r "${PLAN_DIRECTORY}/hooks-testnet" "${PLAN_DIRECTORY}/hooks"
+
+else
+  echo "No network specified with NETWORK_TO_BUILD. Exiting."
+  exit 1
+fi
 
 pushd "${PLAN_DIRECTORY}"
 
@@ -52,12 +65,35 @@ fi
 echo "Sleeping for 5 seconds for the service to start."
 sleep 5
 
-if bats --print-output-on-failure "scripts/test-local.bats"; then
-  rm "plan.sh"
-  bio svc unload "${pkg_ident}"
+if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
+  if bats --print-output-on-failure "scripts/test-local-mainnet.bats"; then
+    rm "plan.sh"
+    rm -rf hooks
+    bio svc unload "${pkg_ident}"
+  else
+    rm "plan.sh"
+    rm -rf hooks
+    bio svc unload "${pkg_ident}"
+    exit 1
+  fi
+
+elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
+  if bats --print-output-on-failure "scripts/test-local-testnet.bats"; then
+    rm "plan.sh"
+    rm -rf hooks
+    bio svc unload "${pkg_ident}"
+  else
+    rm "plan.sh"
+    rm -rf hooks
+    bio svc unload "${pkg_ident}"
+    exit 1
+  fi
+
 else
   rm "plan.sh"
+  rm -rf hooks
   bio svc unload "${pkg_ident}"
+  echo "No network specified with NETWORK_TO_BUILD. Exiting."
   exit 1
 fi
 

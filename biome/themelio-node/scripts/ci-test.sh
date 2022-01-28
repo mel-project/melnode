@@ -6,6 +6,9 @@ export AWS_ACCESS_KEY_ID
 export AWS_SECRET_ACCESS_KEY
 export AWS_DEFAULT_REGION
 
+export SCRIPTS_DIRECTORY="$(dirname "${0}")"
+PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
+
 if [ -z "${PROMTAIL_USERNAME}" ]; then
   echo "The PROMTAIL_USERNAME environment variable must be set."
   echo "Exiting."
@@ -20,20 +23,29 @@ if [ -z "${PROMTAIL_PASSWORD}" ]; then
   exit 1
 fi
 
-export SCRIPTS_DIRECTORY="$(dirname "${0}")"
-PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
+if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
+  cp "${PLAN_DIRECTORY}/plan-debug-mainnet.sh" "${PLAN_DIRECTORY}/plan.sh"
+  cp -r "${PLAN_DIRECTORY}/hooks-mainnet" "${PLAN_DIRECTORY}/hooks"
+
+elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
+  cp "${PLAN_DIRECTORY}/plan-debug-testnet.sh" "${PLAN_DIRECTORY}/plan.sh"
+  cp -r "${PLAN_DIRECTORY}/hooks-testnet" "${PLAN_DIRECTORY}/hooks"
+
+else
+  echo "No network specified with NETWORK_TO_BUILD. Exiting."
+  exit 1
+fi
 
 sudo bio pkg install --binlink themelio/bats
 sudo bio pkg install --binlink core/curl
 sudo bio pkg install --binlink core/nmap
 
-cp "${PLAN_DIRECTORY}/plan-debug.sh" "${PLAN_DIRECTORY}/plan.sh"
 
 source "${PLAN_DIRECTORY}/plan.sh"
 
 sudo bio sup run &
 
-bio pkg build "biome/${pkg_name}"
+bio pkg build "${PLAN_DIRECTORY}"
 
 source results/last_build.env
 
@@ -48,10 +60,29 @@ sudo bio svc load "${pkg_ident}"
 echo "Sleeping for 5 seconds for the service to start."
 sleep 5
 
-if bats --print-output-on-failure "${SCRIPTS_DIRECTORY}/test.bats"; then
-  sudo bio svc unload "${pkg_ident}"
+if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
+  if bats --print-output-on-failure "${SCRIPTS_DIRECTORY}/test-ci-mainnet.bats"; then
+    rm "${PLAN_DIRECTORY}/plan.sh"
+    rm -rf "${PLAN_DIRECTORY}/hooks"
+    sudo bio svc unload "${pkg_ident}"
+  else
+    rm "${PLAN_DIRECTORY}/plan.sh"
+    rm -rf "${PLAN_DIRECTORY}/hooks"
+    sudo bio svc unload "${pkg_ident}"
+    exit 1
+  fi
+
+elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
+  if bats --print-output-on-failure "${SCRIPTS_DIRECTORY}/test-ci-testnet.bats"; then
+    sudo bio svc unload "${pkg_ident}"
+  else
+    sudo bio svc unload "${pkg_ident}"
+    exit 1
+  fi
+
 else
   sudo bio svc unload "${pkg_ident}"
+  echo "No network specified with NETWORK_TO_BUILD. Exiting."
   exit 1
 fi
 
