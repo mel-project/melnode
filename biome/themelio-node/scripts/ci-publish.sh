@@ -6,6 +6,9 @@ export AWS_ACCESS_KEY_ID
 export AWS_SECRET_ACCESS_KEY
 export AWS_DEFAULT_REGION
 
+export SCRIPTS_DIRECTORY="$(dirname "${0}")"
+PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
+
 if [ -z "${PROMTAIL_USERNAME}" ]; then
   echo "The PROMTAIL_USERNAME environment variable must be set."
   echo "Exiting."
@@ -20,23 +23,32 @@ if [ -z "${PROMTAIL_PASSWORD}" ]; then
   exit 1
 fi
 
-export SCRIPTS_DIRECTORY="$(dirname "${0}")"
-PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
+if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
+  cp "${PLAN_DIRECTORY}/plan-debug-mainnet.sh" "${PLAN_DIRECTORY}/plan.sh"
+  cp -r "${PLAN_DIRECTORY}/hooks-mainnet" "${PLAN_DIRECTORY}/hooks"
+
+elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
+  cp "${PLAN_DIRECTORY}/plan-debug-testnet.sh" "${PLAN_DIRECTORY}/plan.sh"
+  cp -r "${PLAN_DIRECTORY}/hooks-testnet" "${PLAN_DIRECTORY}/hooks"
+
+else
+  echo "No network specified with NETWORK_TO_BUILD. Exiting."
+  exit 1
+fi
+
+
+source "${PLAN_DIRECTORY}/plan.sh"
+
+bio pkg build "${PLAN_DIRECTORY}"
+
+source results/last_build.env
+
+hart_file="results/${pkg_artifact}"
 
 mkdir -p ${SCRIPTS_DIRECTORY}/packer/temporary-templates
 
+
 if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
-  cp "${PLAN_DIRECTORY}/plan-release-mainnet.sh" "${PLAN_DIRECTORY}/plan.sh"
-  cp -r "${PLAN_DIRECTORY}/hooks-mainnet" "${PLAN_DIRECTORY}/hooks"
-
-  source "${PLAN_DIRECTORY}/plan.sh"
-
-  bio pkg build "biome/${pkg_name}"
-
-  source results/last_build.env
-
-  hart_file="results/${pkg_artifact}"
-
   echo "Publishing mainnet artifact to the stable channel"
 
   bio pkg upload --auth "${HABITAT_AUTH_TOKEN}" --url "${HAB_BLDR_URL}" "${hart_file}" -c stable
@@ -84,17 +96,6 @@ if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
   packer build "${SCRIPTS_DIRECTORY}/themelio-node-mainnet-debian-aws.pkr.hcl"
 
 elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
-  cp "${PLAN_DIRECTORY}/plan-release-testnet.sh" "${PLAN_DIRECTORY}/plan.sh"
-  cp -r "${PLAN_DIRECTORY}/hooks-mainnet" "${PLAN_DIRECTORY}/hooks"
-
-  source "${PLAN_DIRECTORY}/plan.sh"
-
-  bio pkg build "biome/${pkg_name}"
-
-  source results/last_build.env
-
-  hart_file="results/${pkg_artifact}"
-
   echo "Publishing testnet artifact to the stable channel"
 
   bio pkg upload --auth "${HABITAT_AUTH_TOKEN}" --url "${HAB_BLDR_URL}" "${hart_file}" -c stable
