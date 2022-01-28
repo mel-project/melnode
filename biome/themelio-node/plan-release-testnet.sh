@@ -4,7 +4,7 @@ pkg_origin=themelio
 pkg_maintainer="Meade Kincke <meade@themelio.org>"
 pkg_version="0.4.0"
 pkg_license=("MPL-2.0")
-pkg_full_path="${HAB_CACHE_SRC_PATH}/${pkg_name}"
+pkg_full_path="${HAB_CACHE_SRC_PATH}/${binary_name}"
 pkg_build_deps=(themelio/rust)
 pkg_deps=(
   core/curl

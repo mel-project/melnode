@@ -74,19 +74,13 @@ if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
 
 elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
   if bats --print-output-on-failure "${SCRIPTS_DIRECTORY}/test-local-testnet.bats"; then
-    rm "${PLAN_DIRECTORY}/plan.sh"
-    rm -rf "${PLAN_DIRECTORY}/hooks"
     sudo bio svc unload "${pkg_ident}"
   else
-    rm "${PLAN_DIRECTORY}/plan.sh"
-    rm -rf "${PLAN_DIRECTORY}/hooks"
     sudo bio svc unload "${pkg_ident}"
     exit 1
   fi
 
 else
-  rm "${PLAN_DIRECTORY}/plan.sh"
-  rm -rf "${PLAN_DIRECTORY}/hooks"
   sudo bio svc unload "${pkg_ident}"
   echo "No network specified with NETWORK_TO_BUILD. Exiting."
   exit 1
