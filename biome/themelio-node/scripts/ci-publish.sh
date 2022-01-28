@@ -23,44 +23,43 @@ fi
 export SCRIPTS_DIRECTORY="$(dirname "${0}")"
 PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
 
-cp "${PLAN_DIRECTORY}/plan-release.sh" "${PLAN_DIRECTORY}/plan.sh"
-
-source "${PLAN_DIRECTORY}/plan.sh"
-
-
-bio pkg build "biome/${pkg_name}"
-
-source results/last_build.env
-
-hart_file="results/${pkg_artifact}"
-
-
-echo "Publishing artifact to the stable channel"
-
-bio pkg upload --auth "${HABITAT_AUTH_TOKEN}" --url "${HAB_BLDR_URL}" "${hart_file}" -c stable
-
-# Uploading to the biome builder is currently broken.
-#This can be uncommented when this bug report is remedied: https://github.com/biome-sh/biome/issues/14
-#bio pkg upload --auth "${BIOME_AUTH_TOKEN}" --url "${BIOME_BLDR_URL}" "${hart_file}" -c stable
-
-
-echo "Exporting docker image"
-sudo bio pkg export container "${hart_file}"
-
-source results/last_container_export.env
-
-for tag in ${tags//,/ }; do
-  local_tag="ghcr.io/themeliolabs/themelio-node:${tag}"
-
-  docker tag "${name}:${tag}" "${local_tag}"
-
-	docker push "${local_tag}"
-done
-
-
 mkdir -p ${SCRIPTS_DIRECTORY}/packer/temporary-templates
 
 if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
+  cp "${PLAN_DIRECTORY}/plan-release-mainnet.sh" "${PLAN_DIRECTORY}/plan.sh"
+  cp -r "${PLAN_DIRECTORY}/hooks-mainnet" "${PLAN_DIRECTORY}/hooks"
+
+  source "${PLAN_DIRECTORY}/plan.sh"
+
+  bio pkg build "biome/${pkg_name}"
+
+  source results/last_build.env
+
+  hart_file="results/${pkg_artifact}"
+
+  echo "Publishing mainnet artifact to the stable channel"
+
+  bio pkg upload --auth "${HABITAT_AUTH_TOKEN}" --url "${HAB_BLDR_URL}" "${hart_file}" -c stable
+
+  # Uploading to the biome builder is currently broken.
+  #This can be uncommented when this bug report is remedied: https://github.com/biome-sh/biome/issues/14
+  #bio pkg upload --auth "${BIOME_AUTH_TOKEN}" --url "${BIOME_BLDR_URL}" "${hart_file}" -c stable
+
+
+  echo "Exporting mainnet docker image"
+  sudo bio pkg export container "${hart_file}"
+
+  source results/last_container_export.env
+
+  for tag in ${tags//,/ }; do
+    local_tag="ghcr.io/themeliolabs/themelio-node-mainnet:${tag}"
+
+    docker tag "${name}:${tag}" "${local_tag}"
+
+  	docker push "${local_tag}"
+  done
+
+
   for region in $(cat $SCRIPTS_DIRECTORY/packer/aws_regions); do
     echo "Creating packer templates for $region-$NETWORK_TO_BUILD."
 
@@ -85,6 +84,39 @@ if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
   packer build "${SCRIPTS_DIRECTORY}/themelio-node-mainnet-debian-aws.pkr.hcl"
 
 elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
+  cp "${PLAN_DIRECTORY}/plan-release-testnet.sh" "${PLAN_DIRECTORY}/plan.sh"
+  cp -r "${PLAN_DIRECTORY}/hooks-mainnet" "${PLAN_DIRECTORY}/hooks"
+
+  source "${PLAN_DIRECTORY}/plan.sh"
+
+  bio pkg build "biome/${pkg_name}"
+
+  source results/last_build.env
+
+  hart_file="results/${pkg_artifact}"
+
+  echo "Publishing testnet artifact to the stable channel"
+
+  bio pkg upload --auth "${HABITAT_AUTH_TOKEN}" --url "${HAB_BLDR_URL}" "${hart_file}" -c stable
+
+  # Uploading to the biome builder is currently broken.
+  #This can be uncommented when this bug report is remedied: https://github.com/biome-sh/biome/issues/14
+  #bio pkg upload --auth "${BIOME_AUTH_TOKEN}" --url "${BIOME_BLDR_URL}" "${hart_file}" -c stable
+
+
+  echo "Exporting testnet docker image"
+  sudo bio pkg export container "${hart_file}"
+
+  source results/last_container_export.env
+
+  for tag in ${tags//,/ }; do
+    local_tag="ghcr.io/themeliolabs/themelio-node-testnet:${tag}"
+
+    docker tag "${name}:${tag}" "${local_tag}"
+
+    docker push "${local_tag}"
+  done
+
   for region in $(cat $SCRIPTS_DIRECTORY/packer/aws_regions); do
       echo "Creating packer templates for $region-$NETWORK_TO_BUILD."
 
