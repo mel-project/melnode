@@ -61,7 +61,7 @@ echo "Sleeping for 5 seconds for the service to start."
 sleep 5
 
 if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
-  if bats --print-output-on-failure "${SCRIPTS_DIRECTORY}/test-local-mainnet.bats"; then
+  if bats --print-output-on-failure "${SCRIPTS_DIRECTORY}/test-ci-mainnet.bats"; then
     rm "${PLAN_DIRECTORY}/plan.sh"
     rm -rf "${PLAN_DIRECTORY}/hooks"
     sudo bio svc unload "${pkg_ident}"
@@ -73,7 +73,7 @@ if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
   fi
 
 elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
-  if bats --print-output-on-failure "${SCRIPTS_DIRECTORY}/test-local-testnet.bats"; then
+  if bats --print-output-on-failure "${SCRIPTS_DIRECTORY}/test-ci-testnet.bats"; then
     sudo bio svc unload "${pkg_ident}"
   else
     sudo bio svc unload "${pkg_ident}"
