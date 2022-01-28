@@ -9,6 +9,8 @@ bio pkg install --binlink themelio/bats
 bio pkg install --binlink core/curl
 bio pkg install --binlink core/nmap
 
+rm -rf ${PLAN_DIRECTORY}/hooks
+
 if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
   cp "${PLAN_DIRECTORY}/plan-debug-mainnet.sh" "${PLAN_DIRECTORY}/plan.sh"
   cp -r "${PLAN_DIRECTORY}/hooks-mainnet" "${PLAN_DIRECTORY}/hooks"
