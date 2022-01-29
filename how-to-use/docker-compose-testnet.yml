@@ -1,15 +1,13 @@
 version: "3.9"
 services:
   themelio-node:
-    image: ghcr.io/themeliolabs/themelio-node:latest
+    image: ghcr.io/themeliolabs/themelio-node-testnet:latest
 #   For enabling specific options, only use one of the following environment variables.
 #    environment:
 #     If you would like to disable advertising, uncomment the following line.
 #      - ADVERTISE_OFF=true
 #     If you would like to manually set the IP address to advertise, uncomment the following line and change the IP address to whatever you would like.
 #      - ADVERTISE_MANUAL=1.2.3.4
-#     If you would like to run on the test network, uncomment the following line
-#      - TESTNET=true
     command:
       --strategy at-once --url https://bldr.habitat.sh
       --update-condition latest
@@ -21,8 +19,8 @@ services:
       - 8080:8080
     hostname: ${HOSTNAME}
     volumes:
-      - themelio-node:/hab/svc/themelio-node/data
+      - themelio-node-testnet:/hab/svc/themelio-node/data
 
 volumes:
-  themelio-node:
-    name: themelio-node
+  themelio-node-testnet:
+    name: themelio-node-testnet

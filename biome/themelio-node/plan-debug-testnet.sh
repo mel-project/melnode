@@ -1,9 +1,10 @@
-pkg_name=themelio-node
+pkg_name=themelio-node-testnet
+binary_name=themelio-node
 pkg_origin=themelio
 pkg_maintainer="Meade Kincke <meade@themelio.org>"
 pkg_version="0.4.0"
 pkg_license=("MPL-2.0")
-pkg_full_path="${HAB_CACHE_SRC_PATH}/${pkg_name}"
+pkg_full_path="${HAB_CACHE_SRC_PATH}/${binary_name}"
 pkg_build_deps=(themelio/rust)
 pkg_deps=(
   core/curl
@@ -44,11 +45,11 @@ do_build() {
 
   cd "${pkg_full_path}"
 
-  cargo build --locked --release --features metrics --verbose
+  cargo build --locked --features metrics --verbose
 }
 
 do_install() {
-  local release="${pkg_full_path}/target/release/${pkg_name}"
+  local release="${pkg_full_path}/target/debug/${binary_name}"
   local target="${pkg_prefix}/target"
   local application_path="${pkg_prefix}/bin/"
 
