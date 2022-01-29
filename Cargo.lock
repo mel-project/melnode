@@ -1637,9 +1637,9 @@ dependencies = [
 
 [[package]]
 name = "meshanina"
-version = "0.3.10"
+version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5add5167be633670fd2edc29c3ba2e274ad6709bd289f03dc43b6d6a760ad513"
+checksum = "bc05cb7ce31800523e6a80b1a654861d504790849a4de9a0c4a2a0aebd167df3"
 dependencies = [
  "arrayref",
  "blake3",
