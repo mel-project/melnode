@@ -3,10 +3,10 @@
 exec 2>&1
 
 if [ -n "${ADVERTISE_OFF}" ]; then
-  exec themelio-node --database {{ pkg.svc_data_path }}/main2 --listen 0.0.0.0:{{ cfg.port }}
+  exec themelio-node --database {{ pkg.svc_data_path }}/main --listen 0.0.0.0:{{ cfg.port }}
 elif [ -n "${ADVERTISE_MANUAL}" ]; then
-  exec themelio-node --database {{ pkg.svc_data_path }}/main2 --listen 0.0.0.0:{{ cfg.port }} --advertise "${ADVERTISE_MANUAL}":{{ cfg.port }}
+  exec themelio-node --database {{ pkg.svc_data_path }}/main --listen 0.0.0.0:{{ cfg.port }} --advertise "${ADVERTISE_MANUAL}":{{ cfg.port }}
 else
   PUBLIC_IP_ADDRESS="$(curl -s http://checkip.amazonaws.com)"
-  exec themelio-node --database {{ pkg.svc_data_path }}/main2 --listen 0.0.0.0:{{ cfg.port }} --advertise "${PUBLIC_IP_ADDRESS}":{{ cfg.port }}
+  exec themelio-node --database {{ pkg.svc_data_path }}/main --listen 0.0.0.0:{{ cfg.port }} --advertise "${PUBLIC_IP_ADDRESS}":{{ cfg.port }}
 fi
