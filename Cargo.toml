@@ -19,8 +19,8 @@ panic = "abort"
 opt-level = 3
 overflow-checks = true
 debug=0
-# lto=true 
-# codegen-units=1
+lto=true 
+codegen-units=1
 
 # [patch.crates-io]
 # themelio-stf={path="../themelio-stf"}  
@@ -29,3 +29,5 @@ debug=0
 inherits = "release"
 debug=2
 panic = "abort"
+lto=false
+codegen-units=32
