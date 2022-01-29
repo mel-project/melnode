@@ -7,18 +7,18 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies.serde]
-version = "1.0.133"
+version = "1.0.136"
 features = ["derive"]
 
 [dependencies]
-dashmap = "4.0.0"
-fastrand = "1.6.0"
+dashmap = "4.0.2"
+fastrand = "1.7.0"
 # im = "15.0.0"
 log = "0.4.14"
-novasmt = "0.2.13"
+novasmt = "0.2.17"
 parking_lot = "0.11.2"
 stdcode = "0.1.7"
-themelio-stf = "0.9"
-themelio-structs= "0.2"
+themelio-stf = "0.9.6"
+themelio-structs= "0.2.0"
 thiserror = "1.0.30"
 tmelcrypt = "0.2.4"
