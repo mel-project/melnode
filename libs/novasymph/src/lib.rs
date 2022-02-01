@@ -1,3 +1,4 @@
+mod blockgraph;
 mod cstate;
 mod msg;
 mod protocol;

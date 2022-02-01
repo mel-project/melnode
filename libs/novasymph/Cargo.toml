@@ -39,3 +39,6 @@ tmelcrypt = "0.2.4"
 
 derivative= "2.2.0"
 binary-search= "0.1.2"
+slab = "0.4.5"
+num-traits = "0.2.14"
+num-integer = "0.1.44"
