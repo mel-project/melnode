@@ -107,7 +107,7 @@ impl NodeStorage {
         smolscale::spawn(async move {
             let mut dead = false;
             while !dead {
-                if recv.recv().timeout(Duration::from_secs(30)).await.is_some() {
+                if recv.recv().timeout(Duration::from_secs(5)).await.is_some() {
                     log::warn!("syncer dying");
                     dead = true;
                 };
@@ -362,7 +362,9 @@ impl NodeStorage {
             "hostname={} public_ip={} network={} applied block {}",
             crate::prometheus::HOSTNAME.as_str(),
             crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-            crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
+            crate::prometheus::NETWORK
+                .read()
+                .expect("Could not get a read lock on NETWORK."),
             header.height
         );
         let next = self.highest_state().next_state();

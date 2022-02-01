@@ -9,7 +9,7 @@ use super::helpers::StreamletMetadata;
 /// A gossip request that contains the info needed to solicit some newer info from a peer.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BlockRequest {
-    /// Contains the LNC tips.
+    /// Contains the LNC tips
     pub lnc_tips: BTreeSet<HashVal>,
 }
 
