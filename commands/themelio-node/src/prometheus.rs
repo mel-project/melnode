@@ -17,6 +17,8 @@ pub static GLOBAL_STORAGE: OnceCell<NodeStorage> = OnceCell::new();
 
 pub static NETWORK: Lazy<RwLock<&str>> = Lazy::new(|| RwLock::new("mainnet"));
 
+static THEMELIO_NODE_START_TIME: Lazy<std::time::Instant> = Lazy::new(|| std::time::Instant::now());
+
 static REGISTRY: Lazy<Registry> = Lazy::new(Registry::new);
 
 pub static HOSTNAME: Lazy<String> = Lazy::new(|| {
@@ -35,14 +37,24 @@ static HIGHEST_BLOCK: Lazy<IntGauge> = Lazy::new(|| {
     .expect("Could not create HIGHEST_BLOCK IntGauge.")
 });
 
-static UPTIME_SECONDS: Lazy<IntGauge> = Lazy::new(|| {
+static THEMELIO_NODE_UPTIME_SECONDS: Lazy<IntGauge> = Lazy::new(|| {
     register_int_gauge!(opts!(
         "themelio_node_uptime_seconds",
-        "Uptime (In Seconds)",
+        "Uptime (Themelio-Node, In Seconds)",
         labels! {"hostname" => HOSTNAME.as_str(),
         "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK")}
     ))
-    .expect("Could not create UPTIME_SECONDS IntGauge.")
+        .expect("Could not create THEMELIO_NODE_UPTIME_SECONDS IntGauge.")
+});
+
+static SYSTEM_UPTIME_SECONDS: Lazy<IntGauge> = Lazy::new(|| {
+    register_int_gauge!(opts!(
+        "themelio_node_system_uptime_seconds",
+        "Uptime (System, In Seconds)",
+        labels! {"hostname" => HOSTNAME.as_str(),
+        "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK")}
+    ))
+    .expect("Could not create SYSTEM_UPTIME_SECONDS IntGauge.")
 });
 
 static MEMORY_TOTAL_BYTES: Lazy<IntGauge> = Lazy::new(|| {
@@ -173,6 +185,12 @@ fn set_highest_block() {
     HIGHEST_BLOCK.set(current_block_count as i64);
 }
 
+fn set_themelio_node_uptime() {
+    let elapsed_time: time::Duration = THEMELIO_NODE_START_TIME.elapsed();
+
+    THEMELIO_NODE_UPTIME_SECONDS.set(elapsed_time.as_secs() as i64);
+}
+
 fn set_system_metrics() {
     let system: PlatformImpl = System::new();
 
@@ -199,7 +217,7 @@ fn set_system_metrics() {
 
     match system.uptime() {
         Ok(uptime) => {
-            UPTIME_SECONDS.set(uptime.as_secs() as i64);
+            SYSTEM_UPTIME_SECONDS.set(uptime.as_secs() as i64);
         }
         Err(error) => log::debug!(
             "hostname={} public_ip={} network={} There was an error retrieving system uptime: {}",
@@ -269,8 +287,12 @@ pub async fn prometheus() {
         .expect("Adding HIGHEST_BLOCK to the prometheus registry failed.");
 
     REGISTRY
-        .register(Box::new(UPTIME_SECONDS.clone()))
-        .expect("Adding UPTIME_SECONDS to the prometheus registry failed.");
+        .register(Box::new(THEMELIO_NODE_UPTIME_SECONDS.clone()))
+        .expect("Adding THEMELIO_NODE_UPTIME_SECONDS to the prometheus registry failed.");
+
+    REGISTRY
+        .register(Box::new(SYSTEM_UPTIME_SECONDS.clone()))
+        .expect("Adding SYSTEM_UPTIME_SECONDS to the prometheus registry failed.");
 
     REGISTRY
         .register(Box::new(MEMORY_TOTAL_BYTES.clone()))
@@ -313,6 +335,7 @@ pub async fn prometheus() {
 
         thread::sleep(one_second);
         set_highest_block();
+        set_themelio_node_uptime();
         set_system_metrics();
     });
 
