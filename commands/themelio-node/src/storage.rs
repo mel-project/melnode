@@ -372,15 +372,6 @@ impl NodeStorage {
         Ok(())
     }
 
-    // /// Convenience method to "share" storage.
-    // pub fn share(self) -> NodeStorage {
-    //     let toret = Arc::new(self);
-    //     let copy = toret.clone();
-    //     // start a background thread to periodically sync
-
-    //     toret
-    // }
-
     /// Gets the forest.
     pub fn forest(&self) -> &novasmt::Database<MeshaCas> {
         &self.forest

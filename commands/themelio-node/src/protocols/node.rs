@@ -77,26 +77,6 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStor
         let routes = network.routes();
         let random_peer = routes.first().cloned();
         if let Some(peer) = random_peer {
-            // #[cfg(not(feature = "metrics"))]
-            // log::debug!(
-            //     "{}: picked random peer {} out of {} peers {:?} for blksync",
-            //     tag(),
-            //     peer,
-            //     routes.len(),
-            //     routes
-            // );
-            // #[cfg(feature = "metrics")]
-            // log::debug!(
-            //     "hostname={} public_ip={} network={} {}: picked random peer {} out of {} peers {:?} for blksync",
-            //     crate::prometheus::HOSTNAME.as_str(),
-            //     crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-            //     crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-            //     tag(),
-            //     peer,
-            //     routes.len(),
-            //     routes
-            // );
-
             let client = NodeClient::new(netid, peer);
 
             let res = attempt_blksync(peer, &client, &storage).await;
@@ -283,7 +263,7 @@ impl NodeServer<MeshaCas> for AuditorResponder {
             .unwrap_or_default();
         Ok(StateSummary {
             netid: self.network,
-            height: self.storage.highest_height(),
+            height: highest.inner_ref().height,
             header: highest.header(),
             proof,
         })
