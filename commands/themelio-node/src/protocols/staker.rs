@@ -1,14 +1,15 @@
+use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
 use crate::storage::{MeshaCas, NodeStorage};
 
-use once_cell::sync::Lazy;
-
-use novasymph::BlockBuilder;
-use smol::prelude::*;
 use std::{
     net::SocketAddr,
     sync::Arc,
     time::{Duration, SystemTime},
 };
+
+use once_cell::sync::Lazy;
+use novasymph::BlockBuilder;
+use smol::prelude::*;
 use themelio_stf::SealedState;
 use themelio_structs::{Address, Block, BlockHeight, NetID, ProposerAction, Transaction, TxHash};
 use tmelcrypt::Ed25519SK;
@@ -47,10 +48,12 @@ impl StakerProtocol {
                 );
                 #[cfg(feature = "metrics")]
                 log::info!(
-                    "hostname={} public_ip={} network={} delta-height = {}; must be less than 5 to start staker",
+                    "hostname={} public_ip={} network={} region={} instance_id={} delta-height = {}; must be less than 5 to start staker",
                     crate::prometheus::HOSTNAME.as_str(),
                     crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
                     crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
+                    *AWS_REGION,
+                    *AWS_INSTANCE_ID,
                     y - x
                 );
 
@@ -65,10 +68,12 @@ impl StakerProtocol {
                     log::info!("epoch transitioning into {}!", current_epoch);
                     #[cfg(feature = "metrics")]
                     log::info!(
-                        "hostname={} public_ip={} network={} epoch transitioning into {}!",
+                        "hostname={} public_ip={} network={} region={} instance_id={} epoch transitioning into {}!",
                         crate::prometheus::HOSTNAME.as_str(),
                         crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
                         crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
+                        *AWS_REGION,
+                        *AWS_INSTANCE_ID,
                         current_epoch
                     );
 
@@ -96,10 +101,12 @@ impl StakerProtocol {
                         log::warn!("staker rebooting: {:?}", err);
                         #[cfg(feature = "metrics")]
                         log::warn!(
-                            "hostname={} public_ip={} network={} staker rebooting: {:?}",
+                            "hostname={} public_ip={} network={} region={} instance_id={} staker rebooting: {:?}",
                             crate::prometheus::HOSTNAME.as_str(),
                             crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
                             crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
+                            *AWS_REGION,
+                            *AWS_INSTANCE_ID,
                             err
                         );
 
@@ -169,10 +176,12 @@ async fn one_epoch_loop(
                 );
                 #[cfg(feature = "metrics")]
                 log::warn!(
-                    "hostname={} public_ip={} network={} could not apply confirmed block {} from novasymph: {:?}",
+                    "hostname={} public_ip={} network={} region={} instance_id={} could not apply confirmed block {} from novasymph: {:?}",
                     crate::prometheus::HOSTNAME.as_str(),
                     crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
                     crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
+                    *AWS_REGION,
+                    *AWS_INSTANCE_ID,
                     height,
                     err
                 );
@@ -220,13 +229,16 @@ impl BlockBuilder<MeshaCas> for StorageBlockBuilder {
             );
             #[cfg(feature = "metrics")]
             log::warn!(
-                "hostname={} public_ip={} network={} mempool {} doesn't extend from tip {}; building quasiempty block",
+                "hostname={} public_ip={} network={} region={} instance_id={} mempool {} doesn't extend from tip {}; building quasiempty block",
                 crate::prometheus::HOSTNAME.as_str(),
                 crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
                 crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
+                *AWS_REGION,
+                *AWS_INSTANCE_ID,
                 mempool_state.header().height,
                 tip.header().height
             );
+
             let next = tip.next_state().seal(Some(proposer_action));
             next.to_block()
         } else {

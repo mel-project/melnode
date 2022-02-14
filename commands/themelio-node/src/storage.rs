@@ -9,6 +9,9 @@ use std::{
 };
 
 use self::mempool::Mempool;
+use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
+
+use std::time::Duration;
 
 use anyhow::Context;
 use arc_swap::ArcSwap;
@@ -18,7 +21,6 @@ use parking_lot::RwLock;
 use smol::{channel::Sender, prelude::*};
 use smol_timeout::TimeoutExt;
 pub use smt::*;
-use std::time::Duration;
 
 use stdcode::StdcodeSerializeExt;
 use themelio_nodeprot::TrustStore;
@@ -359,12 +361,14 @@ impl NodeStorage {
         log::debug!("applied block {}", header.height);
         #[cfg(feature = "metrics")]
         log::debug!(
-            "hostname={} public_ip={} network={} applied block {}",
+            "hostname={} public_ip={} network={} region={} instance_id={} applied block {}",
             crate::prometheus::HOSTNAME.as_str(),
             crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
             crate::prometheus::NETWORK
                 .read()
                 .expect("Could not get a read lock on NETWORK."),
+            *AWS_REGION,
+            *AWS_INSTANCE_ID,
             header.height
         );
         let next = self.highest_state().next_state();

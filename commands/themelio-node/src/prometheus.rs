@@ -88,10 +88,9 @@ async fn aws_instance_id() -> Result<String, AWSError> {
     }
 }
 
+pub static AWS_REGION: Lazy<String> = Lazy::new(|| smol::future::block_on(async {aws_region().await.expect("Could not retrieve AWS region.")} ));
 
-static AWS_REGION: Lazy<String> = Lazy::new(|| smol::future::block_on(async {aws_region().await.expect("Could not retrieve AWS region.")} ));
-
-static AWS_INSTANCE_ID: Lazy<String> = Lazy::new(|| smol::future::block_on(async {aws_instance_id().await.expect("Could not retrieve AWS instance ID.")} ));
+pub static AWS_INSTANCE_ID: Lazy<String> = Lazy::new(|| smol::future::block_on(async {aws_instance_id().await.expect("Could not retrieve AWS instance ID.")} ));
 
 pub static GLOBAL_STORAGE: OnceCell<NodeStorage> = OnceCell::new();
 
@@ -265,10 +264,12 @@ fn metrics() -> Result<String, rweb::http::Error> {
         Ok(output) => output,
         Err(error) => {
             log::error!(
-                "hostname={} public_ip={} network={} Metrics could not be made into a string from UTF8: {}",
+                "hostname={} public_ip={} network={} region={} instance_id={} Metrics could not be made into a string from UTF8: {}",
                 crate::prometheus::HOSTNAME.as_str(),
                 crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
                 crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
+                *AWS_REGION,
+                *AWS_INSTANCE_ID,
                 error
             );
 
@@ -324,10 +325,12 @@ fn set_system_metrics() {
             SYSTEM_UPTIME_SECONDS.set(uptime.as_secs() as i64);
         }
         Err(error) => log::debug!(
-            "hostname={} public_ip={} network={} There was an error retrieving system uptime: {}",
+            "hostname={} public_ip={} network={} region={} instance_id={} There was an error retrieving system uptime: {}",
             crate::prometheus::HOSTNAME.as_str(),
             crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
             crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
+            *AWS_REGION,
+            *AWS_INSTANCE_ID,
             error
         ),
     }
@@ -345,10 +348,12 @@ fn set_system_metrics() {
             NETWORK_RECEIVED_BYTES.set(received_bytes as i64);
         }
         Err(error) => log::debug!(
-            "hostname={} public_ip={} network={} There was an error retrieving network traffic information: {}",
+            "hostname={} public_ip={} network={} region={} instance_id={} There was an error retrieving network traffic information: {}",
             crate::prometheus::HOSTNAME.as_str(),
             crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
             crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
+            *AWS_REGION,
+            *AWS_INSTANCE_ID,
             error
         ),
     }
@@ -369,10 +374,12 @@ fn set_system_metrics() {
             });
         }
         Err(error) => log::debug!(
-            "hostname={} public_ip={} network={} There was an error retrieving filesystem information: {}",
+            "hostname={} public_ip={} network={} region={} instance_id={} There was an error retrieving filesystem information: {}",
             crate::prometheus::HOSTNAME.as_str(),
             crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
             crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
+            *AWS_REGION,
+            *AWS_INSTANCE_ID,
             error
         ),
     }
