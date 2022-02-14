@@ -9,6 +9,8 @@ use std::{
 };
 
 use self::mempool::Mempool;
+
+#[cfg(feature = "metrics")]
 use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
 
 use std::time::Duration;

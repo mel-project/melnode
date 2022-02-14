@@ -1,4 +1,6 @@
+#[cfg(feature = "metrics")]
 use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
+
 use crate::storage::{MeshaCas, NodeStorage};
 
 use std::{

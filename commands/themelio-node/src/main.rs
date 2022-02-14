@@ -7,7 +7,9 @@ mod protocols;
 mod public_ip_address;
 mod storage;
 
+#[cfg(feature = "metrics")]
 use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
+
 use crate::protocols::{NodeProtocol, StakerProtocol};
 use crate::storage::NodeStorage;
 

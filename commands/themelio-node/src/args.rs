@@ -1,5 +1,7 @@
-use crate::storage::NodeStorage;
+#[cfg(feature = "metrics")]
 use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
+
+use crate::storage::NodeStorage;
 
 use std::{net::SocketAddr, path::PathBuf};
 
