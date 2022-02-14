@@ -13,6 +13,7 @@ use rweb::{get, serve};
 use systemstat::platform::PlatformImpl;
 use systemstat::{CPULoad, Memory, Platform, System};
 
+// Complete list of metadata endpoints available here: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-categories.html
 const AWS_API_TOKEN_URL: &'static str = "http://169.254.169.254/latest/api/token";
 
 const AWS_INSTANCE_REGION_URL: &'static str = "http://169.254.169.254/latest/meta-data/placement/region";
