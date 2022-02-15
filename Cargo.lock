@@ -3216,6 +3216,7 @@ dependencies = [
  "themelio-stf",
  "themelio-structs",
  "tmelcrypt",
+ "tokio",
  "tracing",
  "tracing-subscriber",
 ]
@@ -3413,7 +3414,10 @@ dependencies = [
  "memchr",
  "mio",
  "num_cpus",
+ "once_cell",
+ "parking_lot",
  "pin-project-lite 0.2.8",
+ "signal-hook-registry",
  "tokio-macros",
  "winapi",
 ]
