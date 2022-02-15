@@ -1,3 +1,8 @@
+#[cfg(feature = "metrics")]
+use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
+
+use crate::storage::NodeStorage;
+
 use std::{net::SocketAddr, path::PathBuf};
 
 use anyhow::Context;
@@ -8,8 +13,6 @@ use tap::Tap;
 use themelio_stf::GenesisConfig;
 use themelio_structs::{Address, BlockHeight};
 use tmelcrypt::Ed25519SK;
-
-use crate::storage::NodeStorage;
 
 #[derive(Debug, StructOpt)]
 pub struct Args {
@@ -177,11 +180,14 @@ impl Args {
         log::debug!("node storage opened");
         #[cfg(feature = "metrics")]
         log::debug!(
-            "hostname={} public_ip={} network={} node storage opened",
+            "hostname={} public_ip={} network={} region={} instance_id={} node storage opened",
             crate::prometheus::HOSTNAME.as_str(),
             crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-            crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK.")
+            crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
+            *AWS_REGION,
+            *AWS_INSTANCE_ID
         );
+
         Ok(storage)
     }
 
