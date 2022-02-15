@@ -3,13 +3,16 @@ use crate::storage::NodeStorage;
 use std::sync::RwLock;
 use std::thread;
 use std::time;
+use std::time::Duration;
 
+use async_compat::CompatExt;
 use once_cell::sync::{Lazy, OnceCell};
 use prometheus::{
     labels, opts, register_gauge, register_int_gauge, Encoder, Gauge, IntGauge, Registry,
     TextEncoder,
 };
 use rweb::{get, serve};
+use smol_timeout::TimeoutExt;
 use systemstat::platform::PlatformImpl;
 use systemstat::{CPULoad, Memory, Platform, System};
 
@@ -88,9 +91,9 @@ async fn aws_instance_id() -> Result<String, AWSError> {
     }
 }
 
-pub static AWS_REGION: Lazy<String> = Lazy::new(|| smol::future::block_on(async {aws_region().await.expect("Could not retrieve AWS region.")} ));
+pub static AWS_REGION: Lazy<String> = Lazy::new(|| smol::future::block_on(async {aws_region().compat().timeout(Duration::from_secs(1)).await.unwrap_or(Ok(String::from(""))).expect("Could not retrieve AWS region.")} ));
 
-pub static AWS_INSTANCE_ID: Lazy<String> = Lazy::new(|| smol::future::block_on(async {aws_instance_id().await.expect("Could not retrieve AWS instance ID.")} ));
+pub static AWS_INSTANCE_ID: Lazy<String> = Lazy::new(|| smol::future::block_on(async {aws_instance_id().compat().timeout(Duration::from_secs(1)).await.unwrap_or(Ok(String::from(""))).expect("Could not retrieve AWS instance ID.")} ));
 
 pub static GLOBAL_STORAGE: OnceCell<NodeStorage> = OnceCell::new();
 
