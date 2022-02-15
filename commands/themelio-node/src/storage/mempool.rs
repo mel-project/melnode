@@ -1,3 +1,8 @@
+#[cfg(feature = "metrics")]
+use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
+
+use crate::storage::MeshaCas;
+
 use std::collections::HashSet;
 
 use lru::LruCache;
@@ -5,7 +10,6 @@ use themelio_stf::{State, StateError};
 use themelio_structs::{Transaction, TxHash};
 use tmelcrypt::HashVal;
 
-use super::MeshaCas;
 
 /// Mempool encapsulates a "mempool" --- a provisional state that is used to form new blocks by stakers, or provisionally validate transactions by auditors.
 pub struct Mempool {
@@ -54,13 +58,16 @@ impl Mempool {
             );
             #[cfg(feature = "metrics")]
             log::trace!(
-                "hostname={} public_ip={} network={} rebasing mempool {} => {}",
+                "hostname={} public_ip={} network={} region={} instance_id={} rebasing mempool {} => {}",
                 crate::prometheus::HOSTNAME.as_str(),
                 crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
                 crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
+                *AWS_REGION,
+                *AWS_INSTANCE_ID,
                 self.provisional_state.height,
                 state.height
             );
+
             if self.provisional_state.transactions.root_hash() != HashVal::default() {
                 let count = self.provisional_state.transactions.val_iter().count();
                 log::warn!("*** THROWING AWAY {} MEMPOOL TXX ***", count);
