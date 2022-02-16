@@ -5,7 +5,6 @@ use std::thread;
 use std::time;
 use std::time::Duration;
 
-use async_compat::CompatExt;
 use once_cell::sync::{Lazy, OnceCell};
 use prometheus::{
     labels, opts, register_gauge, register_int_gauge, Encoder, Gauge, IntGauge, Registry,
