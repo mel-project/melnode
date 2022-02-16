@@ -17,8 +17,6 @@ use crate::protocols::{NodeProtocol, StakerProtocol};
 use crate::storage::NodeStorage;
 
 use args::Args;
-#[cfg(feature = "metrics")]
-use async_compat::Compat;
 use structopt::StructOpt;
 use tracing::instrument;
 
