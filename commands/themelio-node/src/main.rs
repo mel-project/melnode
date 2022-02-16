@@ -10,6 +10,9 @@ mod storage;
 #[cfg(feature = "metrics")]
 use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
 
+#[cfg(feature = "metrics")]
+use crate::prometheus::RUNTIME;
+
 use crate::protocols::{NodeProtocol, StakerProtocol};
 use crate::storage::NodeStorage;
 
@@ -119,7 +122,7 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
         .expect("Could not write to GLOBAL_STORAGE");
 
     #[cfg(feature = "metrics")]
-    Compat::new(crate::prometheus::prometheus()).await;
+    smol::unblock(|| RUNTIME.block_on(crate::prometheus::prometheus())).await;
 
     smol::future::pending().await
 }
