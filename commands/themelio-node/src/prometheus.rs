@@ -3,6 +3,7 @@ use crate::storage::NodeStorage;
 use std::sync::RwLock;
 use std::thread;
 use std::time;
+use std::time::Duration;
 
 use once_cell::sync::{Lazy, OnceCell};
 use prometheus::{
@@ -10,8 +11,12 @@ use prometheus::{
     TextEncoder,
 };
 use rweb::{get, serve};
+use smol_timeout::TimeoutExt;
 use systemstat::platform::PlatformImpl;
 use systemstat::{CPULoad, Memory, Platform, System};
+use tokio::runtime::Runtime;
+
+pub static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().expect("Could not create tokio runtime."));
 
 // Complete list of metadata endpoints available here: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-categories.html
 const AWS_API_TOKEN_URL: &'static str = "http://169.254.169.254/latest/api/token";
@@ -88,9 +93,9 @@ async fn aws_instance_id() -> Result<String, AWSError> {
     }
 }
 
-pub static AWS_REGION: Lazy<String> = Lazy::new(|| smol::future::block_on(async {aws_region().await.expect("Could not retrieve AWS region.")} ));
+pub static AWS_REGION: Lazy<String> = Lazy::new(|| RUNTIME.block_on(async {aws_region().timeout(Duration::from_secs(1)).await.unwrap_or(Ok(String::from(""))).expect("Could not retrieve AWS region.")} ));
 
-pub static AWS_INSTANCE_ID: Lazy<String> = Lazy::new(|| smol::future::block_on(async {aws_instance_id().await.expect("Could not retrieve AWS instance ID.")} ));
+pub static AWS_INSTANCE_ID: Lazy<String> = Lazy::new(|| RUNTIME.block_on(async {aws_instance_id().timeout(Duration::from_secs(1)).await.unwrap_or(Ok(String::from(""))).expect("Could not retrieve AWS instance ID.")} ));
 
 pub static GLOBAL_STORAGE: OnceCell<NodeStorage> = OnceCell::new();
 
