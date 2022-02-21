@@ -62,8 +62,8 @@ else
   fi
 fi
 
-echo "Sleeping for 5 seconds for the service to start."
-sleep 5
+echo "Sleeping for 7 seconds for the service to start."
+sleep 7
 
 if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
   if bats --print-output-on-failure "scripts/test-local-mainnet.bats"; then
