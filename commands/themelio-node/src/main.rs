@@ -11,14 +11,18 @@ mod storage;
 use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
 
 #[cfg(feature = "metrics")]
-use crate::prometheus::RUNTIME;
+use tokio::runtime::Runtime;
 
 use crate::protocols::{NodeProtocol, StakerProtocol};
 use crate::storage::NodeStorage;
 
 use args::Args;
+use once_cell::sync::Lazy;
 use structopt::StructOpt;
 use tracing::instrument;
+
+#[cfg(feature = "metrics")]
+pub static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().expect("Could not create tokio runtime."));
 
 #[cfg(unix)]
 #[global_allocator]
@@ -59,14 +63,21 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub async fn main_async(opt: Args) -> anyhow::Result<()> {
     #[cfg(not(feature = "metrics"))]
     log::info!("themelio-core v{} initializing...", VERSION);
+
+    #[cfg(feature = "metrics")]
+    AWS_REGION.set(String::from("")).expect("Could not set AWS_REGION");
+
+    #[cfg(feature = "metrics")]
+    AWS_INSTANCE_ID.set(String::from("")).expect("Could not set AWS_INSTANCE_ID");
+
     #[cfg(feature = "metrics")]
     log::info!(
         "hostname={} public_ip={} network={} region={} instance_id={} themelio-core v{} initializing...",
         crate::prometheus::HOSTNAME.as_str(),
         crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
         crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-        *AWS_REGION,
-        *AWS_INSTANCE_ID,
+        AWS_REGION.get().expect("Could not get AWS_REGION"),
+        AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID"),
         VERSION
     );
     let genesis = opt.genesis_config().await?;
@@ -81,8 +92,8 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
         crate::prometheus::HOSTNAME.as_str(),
         crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
         crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-        *AWS_REGION,
-        *AWS_INSTANCE_ID,
+        AWS_REGION.get().expect("Could not get AWS_REGION"),
+        AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID"),
         bootstrap
     );
     let _node_prot = NodeProtocol::new(
@@ -120,7 +131,10 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
         .expect("Could not write to GLOBAL_STORAGE");
 
     #[cfg(feature = "metrics")]
-    smol::unblock(|| RUNTIME.block_on(crate::prometheus::prometheus())).await;
+    std::thread::spawn(|| RUNTIME.block_on(crate::prometheus::prometheus()));
+
+    #[cfg(feature = "metrics")]
+    std::thread::spawn(|| RUNTIME.block_on(crate::prometheus::run_aws_information()));
 
     smol::future::pending().await
 }
