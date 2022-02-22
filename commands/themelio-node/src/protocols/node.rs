@@ -96,8 +96,8 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStor
                         crate::prometheus::NETWORK
                             .read()
                             .expect("Could not get a read lock on NETWORK."),
-                        *AWS_REGION,
-                        *AWS_INSTANCE_ID,
+                        AWS_REGION.get().expect("Could not get AWS_REGION"),
+                        AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID"),
                         tag(),
                         peer,
                         e
@@ -117,8 +117,8 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStor
                             crate::prometheus::NETWORK
                                 .read()
                                 .expect("Could not get a read lock on NETWORK."),
-                            *AWS_REGION,
-                            *AWS_INSTANCE_ID,
+                            AWS_REGION.get().expect("Could not get AWS_REGION"),
+                            AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID"),
                             storage.highest_height()
                         );
 
@@ -187,8 +187,8 @@ async fn attempt_blksync(
             crate::prometheus::NETWORK
                 .read()
                 .expect("Could not get a read lock on NETWORK."),
-            *AWS_REGION,
-            *AWS_INSTANCE_ID,
+            AWS_REGION.get().expect("Could not get AWS_REGION"),
+            AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID"),
             block.header.height,
             addr
         );
@@ -233,8 +233,8 @@ impl NodeServer<MeshaCas> for AuditorResponder {
             crate::prometheus::HOSTNAME.as_str(),
             crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
             crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-            *AWS_REGION,
-            *AWS_INSTANCE_ID,
+            AWS_REGION.get().expect("Could not get AWS_REGION"),
+            AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID"),
             &tx.hash_nosigs().to_string()[..10],
             start.elapsed(),
             post_lock - start,

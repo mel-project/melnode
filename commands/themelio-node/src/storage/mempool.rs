@@ -62,8 +62,8 @@ impl Mempool {
                 crate::prometheus::HOSTNAME.as_str(),
                 crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
                 crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-                *AWS_REGION,
-                *AWS_INSTANCE_ID,
+                AWS_REGION.get().expect("Could not get AWS_REGION"),
+                AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID"),
                 self.provisional_state.height,
                 state.height
             );
