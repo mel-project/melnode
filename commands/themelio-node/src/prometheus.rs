@@ -150,9 +150,9 @@ async fn aws_instance_id() -> Result<String, AWSError> {
 
 
 
-pub static AWS_REGION: OnceCell<String> = OnceCell::new();
+pub static AWS_REGION: Lazy<RwLock<String>> = Lazy::new(|| RwLock::new(String::from("")));
 
-pub static AWS_INSTANCE_ID: OnceCell<String> = OnceCell::new();
+pub static AWS_INSTANCE_ID: Lazy<RwLock<String>> = Lazy::new(|| RwLock::new(String::from("")));
 
 pub async fn update_aws_information() {
     let aws_region_result: Result<String, AWSError> = aws_region().await;
@@ -166,7 +166,9 @@ pub async fn update_aws_information() {
         },
     };
 
-    AWS_REGION.set(aws_region).expect("Could not set AWS_REGION");
+    let mut aws_region_write = AWS_REGION.write().expect("Could not get a write lock on AWS_REGION.");
+
+    *aws_region_write = aws_region;
 
 
     let aws_instance_id_result: Result<String, AWSError> = aws_instance_id().await;
@@ -180,7 +182,9 @@ pub async fn update_aws_information() {
         },
     };
 
-    AWS_INSTANCE_ID.set(aws_instance_id).expect("Could not set AWS_INSTANCE_ID");
+    let mut aws_instance_id_write = AWS_INSTANCE_ID.write().expect("Could not get a write lock on AWS_INSTANCE_ID.");
+
+    *aws_instance_id_write = aws_instance_id;
 }
 
 
@@ -200,145 +204,194 @@ pub static HOSTNAME: Lazy<String> = Lazy::new(|| {
 });
 
 static HIGHEST_BLOCK: Lazy<IntGauge> = Lazy::new(|| {
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID").clone();
+
+    let aws_region: String = AWS_REGION.read().expect("Could not get a read lock on AWS_REGION").clone();
+    
     register_int_gauge!(opts!(
         "themelio_node_highest_block",
         "Highest Block",
         labels! {"hostname" => HOSTNAME.as_str(),
         "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
-        "region" => &AWS_REGION.get().expect("Could not get AWS_REGION"),
-        "instance_id" => &AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID")}
+        "region" => &aws_region,
+        "instance_id" => &aws_instance_id}
     ))
     .expect("Could not create HIGHEST_BLOCK IntGauge.")
 });
 
 static THEMELIO_NODE_UPTIME_SECONDS: Lazy<IntGauge> = Lazy::new(|| {
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID").clone();
+
+    let aws_region: String = AWS_REGION.read().expect("Could not get a read lock on AWS_REGION").clone();
+
     register_int_gauge!(opts!(
         "themelio_node_uptime_seconds",
         "Uptime (Themelio-Node, In Seconds)",
         labels! {"hostname" => HOSTNAME.as_str(),
         "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
-        "region" => &AWS_REGION.get().expect("Could not get AWS_REGION"),
-        "instance_id" => &AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID")}
+        "region" => &aws_region,
+        "instance_id" => &aws_instance_id}
     ))
         .expect("Could not create THEMELIO_NODE_UPTIME_SECONDS IntGauge.")
 });
 
 static SYSTEM_UPTIME_SECONDS: Lazy<IntGauge> = Lazy::new(|| {
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID").clone();
+
+    let aws_region: String = AWS_REGION.read().expect("Could not get a read lock on AWS_REGION").clone();
+
     register_int_gauge!(opts!(
         "themelio_node_system_uptime_seconds",
         "Uptime (System, In Seconds)",
         labels! {"hostname" => HOSTNAME.as_str(),
         "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
-        "region" => &AWS_REGION.get().expect("Could not get AWS_REGION"),
-        "instance_id" => &AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID")}
+        "region" => &aws_region,
+        "instance_id" => &aws_instance_id}
     ))
     .expect("Could not create SYSTEM_UPTIME_SECONDS IntGauge.")
 });
 
 static MEMORY_TOTAL_BYTES: Lazy<IntGauge> = Lazy::new(|| {
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID").clone();
+
+    let aws_region: String = AWS_REGION.read().expect("Could not get a read lock on AWS_REGION").clone();
+
     register_int_gauge!(opts!(
         "themelio_node_memory_total_bytes",
         "Total Memory (In Bytes)",
         labels! {"hostname" => HOSTNAME.as_str(),
         "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
-        "region" => &AWS_REGION.get().expect("Could not get AWS_REGION"),
-        "instance_id" => &AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID")}
+        "region" => &aws_region,
+        "instance_id" => &aws_instance_id}
     ))
     .expect("Could not create MEMORY_TOTAL_BYTES IntGauge.")
 });
 
 static MEMORY_FREE_BYTES: Lazy<IntGauge> = Lazy::new(|| {
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID").clone();
+
+    let aws_region: String = AWS_REGION.read().expect("Could not get a read lock on AWS_REGION").clone();
+
     register_int_gauge!(opts!(
         "themelio_node_memory_free_bytes",
         "Free Memory (In Bytes)",
         labels! {"hostname" => HOSTNAME.as_str(),
         "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
-        "region" => &AWS_REGION.get().expect("Could not get AWS_REGION"),
-        "instance_id" => &AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID")}
+        "region" => &aws_region,
+        "instance_id" => &aws_instance_id}
     ))
     .expect("Could not create MEMORY_FREE_BYTES IntGauge.")
 });
 
 static NETWORK_TRANSMITTED_BYTES: Lazy<IntGauge> = Lazy::new(|| {
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID").clone();
+
+    let aws_region: String = AWS_REGION.read().expect("Could not get a read lock on AWS_REGION").clone();
+
     register_int_gauge!(opts!(
         "themelio_node_network_transmitted_bytes",
         "Network Data Transmitted (In Bytes)",
         labels! {"hostname" => HOSTNAME.as_str(),
         "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
-        "region" => &AWS_REGION.get().expect("Could not get AWS_REGION"),
-        "instance_id" => &AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID")}
+        "region" => &aws_region,
+        "instance_id" => &aws_instance_id}
     ))
     .expect("Could not create NETWORK_TRANSMITTED_BYTES IntGauge.")
 });
 
 static NETWORK_RECEIVED_BYTES: Lazy<IntGauge> = Lazy::new(|| {
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID").clone();
+
+    let aws_region: String = AWS_REGION.read().expect("Could not get a read lock on AWS_REGION").clone();
+
     register_int_gauge!(opts!(
         "themelio_node_network_received_bytes",
         "Network Data Received (In Bytes)",
         labels! {"hostname" => HOSTNAME.as_str(),
         "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
-        "region" => &AWS_REGION.get().expect("Could not get AWS_REGION"),
-        "instance_id" => &AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID")}
+        "region" => &aws_region,
+        "instance_id" => &aws_instance_id}
     ))
     .expect("Could not create NETWORK_RECEIVED_BYTES IntGauge.")
 });
 
 static ROOT_FILESYSTEM_TOTAL_BYTES: Lazy<IntGauge> = Lazy::new(|| {
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID").clone();
+
+    let aws_region: String = AWS_REGION.read().expect("Could not get a read lock on AWS_REGION").clone();
+
     register_int_gauge!(opts!(
         "themelio_node_root_filesystem_total_bytes",
         "Root Filesystem Total Space (In Bytes)",
         labels! {"hostname" => HOSTNAME.as_str(),
         "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
-        "region" => &AWS_REGION.get().expect("Could not get AWS_REGION"),
-        "instance_id" => &AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID")}
+        "region" => &aws_region,
+        "instance_id" => &aws_instance_id}
     ))
     .expect("Could not create ROOT_FILESYSTEM_TOTAL_BYTES IntGauge.")
 });
 
 static ROOT_FILESYSTEM_FREE_BYTES: Lazy<IntGauge> = Lazy::new(|| {
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID").clone();
+
+    let aws_region: String = AWS_REGION.read().expect("Could not get a read lock on AWS_REGION").clone();
+
     register_int_gauge!(opts!(
         "themelio_node_root_filesystem_free_bytes",
         "Root Filesystem Free Space (In Bytes)",
         labels! {"hostname" => HOSTNAME.as_str(),
         "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
-        "region" => &AWS_REGION.get().expect("Could not get AWS_REGION"),
-        "instance_id" => &AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID")}
+        "region" => &aws_region,
+        "instance_id" => &aws_instance_id}
     ))
     .expect("Could not create ROOT_FILESYSTEM_FREE_BYTES IntGauge.")
 });
 
 static CPU_LOAD_USER: Lazy<Gauge> = Lazy::new(|| {
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID").clone();
+
+    let aws_region: String = AWS_REGION.read().expect("Could not get a read lock on AWS_REGION").clone();
+
     register_gauge!(opts!(
         "themelio_node_cpu_load_user_percentage",
         "User CPU Load (Percentage)",
         labels! {"hostname" => HOSTNAME.as_str(),
         "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
-        "region" => &AWS_REGION.get().expect("Could not get AWS_REGION"),
-        "instance_id" => &AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID")}
+        "region" => &aws_region,
+        "instance_id" => &aws_instance_id}
     ))
     .expect("Could not create CPU_LOAD_USER IntGauge.")
 });
 
 static CPU_LOAD_SYSTEM: Lazy<Gauge> = Lazy::new(|| {
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID").clone();
+
+    let aws_region: String = AWS_REGION.read().expect("Could not get a read lock on AWS_REGION").clone();
+
     register_gauge!(opts!(
         "themelio_node_cpu_load_system_percentage",
         "System CPU Load (Percentage)",
         labels! {"hostname" => HOSTNAME.as_str(),
         "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
-        "region" => &AWS_REGION.get().expect("Could not get AWS_REGION"),
-        "instance_id" => &AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID")}
+        "region" => &aws_region,
+        "instance_id" => &aws_instance_id}
     ))
     .expect("Could not create CPU_LOAD_SYSTEM IntGauge.")
 });
 
 static CPU_LOAD_IDLE: Lazy<Gauge> = Lazy::new(|| {
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID").clone();
+
+    let aws_region: String = AWS_REGION.read().expect("Could not get a read lock on AWS_REGION").clone();
+
+
     register_gauge!(opts!(
         "themelio_node_cpu_load_idle_percentage",
         "Idle CPU Load (Percentage)",
         labels! {"hostname" => HOSTNAME.as_str(),
         "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
-        "region" => &AWS_REGION.get().expect("Could not get AWS_REGION"),
-        "instance_id" => &AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID")}
+        "region" => &aws_region,
+        "instance_id" => &aws_instance_id}
     ))
     .expect("Could not create CPU_LOAD_IDLE IntGauge.")
 });
@@ -361,8 +414,8 @@ fn metrics() -> Result<String, rweb::http::Error> {
                 crate::prometheus::HOSTNAME.as_str(),
                 crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
                 crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-                AWS_REGION.get().expect("Could not get AWS_REGION"),
-                AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID"),
+                AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
+                AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
                 error
             );
 
@@ -422,8 +475,8 @@ fn set_system_metrics() {
             crate::prometheus::HOSTNAME.as_str(),
             crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
             crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-            AWS_REGION.get().expect("Could not get AWS_REGION"),
-            AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID"),
+            AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
+            AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
             error
         ),
     }
@@ -445,8 +498,8 @@ fn set_system_metrics() {
             crate::prometheus::HOSTNAME.as_str(),
             crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
             crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-            AWS_REGION.get().expect("Could not get AWS_REGION"),
-            AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID"),
+            AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
+            AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
             error
         ),
     }
@@ -471,8 +524,8 @@ fn set_system_metrics() {
             crate::prometheus::HOSTNAME.as_str(),
             crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
             crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-            AWS_REGION.get().expect("Could not get AWS_REGION"),
-            AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID"),
+            AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
+            AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
             error
         ),
     }
@@ -481,7 +534,7 @@ fn set_system_metrics() {
 pub async fn run_aws_information() {
     loop {
         log::debug!("Starting the update call.");
-        let output = update_aws_information().timeout(time::Duration::from_secs(2)).await;
+        let output: Option<()> = update_aws_information().timeout(time::Duration::from_secs(2)).await;
 
         match output {
             Some(_message) => log::debug!("Successfully updated AWS information."),
@@ -499,8 +552,8 @@ pub async fn prometheus(){
         crate::prometheus::HOSTNAME.as_str(),
         crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
         crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-        AWS_REGION.get().expect("Could not get AWS_REGION"),
-        AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID")
+        AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
+        AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID")
     );
 
     REGISTRY

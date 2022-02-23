@@ -369,8 +369,8 @@ impl NodeStorage {
             crate::prometheus::NETWORK
                 .read()
                 .expect("Could not get a read lock on NETWORK."),
-            AWS_REGION.get().expect("Could not get AWS_REGION"),
-            AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID"),
+            AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
+            AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
             header.height
         );
         let next = self.highest_state().next_state();
