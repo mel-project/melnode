@@ -65,19 +65,13 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
     log::info!("themelio-core v{} initializing...", VERSION);
 
     #[cfg(feature = "metrics")]
-    AWS_REGION.set(String::from("")).expect("Could not set AWS_REGION");
-
-    #[cfg(feature = "metrics")]
-    AWS_INSTANCE_ID.set(String::from("")).expect("Could not set AWS_INSTANCE_ID");
-
-    #[cfg(feature = "metrics")]
     log::info!(
         "hostname={} public_ip={} network={} region={} instance_id={} themelio-core v{} initializing...",
         crate::prometheus::HOSTNAME.as_str(),
         crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
         crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-        AWS_REGION.get().expect("Could not get AWS_REGION"),
-        AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID"),
+        AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
+        AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
         VERSION
     );
     let genesis = opt.genesis_config().await?;
@@ -92,8 +86,8 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
         crate::prometheus::HOSTNAME.as_str(),
         crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
         crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-        AWS_REGION.get().expect("Could not get AWS_REGION"),
-        AWS_INSTANCE_ID.get().expect("Could not get AWS_INSTANCE_ID"),
+        AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
+        AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
         bootstrap
     );
     let _node_prot = NodeProtocol::new(
