@@ -14,10 +14,11 @@
       reboot:
         reboot_timeout: 3600
 
-    - name: Install gnupg
+    - name: Install gnupg and docker python module
       ansible.builtin.apt:
         name:
           - gnupg
+          - python3-docker
         update_cache: yes
         state: latest
 
