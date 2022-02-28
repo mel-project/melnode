@@ -533,7 +533,6 @@ fn set_system_metrics() {
 
 pub async fn run_aws_information() {
     loop {
-        log::debug!("Starting the update call.");
         let output: Option<()> = update_aws_information().timeout(time::Duration::from_secs(2)).await;
 
         match output {
