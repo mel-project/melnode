@@ -73,8 +73,8 @@ jobs:
           BIOME_AUTH_TOKEN: ${{ secrets.BIOME_AUTH_TOKEN }}
           HABITAT_AUTH_TOKEN: ${{ secrets.HABITAT_AUTH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
-          PROMTAIL_PASSWORD: ${{ secrets.PROMTAIL_PASSWORD }}
+          LOKI_USERNAME: ${{ secrets.LOKI_USERNAME }}
+          LOKI_PASSWORD: ${{ secrets.LOKI_PASSWORD }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
