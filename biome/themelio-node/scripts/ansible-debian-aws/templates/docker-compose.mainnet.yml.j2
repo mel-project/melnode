@@ -12,16 +12,11 @@ services:
       - 11814:11814
       - 8080:8080
     hostname: ${HOSTNAME}
+    environment:
+      - LOKI_USERNAME=${LOKI_USERNAME}
+      - LOKI_PASSWORD=${LOKI_PASSWORD}
     volumes:
       - themelio-node-mainnet:/hab/svc/themelio-node-mainnet/data
-
-  promtail:
-    image: ghcr.io/themeliolabs/promtail:latest
-    ports:
-      - 9080:9080
-    volumes:
-      - /var/lib/docker/containers:/var/lib/docker/containers
-      - /home/admin/compose/promtail.toml:/hab/user/promtail/config/user.toml
 
 volumes:
   themelio-node-mainnet:
