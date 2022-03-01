@@ -1,6 +1,8 @@
 mod args;
 mod blkidx;
 #[cfg(feature = "metrics")]
+mod loki;
+#[cfg(feature = "metrics")]
 mod prometheus;
 mod protocols;
 #[cfg(feature = "metrics")]
@@ -126,6 +128,9 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
 
     #[cfg(feature = "metrics")]
     std::thread::spawn(|| RUNTIME.block_on(crate::prometheus::prometheus()));
+
+    #[cfg(feature = "metrics")]
+    std::thread::spawn(|| RUNTIME.block_on(crate::loki::loki()));
 
     #[cfg(feature = "metrics")]
     std::thread::spawn(|| RUNTIME.block_on(crate::prometheus::run_aws_information()));
