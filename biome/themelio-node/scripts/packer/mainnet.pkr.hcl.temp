@@ -24,7 +24,7 @@ build {
     playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-aws/install-mainnet.yml"
     user = "admin"
     extra_arguments = [
-      "--extra-vars", "aws_region=$AWS_REGION promtail_username=$PROMTAIL_USERNAME promtail_password=$PROMTAIL_PASSWORD"
+      "--extra-vars", "aws_region=$AWS_REGION loki_username=$LOKI_USERNAME loki_password=$LOKI_PASSWORD"
     ]
     ansible_env_vars = [
       "ANSIBLE_SSH_ARGS='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o AddKeysToAgent=no -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa'",

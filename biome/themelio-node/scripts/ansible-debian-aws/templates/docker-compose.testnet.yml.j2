@@ -13,8 +13,8 @@ services:
       - 8080:8080
     hostname: ${HOSTNAME}
     environment:
-      - LOKI_USERNAME=$LOKI_USERNAME
-      - LOKI_PASSWORD=$LOKI_PASSWORD
+      - LOKI_USERNAME={{ loki_username }}
+      - LOKI_PASSWORD={{ loki_password }}
     volumes:
       - themelio-node-testnet:/hab/svc/themelio-node-testnet/data
 
