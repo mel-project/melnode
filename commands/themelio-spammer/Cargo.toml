@@ -7,7 +7,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.54"
+anyhow = "1.0.55"
 governor = "0.3.2"
 priority-queue = "1.2.1"
 rand = "0.8.5"
