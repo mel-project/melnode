@@ -6,7 +6,8 @@ members = [
     "commands/themelio-spammer",
 
     "libs/novasymph",  
-    "libs/blkdb"
+    "libs/blkdb",
+    "libs/loki-logger"
 ]
 
 [profile.dev]
@@ -18,16 +19,16 @@ overflow-checks = true
 panic = "abort"
 opt-level = 3
 overflow-checks = true
-debug=0
-lto=true 
-codegen-units=1
+debug = 0
+lto = true
+codegen-units = 1
 
 # [patch.crates-io]
 # themelio-stf={path="../themelio-stf"}  
 
 [profile.release-dbg]
 inherits = "release"
-debug=2
+debug = 2
 panic = "abort"
-lto=false
-codegen-units=32
+lto = false
+codegen-units = 32

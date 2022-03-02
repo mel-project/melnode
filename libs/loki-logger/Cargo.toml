@@ -14,10 +14,14 @@ default = [ "trust-dns" ]
 blocking = [ "reqwest/blocking" ]
 trust-dns = [ "reqwest/trust-dns" ]
 
+[dependencies.reqwest]
+version = "0.11.9"
+features = ["json", "rustls-tls"]
+default-features = false
+
 [dependencies]
 log = { version = "0.4.14", features = ["kv_unstable", "std"] }
 tokio = { version = "1.17.0", features = ["full"] }
-reqwest = { version = "0.11.6", features = ["json", "rustls-tls" ], default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 
 [dev-dependencies]
