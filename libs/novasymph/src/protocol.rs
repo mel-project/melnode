@@ -11,7 +11,7 @@ use crate::{
 };
 use thiserror::Error;
 use melnet::{Request, MelnetError};
-use crate::blockgraph::{ProposalRejection, BlockGraphDiff};
+use crate::blockgraph::{BlockGraph, ProposalRejection, BlockGraphDiff};
 use binary_search::{binary_search, Direction};
 use derivative::Derivative;
 use futures_util::future::TryFutureExt;
@@ -22,7 +22,7 @@ use smol::{channel::Receiver, future::Boxed};
 use smol::{channel::Sender, prelude::*};
 use smol_timeout::TimeoutExt;
 use std::{
-    collections::{BTreeMap, HashSet},
+    collections::{BTreeSet, BTreeMap, HashSet},
     convert::TryInto,
     net::SocketAddr,
     sync::Arc,
@@ -77,9 +77,12 @@ impl<C: ContentAddrStore> EpochProtocol<C> {
     pub fn new<B: BlockBuilder<C>>(cfg: EpochConfig<B, C>) -> Self {
         //height_to_proposer: Box<dyn Fn(BlockHeight) -> Ed25519PK + Send + Sync + 'static>) -> Self {
         let (send_confirmed, recv_confirmed) = smol::channel::unbounded();
+
+        let blockgraph = BlockGraph::new(cfg.genesis.clone());
         let cstate = Arc::new(RwLock::new(ChainState::new(
             cfg.genesis.clone(),
             cfg.forest.clone(),
+            blockgraph,
         )));
         Self {
             _task: {
@@ -237,9 +240,14 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
         let vote_loop = async {
             loop {
                 cstate.write().vote_all(cfg.signing_sk);
+                for block in cstate.write().blockgraph.drain_finalized() {
+                    let _ = send_finalized.try_send(block);
+                }
+                /*
                 for block in cstate.write().drain_finalized() {
                     let _ = send_finalized.try_send(block);
                 }
+                */
                 let hint_tip = cstate.read().get_lnc_state();
                 cfg.builder.hint_next_build(hint_tip);
                 smol::Timer::after(Duration::from_secs(1)).await;

@@ -30,6 +30,7 @@ impl<C: ContentAddrStore> ChainState<C> {
     pub fn new(
         genesis: SealedState<C>,
         forest: novasmt::Database<C>,
+        blockgraph: BlockGraph<C>,
         //height_to_proposer: Box<dyn Fn(BlockHeight) -> Ed25519PK + Sync + Send + 'static>,
     ) -> Self {
         let height_to_proposer = crate::protocol::gen_get_proposer(genesis.clone());
@@ -38,7 +39,7 @@ impl<C: ContentAddrStore> ChainState<C> {
         let mut inner = BlockTree::new(InMemoryDb::default(), forest.clone());
         inner.set_genesis(genesis.clone(), &[]);
         //let height_to_proposer = crate::protocol::gen_get_proposer(genesis.clone()).await;
-        let blockgraph = BlockGraph::new(genesis, Box::new(height_to_proposer));
+        //let blockgraph = BlockGraph::new(genesis, Box::new(height_to_proposer));
         Self {
             epoch,
             stakes,

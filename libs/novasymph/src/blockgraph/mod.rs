@@ -3,6 +3,7 @@ use std::{
     sync::Arc,
 };
 
+use crate::protocol::{EpochConfig, BlockBuilder};
 use serde::{Serialize, Deserialize};
 use novasmt::ContentAddrStore;
 use num_integer::Integer;
@@ -19,24 +20,31 @@ use crate::msg::{ProposalSig, VoteSig};
 pub type Summary = BTreeMap<HashVal, HashVal>;
 
 pub struct BlockGraph<C: ContentAddrStore> {
+    /// Latest sealed state
     root: SealedState<C>,
+    /// Mapping from a block hash to the hashes of blocks that reference it
     parent_to_child: BTreeMap<HashVal, BTreeSet<HashVal>>,
+    /// Mapping of block proposals by their hashes
     proposals: BTreeMap<HashVal, Proposal>,
+    /// Mapping of pub-key with signature to a block hash that it is voting for
     votes: BTreeMap<HashVal, BTreeMap<Ed25519PK, VoteSig>>,
+    /// Mapping of amount staked by public key
     vote_weights: BTreeMap<Ed25519PK, u128>,
+    /// A function to get the block proposer's public key for a given block height (consensus round)
     correct_proposer: Box<dyn Fn(BlockHeight) -> Ed25519PK + Send + Sync + 'static>,
 }
 
 impl<C: ContentAddrStore> BlockGraph<C> {
-    /// Returns an empty [BlockGraph] given a beginning [SealedState] and a function
-    /// to determine the proposer for a given block height.
-    pub fn new(
-        root: SealedState<C>,
-        correct_proposer: Box<dyn Fn(BlockHeight) -> Ed25519PK + Send + Sync + 'static>,
-    ) -> BlockGraph<C> {
+    pub fn new(root: SealedState<C>) -> Self {
+        // Add root to the parent->child map for a blockgraph
+        let mut parent_to_child = BTreeMap::new();
+        parent_to_child.insert(root.header().hash(), BTreeSet::new());
+
+        let correct_proposer = Box::new(crate::protocol::gen_get_proposer(root.clone()));
+
         BlockGraph {
             root,
-            parent_to_child: BTreeMap::new(),
+            parent_to_child,
             proposals: BTreeMap::new(),
             votes: BTreeMap::new(),
             vote_weights: BTreeMap::new(),
@@ -113,13 +121,14 @@ impl<C: ContentAddrStore> BlockGraph<C> {
                 }
                 return accum;
             }
-            for child in self.parent_to_child[&fringe_node].iter().copied() {
-                let actual_child = self.proposals[&child].clone();
-                let child_height = actual_child.block.header.height;
+            //println!("Searching {:?} for {fringe_node}", self.parent_to_child);
+            for child_hash in self.parent_to_child[&fringe_node].iter().copied() {
+                let child = self.proposals[&child_hash].clone();
+                let child_height = child.block.header.height;
                 if child_height == height + BlockHeight(1) {
-                    dfs_stack.push((child, child_height, consec + 1))
+                    dfs_stack.push((child_hash, child_height, consec + 1))
                 } else {
-                    dfs_stack.push((child, child_height, 1))
+                    dfs_stack.push((child_hash, child_height, 1))
                 }
             }
         }
