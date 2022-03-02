@@ -11,7 +11,8 @@ version = "0.2.1"
 optional = true
 
 [dependencies.loki-logger]
-version = "0.1.3"
+version = "0.1.4"
+path = "../../libs/loki-logger"
 optional = true
 
 [dependencies.prometheus]
