@@ -9,10 +9,13 @@ use crate::{
     msg::ProposalSig,
     NS_EXECUTOR,
 };
+use thiserror::Error;
+use melnet::{Request, MelnetError};
+use crate::blockgraph::{ProposalRejection, BlockGraphDiff};
 use binary_search::{binary_search, Direction};
 use derivative::Derivative;
+use futures_util::future::TryFutureExt;
 use futures_util::stream::FuturesOrdered;
-use melnet::Request;
 use novasmt::ContentAddrStore;
 use parking_lot::RwLock;
 use smol::{channel::Receiver, future::Boxed};
@@ -72,6 +75,7 @@ pub struct EpochProtocol<C: ContentAddrStore> {
 impl<C: ContentAddrStore> EpochProtocol<C> {
     /// Create a new instance of the protocol over melnet.
     pub fn new<B: BlockBuilder<C>>(cfg: EpochConfig<B, C>) -> Self {
+        //height_to_proposer: Box<dyn Fn(BlockHeight) -> Ed25519PK + Send + Sync + 'static>) -> Self {
         let (send_confirmed, recv_confirmed) = smol::channel::unbounded();
         let cstate = Arc::new(RwLock::new(ChainState::new(
             cfg.genesis.clone(),
@@ -100,6 +104,79 @@ impl<C: ContentAddrStore> EpochProtocol<C> {
     }
 }
 
+#[derive(Error, Debug)]
+enum ProtocolError {
+    #[error("melnet error: {0}")]
+    Melnet(melnet::MelnetError),
+    #[error("proposal rejection: {0}")]
+    Proposal(crate::blockgraph::ProposalRejection),
+    #[error("custom protocol error: {0}")]
+    Custom(String),
+}
+
+impl From<ProposalRejection> for ProtocolError {
+    fn from(e: ProposalRejection) -> Self {
+        ProtocolError::Proposal(e)
+    }
+}
+
+impl From<MelnetError> for ProtocolError {
+    fn from(e: MelnetError) -> Self {
+        ProtocolError::Melnet(e)
+    }
+}
+
+async fn gossip_and_add_diff<C: ContentAddrStore>(
+    cstate: &mut Arc<RwLock<ChainState<C>>>,
+    network: &melnet::NetState,
+) -> Result<(), ProtocolError> {
+    // Send a summary to a random peer
+    let summary = cstate.read().blockgraph.summarize();
+    if let Some(rnd_peer) = network.routes().get(0) {
+        let diff = melnet::request::<_, Vec<BlockGraphDiff>>(
+                *rnd_peer,
+                "symphgossip",
+                "get_diff",
+                summary,
+            )
+            //.timeout(Duration::from_secs(10))
+            //.map_err(|e| log::warn!("gossip request failed with peer {rnd_peer}: {e}"))
+            .await?;
+
+        // Integrate diff into block graph
+        //let mut_cstate = cstate.write();
+        //mut_cstate.blockgraph = mut_cstate.blockgraph.merge_diff(diff)?;
+        cstate.write().blockgraph.merge_diff(diff)?;
+
+        Ok(())
+    } else {
+        //log::warn!("Failed to get a peer")
+        Err(ProtocolError::Custom("Failed to get a peer".into()))
+    }
+}
+
+/// Communicate summaries to peers and integrate diff responses into the chain state
+async fn gossip<C: ContentAddrStore>(
+    mut cstate: Arc<RwLock<ChainState<C>>>,
+    network: melnet::NetState,
+) {
+    let cstate_inner = cstate.clone();
+    network.listen("get_diff", move |breq: Request<crate::blockgraph::Summary>| {
+        let cstate_inner = cstate_inner.clone();
+        async move {
+            let response = cstate_inner.read().blockgraph.partial_summary_diff(&breq.body);
+            Ok(response)
+        }
+    });
+    loop {
+        gossip_and_add_diff(&mut cstate, &network)
+            .map_err(|e| log::warn!("Error in gossip task: {e}"))
+            .await;
+
+        smol::Timer::after(Duration::from_secs(1)).await;
+    }
+}
+
 async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
     cfg: EpochConfig<B, C>,
     cstate: Arc<RwLock<ChainState<C>>>,
@@ -108,7 +185,8 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
     let (send_finalized, recv_finalized) = smol::channel::unbounded();
 
     let cfg = Arc::new(cfg);
-    let height_to_proposer = gen_get_proposer(cfg.genesis.clone()).await;
+    //let height_to_proposer = gen_get_proposer(cfg.genesis.clone()).await;
+    let height_to_proposer = gen_get_proposer(cfg.genesis.clone());
     let network = melnet::NetState::new_with_name("symphgossip");
     for addr in &cfg.bootstrap {
         network.add_route(*addr);
@@ -136,7 +214,9 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
         })
     }
     // melnet client
-    let _gossiper = NS_EXECUTOR.spawn(gossiper_loop(network.clone(), cstate.clone(), cfg.clone()));
+    let _gossiper = NS_EXECUTOR.spawn(gossip(cstate.clone(), network.clone()));
+
+    //let _gossiper = NS_EXECUTOR.spawn(gossiper_loop(network.clone(), cstate.clone(), cfg.clone()));
     let _confirmer = NS_EXECUTOR.spawn(confirmer_loop(
         my_epoch,
         cfg.signing_sk,
@@ -275,7 +355,7 @@ async fn gossiper_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
     'mainloop: loop {
         smol::Timer::after(Duration::from_millis(300)).await;
         if let Some(random_peer) = network.routes().get(0) {
-            // log::debug!("gossipping with {}", random_peer);
+            // log::debug!("gossipping with {}", random_pee);
             // create a new block request
             let block_req = cstate.read().new_block_request();
             let response = melnet::request::<_, Vec<AbbrBlockResponse>>(
@@ -605,7 +685,8 @@ fn time_to_height(start_time: SystemTime, interval: Duration, time: SystemTime) 
 }
 
 // a helper function that returns a proposer-calculator for a given epoch
-async fn gen_get_proposer<C: ContentAddrStore>(
+pub fn gen_get_proposer<C: ContentAddrStore>(
+//pub async fn gen_get_proposer<C: ContentAddrStore>(
     genesis: SealedState<C>,
 ) -> impl Fn(BlockHeight) -> Ed25519PK {
     let end_height = if genesis.inner_ref().height.epoch() == 0 {
@@ -622,7 +703,7 @@ async fn gen_get_proposer<C: ContentAddrStore>(
     // majority beacon of all the blocks in the previous epoch
     let beacon_components = {
         let genesis = genesis.clone();
-        smol::unblock(move || {
+        //smol::unblock(move || {
             if end_height.0 >= STAKE_EPOCH {
                 (end_height.0 - STAKE_EPOCH..end_height.0)
                     .filter_map(|height| {
@@ -646,9 +727,9 @@ async fn gen_get_proposer<C: ContentAddrStore>(
             } else {
                 vec![HashVal::default()]
             }
-        })
-    }
-    .await;
+        //})
+    };
+    //.await;
     let epoch = (genesis.inner_ref().height + BlockHeight(1)).epoch();
     let seed = tmelcrypt::majority_beacon(&beacon_components);
     let stakes = genesis.inner_ref().stakes.clone();

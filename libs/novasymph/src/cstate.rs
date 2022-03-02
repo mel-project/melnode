@@ -7,6 +7,7 @@ use themelio_stf::{SealedState, StakeMapping};
 
 pub mod gossip;
 use gossip::*;
+use crate::blockgraph::BlockGraph;
 
 use themelio_structs::{Block, BlockHeight};
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
@@ -17,6 +18,7 @@ use crate::msg::{ProposalSig, VoteSig};
 pub struct ChainState<C: ContentAddrStore> {
     epoch: u64,
     stakes: StakeMapping<C>,
+    pub blockgraph: BlockGraph<C>,
     inner: BlockTree<InMemoryDb, C>,
     forest: novasmt::Database<C>,
 
@@ -25,14 +27,22 @@ pub struct ChainState<C: ContentAddrStore> {
 
 impl<C: ContentAddrStore> ChainState<C> {
     /// Create a new ChainState with the given genesis state.
-    pub fn new(genesis: SealedState<C>, forest: novasmt::Database<C>) -> Self {
+    pub fn new(
+        genesis: SealedState<C>,
+        forest: novasmt::Database<C>,
+        //height_to_proposer: Box<dyn Fn(BlockHeight) -> Ed25519PK + Sync + Send + 'static>,
+    ) -> Self {
+        let height_to_proposer = crate::protocol::gen_get_proposer(genesis.clone());
         let epoch = genesis.inner_ref().height.epoch();
         let stakes = genesis.inner_ref().stakes.clone();
         let mut inner = BlockTree::new(InMemoryDb::default(), forest.clone());
-        inner.set_genesis(genesis, &[]);
+        inner.set_genesis(genesis.clone(), &[]);
+        //let height_to_proposer = crate::protocol::gen_get_proposer(genesis.clone()).await;
+        let blockgraph = BlockGraph::new(genesis, Box::new(height_to_proposer));
         Self {
             epoch,
             stakes,
+            blockgraph,
             inner,
             forest,
 

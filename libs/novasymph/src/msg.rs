@@ -22,7 +22,7 @@ impl ProposalSig {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct VoteSig(Vec<u8>);
 
 impl VoteSig {

@@ -3,6 +3,7 @@ use std::{
     sync::Arc,
 };
 
+use serde::{Serialize, Deserialize};
 use novasmt::ContentAddrStore;
 use num_integer::Integer;
 use stdcode::StdcodeSerializeExt;
@@ -14,6 +15,9 @@ use tmelcrypt::{Ed25519PK, HashVal};
 
 use crate::msg::{ProposalSig, VoteSig};
 
+/// A mapping from proposal block hash to hash of serialized signatures
+pub type Summary = BTreeMap<HashVal, HashVal>;
+
 pub struct BlockGraph<C: ContentAddrStore> {
     root: SealedState<C>,
     parent_to_child: BTreeMap<HashVal, BTreeSet<HashVal>>,
@@ -24,6 +28,22 @@ pub struct BlockGraph<C: ContentAddrStore> {
 }
 
 impl<C: ContentAddrStore> BlockGraph<C> {
+    /// Returns an empty [BlockGraph] given a beginning [SealedState] and a function
+    /// to determine the proposer for a given block height.
+    pub fn new(
+        root: SealedState<C>,
+        correct_proposer: Box<dyn Fn(BlockHeight) -> Ed25519PK + Send + Sync + 'static>,
+    ) -> BlockGraph<C> {
+        BlockGraph {
+            root,
+            parent_to_child: BTreeMap::new(),
+            proposals: BTreeMap::new(),
+            votes: BTreeMap::new(),
+            vote_weights: BTreeMap::new(),
+            correct_proposer,
+        }
+    }
+
     /// Returns whether a node has the right number of votes.
     fn is_notarized(&self, hash: HashVal) -> bool {
         if let Some(votes) = self.votes.get(&hash) {
@@ -139,8 +159,23 @@ impl<C: ContentAddrStore> BlockGraph<C> {
         }
     }
 
+    /// Merge a vector of [BlockGraphDiff]s into the [BlockGraph], consuming and returning the
+    /// final form.
+    pub fn merge_diff(&mut self, diffs: Vec<BlockGraphDiff>) -> Result<(), ProposalRejection> {
+        for d in diffs.into_iter() {
+            match d {
+                BlockGraphDiff::Proposal(prop) => self.insert_proposal(prop),
+                BlockGraphDiff::Vote(hash, pk, sig) => {
+                    self.insert_vote(hash, pk, sig);
+                    Ok(())
+                },
+            }?
+        }
+        Ok(())
+    }
+
     /// Create a summary of this block graph to compare with somebody else's block graph.
-    pub fn summarize(&self) -> BTreeMap<HashVal, HashVal> {
+    pub fn summarize(&self) -> Summary {
         self.proposals
             .iter()
             .map(|(k, _)| {
@@ -156,9 +191,52 @@ impl<C: ContentAddrStore> BlockGraph<C> {
             .collect()
     }
 
+    /*
+    /// Create a positive diff (elements contained locally but not in other)
+    /// between this block graph and the given block graph diff
+    pub fn diff(&self, other: Vec<BlockGraphDiff>) -> Vec<BlockGraphDiff> {
+        let mut other_votes: BTreeMap<HashVal, BTreeMap<Ed25519PK, VoteSig>> = BTreeMap::new();
+        for d in other.into_iter() {
+            match d {
+                BlockGraphDiff::Vote(hash, pk, sig) => {
+                    other_votes
+                        .entry(hash)
+                        .or_default()
+                        .insert(pk, sig);
+                }
+                _ => unimplemented!(),
+                //BlockGraphDiff::Proposal
+            }
+        }
+
+        // If votes contains a key which other_votes doesn't, keep it.
+        // If a key is in both, retain the votes which are not in other_votes[k]
+        let mut votes_diff = BTreeMap::new();
+        for (k, votes) in self.votes.iter() {
+            if let Some(ov) = other_votes.get(k) {
+                // Collect the diffed the votes
+                let diff: BTreeMap<Ed25519PK, VoteSig> = votes.clone().into_iter()
+                    .filter(|(pk,sig)| ov.get(pk).map(|v| v != sig).unwrap_or(true))
+                    .collect();
+
+                if !diff.is_empty() {
+                    votes_diff.insert(k, diff);
+                }
+            }
+            else {
+                // Add the votes if block doesn't exist in other
+                votes_diff.insert(k, votes.clone());
+            }
+        }
+
+        vec![]
+    }
+    */
+
     /// Create a PARTIAL diff between this block graph and the given summary
-    pub fn diff(&self, their_summary: &BTreeMap<HashVal, HashVal>) -> Vec<BlockGraphDiff> {
-        // Votes on blocks they have are more important, so we add them first
+    pub fn partial_summary_diff(&self, their_summary: &Summary) -> Vec<BlockGraphDiff> {
+        // Votes on blocks they have are more important,
+        // so we accumulate all blocks for which they have a different set of votes than us.
         let mut toret = Vec::new();
         for (k, v) in their_summary.iter() {
             if let Some(our_votes) = self.votes.get(k) {
@@ -169,11 +247,13 @@ impl<C: ContentAddrStore> BlockGraph<C> {
                 }
             }
         }
-        // return early now if we got votes
+        // return early now if we got differences in votes
         if !toret.is_empty() {
             return toret;
         }
-        // find proposals that 1. they don't have 2. would be accepted by them because they extend from things that they do have
+        // find proposals that
+        // 1. they don't have
+        // 2. would be accepted by them because they extend from things that they do have
         for (hash, prop) in self.proposals.iter() {
             if !their_summary.contains_key(hash) && their_summary.contains_key(&prop.extends_from) {
                 toret.push(BlockGraphDiff::Proposal(prop.clone()));
@@ -185,6 +265,7 @@ impl<C: ContentAddrStore> BlockGraph<C> {
 }
 
 /// A diff
+#[derive(Serialize, Deserialize, Debug)]
 pub enum BlockGraphDiff {
     Proposal(Proposal),
     Vote(HashVal, Ed25519PK, VoteSig),
@@ -206,7 +287,7 @@ pub enum Node<C: ContentAddrStore> {
     Vote(HashVal, VoteSig),
 }
 
-#[derive(Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Proposal {
     extends_from: HashVal,
     block: Block,
