@@ -25,9 +25,9 @@ use tracing::instrument;
 pub static RUNTIME: Lazy<Runtime> =
     Lazy::new(|| Runtime::new().expect("Could not create tokio runtime."));
 
-#[cfg(unix)]
-#[global_allocator]
-static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+// #[cfg(unix)]
+// #[global_allocator]
+// static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[instrument]
 fn main() -> anyhow::Result<()> {

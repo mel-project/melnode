@@ -86,8 +86,8 @@ smol_str = "0.1.21"
 base64 = "0.13.0"
 imbl= "1.0.1"
 
-[target.'cfg(unix)'.dependencies]
-mimalloc = "0.1.28"
+# [target.'cfg(unix)'.dependencies]
+# mimalloc = "0.1.28"
 
 [features]
 metrics = ["prometheus", "gethostname", "public-ip", "reqwest", "rweb", "systemstat", "tokio"]
