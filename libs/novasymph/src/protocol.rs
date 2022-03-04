@@ -181,7 +181,8 @@ async fn gossip<C: ContentAddrStore>(
             .await;
 
         // Drain any new finalized blocks
-        for block in cstate.write().drain_finalized() {
+        let finalized = cstate.write().drain_finalized();
+        for block in finalized {
             // TODO obviously confirm should contain a real consensus proof
             // but right now confirm doesn't actually check
             send_confirmed.send(
@@ -235,7 +236,7 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
     let _gossiper = NS_EXECUTOR.spawn(gossip(
         cstate.clone(),
         network.clone(),
-        send_confirmed,
+        send_confirmed.clone(),
         cfg.signing_sk
     ));
 

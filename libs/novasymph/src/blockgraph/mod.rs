@@ -83,12 +83,6 @@ impl<C: ContentAddrStore> BlockGraph<C> {
             }
         }
     }
-    /*
-    fn try_vote(&mut self, prop_hash: HashVal) -> bool {
-        if let Some(votes) = self.votes.get(&prop_hash) {
-        }
-    }
-    */
 
     /// Gets the state at a given hash
     fn get_state(&self, hash: HashVal) -> Option<SealedState<C>> {
@@ -112,7 +106,7 @@ impl<C: ContentAddrStore> BlockGraph<C> {
 
     fn chain_weight(&self, mut tip: HashVal) -> u64 {
         // TODO assuming root is notarized
-        let weight = 0;
+        let mut weight = 0;
         while let Some(parent) = self.proposals.get(&tip).map(|prop| prop.extends_from) {
             tip = parent;
             weight += 1;
@@ -133,7 +127,7 @@ impl<C: ContentAddrStore> BlockGraph<C> {
     pub fn lnc_tips(&self) -> BTreeSet<HashVal> {
         let tips = self.tips();
         let tips_notarized_ancestors = tips.iter().cloned()
-            .map(|tip| {
+            .map(|mut tip| {
                 // TODO assuming root is notarized
                 while !self.is_notarized(tip) {
                     tip = self.proposals.get(&tip)
@@ -144,15 +138,19 @@ impl<C: ContentAddrStore> BlockGraph<C> {
             })
             .collect::<Vec<HashVal>>();
 
-        let max_weight = tips_notarized_ancestors.into_iter()
+        let opt_max = tips_notarized_ancestors.into_iter()
             .map(|block_hash| self.chain_weight(block_hash))
-            .max()
-            .expect("Couldn't find a max chain weight from lnc tips");
+            .max();
 
         // Return max notarized chain weight tips
-        tips.into_iter()
-            .filter(|tip| self.chain_weight(tip.clone()) == max_weight)
-            .collect::<BTreeSet<_>>()
+        if let Some(max_weight) = opt_max {
+            tips.into_iter()
+                .filter(|tip| self.chain_weight(tip.clone()) == max_weight)
+                .collect::<BTreeSet<_>>()
+        } else {
+            // Tips is empty, so lnc tips is empty
+            BTreeSet::new()
+        }
     }
 
     /// Drains out finalized blocks.
