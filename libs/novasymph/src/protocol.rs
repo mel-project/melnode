@@ -75,7 +75,6 @@ pub struct EpochProtocol<C: ContentAddrStore> {
 impl<C: ContentAddrStore> EpochProtocol<C> {
     /// Create a new instance of the protocol over melnet.
     pub fn new<B: BlockBuilder<C>>(cfg: EpochConfig<B, C>) -> Self {
-        //height_to_proposer: Box<dyn Fn(BlockHeight) -> Ed25519PK + Send + Sync + 'static>) -> Self {
         let (send_confirmed, recv_confirmed) = smol::channel::unbounded();
 
         let blockgraph = BlockGraph::new(cfg.genesis.clone());
@@ -130,8 +129,9 @@ impl From<MelnetError> for ProtocolError {
 }
 
 async fn gossip_and_add_diff<C: ContentAddrStore>(
-    cstate: &mut Arc<RwLock<ChainState<C>>>,
+    cstate: Arc<RwLock<ChainState<C>>>,
     network: &melnet::NetState,
+    voter_key: Ed25519SK,
 ) -> Result<(), ProtocolError> {
     // Send a summary to a random peer
     let summary = cstate.read().blockgraph.summarize();
@@ -147,9 +147,10 @@ async fn gossip_and_add_diff<C: ContentAddrStore>(
             .await?;
 
         // Integrate diff into block graph
-        //let mut_cstate = cstate.write();
-        //mut_cstate.blockgraph = mut_cstate.blockgraph.merge_diff(diff)?;
         cstate.write().blockgraph.merge_diff(diff)?;
+
+        // Vote for all lnc tips
+        cstate.write().blockgraph.vote_all(voter_key);
 
         Ok(())
     } else {
@@ -160,8 +161,10 @@ async fn gossip_and_add_diff<C: ContentAddrStore>(
 
 /// Communicate summaries to peers and integrate diff responses into the chain state
 async fn gossip<C: ContentAddrStore>(
-    mut cstate: Arc<RwLock<ChainState<C>>>,
+    cstate: Arc<RwLock<ChainState<C>>>,
     network: melnet::NetState,
+    send_confirmed: Sender<ConfirmedState<C>>,
+    voter_key: Ed25519SK,
 ) {
     let cstate_inner = cstate.clone();
     network.listen("get_diff", move |breq: Request<crate::blockgraph::Summary>| {
@@ -172,9 +175,20 @@ async fn gossip<C: ContentAddrStore>(
         }
     });
     loop {
-        gossip_and_add_diff(&mut cstate, &network)
+        // Get a blockgraph update from a random neighbor
+        gossip_and_add_diff(cstate.clone(), &network, voter_key)
             .map_err(|e| log::warn!("Error in gossip task: {e}"))
             .await;
+
+        // Drain any new finalized blocks
+        for block in cstate.write().drain_finalized() {
+            // TODO obviously confirm should contain a real consensus proof
+            // but right now confirm doesn't actually check
+            send_confirmed.send(
+                block.confirm(BTreeMap::new(), None)
+                    .expect("Could not confirm finalized block")).await
+                .expect("Failed to send a block on finalized channel");
+        }
 
         smol::Timer::after(Duration::from_secs(1)).await;
     }
@@ -216,8 +230,14 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
             }
         })
     }
-    // melnet client
-    let _gossiper = NS_EXECUTOR.spawn(gossip(cstate.clone(), network.clone()));
+
+    // Spawn gossip loop
+    let _gossiper = NS_EXECUTOR.spawn(gossip(
+        cstate.clone(),
+        network.clone(),
+        send_confirmed,
+        cfg.signing_sk
+    ));
 
     //let _gossiper = NS_EXECUTOR.spawn(gossiper_loop(network.clone(), cstate.clone(), cfg.clone()));
     let _confirmer = NS_EXECUTOR.spawn(confirmer_loop(
@@ -241,13 +261,9 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
             loop {
                 cstate.write().vote_all(cfg.signing_sk);
                 for block in cstate.write().blockgraph.drain_finalized() {
+                    println!("!FINALIZED a block!");
                     let _ = send_finalized.try_send(block);
                 }
-                /*
-                for block in cstate.write().drain_finalized() {
-                    let _ = send_finalized.try_send(block);
-                }
-                */
                 let hint_tip = cstate.read().get_lnc_state();
                 cfg.builder.hint_next_build(hint_tip);
                 smol::Timer::after(Duration::from_secs(1)).await;

@@ -12,7 +12,7 @@ use themelio_stf::SealedState;
 use themelio_structs::{Block, BlockHeight};
 use thiserror::Error;
 use tmelcrypt::Hashable;
-use tmelcrypt::{Ed25519PK, HashVal};
+use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
 use crate::msg::{ProposalSig, VoteSig};
 
@@ -63,6 +63,33 @@ impl<C: ContentAddrStore> BlockGraph<C> {
         }
     }
 
+    pub fn vote_all(&mut self, voter_key: Ed25519SK) {
+        // Get the lnc tips and vote for them
+        let lnc_tips = self.lnc_tips();
+        for tip in lnc_tips {
+            let votes = self.votes.entry(tip).or_default();
+
+            // Add a vote if its not already there
+            if !votes.contains_key(&voter_key.to_public()) {
+                let header_hash = self.proposals.get(&tip)
+                    .expect("Votes entry is not in proposals of blockgraph")
+                    .block
+                    .header.hash();
+
+                // Insert vote for tip
+                votes.insert(
+                    voter_key.to_public(),
+                    VoteSig::generate(voter_key, header_hash));
+            }
+        }
+    }
+    /*
+    fn try_vote(&mut self, prop_hash: HashVal) -> bool {
+        if let Some(votes) = self.votes.get(&prop_hash) {
+        }
+    }
+    */
+
     /// Gets the state at a given hash
     fn get_state(&self, hash: HashVal) -> Option<SealedState<C>> {
         if hash == self.root.header().hash() {
@@ -83,6 +110,51 @@ impl<C: ContentAddrStore> BlockGraph<C> {
         }
     }
 
+    fn chain_weight(&self, mut tip: HashVal) -> u64 {
+        // TODO assuming root is notarized
+        let weight = 0;
+        while let Some(parent) = self.proposals.get(&tip).map(|prop| prop.extends_from) {
+            tip = parent;
+            weight += 1;
+        }
+        weight
+    }
+
+    fn tips(&self) -> BTreeSet<HashVal> {
+        self.proposals.keys().cloned()
+            .filter(|hash|
+                self.parent_to_child
+                .get(hash)
+                .map(|children| children.is_empty())
+                .unwrap_or(false))
+            .collect()
+    }
+
+    pub fn lnc_tips(&self) -> BTreeSet<HashVal> {
+        let tips = self.tips();
+        let tips_notarized_ancestors = tips.iter().cloned()
+            .map(|tip| {
+                // TODO assuming root is notarized
+                while !self.is_notarized(tip) {
+                    tip = self.proposals.get(&tip)
+                        .expect("Expected to find provided tip in blockgraph proposals")
+                        .extends_from;
+                }
+                tip
+            })
+            .collect::<Vec<HashVal>>();
+
+        let max_weight = tips_notarized_ancestors.into_iter()
+            .map(|block_hash| self.chain_weight(block_hash))
+            .max()
+            .expect("Couldn't find a max chain weight from lnc tips");
+
+        // Return max notarized chain weight tips
+        tips.into_iter()
+            .filter(|tip| self.chain_weight(tip.clone()) == max_weight)
+            .collect::<BTreeSet<_>>()
+    }
+
     /// Drains out finalized blocks.
     pub fn drain_finalized(&mut self) -> Vec<SealedState<C>> {
         // DFS through the whole thing, keeping track of how many consecutively increasing notarized blocks we see
@@ -90,6 +162,9 @@ impl<C: ContentAddrStore> BlockGraph<C> {
             vec![(self.root.header().hash(), self.root.inner_ref().height, 1)];
         while let Some((fringe_node, height, consec)) = dfs_stack.pop() {
             if consec >= 3 {
+                // Get the block that the 3rd consecutive extends from
+                // Get all blocks from this "finalized tip" to the root
+                // This list of blocks are all finalized
                 let finalized_tip = self.proposals[&fringe_node].extends_from;
                 let mut finalized_props = vec![self.proposals[&finalized_tip].clone()];
                 while let Some(previous) = finalized_props
@@ -103,6 +178,7 @@ impl<C: ContentAddrStore> BlockGraph<C> {
                 finalized_props.reverse();
                 let mut accum: Vec<SealedState<C>> = vec![];
                 for prop in finalized_props {
+                    // Apply empty blocks to fill the distance between prop and previous block
                     while accum
                         .last()
                         .map(|last| last.header().hash() != prop.block.header.previous)
@@ -110,6 +186,8 @@ impl<C: ContentAddrStore> BlockGraph<C> {
                     {
                         accum.push(accum.last().unwrap().next_state().seal(None));
                     }
+
+                    // Apply prop to last block in accum to get the next sealed state
                     accum.push(
                         accum
                             .last()
@@ -125,10 +203,13 @@ impl<C: ContentAddrStore> BlockGraph<C> {
             for child_hash in self.parent_to_child[&fringe_node].iter().copied() {
                 let child = self.proposals[&child_hash].clone();
                 let child_height = child.block.header.height;
-                if child_height == height + BlockHeight(1) {
-                    dfs_stack.push((child_hash, child_height, consec + 1))
-                } else {
-                    dfs_stack.push((child_hash, child_height, 1))
+                if self.is_notarized(child_hash) {
+                    // TODO why do these need to be consecutive?
+                    if child_height == height + BlockHeight(1) {
+                        dfs_stack.push((child_hash, child_height, consec + 1))
+                    } else {
+                        dfs_stack.push((child_hash, child_height, 1))
+                    }
                 }
             }
         }
