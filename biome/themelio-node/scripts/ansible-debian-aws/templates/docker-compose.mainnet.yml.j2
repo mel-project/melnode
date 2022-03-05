@@ -2,6 +2,7 @@ version: "3.9"
 services:
   themelio-node:
     image: ghcr.io/themeliolabs/themelio-node-mainnet:latest
+    network_mode: "host"
     command:
       --strategy at-once --url https://bldr.habitat.sh
       --group {{ aws_region }}

@@ -2,7 +2,7 @@ use std::{sync::Arc, time::Instant};
 
 use dashmap::DashMap;
 use std::time::Duration;
-use themelio_structs::{Address, Block, BlockHeight, CoinData, CoinID};
+use themelio_structs::{Address, Block, BlockHeight, CoinID};
 
 use super::NodeStorage;
 
@@ -37,6 +37,9 @@ impl BlockIndexer {
                             .unwrap_or_default();
                         let new = apply_onto.process_block(&state.to_block());
                         h2m.insert(height, new);
+                        if height > BlockHeight(10000) {
+                            h2m.remove(&(height - BlockHeight(10000)));
+                        }
                         smol::future::yield_now().await;
                         next_unindexed = BlockHeight(height.0 + 1);
                     }
@@ -68,7 +71,7 @@ impl CoinIndex {
         // add the outputs
         for tx in blk.transactions.iter() {
             for (i, output) in tx.outputs.iter().enumerate() {
-                self.add_coin(tx.output_coinid(i as u8), output.clone());
+                self.add_coin(tx.output_coinid(i as u8), output.covhash);
             }
         }
         // remove the inputs
@@ -76,6 +79,12 @@ impl CoinIndex {
             for input in tx.inputs.iter() {
                 self.remove_coin(*input)
             }
+        }
+        // add the proposer action
+        if let Some(action) = blk.proposer_action {
+            let reward_addr = action.reward_dest;
+            let pseudo_coin = CoinID::proposer_reward(blk.header.height);
+            self.add_coin(pseudo_coin, reward_addr)
         }
         self
     }
@@ -88,12 +97,9 @@ impl CoinIndex {
             .unwrap_or_default()
     }
 
-    fn add_coin(&mut self, id: CoinID, data: CoinData) {
-        self.coin_to_owner.insert(id, data.covhash);
-        self.owner_to_coins
-            .entry(data.covhash)
-            .or_default()
-            .insert(id);
+    fn add_coin(&mut self, id: CoinID, addr: Address) {
+        self.coin_to_owner.insert(id, addr);
+        self.owner_to_coins.entry(addr).or_default().insert(id);
     }
 
     fn remove_coin(&mut self, id: CoinID) {

@@ -11,39 +11,26 @@ mod storage;
 use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
 
 #[cfg(feature = "metrics")]
-use crate::prometheus::RUNTIME;
+use tokio::runtime::Runtime;
 
 use crate::protocols::{NodeProtocol, StakerProtocol};
 use crate::storage::NodeStorage;
 
 use args::Args;
+use once_cell::sync::Lazy;
 use structopt::StructOpt;
 use tracing::instrument;
 
-#[cfg(unix)]
-#[global_allocator]
-static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+#[cfg(feature = "metrics")]
+pub static RUNTIME: Lazy<Runtime> =
+    Lazy::new(|| Runtime::new().expect("Could not create tokio runtime."));
+
+// #[cfg(unix)]
+// #[global_allocator]
+// static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[instrument]
 fn main() -> anyhow::Result<()> {
-    // Create a background thread which checks for deadlocks every 10s
-    std::thread::spawn(move || loop {
-        std::thread::sleep(std::time::Duration::from_secs(10));
-        let deadlocks = parking_lot::deadlock::check_deadlock();
-        if deadlocks.is_empty() {
-            continue;
-        }
-
-        log::error!("{} deadlocks detected", deadlocks.len());
-        for (i, threads) in deadlocks.iter().enumerate() {
-            log::error!("Deadlock #{}", i);
-            for t in threads {
-                log::error!("Thread Id {:#?}", t.thread_id());
-                log::error!("{:#?}", t.backtrace());
-            }
-        }
-    });
-
     env_logger::Builder::from_env("RUST_LOG")
         .parse_filters("themelio_node=debug,warn,novasymph")
         .init();
@@ -59,14 +46,15 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub async fn main_async(opt: Args) -> anyhow::Result<()> {
     #[cfg(not(feature = "metrics"))]
     log::info!("themelio-core v{} initializing...", VERSION);
+
     #[cfg(feature = "metrics")]
     log::info!(
         "hostname={} public_ip={} network={} region={} instance_id={} themelio-core v{} initializing...",
         crate::prometheus::HOSTNAME.as_str(),
         crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
         crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-        *AWS_REGION,
-        *AWS_INSTANCE_ID,
+        AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
+        AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
         VERSION
     );
     let genesis = opt.genesis_config().await?;
@@ -80,9 +68,15 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
         "hostname={} public_ip={} network={} region={} instance_id={} bootstrapping with {:?}",
         crate::prometheus::HOSTNAME.as_str(),
         crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-        crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-        *AWS_REGION,
-        *AWS_INSTANCE_ID,
+        crate::prometheus::NETWORK
+            .read()
+            .expect("Could not get a read lock on NETWORK."),
+        AWS_REGION
+            .read()
+            .expect("Could not get a read lock on AWS_REGION"),
+        AWS_INSTANCE_ID
+            .read()
+            .expect("Could not get a read lock on AWS_INSTANCE_ID"),
         bootstrap
     );
     let _node_prot = NodeProtocol::new(
@@ -120,7 +114,10 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
         .expect("Could not write to GLOBAL_STORAGE");
 
     #[cfg(feature = "metrics")]
-    smol::unblock(|| RUNTIME.block_on(crate::prometheus::prometheus())).await;
+    std::thread::spawn(|| RUNTIME.block_on(crate::prometheus::prometheus()));
+
+    #[cfg(feature = "metrics")]
+    std::thread::spawn(|| RUNTIME.block_on(crate::prometheus::run_aws_information()));
 
     smol::future::pending().await
 }

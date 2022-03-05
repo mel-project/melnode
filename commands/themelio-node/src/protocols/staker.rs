@@ -54,8 +54,8 @@ impl StakerProtocol {
                     crate::prometheus::HOSTNAME.as_str(),
                     crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
                     crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-                    *AWS_REGION,
-                    *AWS_INSTANCE_ID,
+                    AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
+                    AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
                     y - x
                 );
 
@@ -74,8 +74,8 @@ impl StakerProtocol {
                         crate::prometheus::HOSTNAME.as_str(),
                         crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
                         crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-                        *AWS_REGION,
-                        *AWS_INSTANCE_ID,
+                        AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
+                        AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
                         current_epoch
                     );
 
@@ -107,8 +107,8 @@ impl StakerProtocol {
                             crate::prometheus::HOSTNAME.as_str(),
                             crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
                             crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-                            *AWS_REGION,
-                            *AWS_INSTANCE_ID,
+                            AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
+                            AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
                             err
                         );
 
@@ -182,8 +182,8 @@ async fn one_epoch_loop(
                     crate::prometheus::HOSTNAME.as_str(),
                     crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
                     crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-                    *AWS_REGION,
-                    *AWS_INSTANCE_ID,
+                    AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
+                    AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
                     height,
                     err
                 );
@@ -235,8 +235,8 @@ impl BlockBuilder<MeshaCas> for StorageBlockBuilder {
                 crate::prometheus::HOSTNAME.as_str(),
                 crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
                 crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-                *AWS_REGION,
-                *AWS_INSTANCE_ID,
+                AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
+                AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
                 mempool_state.header().height,
                 tip.header().height
             );
