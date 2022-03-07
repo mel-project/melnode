@@ -21,7 +21,7 @@ pub type Summary = BTreeMap<HashVal, HashVal>;
 
 pub struct BlockGraph<C: ContentAddrStore> {
     /// Latest sealed state
-    root: SealedState<C>,
+    pub root: SealedState<C>,
     /// Mapping from a block hash to the hashes of blocks that reference it
     parent_to_child: BTreeMap<HashVal, BTreeSet<HashVal>>,
     /// Mapping of block proposals by their hashes
@@ -59,7 +59,8 @@ impl<C: ContentAddrStore> BlockGraph<C> {
             let total_stake: u128 = self.vote_weights.values().copied().sum();
             total_voting_for > (total_stake * 2).div_ceil(&3)
         } else {
-            false
+            // Root is notarized by default
+            self.root.header().hash() == hash
         }
     }
 
@@ -84,6 +85,13 @@ impl<C: ContentAddrStore> BlockGraph<C> {
         }
     }
 
+    // Get the [SealedState] of blocks applied on the canonical longest notarized chain in the blockgraph
+    pub fn lnc_state(&self) -> Option<SealedState<C>> {
+        self.lnc_tips().into_iter()
+            .min()
+            .and_then(|lowest_lnc_hash| self.get_state(lowest_lnc_hash))
+    }
+
     /// Gets the state at a given hash
     fn get_state(&self, hash: HashVal) -> Option<SealedState<C>> {
         if hash == self.root.header().hash() {
@@ -104,6 +112,47 @@ impl<C: ContentAddrStore> BlockGraph<C> {
         }
     }
 
+    /// Sets a new root and removes all proposals/votes which are not descendants of the new root
+    pub fn update_root(&mut self, root: SealedState<C>) {
+        self.root = root.clone();
+
+        // Remove all non-descendants of root
+        let mut root_descendants = self.parent_to_child
+            .get(&root.header().hash())
+            .map(|bt| bt.clone())
+            .unwrap_or(BTreeSet::new());
+
+        let mut stack = root_descendants.iter()
+            .cloned().collect::<Vec<_>>();
+
+        // Build a set of root's descendants
+        while let Some(child) = stack.pop() {
+            root_descendants.insert(child);
+
+            stack.extend(
+                self.parent_to_child
+                    .get(&child)
+                    .unwrap_or(&BTreeSet::new()));
+        }
+
+        // Kill the infidels
+        self.parent_to_child = self.parent_to_child.iter()
+            .filter(|(hash, _)| !root_descendants.contains(hash))
+            .map(|(hash, val)| (hash.clone(), val.clone()))
+            .collect::<BTreeMap<_,_>>();
+
+        self.proposals = self.proposals.iter()
+            .filter(|(hash, _)| !root_descendants.contains(hash))
+            .map(|(hash, val)| (hash.clone(), val.clone()))
+            .collect::<BTreeMap<_,_>>();
+
+        self.votes = self.votes.iter()
+            .filter(|(hash, _)| !root_descendants.contains(hash))
+            .map(|(hash, val)| (hash.clone(), val.clone()))
+            .collect::<BTreeMap<_,_>>();
+
+    }
+
     fn chain_weight(&self, mut tip: HashVal) -> u64 {
         // TODO assuming root is notarized
         let mut weight = 0;
@@ -116,6 +165,7 @@ impl<C: ContentAddrStore> BlockGraph<C> {
 
     fn tips(&self) -> BTreeSet<HashVal> {
         self.proposals.keys().cloned()
+            //.chain(vec![self.root.header().hash()])
             .filter(|hash|
                 self.parent_to_child
                 .get(hash)
@@ -128,7 +178,6 @@ impl<C: ContentAddrStore> BlockGraph<C> {
         let tips = self.tips();
         let tips_notarized_ancestors = tips.iter().cloned()
             .map(|mut tip| {
-                // TODO assuming root is notarized
                 while !self.is_notarized(tip) {
                     tip = self.proposals.get(&tip)
                         .expect("Expected to find provided tip in blockgraph proposals")
@@ -148,7 +197,7 @@ impl<C: ContentAddrStore> BlockGraph<C> {
                 .filter(|tip| self.chain_weight(tip.clone()) == max_weight)
                 .collect::<BTreeSet<_>>()
         } else {
-            // Tips is empty, so lnc tips is empty
+            // Notarized tips is empty, so lnc tips is empty
             BTreeSet::new()
         }
     }
@@ -377,8 +426,8 @@ pub enum Node<C: ContentAddrStore> {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Proposal {
-    extends_from: HashVal,
-    block: Block,
-    proposer: Ed25519PK,
-    signature: ProposalSig,
+    pub extends_from: HashVal,
+    pub block: Block,
+    pub proposer: Ed25519PK,
+    pub signature: ProposalSig,
 }

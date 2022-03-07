@@ -19,8 +19,8 @@ pub struct ChainState<C: ContentAddrStore> {
     epoch: u64,
     stakes: StakeMapping<C>,
     pub blockgraph: BlockGraph<C>,
-    inner: BlockTree<InMemoryDb, C>,
-    forest: novasmt::Database<C>,
+    //inner: BlockTree<InMemoryDb, C>,
+    //forest: novasmt::Database<C>,
 
     drained_height: BlockHeight,
 }
@@ -29,33 +29,33 @@ impl<C: ContentAddrStore> ChainState<C> {
     /// Create a new ChainState with the given genesis state.
     pub fn new(
         genesis: SealedState<C>,
-        forest: novasmt::Database<C>,
+        //forest: novasmt::Database<C>,
         blockgraph: BlockGraph<C>,
-        //height_to_proposer: Box<dyn Fn(BlockHeight) -> Ed25519PK + Sync + Send + 'static>,
     ) -> Self {
         let height_to_proposer = crate::protocol::gen_get_proposer(genesis.clone());
         let epoch = genesis.inner_ref().height.epoch();
         let stakes = genesis.inner_ref().stakes.clone();
-        let mut inner = BlockTree::new(InMemoryDb::default(), forest.clone());
-        inner.set_genesis(genesis.clone(), &[]);
-        //let height_to_proposer = crate::protocol::gen_get_proposer(genesis.clone()).await;
-        //let blockgraph = BlockGraph::new(genesis, Box::new(height_to_proposer));
+        //let mut inner = BlockTree::new(InMemoryDb::default(), forest.clone());
+        //inner.set_genesis(genesis.clone(), &[]);
         Self {
             epoch,
             stakes,
             blockgraph,
-            inner,
-            forest,
+            //inner,
+            //forest,
 
             drained_height: 0.into(),
         }
     }
 
+    /*
     /// Does this block exist?
     pub fn has_block(&self, blkhash: HashVal) -> bool {
         self.inner.get_cursor(blkhash).is_some()
     }
+    */
 
+    /*
     /// Process a proposal. Returns an error if the proposal is unacceptable for whatever reason.
     pub fn inject_proposal(
         &mut self,
@@ -420,6 +420,7 @@ impl<C: ContentAddrStore> ChainState<C> {
 
         toret
     }
+    */
 }
 
 #[cfg(test)]

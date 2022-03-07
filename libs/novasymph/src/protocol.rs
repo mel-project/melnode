@@ -11,7 +11,7 @@ use crate::{
 };
 use thiserror::Error;
 use melnet::{Request, MelnetError};
-use crate::blockgraph::{BlockGraph, ProposalRejection, BlockGraphDiff};
+use crate::blockgraph::{Proposal, BlockGraph, ProposalRejection, BlockGraphDiff};
 use binary_search::{binary_search, Direction};
 use derivative::Derivative;
 use futures_util::future::TryFutureExt;
@@ -80,7 +80,7 @@ impl<C: ContentAddrStore> EpochProtocol<C> {
         let blockgraph = BlockGraph::new(cfg.genesis.clone());
         let cstate = Arc::new(RwLock::new(ChainState::new(
             cfg.genesis.clone(),
-            cfg.forest.clone(),
+            //cfg.forest.clone(),
             blockgraph,
         )));
         Self {
@@ -102,7 +102,7 @@ impl<C: ContentAddrStore> EpochProtocol<C> {
 
     /// Forces the given state to be genesis.
     pub fn reset_genesis(&self, genesis: SealedState<C>) {
-        self.cstate.write().reset_genesis(genesis)
+        self.cstate.write().blockgraph.update_root(genesis)
     }
 }
 
@@ -136,15 +136,18 @@ async fn gossip_and_add_diff<C: ContentAddrStore>(
     // Send a summary to a random peer
     let summary = cstate.read().blockgraph.summarize();
     if let Some(rnd_peer) = network.routes().get(0) {
+        log::debug!("sending summary to peer {rnd_peer:?}: {summary:?}");
         let diff = melnet::request::<_, Vec<BlockGraphDiff>>(
                 *rnd_peer,
                 "symphgossip",
                 "get_diff",
                 summary,
             )
-            //.timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(10))
             //.map_err(|e| log::warn!("gossip request failed with peer {rnd_peer}: {e}"))
-            .await?;
+            .await.expect("timeout error?!")?;
+
+        log::debug!("received diff from peer: {diff:?}");
 
         // Integrate diff into block graph
         cstate.write().blockgraph.merge_diff(diff)?;
@@ -165,7 +168,7 @@ async fn gossip<C: ContentAddrStore>(
     network: melnet::NetState,
     send_confirmed: Sender<ConfirmedState<C>>,
     voter_key: Ed25519SK,
-) {
+) -> ! {
     let cstate_inner = cstate.clone();
     network.listen("get_diff", move |breq: Request<crate::blockgraph::Summary>| {
         let cstate_inner = cstate_inner.clone();
@@ -181,7 +184,7 @@ async fn gossip<C: ContentAddrStore>(
             .await;
 
         // Drain any new finalized blocks
-        let finalized = cstate.write().drain_finalized();
+        let finalized = cstate.write().blockgraph.drain_finalized();
         for block in finalized {
             // TODO obviously confirm should contain a real consensus proof
             // but right now confirm doesn't actually check
@@ -199,8 +202,8 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
     cfg: EpochConfig<B, C>,
     cstate: Arc<RwLock<ChainState<C>>>,
     send_confirmed: Sender<ConfirmedState<C>>,
-) -> ! {
-    let (send_finalized, recv_finalized) = smol::channel::unbounded();
+) {
+    //let (send_finalized, recv_finalized) = smol::channel::unbounded();
 
     let cfg = Arc::new(cfg);
     //let height_to_proposer = gen_get_proposer(cfg.genesis.clone()).await;
@@ -213,6 +216,7 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
     let my_epoch = (cfg.genesis.inner_ref().height + 1.into()).epoch();
 
     // melnet server
+    /*
     {
         let cstate_inner = cstate.clone();
         network.listen("get_blocks", move |breq: Request<BlockRequest>| {
@@ -231,16 +235,18 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
             }
         })
     }
+    */
 
     // Spawn gossip loop
     let _gossiper = NS_EXECUTOR.spawn(gossip(
         cstate.clone(),
         network.clone(),
-        send_confirmed.clone(),
+        send_confirmed,
         cfg.signing_sk
     ));
 
     //let _gossiper = NS_EXECUTOR.spawn(gossiper_loop(network.clone(), cstate.clone(), cfg.clone()));
+    /*
     let _confirmer = NS_EXECUTOR.spawn(confirmer_loop(
         my_epoch,
         cfg.signing_sk,
@@ -249,19 +255,24 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
         recv_finalized,
         send_confirmed,
     ));
+    */
 
-    // actually run off into the background
+    // Run melnet instance in the background
     network.add_route(cfg.listen);
     let listener = smol::net::TcpListener::bind(cfg.listen)
         .await
         .expect("could not start to listen");
     let net_inner = network.clone();
     let _server = NS_EXECUTOR.spawn(async move { net_inner.run_server(listener).await });
+
+    //smol::future::pending().await
+
     loop {
+        /*
         let vote_loop = async {
             loop {
                 cstate.write().vote_all(cfg.signing_sk);
-                for block in cstate.write().blockgraph.drain_finalized() {
+                for block in cstate.write().drain_finalized() {
                     println!("!FINALIZED a block!");
                     let _ = send_finalized.try_send(block);
                 }
@@ -270,20 +281,31 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
                 smol::Timer::after(Duration::from_secs(1)).await;
             }
         };
+        */
+        let lnc_state = cstate.read().blockgraph
+            .lnc_state()
+            .unwrap_or(cstate.read().blockgraph.root.clone());
+            //.unwrap_or(cfg.genesis);
+            //.unwrap_or(cstate.read().blockgraph.get_state());
+        //println!("LNC STATE: {:?}", opt_lnc_state.clone().unwrap().header());
+        //if let Some(lnc_state) = opt_lnc_state {
         let (height, height_time) = next_height_time(
-            cstate.read().get_lnc_state().inner_ref().height,
+            lnc_state.inner_ref().height,
             cfg.start_time,
             cfg.interval,
         );
         log::debug!("waiting until height_time {:?}", height_time);
-        wait_until_sys(height_time).or(vote_loop).await;
+        //wait_until_sys(height_time).or(vote_loop).await;
+        println!("{height_time:?}");
+        wait_until_sys(height_time).await;
 
         log::debug!("entering height {}", height);
 
         // let mut cstate = cstate.write();
         if height_to_proposer(height) == cfg.signing_sk.to_public() {
             log::debug!("we are the proposer for height {}", height);
-            let mut build_upon = cstate.read().get_lnc_state();
+            //let mut build_upon = cstate.read().get_lnc_state();
+            let mut build_upon = lnc_state;
             if build_upon.inner_ref().height >= height {
                 log::warn!(
                     "already have height {} > {}, skipping this round",
@@ -309,6 +331,7 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
                 )
             };
 
+            // Propose an empty block with no reward if out of bounds
             let proposed_block = if out_of_bounds {
                 build_upon
                     .next_state()
@@ -320,12 +343,15 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
             } else {
                 cfg.builder.build_block(build_upon.clone())
             };
-            // inject proposal
-            if let Err(err) = cstate.write().inject_proposal(
-                &proposed_block,
-                cfg.signing_sk.to_public(),
-                ProposalSig::generate(cfg.signing_sk, &proposed_block.abbreviate()),
-                last_nonempty_hash,
+
+            // Insert proposal into blockgraph
+            if let Err(err) = cstate.write().blockgraph.insert_proposal(
+               Proposal {
+                    extends_from: last_nonempty_hash,
+                    block: proposed_block.clone(),
+                    proposer: cfg.signing_sk.to_public(),
+                    signature: ProposalSig::generate(cfg.signing_sk, &proposed_block.abbreviate()),
+                }
             ) {
                 log::error!("***** OH MY GOD VERY FATAL ERROR (issue #27) *****");
                 log::error!("Error: {:?}", err);
@@ -364,7 +390,7 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
                 panic!("PANIK PANIK");
             }
             // vote for it myself
-            cstate.write().vote_all(cfg.signing_sk);
+            cstate.write().blockgraph.vote_all(cfg.signing_sk);
         } else {
             log::debug!("we are NOT the proposer for height {}", height);
         }
@@ -372,6 +398,7 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
 }
 
 // "gossiper" thread
+/*
 async fn gossiper_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
     network: melnet::NetState,
     cstate: Arc<RwLock<ChainState<C>>>,
@@ -487,8 +514,10 @@ async fn gossiper_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
         }
     }
 }
+*/
 
 // "gossiper" thread
+/*
 async fn confirmer_loop<C: ContentAddrStore>(
     my_epoch: u64,
     signing_sk: Ed25519SK,
@@ -664,6 +693,7 @@ impl<C: ContentAddrStore> UnconfirmedBlock<C> {
         sum_weights > 0.67
     }
 }
+*/
 
 async fn wait_until_sys(sys: SystemTime) {
     let now = SystemTime::now();

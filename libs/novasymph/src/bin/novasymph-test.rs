@@ -78,6 +78,7 @@ async fn run_staker<C: ContentAddrStore>(
         },
         get_confirmed: Box::new(|_| None),
     });
+    //loop {}
     loop {
         let blk = protocol.next_confirmed().await;
         log::warn!("CONFIRMED {:?}", blk.inner().header().height);
