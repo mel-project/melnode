@@ -392,11 +392,16 @@ impl<C: ContentAddrStore> BlockGraph<C> {
         // 1. they don't have
         // 2. would be accepted by them because they extend from things that they do have
         for (hash, prop) in self.proposals.iter() {
-            if !their_summary.contains_key(hash) && their_summary.contains_key(&prop.extends_from) {
+            if !their_summary.contains_key(hash) 
+                // The summary contains the direct predecessor block we want to share, or the
+                // predecessor is the blockgraph root (meaning its finalized and implicit)
+                && (their_summary.contains_key(&prop.extends_from)
+                    || prop.extends_from == self.root.header().hash()) {
                 toret.push(BlockGraphDiff::Proposal(prop.clone()));
                 break;
             }
         }
+        //log::debug!("generated diff\n{toret:?} from summary\n{their_summary:?} and internal {:?}", self.proposals);
         toret
     }
 }

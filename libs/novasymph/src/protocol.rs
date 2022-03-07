@@ -136,7 +136,7 @@ async fn gossip_and_add_diff<C: ContentAddrStore>(
     // Send a summary to a random peer
     let summary = cstate.read().blockgraph.summarize();
     if let Some(rnd_peer) = network.routes().get(0) {
-        log::debug!("sending summary to peer {rnd_peer:?}: {summary:?}");
+        //log::debug!("sending summary to peer {rnd_peer:?}: {summary:?}");
         let diff = melnet::request::<_, Vec<BlockGraphDiff>>(
                 *rnd_peer,
                 "symphgossip",
@@ -147,7 +147,7 @@ async fn gossip_and_add_diff<C: ContentAddrStore>(
             //.map_err(|e| log::warn!("gossip request failed with peer {rnd_peer}: {e}"))
             .await.expect("timeout error?!")?;
 
-        log::debug!("received diff from peer: {diff:?}");
+        //log::debug!("received diff from peer {rnd_peer:?}: {diff:?}");
 
         // Integrate diff into block graph
         cstate.write().blockgraph.merge_diff(diff)?;
@@ -194,7 +194,7 @@ async fn gossip<C: ContentAddrStore>(
                 .expect("Failed to send a block on finalized channel");
         }
 
-        smol::Timer::after(Duration::from_secs(1)).await;
+        smol::Timer::after(Duration::from_millis(1000)).await;
     }
 }
 
@@ -265,8 +265,6 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
     let net_inner = network.clone();
     let _server = NS_EXECUTOR.spawn(async move { net_inner.run_server(listener).await });
 
-    //smol::future::pending().await
-
     loop {
         /*
         let vote_loop = async {
@@ -285,10 +283,7 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
         let lnc_state = cstate.read().blockgraph
             .lnc_state()
             .unwrap_or(cstate.read().blockgraph.root.clone());
-            //.unwrap_or(cfg.genesis);
-            //.unwrap_or(cstate.read().blockgraph.get_state());
-        //println!("LNC STATE: {:?}", opt_lnc_state.clone().unwrap().header());
-        //if let Some(lnc_state) = opt_lnc_state {
+
         let (height, height_time) = next_height_time(
             lnc_state.inner_ref().height,
             cfg.start_time,
