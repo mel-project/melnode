@@ -1,14 +1,10 @@
 #![allow(clippy::upper_case_acronyms)]
 
-mod mempool;
-mod smt;
 use std::{
     ops::{Deref, DerefMut},
     sync::Arc,
     time::Instant,
 };
-
-use self::mempool::Mempool;
 
 #[cfg(feature = "metrics")]
 use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
@@ -22,12 +18,13 @@ use futures_util::Stream;
 use parking_lot::RwLock;
 use smol::{channel::Sender, prelude::*};
 use smol_timeout::TimeoutExt;
-pub use smt::*;
 
 use stdcode::StdcodeSerializeExt;
 use themelio_nodeprot::TrustStore;
 use themelio_stf::{CoinMapping, GenesisConfig, SealedState, SmtMapping, State};
 use themelio_structs::{Block, BlockHeight, ConsensusProof, Header, NetID, ProposerAction};
+
+use super::{mempool::Mempool, MeshaCas};
 
 #[derive(Clone)]
 pub struct NodeTrustStore(pub NodeStorage);
@@ -369,8 +366,12 @@ impl NodeStorage {
             crate::prometheus::NETWORK
                 .read()
                 .expect("Could not get a read lock on NETWORK."),
-            AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-            AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
+            AWS_REGION
+                .read()
+                .expect("Could not get a read lock on AWS_REGION"),
+            AWS_INSTANCE_ID
+                .read()
+                .expect("Could not get a read lock on AWS_INSTANCE_ID"),
             header.height
         );
         let next = self.highest_state().next_state();

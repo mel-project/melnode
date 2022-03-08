@@ -22,32 +22,15 @@ use structopt::StructOpt;
 use tracing::instrument;
 
 #[cfg(feature = "metrics")]
-pub static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().expect("Could not create tokio runtime."));
+pub static RUNTIME: Lazy<Runtime> =
+    Lazy::new(|| Runtime::new().expect("Could not create tokio runtime."));
 
-#[cfg(unix)]
-#[global_allocator]
-static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+// #[cfg(unix)]
+// #[global_allocator]
+// static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[instrument]
 fn main() -> anyhow::Result<()> {
-    // Create a background thread which checks for deadlocks every 10s
-    std::thread::spawn(move || loop {
-        std::thread::sleep(std::time::Duration::from_secs(10));
-        let deadlocks = parking_lot::deadlock::check_deadlock();
-        if deadlocks.is_empty() {
-            continue;
-        }
-
-        log::error!("{} deadlocks detected", deadlocks.len());
-        for (i, threads) in deadlocks.iter().enumerate() {
-            log::error!("Deadlock #{}", i);
-            for t in threads {
-                log::error!("Thread Id {:#?}", t.thread_id());
-                log::error!("{:#?}", t.backtrace());
-            }
-        }
-    });
-
     env_logger::Builder::from_env("RUST_LOG")
         .parse_filters("themelio_node=debug,warn,novasymph")
         .init();
@@ -85,9 +68,15 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
         "hostname={} public_ip={} network={} region={} instance_id={} bootstrapping with {:?}",
         crate::prometheus::HOSTNAME.as_str(),
         crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-        crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-        AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-        AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
+        crate::prometheus::NETWORK
+            .read()
+            .expect("Could not get a read lock on NETWORK."),
+        AWS_REGION
+            .read()
+            .expect("Could not get a read lock on AWS_REGION"),
+        AWS_INSTANCE_ID
+            .read()
+            .expect("Could not get a read lock on AWS_INSTANCE_ID"),
         bootstrap
     );
     let _node_prot = NodeProtocol::new(
