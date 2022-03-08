@@ -9,15 +9,15 @@ export AWS_DEFAULT_REGION
 export SCRIPTS_DIRECTORY="$(dirname "${0}")"
 PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
 
-if [ -z "${PROMTAIL_USERNAME}" ]; then
-  echo "The PROMTAIL_USERNAME environment variable must be set."
+if [ -z "${LOKI_USERNAME}" ]; then
+  echo "The LOKI_USERNAME environment variable must be set."
   echo "Exiting."
 
   exit 1
 fi
 
-if [ -z "${PROMTAIL_PASSWORD}" ]; then
-  echo "The PROMTAIL_PASSWORD environment variable must be set."
+if [ -z "${LOKI_PASSWORD}" ]; then
+  echo "The LOKI_PASSWORD environment variable must be set."
   echo "Exiting."
 
   exit 1
