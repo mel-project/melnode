@@ -176,6 +176,7 @@ impl<B: DbBackend, C: ContentAddrStore> BlockTree<B, C> {
     }
 
     /// Deletes all the tips.
+    #[allow(clippy::needless_collect)]
     pub fn delete_tips(&mut self) {
         let tips = self
             .get_tips()

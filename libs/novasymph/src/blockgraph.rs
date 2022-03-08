@@ -1,12 +1,12 @@
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, btree_map::Entry},
     sync::Arc,
 };
 
-use crate::protocol::{EpochConfig, BlockBuilder};
+
 use serde::{Serialize, Deserialize};
 use novasmt::ContentAddrStore;
-use num_integer::Integer;
+
 use stdcode::StdcodeSerializeExt;
 use themelio_stf::SealedState;
 use themelio_structs::{Block, BlockHeight};
@@ -21,7 +21,7 @@ pub type Summary = BTreeMap<HashVal, HashVal>;
 
 pub struct BlockGraph<C: ContentAddrStore> {
     /// Latest sealed state
-    pub root: SealedState<C>,
+    root: SealedState<C>, 
     /// Mapping from a block hash to the hashes of blocks that reference it
     parent_to_child: BTreeMap<HashVal, BTreeSet<HashVal>>,
     /// Mapping of block proposals by their hashes
@@ -52,6 +52,11 @@ impl<C: ContentAddrStore> BlockGraph<C> {
         }
     }
 
+    /// Returns the root.
+    pub fn root(&self) -> SealedState<C> {
+        self.root.clone()
+    }
+
     /// Returns whether a node has the right number of votes.
     fn is_notarized(&self, hash: HashVal) -> bool {
         if let Some(votes) = self.votes.get(&hash) {
@@ -77,16 +82,14 @@ impl<C: ContentAddrStore> BlockGraph<C> {
             let votes = self.votes.entry(prop).or_default();
 
             // Add a vote if its not already there
-            if !votes.contains_key(&voter_key.to_public()) {
+            if let Entry::Vacant(e) = votes.entry(voter_key.to_public()) {
                 let header_hash = self.proposals.get(&prop)
                     .expect("Votes entry is not in proposals of blockgraph")
                     .block
                     .header.hash();
 
                 // Insert vote for prop
-                votes.insert(
-                    voter_key.to_public(),
-                    VoteSig::generate(voter_key, header_hash));
+                e.insert(VoteSig::generate(voter_key, header_hash));
             }
 
             // Add prop children to stack as well
@@ -127,9 +130,7 @@ impl<C: ContentAddrStore> BlockGraph<C> {
 
         // Remove all non-descendants of root
         let mut root_and_descendants = self.parent_to_child
-            .get(&root.header().hash())
-            .map(|bt| bt.clone())
-            .unwrap_or(BTreeSet::new());
+            .get(&root.header().hash()).cloned().unwrap_or_default();
         root_and_descendants.insert(root.header().hash());
 
         let mut stack = root_and_descendants.iter()
@@ -148,17 +149,17 @@ impl<C: ContentAddrStore> BlockGraph<C> {
         // Kill the infidels
         self.parent_to_child = self.parent_to_child.iter()
             .filter(|(hash, _)| root_and_descendants.contains(hash))
-            .map(|(hash, val)| (hash.clone(), val.clone()))
+            .map(|(hash, val)| (*hash, val.clone()))
             .collect::<BTreeMap<_,_>>();
 
         self.proposals = self.proposals.iter()
             .filter(|(hash, _)| root_and_descendants.contains(hash) && hash != &&self.root.header().hash())
-            .map(|(hash, val)| (hash.clone(), val.clone()))
+            .map(|(hash, val)| (*hash, val.clone()))
             .collect::<BTreeMap<_,_>>();
 
         self.votes = self.votes.iter()
             .filter(|(hash, _)| root_and_descendants.contains(hash))
-            .map(|(hash, val)| (hash.clone(), val.clone()))
+            .map(|(hash, val)| (*hash, val.clone()))
             .collect::<BTreeMap<_,_>>();
 
     }
@@ -186,6 +187,7 @@ impl<C: ContentAddrStore> BlockGraph<C> {
 
     /// Get the tips of the longest chains of fully notarized blocks.
     /// An lnc block tip may have children which are not notarized.
+    #[allow(clippy::needless_collect)]
     pub fn lnc_tips(&self) -> BTreeSet<HashVal> {
         let tips = self.tips();
         let tips_notarized_ancestors = tips.iter().cloned()
@@ -206,7 +208,7 @@ impl<C: ContentAddrStore> BlockGraph<C> {
         // Return max notarized chain weight tips
         if let Some(max_weight) = opt_max {
             tips.into_iter()
-                .filter(|tip| self.chain_weight(tip.clone()) == max_weight)
+                .filter(|tip| self.chain_weight(*tip) == max_weight)
                 .collect::<BTreeSet<_>>()
         } else {
             // Notarized tips is empty, so lnc tips is empty
@@ -300,7 +302,7 @@ impl<C: ContentAddrStore> BlockGraph<C> {
         self.parent_to_child
             .entry(prop.extends_from)
             .or_default()
-            .insert(header_hash.clone());
+            .insert(header_hash);
         self.parent_to_child
             .insert(header_hash, BTreeSet::new());
         self.proposals.insert(header_hash, prop);
@@ -410,7 +412,7 @@ pub enum Node<C: ContentAddrStore> {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Proposal {
     pub extends_from: HashVal,
-    pub block: Block,
+    pub block: Arc<Block>,
     pub proposer: Ed25519PK,
     pub signature: ProposalSig,
 }
