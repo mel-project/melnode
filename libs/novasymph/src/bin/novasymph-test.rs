@@ -49,7 +49,7 @@ fn main() {
     smol::future::block_on(async move {
         for i in 0..COUNT {
             // if i < 9 {
-            smol::spawn(run_staker(i, genesis.clone(), forest.clone())).detach();
+            smol::spawn(run_staker(i, genesis.clone())).detach();
             // }
         }
         smol::future::pending().await
@@ -63,13 +63,13 @@ fn idx_to_addr(idx: usize) -> SocketAddr {
 async fn run_staker<C: ContentAddrStore>(
     idx: usize,
     genesis: SealedState<C>,
-    forest: novasmt::Database<C>,
+    //forest: novasmt::Database<C>,
 ) {
     let protocol = EpochProtocol::new(EpochConfig {
         listen: idx_to_addr(idx),
         bootstrap: (0..COUNT).map(idx_to_addr).collect(),
         genesis,
-        forest,
+        //forest,
         start_time: SystemTime::now(),
         interval: Duration::from_secs(5),
         signing_sk: TEST_SKK[idx],
@@ -78,7 +78,6 @@ async fn run_staker<C: ContentAddrStore>(
         },
         get_confirmed: Box::new(|_| None),
     });
-    //loop {}
     loop {
         let blk = protocol.next_confirmed().await;
         log::warn!("CONFIRMED {:?}", blk.inner().header().height);
