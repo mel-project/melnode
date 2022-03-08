@@ -25,17 +25,18 @@ pub struct BlockGraph<C: ContentAddrStore> {
     /// Mapping from a block hash to the hashes of blocks that reference it
     parent_to_child: BTreeMap<HashVal, BTreeSet<HashVal>>,
     /// Mapping of block proposals by their hashes
-    proposals: BTreeMap<HashVal, Proposal>,
+    // TODO not public
+    pub proposals: BTreeMap<HashVal, Proposal>,
     /// Mapping of pub-key with signature to a block hash that it is voting for
     votes: BTreeMap<HashVal, BTreeMap<Ed25519PK, VoteSig>>,
-    /// Mapping of amount staked by public key
-    vote_weights: BTreeMap<Ed25519PK, u128>,
+    /// Mapping of voting power (amount staked / total staked) by public key
+    vote_weights: BTreeMap<Ed25519PK, f64>,
     /// A function to get the block proposer's public key for a given block height (consensus round)
     correct_proposer: Box<dyn Fn(BlockHeight) -> Ed25519PK + Send + Sync + 'static>,
 }
 
 impl<C: ContentAddrStore> BlockGraph<C> {
-    pub fn new(root: SealedState<C>) -> Self {
+    pub fn new(root: SealedState<C>, vote_weights: BTreeMap<Ed25519PK, f64>) -> Self {
         // Add root to the parent->child map for a blockgraph
         let mut parent_to_child = BTreeMap::new();
         parent_to_child.insert(root.header().hash(), BTreeSet::new());
@@ -47,17 +48,18 @@ impl<C: ContentAddrStore> BlockGraph<C> {
             parent_to_child,
             proposals: BTreeMap::new(),
             votes: BTreeMap::new(),
-            vote_weights: BTreeMap::new(),
+            vote_weights,
             correct_proposer,
         }
     }
 
     /// Returns whether a node has the right number of votes.
-    fn is_notarized(&self, hash: HashVal) -> bool {
+    pub fn is_notarized(&self, hash: HashVal) -> bool {
         if let Some(votes) = self.votes.get(&hash) {
-            let total_voting_for: u128 = votes.keys().map(|k| self.vote_weights[k]).sum();
-            let total_stake: u128 = self.vote_weights.values().copied().sum();
-            total_voting_for > (total_stake * 2).div_ceil(&3)
+            let total_voting_for: f64 = votes.keys().map(|k| self.vote_weights[k]).sum();
+            //let total_stake: u128 = self.vote_weights.values().copied().sum();
+            //total_voting_for > (total_stake * 2).div_ceil(&3)
+            total_voting_for > 0.667 //2.div_ceil(&3)
         } else {
             // Root is notarized by default
             self.root.header().hash() == hash
@@ -67,21 +69,31 @@ impl<C: ContentAddrStore> BlockGraph<C> {
     pub fn vote_all(&mut self, voter_key: Ed25519SK) {
         // Get the lnc tips and vote for them
         let lnc_tips = self.lnc_tips();
-        for tip in lnc_tips {
-            let votes = self.votes.entry(tip).or_default();
+        let mut stack = lnc_tips.iter()
+            .chain(vec![self.root.header().hash()].iter())
+            .flat_map(|tip| self.parent_to_child.get(tip).unwrap_or(&BTreeSet::new()).clone())
+            .collect::<Vec<HashVal>>();
+
+        while let Some(prop) = stack.pop() {
+            let votes = self.votes.entry(prop).or_default();
 
             // Add a vote if its not already there
             if !votes.contains_key(&voter_key.to_public()) {
-                let header_hash = self.proposals.get(&tip)
+                //log::debug!("Vote all get prop: {prop:?}\nIn props {:?}", self.proposals.keys());
+                let header_hash = self.proposals.get(&prop)
                     .expect("Votes entry is not in proposals of blockgraph")
                     .block
                     .header.hash();
+                //log::debug!("{voter_key:?} voting for {header_hash:?}");
 
-                // Insert vote for tip
+                // Insert vote for prop
                 votes.insert(
                     voter_key.to_public(),
                     VoteSig::generate(voter_key, header_hash));
             }
+
+            // Add prop children to stack as well
+            stack.extend(self.parent_to_child.get(&prop).unwrap_or(&BTreeSet::new()).clone());
         }
     }
 
@@ -117,17 +129,18 @@ impl<C: ContentAddrStore> BlockGraph<C> {
         self.root = root.clone();
 
         // Remove all non-descendants of root
-        let mut root_descendants = self.parent_to_child
+        let mut root_and_descendants = self.parent_to_child
             .get(&root.header().hash())
             .map(|bt| bt.clone())
             .unwrap_or(BTreeSet::new());
+        root_and_descendants.insert(root.header().hash());
 
-        let mut stack = root_descendants.iter()
+        let mut stack = root_and_descendants.iter()
             .cloned().collect::<Vec<_>>();
 
         // Build a set of root's descendants
         while let Some(child) = stack.pop() {
-            root_descendants.insert(child);
+            root_and_descendants.insert(child);
 
             stack.extend(
                 self.parent_to_child
@@ -137,17 +150,17 @@ impl<C: ContentAddrStore> BlockGraph<C> {
 
         // Kill the infidels
         self.parent_to_child = self.parent_to_child.iter()
-            .filter(|(hash, _)| !root_descendants.contains(hash))
+            .filter(|(hash, _)| root_and_descendants.contains(hash))
             .map(|(hash, val)| (hash.clone(), val.clone()))
             .collect::<BTreeMap<_,_>>();
 
         self.proposals = self.proposals.iter()
-            .filter(|(hash, _)| !root_descendants.contains(hash))
+            .filter(|(hash, _)| root_and_descendants.contains(hash) && hash != &&self.root.header().hash())
             .map(|(hash, val)| (hash.clone(), val.clone()))
             .collect::<BTreeMap<_,_>>();
 
         self.votes = self.votes.iter()
-            .filter(|(hash, _)| !root_descendants.contains(hash))
+            .filter(|(hash, _)| root_and_descendants.contains(hash))
             .map(|(hash, val)| (hash.clone(), val.clone()))
             .collect::<BTreeMap<_,_>>();
 
@@ -163,9 +176,10 @@ impl<C: ContentAddrStore> BlockGraph<C> {
         weight
     }
 
+    /// Get all blocks (proposals or the root) which do not have children
     fn tips(&self) -> BTreeSet<HashVal> {
         self.proposals.keys().cloned()
-            //.chain(vec![self.root.header().hash()])
+            .chain(vec![self.root.header().hash()])
             .filter(|hash|
                 self.parent_to_child
                 .get(hash)
@@ -174,6 +188,8 @@ impl<C: ContentAddrStore> BlockGraph<C> {
             .collect()
     }
 
+    /// Get the tips of the longest chains of fully notarized blocks.
+    /// An lnc block tip may have children which are not notarized.
     pub fn lnc_tips(&self) -> BTreeSet<HashVal> {
         let tips = self.tips();
         let tips_notarized_ancestors = tips.iter().cloned()
@@ -203,7 +219,7 @@ impl<C: ContentAddrStore> BlockGraph<C> {
     }
 
     /// Drains out finalized blocks.
-    pub fn drain_finalized(&mut self) -> Vec<SealedState<C>> {
+    pub fn drain_finalized(&self) -> Vec<SealedState<C>> {
         // DFS through the whole thing, keeping track of how many consecutively increasing notarized blocks we see
         let mut dfs_stack: Vec<(HashVal, BlockHeight, usize)> =
             vec![(self.root.header().hash(), self.root.inner_ref().height, 1)];
@@ -221,11 +237,13 @@ impl<C: ContentAddrStore> BlockGraph<C> {
                 {
                     finalized_props.push(previous);
                 }
-                log::debug!("got {} finalized proposals", finalized_props.len());
+                log::debug!("got {} finalized proposals: {:?}",
+                    finalized_props.len(),
+                    finalized_props.iter().map(|p| p.block.header.hash()).collect::<Vec<_>>());
                 finalized_props.reverse();
                 let mut accum: Vec<SealedState<C>> = vec![];
                 for prop in finalized_props {
-                    // Apply empty blocks to fill the distance between prop and previous block
+                    // Apply empty blocks to fill the distance between prop and previous block in accum
                     while accum
                         .last()
                         .map(|last| last.header().hash() != prop.block.header.previous)
@@ -235,12 +253,14 @@ impl<C: ContentAddrStore> BlockGraph<C> {
                     }
 
                     // Apply prop to last block in accum to get the next sealed state
+                    log::debug!("with root {:?}\npreparing to apply {:?} to accum: {:?}", self.root.header().hash(), prop.block.header.hash(), accum.iter().map(|s| s.header().hash()).collect::<Vec<_>>());
                     accum.push(
                         accum
                             .last()
                             .cloned()
                             .unwrap_or_else(|| self.root.clone())
                             .apply_block(&prop.block)
+                            .map_err(|e| {log::debug!("{e}"); e})
                             .expect("finalized some bad blocks"),
                     );
                 }
@@ -251,7 +271,6 @@ impl<C: ContentAddrStore> BlockGraph<C> {
                 let child = self.proposals[&child_hash].clone();
                 let child_height = child.block.header.height;
                 if self.is_notarized(child_hash) {
-                    // TODO why do these need to be consecutive?
                     if child_height == height + BlockHeight(1) {
                         dfs_stack.push((child_hash, child_height, consec + 1))
                     } else {
@@ -280,11 +299,17 @@ impl<C: ContentAddrStore> BlockGraph<C> {
         if let Err(err) = previous.apply_block(&prop.block) {
             return Err(ProposalRejection::InvalidBlock(err.into()));
         }
+
+        // Add to blockgraph
+        let header_hash = prop.block.header.hash();
         self.parent_to_child
             .entry(prop.extends_from)
             .or_default()
-            .insert(prop.block.header.hash());
-        self.proposals.insert(prop.block.header.hash(), prop);
+            .insert(header_hash.clone());
+        self.parent_to_child
+            .insert(header_hash, BTreeSet::new());
+        self.proposals.insert(header_hash, prop);
+
         // TODO check for turn info
         Ok(())
     }

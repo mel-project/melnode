@@ -6,7 +6,7 @@ use crate::{
         },
         ChainState,
     },
-    msg::ProposalSig,
+    msg::{VoteSig, ProposalSig},
     NS_EXECUTOR,
 };
 use thiserror::Error;
@@ -77,7 +77,12 @@ impl<C: ContentAddrStore> EpochProtocol<C> {
     pub fn new<B: BlockBuilder<C>>(cfg: EpochConfig<B, C>) -> Self {
         let (send_confirmed, recv_confirmed) = smol::channel::unbounded();
 
-        let blockgraph = BlockGraph::new(cfg.genesis.clone());
+        let stake_map = &cfg.genesis.inner_ref().stakes;
+        let vote_weights = stake_map.val_iter()
+            .map(|stakedoc| (stakedoc.pubkey, stake_map.vote_power(0, stakedoc.pubkey)))
+            .collect::<BTreeMap<_,_>>();
+
+        let blockgraph = BlockGraph::new(cfg.genesis.clone(), vote_weights);
         let cstate = Arc::new(RwLock::new(ChainState::new(
             cfg.genesis.clone(),
             //cfg.forest.clone(),
@@ -184,17 +189,18 @@ async fn gossip<C: ContentAddrStore>(
             .await;
 
         // Drain any new finalized blocks
-        let finalized = cstate.write().blockgraph.drain_finalized();
+        let finalized = cstate.read().blockgraph.drain_finalized();
         for block in finalized {
             // TODO obviously confirm should contain a real consensus proof
             // but right now confirm doesn't actually check
+            log::debug!("Block finalized: {:?}", block.header());
             send_confirmed.send(
                 block.confirm(BTreeMap::new(), None)
                     .expect("Could not confirm finalized block")).await
                 .expect("Failed to send a block on finalized channel");
         }
 
-        smol::Timer::after(Duration::from_millis(1000)).await;
+        smol::Timer::after(Duration::from_millis(100)).await;
     }
 }
 
@@ -289,17 +295,20 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
             cfg.start_time,
             cfg.interval,
         );
-        log::debug!("waiting until height_time {:?}", height_time);
+        //log::debug!("waiting until height_time {:?}", height_time);
         //wait_until_sys(height_time).or(vote_loop).await;
-        println!("{height_time:?}");
         wait_until_sys(height_time).await;
 
-        log::debug!("entering height {}", height);
+        //log::debug!("entering height {}", height);
 
         // let mut cstate = cstate.write();
         if height_to_proposer(height) == cfg.signing_sk.to_public() {
             log::debug!("we are the proposer for height {}", height);
-            //let mut build_upon = cstate.read().get_lnc_state();
+
+            //log::debug!("lnc tips: {:?}", cstate.read().blockgraph.lnc_tips());
+            let lnc_state = cstate.read().blockgraph
+                .lnc_state()
+                .unwrap_or(cstate.read().blockgraph.root.clone());
             let mut build_upon = lnc_state;
             if build_upon.inner_ref().height >= height {
                 log::warn!(
@@ -311,9 +320,10 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
             }
             let last_nonempty_hash = build_upon.header().hash();
             // fill in a bunch of empty blocks until the height matches
+            log::debug!("Stemming from {:?}", last_nonempty_hash);
             while build_upon.inner_ref().height + BlockHeight(1) < height {
                 build_upon = smol::unblock(move || build_upon.next_state().seal(None)).await;
-                log::debug!("building empty block for {}", build_upon.inner_ref().height)
+                log::debug!("building empty block for {}", build_upon.inner_ref().height);
             }
 
             // am i out of bounds?
@@ -338,6 +348,7 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
             } else {
                 cfg.builder.build_block(build_upon.clone())
             };
+            log::debug!("Proposing block {:?}\n", proposed_block.header.hash());
 
             // Insert proposal into blockgraph
             if let Err(err) = cstate.write().blockgraph.insert_proposal(
@@ -385,9 +396,13 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
                 panic!("PANIK PANIK");
             }
             // vote for it myself
-            cstate.write().blockgraph.vote_all(cfg.signing_sk);
+            //cstate.write().blockgraph.vote_all(cfg.signing_sk);
+            cstate.write().blockgraph.insert_vote(
+                last_nonempty_hash,
+                cfg.signing_sk.to_public(),
+                VoteSig::generate(cfg.signing_sk, last_nonempty_hash));
         } else {
-            log::debug!("we are NOT the proposer for height {}", height);
+            //log::debug!("we are NOT the proposer for height {}", height);
         }
     }
 }
@@ -808,7 +823,7 @@ pub fn gen_get_proposer<C: ContentAddrStore>(
                 genesis.inner_ref().height
             );
         }
-        log::debug!("{} staked for epoch {}", total_staked, epoch);
+        //log::debug!("{} staked for epoch {}", total_staked, epoch);
         // "clamp" the subseed
         // we hash the seed with the height
         let mut seed = tmelcrypt::hash_keyed(&height.0.to_be_bytes(), &seed);
@@ -831,7 +846,7 @@ pub fn gen_get_proposer<C: ContentAddrStore>(
         for stake in stake_docs {
             if stake.e_post_end > epoch && stake.e_start <= epoch {
                 sum += stake.syms_staked.0;
-                dbg!(seed, sum);
+                //dbg!(seed, sum);
                 if seed <= sum {
                     return stake.pubkey;
                 }
