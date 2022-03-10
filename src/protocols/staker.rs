@@ -9,8 +9,8 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use once_cell::sync::Lazy;
 use novasymph::BlockBuilder;
+use once_cell::sync::Lazy;
 use smol::prelude::*;
 use themelio_stf::SealedState;
 use themelio_structs::{Address, Block, BlockHeight, NetID, ProposerAction, Transaction, TxHash};
@@ -18,10 +18,10 @@ use tmelcrypt::Ed25519SK;
 use tracing::instrument;
 
 static MAINNET_START_TIME: Lazy<SystemTime> =
-    Lazy::new(|| std::time::UNIX_EPOCH + Duration::from_secs(1619758800)); // Apr 30 2021
+    Lazy::new(|| std::time::UNIX_EPOCH + Duration::from_secs(1618462800)); // Apr 15 2021
 
 static TESTNET_START_TIME: Lazy<SystemTime> =
-    Lazy::new(|| std::time::UNIX_EPOCH + Duration::from_secs(1618003300)); // Apr 09 2021
+    Lazy::new(|| std::time::UNIX_EPOCH + Duration::from_secs(1618000000)); // Apr 09 2021
 
 /// This encapsulates the staker-specific peer-to-peer.
 pub struct StakerProtocol {
@@ -133,7 +133,6 @@ async fn one_epoch_loop(
     target_fee_multiplier: u128,
 ) -> anyhow::Result<()> {
     let genesis = storage.highest_state();
-    let forest = storage.clone().forest().clone();
     let start_time = match genesis.inner_ref().network {
         NetID::Mainnet => *MAINNET_START_TIME,
         NetID::Testnet => *TESTNET_START_TIME,
@@ -143,7 +142,6 @@ async fn one_epoch_loop(
         listen: addr,
         bootstrap,
         genesis,
-        forest,
         start_time,
         interval: Duration::from_secs(30),
         signing_sk: my_sk,
@@ -151,7 +149,8 @@ async fn one_epoch_loop(
             storage: storage.clone(),
             payout_covhash,
             target_fee_multiplier,
-        },
+        }
+        .into(),
         get_confirmed: {
             let storage = storage.clone();
             Box::new(move |height: BlockHeight| {
