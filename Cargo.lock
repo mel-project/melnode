@@ -1822,6 +1822,7 @@ dependencies = [
  "binary-search",
  "blkdb",
  "bytes",
+ "dashmap",
  "derivative",
  "env_logger 0.9.0",
  "fastrand",

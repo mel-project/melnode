@@ -36,7 +36,7 @@ themelio-stf = "0.9.12"
 themelio-structs= "0.2.1"
 thiserror = "1.0.30"
 tmelcrypt = "0.2.4"
-
+dashmap="4"
 derivative= "2.2.0"
 binary-search= "0.1.2"
 slab = "0.4.5"

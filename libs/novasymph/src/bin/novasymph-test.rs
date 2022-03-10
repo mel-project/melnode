@@ -11,7 +11,7 @@ use themelio_stf::{melvm::Covenant, GenesisConfig, SealedState};
 use themelio_structs::{Block, CoinData, Denom, NetID, ProposerAction, StakeDoc};
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
-const COUNT: usize = 20;
+const COUNT: usize = 1;
 
 /// Bunch of secret keys for testing
 static TEST_SKK: Lazy<Vec<Ed25519SK>> =

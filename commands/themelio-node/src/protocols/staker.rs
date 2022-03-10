@@ -133,7 +133,6 @@ async fn one_epoch_loop(
     target_fee_multiplier: u128,
 ) -> anyhow::Result<()> {
     let genesis = storage.highest_state();
-    let forest = storage.clone().forest().clone();
     let start_time = match genesis.inner_ref().network {
         NetID::Mainnet => *MAINNET_START_TIME,
         NetID::Testnet => *TESTNET_START_TIME,
@@ -143,7 +142,6 @@ async fn one_epoch_loop(
         listen: addr,
         bootstrap,
         genesis,
-        forest,
         start_time,
         interval: Duration::from_secs(30),
         signing_sk: my_sk,

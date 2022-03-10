@@ -32,6 +32,9 @@ pub struct BlockGraph<C: ContentAddrStore> {
     vote_weights: BTreeMap<Ed25519PK, f64>,
     /// A function to get the block proposer's public key for a given block height (consensus round)
     correct_proposer: Box<dyn Fn(BlockHeight) -> Ed25519PK + Send + Sync + 'static>,
+
+    /// Last drained
+    last_drained: BlockHeight,
 }
 
 impl<C: ContentAddrStore> BlockGraph<C> {
@@ -41,6 +44,7 @@ impl<C: ContentAddrStore> BlockGraph<C> {
         parent_to_child.insert(root.header().hash(), BTreeSet::new());
 
         let correct_proposer = Box::new(crate::protocol::gen_get_proposer(root.clone()));
+        let last_drained = root.inner_ref().height;
 
         BlockGraph {
             root,
@@ -49,6 +53,7 @@ impl<C: ContentAddrStore> BlockGraph<C> {
             votes: BTreeMap::new(),
             vote_weights,
             correct_proposer,
+            last_drained, 
         }
     }
 
@@ -63,6 +68,7 @@ impl<C: ContentAddrStore> BlockGraph<C> {
             let total_voting_for: f64 = votes.keys().map(|k| self.vote_weights[k]).sum();
             //let total_stake: u128 = self.vote_weights.values().copied().sum();
             //total_voting_for > (total_stake * 2).div_ceil(&3)
+            // log::debug!("{} voting for {}", total_voting_for, hash);
             total_voting_for > 0.667 //2.div_ceil(&3)
         } else {
             // Root is notarized by default
@@ -124,8 +130,17 @@ impl<C: ContentAddrStore> BlockGraph<C> {
         }
     }
 
+    /// Get a vote weight
+    pub fn vote_weight(&self, pk: Ed25519PK) -> f64 {
+        self.vote_weights.get(&pk).copied().unwrap_or_default()
+    }
+
     /// Sets a new root and removes all proposals/votes which are not descendants of the new root
     pub fn update_root(&mut self, root: SealedState<C>) {
+        if self.root.header() == root.header() {
+            return
+        }
+        log::debug!("updating root to {} at height {}", root.header().hash(), root.inner_ref().height);
         self.root = root.clone();
 
         // Remove all non-descendants of root
@@ -181,7 +196,7 @@ impl<C: ContentAddrStore> BlockGraph<C> {
                 self.parent_to_child
                 .get(hash)
                 .map(|children| children.is_empty())
-                .unwrap_or(false))
+                .unwrap_or(true))
             .collect()
     }
 
@@ -190,7 +205,7 @@ impl<C: ContentAddrStore> BlockGraph<C> {
     #[allow(clippy::needless_collect)]
     pub fn lnc_tips(&self) -> BTreeSet<HashVal> {
         let tips = self.tips();
-        let tips_notarized_ancestors = tips.iter().cloned()
+        let tips = tips.iter().cloned()
             .map(|mut tip| {
                 while !self.is_notarized(tip) {
                     tip = self.proposals.get(&tip)
@@ -201,8 +216,8 @@ impl<C: ContentAddrStore> BlockGraph<C> {
             })
             .collect::<Vec<HashVal>>();
 
-        let opt_max = tips_notarized_ancestors.into_iter()
-            .map(|block_hash| self.chain_weight(block_hash))
+        let opt_max = tips.iter()
+            .map(|block_hash| self.chain_weight(*block_hash))
             .max();
 
         // Return max notarized chain weight tips
@@ -217,7 +232,7 @@ impl<C: ContentAddrStore> BlockGraph<C> {
     }
 
     /// Drains out finalized blocks.
-    pub fn drain_finalized(&self) -> Vec<SealedState<C>> {
+    pub fn drain_finalized(&mut self) -> Vec<SealedState<C>> {
         // DFS through the whole thing, keeping track of how many consecutively increasing notarized blocks we see
         let mut dfs_stack: Vec<(HashVal, BlockHeight, usize)> =
             vec![(self.root.header().hash(), self.root.inner_ref().height, 1)];
@@ -244,10 +259,11 @@ impl<C: ContentAddrStore> BlockGraph<C> {
                     // Apply empty blocks to fill the distance between prop and previous block in accum
                     while accum
                         .last()
-                        .map(|last| last.header().hash() != prop.block.header.previous)
-                        .unwrap_or(false)
+                        .unwrap_or(&self.root)
+                        .header()
+                        .hash() != prop.block.header.previous
                     {
-                        accum.push(accum.last().unwrap().next_state().seal(None));
+                        accum.push(accum.last().unwrap_or(&self.root).next_state().seal(None));
                     }
 
                     // Apply prop to last block in accum to get the next sealed state
@@ -257,9 +273,13 @@ impl<C: ContentAddrStore> BlockGraph<C> {
                             .cloned()
                             .unwrap_or_else(|| self.root.clone())
                             .apply_block(&prop.block)
-                            .map_err(|e| {log::debug!("{e}"); e})
+                            .map_err(|e| {log::error!("{e}"); e})
                             .expect("finalized some bad blocks"),
                     );
+                }
+                accum.retain(|a| a.inner_ref().height > self.last_drained);
+                if let Some(val) = accum.iter().map(|a| a.inner_ref().height).max() {
+                    self.last_drained = val;
                 }
                 return accum;
             }
@@ -281,6 +301,10 @@ impl<C: ContentAddrStore> BlockGraph<C> {
 
     /// Inserts a proposal to the block graph. If it fails, returns exactly why the proposal failed.
     pub fn insert_proposal(&mut self, prop: Proposal) -> Result<(), ProposalRejection> {
+        if !prop.signature.verify(prop.proposer, &prop.block.abbreviate()) {
+            return Err(ProposalRejection::BadSignature)
+        }
+
         let mut previous = match self.get_state(prop.extends_from) {
             Some(s) => s,
             None => return Err(ProposalRejection::NoPrevious(prop.extends_from)),
@@ -314,6 +338,7 @@ impl<C: ContentAddrStore> BlockGraph<C> {
     /// Insert a vote to the block graph.
     pub fn insert_vote(&mut self, vote_for: HashVal, voter: Ed25519PK, vote: VoteSig) {
         if vote.verify(voter, vote_for) && self.proposals.contains_key(&vote_for) {
+            log::debug!("inserting vote for {}", vote_for);
             self.votes.entry(vote_for).or_default().insert(voter, vote);
         }
     }
@@ -323,12 +348,11 @@ impl<C: ContentAddrStore> BlockGraph<C> {
     pub fn merge_diff(&mut self, diffs: Vec<BlockGraphDiff>) -> Result<(), ProposalRejection> {
         for d in diffs.into_iter() {
             match d {
-                BlockGraphDiff::Proposal(prop) => self.insert_proposal(prop),
+                BlockGraphDiff::Proposal(prop) => self.insert_proposal(prop)?,
                 BlockGraphDiff::Vote(hash, pk, sig) => {
                     self.insert_vote(hash, pk, sig);
-                    Ok(())
                 },
-            }?
+            }
         }
         Ok(())
     }
@@ -384,6 +408,18 @@ impl<C: ContentAddrStore> BlockGraph<C> {
         //log::debug!("generated diff\n{toret:?} from summary\n{their_summary:?} and internal {:?}", self.proposals);
         toret
     }
+
+    /// Create the graphviz representation of the blockgraph
+    pub fn graphviz(&self) -> String {
+        let mut accum = "digraph G {\n".to_string();
+        for (k, v) in self.parent_to_child.iter() {
+            for v in v.iter() {
+                accum.push_str(&format!("\"{}\" -> \"{}\"\n", k, v));
+            }
+        }
+        accum.push_str("}\n");
+        accum
+    }
 }
 
 /// A diff
@@ -402,6 +438,8 @@ pub enum ProposalRejection {
     InvalidBlock(anyhow::Error),
     #[error("missing extends_from")]
     NoPrevious(HashVal),
+    #[error("bad signature")]
+    BadSignature
 }
 
 pub enum Node<C: ContentAddrStore> {

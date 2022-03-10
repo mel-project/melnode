@@ -4,6 +4,7 @@ use crate::{
     NS_EXECUTOR,
 };
 use binary_search::{binary_search, Direction};
+use dashmap::DashMap;
 use melnet::{MelnetError, Request};
 use novasmt::ContentAddrStore;
 use parking_lot::RwLock;
@@ -67,7 +68,12 @@ impl<C: ContentAddrStore> EpochProtocol<C> {
         let stake_map = &cfg.genesis.inner_ref().stakes;
         let vote_weights = stake_map
             .val_iter()
-            .map(|stakedoc| (stakedoc.pubkey, stake_map.vote_power(0, stakedoc.pubkey)))
+            .map(|stakedoc| {
+                (
+                    stakedoc.pubkey,
+                    stake_map.vote_power(cfg.genesis.inner_ref().height.epoch(), stakedoc.pubkey),
+                )
+            })
             .collect::<BTreeMap<_, _>>();
 
         let blockgraph = BlockGraph::new(cfg.genesis.clone(), vote_weights);
@@ -149,7 +155,8 @@ async fn gossip_and_add_diff<C: ContentAddrStore>(
 }
 
 /// Communicate summaries to peers and integrate diff responses into the chain state
-async fn gossip<C: ContentAddrStore>(
+async fn graph_gossip<C: ContentAddrStore>(
+    epoch: u64,
     cstate: Arc<RwLock<BlockGraph<C>>>,
     network: melnet::NetState,
     send_confirmed: Sender<ConfirmedState<C>>,
@@ -166,6 +173,15 @@ async fn gossip<C: ContentAddrStore>(
             }
         },
     );
+    let (send_finalized, recv_finalized) = smol::channel::bounded(1);
+    let _confirm_gossip = NS_EXECUTOR.spawn(confirm_gossip(
+        epoch,
+        cstate.clone(),
+        network.clone(),
+        recv_finalized,
+        send_confirmed,
+        voter_key,
+    ));
     loop {
         // Get a blockgraph update from a random neighbor
         if let Err(err) = gossip_and_add_diff(cstate.clone(), &network, voter_key).await {
@@ -173,22 +189,110 @@ async fn gossip<C: ContentAddrStore>(
         }
 
         // Drain any new finalized blocks
-        let finalized = cstate.read().drain_finalized();
+        let finalized = cstate.write().drain_finalized();
         for block in finalized {
-            // TODO obviously confirm should contain a real consensus proof
-            // but right now confirm doesn't actually check
             log::debug!("Block finalized: {:?}", block.header());
-            send_confirmed
-                .send(
-                    block
-                        .confirm(BTreeMap::new(), None)
-                        .expect("Could not confirm finalized block"),
-                )
+            send_finalized
+                .send(block)
                 .await
                 .expect("Failed to send a block on finalized channel");
         }
 
         smol::Timer::after(Duration::from_millis(100)).await;
+    }
+}
+
+/// Gather confirmations of fully confirmed blocks from peers
+async fn confirm_gossip<C: ContentAddrStore>(
+    epoch: u64,
+    cstate: Arc<RwLock<BlockGraph<C>>>,
+    network: melnet::NetState,
+    recv_finalized: Receiver<SealedState<C>>,
+    send_confirmed: Sender<ConfirmedState<C>>,
+    signing_sk: Ed25519SK,
+) {
+    // Cache of confirmation votes, indexed by block
+    let confirmation_cache: Arc<DashMap<BlockHeight, BTreeMap<Ed25519PK, Vec<u8>>>> =
+        Arc::new(DashMap::new());
+    network.listen("get_confirmations", {
+        let confirmation_cache = confirmation_cache.clone();
+        move |breq: Request<BlockHeight>| {
+            let confirmation_cache = confirmation_cache.clone();
+            async move {
+                let response = confirmation_cache
+                    .get(&breq.body)
+                    .map(|d| d.clone())
+                    .unwrap_or_default();
+                Ok(response)
+            }
+        }
+    });
+    // For every finalized block, we first vote for it, and then spawn a task that gathers confirmations until enough is gathered to confirm the block
+    loop {
+        let finalized = match recv_finalized.recv().await {
+            Ok(s) => s,
+            Err(err) => {
+                log::warn!("confirm_gossip dying from bad recv: {}", err);
+                return;
+            }
+        };
+        if finalized.inner_ref().height.epoch() > epoch {
+            log::warn!("stopping all confirmations because we are past epoch");
+            return;
+        }
+        let mut mapping = BTreeMap::new();
+        mapping.insert(
+            signing_sk.to_public(),
+            signing_sk.sign(&finalized.header().hash()),
+        );
+        let fin_height = finalized.inner_ref().height;
+        confirmation_cache.insert(fin_height, mapping);
+        // confirm it by randomly asking peers
+        while confirmation_cache
+            .get(&fin_height)
+            .unwrap()
+            .iter()
+            .map(|(k, _)| cstate.read().vote_weight(*k))
+            .sum::<f64>()
+            <= 0.667
+        {
+            for peer in network.routes() {
+                let ccache = confirmation_cache.clone();
+                NS_EXECUTOR
+                    .spawn(async move {
+                        let their_mapping: BTreeMap<Ed25519PK, Vec<u8>> = match melnet::request(
+                            peer,
+                            "symphgossip",
+                            "get_confirmations",
+                            fin_height,
+                        )
+                        .await
+                        {
+                            Ok(r) => r,
+                            Err(err) => {
+                                log::warn!("error getting confirmation from {}: {:?}", peer, err);
+                                return;
+                            }
+                        };
+                        for (k, v) in their_mapping {
+                            if let Some(mut m) = ccache.get_mut(&fin_height) {
+                                m.insert(k, v);
+                            }
+                        }
+                    })
+                    .detach();
+                smol::Timer::after(Duration::from_millis(200)).await;
+            }
+            smol::Timer::after(Duration::from_millis(200)).await;
+        }
+        log::debug!("CONFIRMED block {}", fin_height);
+        let _ = send_confirmed
+            .send(
+                finalized
+                    .confirm(confirmation_cache.get(&fin_height).unwrap().clone(), None)
+                    .unwrap(),
+            )
+            .await;
     }
 }
 
@@ -207,7 +311,8 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
     let my_epoch = (cfg.genesis.inner_ref().height + 1.into()).epoch();
 
     // Spawn gossip loop
-    let _gossiper = NS_EXECUTOR.spawn(gossip(
+    let _gossiper = NS_EXECUTOR.spawn(graph_gossip(
+        my_epoch,
         cstate.clone(),
         network.clone(),
         send_confirmed,
@@ -281,7 +386,7 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
             } else {
                 cfg.builder.build_block(build_upon.clone())
             });
-            log::debug!("Proposing block {:?}\n", proposed_block.header.hash());
+            log::debug!("Proposing block {:?}", proposed_block.header.hash());
 
             // Insert proposal into blockgraph
             if let Err(err) = cstate.write().insert_proposal(Proposal {
@@ -329,10 +434,13 @@ async fn protocol_loop<B: BlockBuilder<C>, C: ContentAddrStore>(
             // vote for it myself
             //cstate.write().blockgraph.vote_all(cfg.signing_sk);
             cstate.write().insert_vote(
-                last_nonempty_hash,
+                proposed_block.header.hash(),
                 cfg.signing_sk.to_public(),
-                VoteSig::generate(cfg.signing_sk, last_nonempty_hash),
+                VoteSig::generate(cfg.signing_sk, proposed_block.header.hash()),
             );
+            for state in dbg!(cstate.read().lnc_tips()) {
+                log::debug!("lnc tip: {:?}", state)
+            }
         } else {
             //log::debug!("we are NOT the proposer for height {}", height);
         }
