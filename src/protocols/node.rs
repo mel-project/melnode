@@ -211,25 +211,22 @@ struct AuditorResponder {
 impl NodeServer<MeshaCas> for AuditorResponder {
     fn send_tx(&self, state: melnet::NetState, tx: Transaction) -> anyhow::Result<()> {
         let start = Instant::now();
-        let post_lock = Instant::now();
         self.storage
             .mempool_mut()
             .apply_transaction(&tx)
             .map_err(|e| {
-                // log::warn!("cannot apply tx: {:?}", e);
+                log::warn!("cannot apply tx: {:?}", e);
                 MelnetError::Custom(e.to_string())
             })?;
         #[cfg(not(feature = "metrics"))]
         log::debug!(
-            "txhash {}.. inserted ({:?}, {:?} locking, {:?} applying)",
+            "txhash {}.. inserted ({:?} applying)",
             &tx.hash_nosigs().to_string()[..10],
             start.elapsed(),
-            post_lock - start,
-            post_lock.elapsed()
         );
         #[cfg(feature = "metrics")]
         log::debug!(
-            "hostname={} public_ip={} network={} region={} instance_id={} txhash {}.. inserted ({:?}, {:?} locking, {:?} applying)",
+            "hostname={} public_ip={} network={} region={} instance_id={} txhash {}.. inserted ({:?} applying)",
             crate::prometheus::HOSTNAME.as_str(),
             crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
             crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
@@ -237,8 +234,6 @@ impl NodeServer<MeshaCas> for AuditorResponder {
             AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
             &tx.hash_nosigs().to_string()[..10],
             start.elapsed(),
-            post_lock - start,
-            post_lock.elapsed()
         );
 
         // log::debug!("about to broadcast txhash {:?}", tx.hash_nosigs());

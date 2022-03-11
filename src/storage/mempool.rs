@@ -10,7 +10,6 @@ use themelio_stf::{State, StateError};
 use themelio_structs::{Transaction, TxHash};
 use tmelcrypt::HashVal;
 
-
 /// Mempool encapsulates a "mempool" --- a provisional state that is used to form new blocks by stakers, or provisionally validate transactions by auditors.
 pub struct Mempool {
     provisional_state: State<MeshaCas>,
@@ -36,13 +35,10 @@ impl Mempool {
 
     /// Tries to add a transaction to the mempool.
     pub fn apply_transaction(&mut self, tx: &Transaction) -> Result<(), StateError> {
-        // if self.seen.put(tx.hash_nosigs(), tx.clone()).is_some() {
-        //     return Err(StateError::DuplicateTx);
-        // }
+        self.provisional_state.apply_tx(tx)?;
         if !self.txx_in_state.insert(tx.hash_nosigs()) {
             return Err(StateError::DuplicateTx);
         }
-        self.provisional_state.apply_tx(tx)?;
         self.seen.put(tx.hash_nosigs(), tx.clone());
         Ok(())
     }
