@@ -41,7 +41,7 @@ do_build() {
 
   cd "${pkg_full_path}"
 
-  cargo build --locked --features metrics --verbose
+  cargo build --locked --release --features metrics --verbose
 }
 
 do_install() {
