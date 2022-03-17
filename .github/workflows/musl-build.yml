@@ -36,5 +36,5 @@ jobs:
       - name: Add Musl Target
         run: rustup target add x86_64-unknown-linux-musl
 
-      - name: Run Musl Tests
+      - name: Run Musl Build
         run: cargo build --locked --target x86_64-unknown-linux-musl --features metrics --verbose
