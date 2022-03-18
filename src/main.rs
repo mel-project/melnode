@@ -114,9 +114,6 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
         .expect("Could not write to GLOBAL_STORAGE");
 
     #[cfg(feature = "metrics")]
-    std::thread::spawn(|| RUNTIME.block_on(crate::prometheus::run_aws_information()));
-
-    #[cfg(feature = "metrics")]
     std::thread::spawn(|| RUNTIME.block_on(crate::prometheus::prometheus()));
 
 
