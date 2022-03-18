@@ -2,7 +2,7 @@ pkg_name=themelio-node-testnet
 binary_name=themelio-node
 pkg_origin=themelio
 pkg_maintainer="Meade Kincke <meade@themelio.org>"
-pkg_version="0.4.0"
+pkg_version="0.5.2-alpha.0"
 pkg_license=("MPL-2.0")
 pkg_full_path="${HAB_CACHE_SRC_PATH}/${binary_name}"
 pkg_build_deps=(themelio/rust)
@@ -31,13 +31,9 @@ do_check() {
 }
 
 do_build() {
-  mkdir -p "${pkg_full_path}/commands"
+  mkdir -p "${pkg_full_path}/src"
 
-  mkdir -p "${pkg_full_path}/libs"
-
-  cp -R /src/commands/* "${pkg_full_path}/commands/"
-
-  cp -R /src/libs/* "${pkg_full_path}/libs/"
+  cp -R /src/src/* "${pkg_full_path}/src/"
 
   cp /src/Cargo.lock "${pkg_full_path}"
 
