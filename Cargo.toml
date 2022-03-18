@@ -8,8 +8,8 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[patch.crates-io]
-themelio-stf={path="../themelio-stf"}  
+#[patch.crates-io]
+#themelio-stf={path="../themelio-stf"}  
 
 [profile.dev]
 panic = "abort"
