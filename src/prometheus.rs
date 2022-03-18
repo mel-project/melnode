@@ -11,7 +11,6 @@ use prometheus::{
     TextEncoder,
 };
 use rweb::{get, serve};
-use smol::Timer;
 use smol_timeout::TimeoutExt;
 use systemstat::platform::PlatformImpl;
 use systemstat::{CPULoad, Memory, Platform, System};
@@ -203,6 +202,8 @@ pub static HOSTNAME: Lazy<String> = Lazy::new(|| {
 });
 
 static HIGHEST_BLOCK: Lazy<IntGauge> = Lazy::new(|| {
+    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+
     let aws_instance_id: String = AWS_INSTANCE_ID
         .read()
         .expect("Could not get a read lock on AWS_INSTANCE_ID")
@@ -225,6 +226,8 @@ static HIGHEST_BLOCK: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static THEMELIO_NODE_UPTIME_SECONDS: Lazy<IntGauge> = Lazy::new(|| {
+    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+
     let aws_instance_id: String = AWS_INSTANCE_ID
         .read()
         .expect("Could not get a read lock on AWS_INSTANCE_ID")
@@ -247,6 +250,8 @@ static THEMELIO_NODE_UPTIME_SECONDS: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static SYSTEM_UPTIME_SECONDS: Lazy<IntGauge> = Lazy::new(|| {
+    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+
     let aws_instance_id: String = AWS_INSTANCE_ID
         .read()
         .expect("Could not get a read lock on AWS_INSTANCE_ID")
@@ -269,6 +274,8 @@ static SYSTEM_UPTIME_SECONDS: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static MEMORY_TOTAL_BYTES: Lazy<IntGauge> = Lazy::new(|| {
+    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+
     let aws_instance_id: String = AWS_INSTANCE_ID
         .read()
         .expect("Could not get a read lock on AWS_INSTANCE_ID")
@@ -291,6 +298,8 @@ static MEMORY_TOTAL_BYTES: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static MEMORY_FREE_BYTES: Lazy<IntGauge> = Lazy::new(|| {
+    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+
     let aws_instance_id: String = AWS_INSTANCE_ID
         .read()
         .expect("Could not get a read lock on AWS_INSTANCE_ID")
@@ -313,6 +322,8 @@ static MEMORY_FREE_BYTES: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static NETWORK_TRANSMITTED_BYTES: Lazy<IntGauge> = Lazy::new(|| {
+    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+
     let aws_instance_id: String = AWS_INSTANCE_ID
         .read()
         .expect("Could not get a read lock on AWS_INSTANCE_ID")
@@ -335,6 +346,8 @@ static NETWORK_TRANSMITTED_BYTES: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static NETWORK_RECEIVED_BYTES: Lazy<IntGauge> = Lazy::new(|| {
+    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+
     let aws_instance_id: String = AWS_INSTANCE_ID
         .read()
         .expect("Could not get a read lock on AWS_INSTANCE_ID")
@@ -357,6 +370,8 @@ static NETWORK_RECEIVED_BYTES: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static ROOT_FILESYSTEM_TOTAL_BYTES: Lazy<IntGauge> = Lazy::new(|| {
+    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+
     let aws_instance_id: String = AWS_INSTANCE_ID
         .read()
         .expect("Could not get a read lock on AWS_INSTANCE_ID")
@@ -379,6 +394,8 @@ static ROOT_FILESYSTEM_TOTAL_BYTES: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static ROOT_FILESYSTEM_FREE_BYTES: Lazy<IntGauge> = Lazy::new(|| {
+    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+
     let aws_instance_id: String = AWS_INSTANCE_ID
         .read()
         .expect("Could not get a read lock on AWS_INSTANCE_ID")
@@ -401,6 +418,8 @@ static ROOT_FILESYSTEM_FREE_BYTES: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static CPU_LOAD_USER: Lazy<Gauge> = Lazy::new(|| {
+    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+
     let aws_instance_id: String = AWS_INSTANCE_ID
         .read()
         .expect("Could not get a read lock on AWS_INSTANCE_ID")
@@ -423,6 +442,8 @@ static CPU_LOAD_USER: Lazy<Gauge> = Lazy::new(|| {
 });
 
 static CPU_LOAD_SYSTEM: Lazy<Gauge> = Lazy::new(|| {
+    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+
     let aws_instance_id: String = AWS_INSTANCE_ID
         .read()
         .expect("Could not get a read lock on AWS_INSTANCE_ID")
@@ -445,6 +466,8 @@ static CPU_LOAD_SYSTEM: Lazy<Gauge> = Lazy::new(|| {
 });
 
 static CPU_LOAD_IDLE: Lazy<Gauge> = Lazy::new(|| {
+    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+
     let aws_instance_id: String = AWS_INSTANCE_ID
         .read()
         .expect("Could not get a read lock on AWS_INSTANCE_ID")
@@ -602,19 +625,14 @@ fn set_system_metrics() {
 }
 
 pub async fn run_aws_information() {
-    loop {
-        log::debug!("Starting the update call.");
-        let output: Option<()> = update_aws_information()
-            .timeout(time::Duration::from_secs(2))
-            .await;
+    log::debug!("Starting the update call.");
+    let output: Option<()> = update_aws_information()
+        .timeout(time::Duration::from_secs(2))
+        .await;
 
-        match output {
-            Some(_message) => log::debug!("Successfully updated AWS information."),
-            None => log::error!("Failed a call to update_aws_information()"),
-        }
-
-        let one_minute: time::Duration = time::Duration::from_secs(60);
-        Timer::after(one_minute).await;
+    match output {
+        Some(_message) => log::debug!("Successfully updated AWS information."),
+        None => log::error!("Failed a call to update_aws_information()"),
     }
 }
 
