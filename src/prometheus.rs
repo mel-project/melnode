@@ -11,6 +11,7 @@ use prometheus::{
     TextEncoder,
 };
 use rweb::{get, serve};
+use smol::Timer;
 use smol_timeout::TimeoutExt;
 use systemstat::platform::PlatformImpl;
 use systemstat::{CPULoad, Memory, Platform, System};
@@ -627,7 +628,7 @@ fn set_system_metrics() {
 pub async fn run_aws_information() {
     log::debug!("Starting the update call.");
     let output: Option<()> = update_aws_information()
-        .timeout(time::Duration::from_secs(2))
+        .timeout(time::Duration::from_secs(1))
         .await;
 
     match output {
@@ -637,6 +638,11 @@ pub async fn run_aws_information() {
 }
 
 pub async fn prometheus() {
+    log::debug!("Waiting for 3 seconds to start metrics webserver.");
+
+    let three_seconds: time::Duration = time::Duration::from_secs(3);
+    Timer::after(three_seconds).await;
+
     log::debug!(
         "hostname={} public_ip={} network={} region={} instance_id={} Prometheus metrics listening on http://127.0.0.1:8080",
         crate::prometheus::HOSTNAME.as_str(),
@@ -645,6 +651,7 @@ pub async fn prometheus() {
         AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
         AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID")
     );
+
 
     REGISTRY
         .register(Box::new(HIGHEST_BLOCK.clone()))
