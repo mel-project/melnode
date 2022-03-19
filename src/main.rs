@@ -116,8 +116,6 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
     #[cfg(feature = "metrics")]
     std::thread::spawn(|| RUNTIME.block_on(crate::prometheus::prometheus()));
 
-    #[cfg(feature = "metrics")]
-    std::thread::spawn(|| RUNTIME.block_on(crate::prometheus::run_aws_information()));
 
     smol::future::pending().await
 }
