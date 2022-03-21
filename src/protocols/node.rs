@@ -143,7 +143,9 @@ async fn attempt_blksync(
 ) -> anyhow::Result<usize> {
     let their_highest = client
         .get_summary()
+        .timeout(Duration::from_secs(5))
         .await
+        .context("timed out getting summary")?
         .context("cannot get their highest block")?
         .height;
     let my_highest = storage.highest_height();
