@@ -9,7 +9,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  biome:
+  build-and-test-mainnet:
 
     runs-on: self-hosted
 
