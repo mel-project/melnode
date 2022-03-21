@@ -2,7 +2,7 @@ use std::{sync::Arc, time::Instant};
 
 use dashmap::DashMap;
 use std::time::Duration;
-use themelio_structs::{Address, Block, BlockHeight, CoinID, TxKind};
+use themelio_structs::{Address, Block, BlockHeight, CoinID, NetID, TxKind};
 
 use super::NodeStorage;
 
@@ -81,16 +81,21 @@ impl CoinIndex {
             }
         }
         // liquidity deposit problems
-        for tx in blk
-            .transactions
-            .iter()
-            .filter(|tx| tx.kind == TxKind::LiqDeposit)
+        if blk.header.height.0 >= 978392
+            || (blk.header.network != NetID::Mainnet && blk.header.network != NetID::Testnet)
         {
-            // if both are still unspent, we delete the second
-            if self.coin_to_owner.contains_key(&tx.output_coinid(0))
-                && self.coin_to_owner.contains_key(&tx.output_coinid(1))
+            for tx in blk
+                .transactions
+                .iter()
+                .filter(|tx| tx.kind == TxKind::LiqDeposit)
             {
-                self.remove_coin(tx.output_coinid(1))
+                // if both are still unspent, we delete the second
+                if self.coin_to_owner.contains_key(&tx.output_coinid(0))
+                    && self.coin_to_owner.contains_key(&tx.output_coinid(1))
+                {
+                    log::warn!("irregularly removing a coin for liqdeposit");
+                    self.remove_coin(tx.output_coinid(1))
+                }
             }
         }
         // liquidity withdrawal problems

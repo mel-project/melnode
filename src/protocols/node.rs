@@ -75,12 +75,13 @@ impl NodeProtocol {
 #[tracing::instrument(skip(network, storage))]
 async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStorage) {
     let tag = || format!("blksync@{:?}", storage.highest_state().header().height);
-    const SLOW_TIME: Duration = Duration::from_millis(500);
     const FAST_TIME: Duration = Duration::from_millis(500);
     loop {
+        let slow_time: Duration = Duration::from_secs_f64(fastrand::f64() * 30.0);
         let routes = network.routes();
         let random_peer = routes.first().cloned();
         if let Some(peer) = random_peer {
+            log::debug!("picking peer {} out of peers {:?}", peer, routes);
             let client = NodeClient::new(netid, peer);
 
             let res = attempt_blksync(peer, &client, &storage).await;
@@ -124,12 +125,12 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStor
 
                         smol::Timer::after(FAST_TIME).await;
                     } else {
-                        smol::Timer::after(SLOW_TIME).await;
+                        smol::Timer::after(slow_time).await;
                     }
                 }
             }
         } else {
-            smol::Timer::after(SLOW_TIME).await;
+            smol::Timer::after(slow_time).await;
         }
     }
 }
@@ -210,6 +211,7 @@ struct AuditorResponder {
 
 impl NodeServer<MeshaCas> for AuditorResponder {
     fn send_tx(&self, state: melnet::NetState, tx: Transaction) -> anyhow::Result<()> {
+        log::trace!("handling send_tx");
         let start = Instant::now();
         self.storage
             .mempool_mut()
@@ -253,6 +255,7 @@ impl NodeServer<MeshaCas> for AuditorResponder {
     }
 
     fn get_abbr_block(&self, height: BlockHeight) -> anyhow::Result<(AbbrBlock, ConsensusProof)> {
+        log::trace!("handling get_abbr_block({})", height);
         let state = self
             .storage
             .get_state(height)
@@ -265,6 +268,7 @@ impl NodeServer<MeshaCas> for AuditorResponder {
     }
 
     fn get_summary(&self) -> anyhow::Result<StateSummary> {
+        log::trace!("handling get_summary()");
         let highest = self.storage.highest_state();
         let proof = self
             .storage
@@ -279,6 +283,7 @@ impl NodeServer<MeshaCas> for AuditorResponder {
     }
 
     fn get_state(&self, height: BlockHeight) -> anyhow::Result<SealedState<MeshaCas>> {
+        log::trace!("handling get_state({})", height);
         self.storage.get_state(height).context("no such height")
     }
 
@@ -288,6 +293,7 @@ impl NodeServer<MeshaCas> for AuditorResponder {
         elem: Substate,
         key: HashVal,
     ) -> anyhow::Result<(Vec<u8>, CompressedProof)> {
+        log::trace!("handling get_smt_branch({}, {:?})", height, elem);
         let state = self
             .storage
             .get_state(height)

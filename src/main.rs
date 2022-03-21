@@ -31,9 +31,10 @@ pub static RUNTIME: Lazy<Runtime> =
 
 #[instrument]
 fn main() -> anyhow::Result<()> {
-    env_logger::Builder::from_env("RUST_LOG")
-        .parse_filters("themelio_node=debug,warn,novasymph")
-        .init();
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "themelio_node=debug,warn,novasymph");
+    }
+    env_logger::Builder::from_env("RUST_LOG").init();
     let opts = Args::from_args();
 
     smolscale::block_on(main_async(opts))
@@ -115,7 +116,6 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
 
     #[cfg(feature = "metrics")]
     std::thread::spawn(|| RUNTIME.block_on(crate::prometheus::prometheus()));
-
 
     smol::future::pending().await
 }
