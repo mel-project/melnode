@@ -2,7 +2,7 @@ use std::{sync::Arc, time::Instant};
 
 use dashmap::DashMap;
 use std::time::Duration;
-use themelio_structs::{Address, Block, BlockHeight, CoinID};
+use themelio_structs::{Address, Block, BlockHeight, CoinID, NetID, TxKind};
 
 use super::NodeStorage;
 
@@ -78,6 +78,35 @@ impl CoinIndex {
         for tx in blk.transactions.iter() {
             for input in tx.inputs.iter() {
                 self.remove_coin(*input)
+            }
+        }
+        // liquidity deposit problems
+        if blk.header.height.0 >= 978392
+            || (blk.header.network != NetID::Mainnet && blk.header.network != NetID::Testnet)
+        {
+            for tx in blk
+                .transactions
+                .iter()
+                .filter(|tx| tx.kind == TxKind::LiqDeposit)
+            {
+                // if both are still unspent, we delete the second
+                if self.coin_to_owner.contains_key(&tx.output_coinid(0))
+                    && self.coin_to_owner.contains_key(&tx.output_coinid(1))
+                {
+                    log::warn!("irregularly removing a coin for liqdeposit");
+                    self.remove_coin(tx.output_coinid(1))
+                }
+            }
+        }
+        // liquidity withdrawal problems
+        for tx in blk
+            .transactions
+            .iter()
+            .filter(|tx| tx.kind == TxKind::LiqWithdraw)
+        {
+            // if both are still unspent, we delete the second
+            if self.coin_to_owner.contains_key(&tx.output_coinid(0)) {
+                self.add_coin(tx.output_coinid(1), tx.outputs[0].covhash);
             }
         }
         // add the proposer action
