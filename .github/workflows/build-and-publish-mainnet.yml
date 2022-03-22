@@ -11,7 +11,7 @@ env:
 jobs:
   build-and-publish-mainnet:
 
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v2
@@ -22,8 +22,8 @@ jobs:
       - name: Install TzData
         run: env DEBIAN_FRONTEND="noninteractive" sudo apt install -y tzdata
 
-      - name: Install OpenStack, Packer, JQ, and Envsubst
-        run: sudo apt install -y python3-openstackclient python3-novaclient packer jq gettext-base
+      - name: Install Packer, JQ, and Envsubst
+        run: sudo apt install -y packer jq gettext-base
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
@@ -49,20 +49,20 @@ jobs:
       - name: Fix Directory Permissions
         run: sudo chown -R $(whoami):$(id -ng) /hab
 
-      - name: Cache Biome
-        uses: actions/cache@v2
-        env:
-          CACHE_NAME: cache-biome
-        with:
-          path: |
-            ~/.hab/cache/artifacts
-            /hab/cache/artifacts
-            /hab/pkgs
-          key: ${{ runner.os }}-build-${{ env.CACHE_NAME }}-${{ hashFiles('biome/themelio-node/plan-release.sh') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.CACHE_NAME }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
+#      - name: Cache Biome
+#        uses: actions/cache@v2
+#        env:
+#          CACHE_NAME: cache-biome
+#        with:
+#          path: |
+#            ~/.hab/cache/artifacts
+#            /hab/cache/artifacts
+#            /hab/pkgs
+#          key: ${{ runner.os }}-build-${{ env.CACHE_NAME }}-${{ hashFiles('biome/themelio-node/plan-release.sh') }}
+#          restore-keys: |
+#            ${{ runner.os }}-build-${{ env.CACHE_NAME }}-
+#            ${{ runner.os }}-build-
+#            ${{ runner.os }}-
 
       - name: Build, Publish Artifact And Mark As Stable, Export And Publish Docker Image, Create Packer Images
         env:
