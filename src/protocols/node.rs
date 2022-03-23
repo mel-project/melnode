@@ -77,7 +77,7 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStor
     let tag = || format!("blksync@{:?}", storage.highest_state().header().height);
     const FAST_TIME: Duration = Duration::from_millis(500);
     loop {
-        let slow_time: Duration = Duration::from_secs_f64(fastrand::f64() * 30.0);
+        let slow_time: Duration = Duration::from_secs_f64(fastrand::f64() * 5.0);
         let routes = network.routes();
         let random_peer = routes.first().cloned();
         if let Some(peer) = random_peer {
@@ -143,7 +143,9 @@ async fn attempt_blksync(
 ) -> anyhow::Result<usize> {
     let their_highest = client
         .get_summary()
+        .timeout(Duration::from_secs(5))
         .await
+        .context("timed out getting summary")?
         .context("cannot get their highest block")?
         .height;
     let my_highest = storage.highest_height();
