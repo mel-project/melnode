@@ -1300,9 +1300,9 @@ checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
 name = "hyper"
-version = "0.14.17"
+version = "0.14.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "043f0e083e9901b6cc658a77d1eb86f4fc650bbb977a4337dd63192826aa85dd"
+checksum = "b26ae0a80afebe130861d90abf98e3814a4f28a4c6ffeb5ab8ebb2be311e0ef2"
 dependencies = [
  "bytes",
  "futures-channel",
@@ -1494,9 +1494,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.14"
+version = "0.4.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
+checksum = "6389c490849ff5bc16be905ae24bc913a9c8892e19b2341dbc175e14c341c2b8"
 dependencies = [
  "cfg-if",
 ]
@@ -1524,9 +1524,9 @@ checksum = "a3e378b66a060d48947b590737b30a1be76706c8dd7b8ba0f2fe3989c68a853f"
 
 [[package]]
 name = "melnet"
-version = "0.2.11"
+version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b557a84786772a7f61620a0bd980a8292a0835d4a748af2b65a8bd7e0e61917"
+checksum = "76cfadc5d83c838844d9e8d01692143166dc9bb0e4c08db11701ec47b0449f42"
 dependencies = [
  "anyhow",
  "async-net",
@@ -3106,9 +3106,9 @@ dependencies = [
 
 [[package]]
 name = "themelio-nodeprot"
-version = "0.10.12"
+version = "0.10.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7516df73a7f02b7345c822baf19518e49ae784b4f81c1a26d5dd92212c8cf78b"
+checksum = "e4ae1ba2312aabc7f11f40faf497dfbc2ce69f4914e6bfd1f89c1de887b2739d"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3119,6 +3119,7 @@ dependencies = [
  "lru",
  "melnet",
  "novasmt",
+ "once_cell",
  "serde",
  "smol",
  "smolscale",
@@ -3219,9 +3220,9 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.3.7"
+version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "004cbc98f30fa233c61a38bc77e96a9106e65c88f2d3bef182ae952027e5753d"
+checksum = "c2702e08a7a860f005826c6815dcac101b19b5eb330c27fe4a5928fec1d20ddd"
 dependencies = [
  "libc",
  "num_threads",
