@@ -28,8 +28,11 @@ jobs:
 #            target/
 #          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Update Rust
-        run: rustup update
+      - name: Install Rustup
+        run: curl https://sh.rustup.rs -sSf | sh -s -- -y
+
+      - name: Add Rustup To Path
+        run: source $HOME/.cargo/env
 
       - name: Run Tests
         run: cargo test --locked --features metrics --verbose

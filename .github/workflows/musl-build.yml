@@ -34,8 +34,11 @@ jobs:
       - name: Install Musl
         run: sudo apt install -y musl musl-tools
 
-      - name: Update Rust
-        run: rustup update
+      - name: Install Rustup
+        run: curl https://sh.rustup.rs -sSf | sh -s -- -y
+
+      - name: Add Rustup To Path
+        run: source $HOME/.cargo/env
 
       - name: Add Musl Target
         run: rustup target add x86_64-unknown-linux-musl
