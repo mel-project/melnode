@@ -11,7 +11,8 @@ env:
 jobs:
   build-and-test-mainnet:
 
-    runs-on: ubuntu-latest
+#    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - uses: actions/checkout@v2
@@ -33,20 +34,20 @@ jobs:
       - name: Remove Cargo
         run: sudo rm -rf /home/runner/.cargo/bin/cargo
 
-      - name: Cache Biome
-        uses: actions/cache@v2
-        env:
-          CACHE_NAME: cache-biome
-        with:
-          path: |
-            ~/.hab/cache/artifacts
-            /hab/cache/artifacts
-            /hab/pkgs
-          key: ${{ runner.os }}-build-${{ env.CACHE_NAME }}-${{ hashFiles('biome/themelio-node/plan-debug.sh') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.CACHE_NAME }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
+#      - name: Cache Biome
+#        uses: actions/cache@v2
+#        env:
+#          CACHE_NAME: cache-biome
+#        with:
+#          path: |
+#            ~/.hab/cache/artifacts
+#            /hab/cache/artifacts
+#            /hab/pkgs
+#          key: ${{ runner.os }}-build-${{ env.CACHE_NAME }}-${{ hashFiles('biome/themelio-node/plan-debug.sh') }}
+#          restore-keys: |
+#            ${{ runner.os }}-build-${{ env.CACHE_NAME }}-
+#            ${{ runner.os }}-build-
+#            ${{ runner.os }}-
 
       - name: Build, Run BATS Tests
         env:
