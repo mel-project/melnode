@@ -8,12 +8,10 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-#  PATH: "$HOME/.cargo/bin:$PATH"
 
 jobs:
   musl-build:
 
-    #    runs-on: ubuntu-latest
     runs-on: self-hosted
 
     steps:
