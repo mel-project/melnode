@@ -18,10 +18,10 @@ jobs:
 
     steps:
       - name: Update Apt
-        run: sudo apt update
+        run: apt update
 
       - name: Install Git And Musl
-        run: sudo apt install -y git musl musl-tools
+        run: apt install -y git musl musl-tools
 
       - uses: actions/checkout@v3
 
