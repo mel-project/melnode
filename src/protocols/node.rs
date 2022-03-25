@@ -75,13 +75,12 @@ impl NodeProtocol {
 #[tracing::instrument(skip(network, storage))]
 async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStorage) {
     let tag = || format!("blksync@{:?}", storage.highest_state().header().height);
-    const FAST_TIME: Duration = Duration::from_millis(500);
     loop {
-        let slow_time: Duration = Duration::from_secs_f64(fastrand::f64() * 5.0);
+        let gap_time: Duration = Duration::from_secs_f64(fastrand::f64() * 1.0);
         let routes = network.routes();
         let random_peer = routes.first().cloned();
         if let Some(peer) = random_peer {
-            log::debug!("picking peer {} out of peers {:?}", peer, routes);
+            log::debug!("picking peer {} out of {} peers", peer, routes.len());
             let client = NodeClient::new(netid, peer);
 
             let res = attempt_blksync(peer, &client, &storage).await;
@@ -103,8 +102,6 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStor
                         peer,
                         e
                     );
-
-                    smol::Timer::after(FAST_TIME).await;
                 }
                 Ok(blklen) => {
                     if blklen > 0 {
@@ -122,16 +119,11 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStor
                             AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
                             storage.highest_height()
                         );
-
-                        smol::Timer::after(FAST_TIME).await;
-                    } else {
-                        smol::Timer::after(slow_time).await;
                     }
                 }
             }
-        } else {
-            smol::Timer::after(slow_time).await;
         }
+        smol::Timer::after(gap_time).await;
     }
 }
 
