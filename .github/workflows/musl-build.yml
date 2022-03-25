@@ -39,8 +39,8 @@ jobs:
       - name: Install Rustup
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
-#      - name: Add Rustup To Path
-#        run: export PATH="$HOME/.cargo/bin:$PATH"
+      - name: Add Rustup To Path
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Add Musl Target
         run: rustup target add x86_64-unknown-linux-musl
