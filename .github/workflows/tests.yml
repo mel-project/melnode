@@ -29,10 +29,10 @@ jobs:
 #          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install Rustup
-        run: curl https://sh.rustup.rs -sSf | sh -s -- -y
+        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
       - name: Add Rustup To Path
-        run: export PATH="$HOME/.cargo/bin:$PATH"
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Run Tests
         run: cargo test --locked --features metrics --verbose
