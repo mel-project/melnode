@@ -220,6 +220,12 @@ impl NodeServer<MeshaCas> for AuditorResponder {
             &tx.hash_nosigs().to_string()[..10],
             start.elapsed(),
         );
+
+        if start.elapsed().as_secs_f64() > 1.0 {
+            log::warn!("MONSTER transaction here! {:#?}", tx.with_data(vec![]));
+            anyhow::bail!("rejecting unreasonable monster transaction");
+        }
+
         #[cfg(feature = "metrics")]
         log::debug!(
             "hostname={} public_ip={} network={} region={} instance_id={} txhash {}.. inserted ({:?} applying)",
