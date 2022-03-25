@@ -23,7 +23,7 @@ jobs:
       - name: Install Git And Musl
         run: sudo apt install -y musl musl-tools
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
 #      - uses: actions/cache@v2
 #        with:
