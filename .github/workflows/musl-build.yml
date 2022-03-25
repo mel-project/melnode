@@ -17,11 +17,6 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Update Apt
-        run: apt update
-
-      - name: Install Git And Musl
-        run: apt install -y git musl musl-tools
 
       - uses: actions/checkout@v3
 
@@ -34,6 +29,12 @@ jobs:
 #            ~/.cargo/git/db/
 #            target/
 #          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Update Apt
+        run: sudo apt update
+
+      - name: Install Git And Musl
+        run: sudo apt install -y git musl musl-tools
 
       - name: Install Rustup
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
