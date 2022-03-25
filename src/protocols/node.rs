@@ -208,7 +208,7 @@ struct AuditorResponder {
 
 impl NodeServer<MeshaCas> for AuditorResponder {
     fn send_tx(&self, state: melnet::NetState, tx: Transaction) -> anyhow::Result<()> {
-        if let Some(val) = self.recent.lock().get(&tx.hash_nosigs()) {
+        if let Some(val) = self.recent.lock().peek(&tx.hash_nosigs()) {
             if val.elapsed().as_secs_f64() < 10.0 {
                 anyhow::bail!("rejecting recently seen")
             }
@@ -231,8 +231,7 @@ impl NodeServer<MeshaCas> for AuditorResponder {
         );
 
         if start.elapsed().as_secs_f64() > 1.0 {
-            log::warn!("MONSTER transaction here! {:#?}", tx.with_data(vec![]));
-            anyhow::bail!("rejecting unreasonable monster transaction");
+            log::warn!("MONSTER transaction here! {:#?}", tx.clone().with_data(vec![]));
         }
 
         #[cfg(feature = "metrics")]
@@ -248,7 +247,7 @@ impl NodeServer<MeshaCas> for AuditorResponder {
         );
 
         // log::debug!("about to broadcast txhash {:?}", tx.hash_nosigs());
-        for neigh in state.routes().iter().take(4).cloned() {
+        for neigh in state.routes().iter().take(16).cloned() {
             let tx = tx.clone();
             let network = self.network;
             // log::debug!("bcast {:?} => {:?}", tx.hash_nosigs(), neigh);
