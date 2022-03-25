@@ -21,7 +21,7 @@ jobs:
         run: sudo apt update
 
       - name: Install Git And Musl
-        run: sudo apt install -y musl musl-tools
+        run: sudo apt install -y git musl musl-tools
 
       - uses: actions/checkout@v3
 
