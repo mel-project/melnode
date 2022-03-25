@@ -14,9 +14,11 @@ use std::{
 
 use anyhow::Context;
 use futures_util::{StreamExt, TryStreamExt};
+use lru::LruCache;
 use novasmt::CompressedProof;
+use parking_lot::Mutex;
 use themelio_stf::SealedState;
-use themelio_structs::{AbbrBlock, Block, BlockHeight, ConsensusProof, NetID, Transaction};
+use themelio_structs::{AbbrBlock, Block, BlockHeight, ConsensusProof, NetID, Transaction, TxHash};
 
 use melnet::MelnetError;
 use smol::net::TcpListener;
@@ -201,10 +203,17 @@ struct AuditorResponder {
     network: NetID,
     storage: NodeStorage,
     indexer: Option<BlockIndexer>,
+    recent: Mutex<LruCache<TxHash, Instant>>,
 }
 
 impl NodeServer<MeshaCas> for AuditorResponder {
     fn send_tx(&self, state: melnet::NetState, tx: Transaction) -> anyhow::Result<()> {
+        if let Some(val) = self.recent.lock().get(&tx.hash_nosigs()) {
+            if val.elapsed().as_secs_f64() < 10.0 {
+                anyhow::bail!("rejecting recently seen")
+            }
+        }
+        self.recent.lock().put(tx.hash_nosigs(), Instant::now());
         log::trace!("handling send_tx");
         let start = Instant::now();
         self.storage
@@ -220,6 +229,12 @@ impl NodeServer<MeshaCas> for AuditorResponder {
             &tx.hash_nosigs().to_string()[..10],
             start.elapsed(),
         );
+
+        if start.elapsed().as_secs_f64() > 1.0 {
+            log::warn!("MONSTER transaction here! {:#?}", tx.with_data(vec![]));
+            anyhow::bail!("rejecting unreasonable monster transaction");
+        }
+
         #[cfg(feature = "metrics")]
         log::debug!(
             "hostname={} public_ip={} network={} region={} instance_id={} txhash {}.. inserted ({:?} applying)",
@@ -343,6 +358,7 @@ impl AuditorResponder {
             } else {
                 None
             },
+            recent: LruCache::new(10000).into(),
         }
     }
 }
