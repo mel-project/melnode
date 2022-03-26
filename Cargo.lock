@@ -3052,7 +3052,7 @@ dependencies = [
 
 [[package]]
 name = "themelio-node"
-version = "0.5.5-alpha.0"
+version = "0.5.5"
 dependencies = [
  "anyhow",
  "arc-swap",
