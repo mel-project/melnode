@@ -217,7 +217,8 @@ impl NodeServer<MeshaCas> for AuditorResponder {
         log::trace!("handling send_tx");
         let start = Instant::now();
         self.storage
-            .mempool_mut()
+            .try_mempool_mut()
+            .context("mempool contention")?
             .apply_transaction(&tx)
             .map_err(|e| {
                 log::warn!("cannot apply tx: {:?}", e);
@@ -231,7 +232,10 @@ impl NodeServer<MeshaCas> for AuditorResponder {
         );
 
         if start.elapsed().as_secs_f64() > 1.0 {
-            log::warn!("MONSTER transaction here! {:#?}", tx.clone().with_data(vec![]));
+            log::warn!(
+                "MONSTER transaction here! {:#?}",
+                tx.clone().with_data(vec![])
+            );
         }
 
         #[cfg(feature = "metrics")]
