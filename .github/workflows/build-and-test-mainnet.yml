@@ -39,18 +39,42 @@ jobs:
 #            ${{ runner.os }}-build-
 #            ${{ runner.os }}-
 
-      - name: Setup Environment
+      - name: Set Biome Origin
         run: echo "HAB_ORIGIN=themelio" >> $GITHUB_ENV
+
+      - name: Set Biome Public Key
+        run: echo "BIOME_PUBLIC_KEY=${{ secrets.BIOME_PUBLIC_KEY }}" >> $GITHUB_ENV
+
+      - name: Set GitHub Token
+        run: echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+
+      - name: Set Promtail Username
+        run: echo "PROMTAIL_USERNAME=${{ secrets.PROMTAIL_USERNAME }}" >> $GITHUB_ENV
+
+      - name: Set Promtail Password
+        run: echo "PROMTAIL_PASSWORD=${{ secrets.PROMTAIL_PASSWORD }}" >> $GITHUB_ENV
+
+      - name: Set AWS Access Key ID
+        run: echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> $GITHUB_ENV
+
+      - name: Set AWS Secret Access Key
+        run: echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> $GITHUB_ENV
+
+      - name: Set AWS Default Region
+        run: echo "AWS_DEFAULT_REGION=${{ secrets.AWS_DEFAULT_REGION }}" >> $GITHUB_ENV
+
+      - name: Set Network To Build
+        run: echo "NETWORK_TO_BUILD=mainnet" >> $GITHUB_ENV
 
       - name: Build, Run BATS Tests
         env:
 #          HAB_ORIGIN: "themelio"
-          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
-          PROMTAIL_PASSWORD: ${{ secrets.PROMTAIL_PASSWORD }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-          NETWORK_TO_BUILD: "mainnet"
+#          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#          PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
+#          PROMTAIL_PASSWORD: ${{ secrets.PROMTAIL_PASSWORD }}
+#          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+#          NETWORK_TO_BUILD: "mainnet"
         run: ./biome/themelio-node/scripts/ci-test.sh
