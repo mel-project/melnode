@@ -26,8 +26,8 @@ jobs:
 
       - name: Echo
         env:
-          HAB_ORIGIN: "themelio"
-        run: echo "$HAB_ORIGIN"
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+        run: echo "$AWS_DEFAULT_REGION"
 
 #      - name: Cache Biome
 #        uses: actions/cache@v2
