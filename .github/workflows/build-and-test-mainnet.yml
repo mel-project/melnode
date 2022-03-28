@@ -45,7 +45,7 @@ jobs:
       - name: Set Biome Public Key
         run: |
           BIOME_PUBLIC_KEY=${{ secrets.BIOME_PUBLIC_KEY }}
-          echo "BIOME_PUBLIC_KEY=BIOME_PUBLIC_KEY" >> $GITHUB_ENV
+          echo "BIOME_PUBLIC_KEY=$BIOME_PUBLIC_KEY" >> $GITHUB_ENV
 
       - name: Set GitHub Token
         run: echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
