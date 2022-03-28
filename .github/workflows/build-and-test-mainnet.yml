@@ -67,7 +67,7 @@ jobs:
         run: echo "NETWORK_TO_BUILD=mainnet" >> $GITHUB_ENV
 
       - name: Build, Run BATS Tests
-        env:
+#        env:
 #          HAB_ORIGIN: "themelio"
 #          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
 #          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
