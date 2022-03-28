@@ -39,9 +39,12 @@ jobs:
 #            ${{ runner.os }}-build-
 #            ${{ runner.os }}-
 
+      - name: Setup Environment
+        run: echo "HAB_ORIGIN=themelio" >> $GITHUB_ENV
+
       - name: Build, Run BATS Tests
         env:
-          HAB_ORIGIN: "themelio"
+#          HAB_ORIGIN: "themelio"
           BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
