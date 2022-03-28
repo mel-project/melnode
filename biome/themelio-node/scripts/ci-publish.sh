@@ -24,11 +24,11 @@ if [ -z "${PROMTAIL_PASSWORD}" ]; then
 fi
 
 if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
-  cp "${PLAN_DIRECTORY}/plan-debug-mainnet.sh" "${PLAN_DIRECTORY}/plan.sh"
+  cp "${PLAN_DIRECTORY}/plan-release-mainnet.sh" "${PLAN_DIRECTORY}/plan.sh"
   cp -r "${PLAN_DIRECTORY}/hooks-mainnet" "${PLAN_DIRECTORY}/hooks"
 
 elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
-  cp "${PLAN_DIRECTORY}/plan-debug-testnet.sh" "${PLAN_DIRECTORY}/plan.sh"
+  cp "${PLAN_DIRECTORY}/plan-release-testnet.sh" "${PLAN_DIRECTORY}/plan.sh"
   cp -r "${PLAN_DIRECTORY}/hooks-testnet" "${PLAN_DIRECTORY}/hooks"
 
 else
