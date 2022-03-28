@@ -24,6 +24,15 @@ jobs:
       - name: Fix Directory Permissions
         run: sudo chown -R $(whoami):$(id -ng) /hab
 
+      - name: Update Apt
+        run: sudo apt update
+
+      - name: Install TzData
+        run: env DEBIAN_FRONTEND="noninteractive" sudo apt install -y tzdata
+
+      - name: Install Gettext
+        run: sudo apt install -y gettext
+
 #      - name: Echo
 #        env:
 #          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
