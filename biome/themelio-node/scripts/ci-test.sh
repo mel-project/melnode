@@ -45,7 +45,7 @@ source "${PLAN_DIRECTORY}/plan.sh"
 
 sudo bio sup run &
 
-bio pkg build "${PLAN_DIRECTORY}"
+sudo bio pkg build "${PLAN_DIRECTORY}"
 
 source results/last_build.env
 
