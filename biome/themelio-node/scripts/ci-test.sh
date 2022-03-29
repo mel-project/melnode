@@ -7,7 +7,9 @@ export AWS_SECRET_ACCESS_KEY
 export AWS_DEFAULT_REGION
 
 export SCRIPTS_DIRECTORY="$(dirname "${0}")"
-PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
+export PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
+export BIOME_DIRECTORY="$(dirname "${PLAN_DIRECTORY}")"
+export ROOT_DIRECTORY="$(dirname "${BIOME_DIRECTORY}")"
 
 if [ -z "${PROMTAIL_USERNAME}" ]; then
   echo "The PROMTAIL_USERNAME environment variable must be set."
@@ -23,14 +25,16 @@ if [ -z "${PROMTAIL_PASSWORD}" ]; then
   exit 1
 fi
 
+export THEMELIO_NODE_VERSION=$(cat "${ROOT_DIRECTORY}/Cargo.toml" | tomlq .package.version)
+
 if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
   echo "Building for mainnet."
-  cp "${PLAN_DIRECTORY}/plan-debug-mainnet.sh" "${PLAN_DIRECTORY}/plan.sh"
+  envsubst < "${PLAN_DIRECTORY}/plan-debug-mainnet.sh" > "${PLAN_DIRECTORY}/plan.sh"
   cp -r "${PLAN_DIRECTORY}/hooks-mainnet" "${PLAN_DIRECTORY}/hooks"
 
 elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
   echo "Building for testnet."
-  cp "${PLAN_DIRECTORY}/plan-debug-testnet.sh" "${PLAN_DIRECTORY}/plan.sh"
+  envsubst < "${PLAN_DIRECTORY}/plan-debug-testnet.sh" > "${PLAN_DIRECTORY}/plan.sh"
   cp -r "${PLAN_DIRECTORY}/hooks-testnet" "${PLAN_DIRECTORY}/hooks"
 
 else
