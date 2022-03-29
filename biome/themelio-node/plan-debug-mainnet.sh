@@ -36,6 +36,7 @@ do_build() {
 
   build_line "Current directory in the build: $(pwd)"
   build_line "Contents of current directory in the build: $(ls -la)"
+  build_line "Contents of src directory in the build: $(ls -la /src)"
 
   build_line "Copying lockfile."
   cp /src/Cargo.lock "${pkg_full_path}"
