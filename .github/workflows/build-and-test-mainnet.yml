@@ -43,7 +43,7 @@ jobs:
         run: env DEBIAN_FRONTEND="noninteractive" sudo apt install -y tzdata
 
       - name: Install Gettext, Packer, Pip, And Ansible
-        run: sudo apt install -y gettext packer pip
+        run: sudo apt install -y gettext packer pip ansible
 
       - name: Install YQ
         run: pip install yq
