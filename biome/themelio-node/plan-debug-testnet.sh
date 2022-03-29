@@ -31,13 +31,17 @@ do_check() {
 }
 
 do_build() {
+  build_line "Creating source directory."
   mkdir -p "${pkg_full_path}/src"
 
-  cp -R /src/src/* "${pkg_full_path}/src/"
-
+  build_line "Copying lockfile."
   cp /src/Cargo.lock "${pkg_full_path}"
 
+  build_line "Copying manifest."
   cp /src/Cargo.toml "${pkg_full_path}"
+
+  build_line "Copying all source files into package path."
+  cp -R /src/src/* "${pkg_full_path}/src/"
 
   cd "${pkg_full_path}"
 
