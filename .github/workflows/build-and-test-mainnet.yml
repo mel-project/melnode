@@ -42,11 +42,8 @@ jobs:
       - name: Install TzData
         run: env DEBIAN_FRONTEND="noninteractive" sudo apt install -y tzdata
 
-      - name: Install Gettext, Packer And Pip
+      - name: Install Gettext, Packer, Pip, And Ansible
         run: sudo apt install -y gettext packer pip
-
-      - name: Show Packer Version
-        run: packer --version
 
       - name: Install YQ
         run: pip install yq
