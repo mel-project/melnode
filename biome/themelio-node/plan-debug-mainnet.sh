@@ -34,10 +34,6 @@ do_build() {
   build_line "Creating source directory."
   mkdir -p "${pkg_full_path}/src"
 
-  build_line "Current directory in the build: $(pwd)"
-  build_line "Contents of current directory in the build: $(ls -la)"
-  build_line "Contents of src directory in the build: $(ls -la /src)"
-
   build_line "Copying lockfile."
   cp /src/Cargo.lock "${pkg_full_path}"
 
@@ -47,8 +43,10 @@ do_build() {
   build_line "Copying all source files into package path."
   cp -R /src/src/* "${pkg_full_path}/src/"
 
+  build_line "Entering source directory."
   cd "${pkg_full_path}"
 
+  build_line "Starting Build."
   cargo build --locked --features metrics --verbose
 }
 

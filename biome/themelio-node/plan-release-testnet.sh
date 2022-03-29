@@ -43,8 +43,10 @@ do_build() {
   build_line "Copying all source files into package path."
   cp -R /src/src/* "${pkg_full_path}/src/"
 
+  build_line "Entering source directory."
   cd "${pkg_full_path}"
 
+  build_line "Starting Build."
   cargo build --locked --features metrics --verbose
 }
 

@@ -24,14 +24,23 @@ jobs:
       - name: Fix Directory Permissions
         run: sudo chown -R $(whoami):$(id -ng) /hab
 
+      - name: Add Hashicorp Key
+        run: curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+
+      - name: Add Hashicorp Repository
+        run: sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+
       - name: Update Apt
         run: sudo apt update
 
       - name: Install TzData
         run: env DEBIAN_FRONTEND="noninteractive" sudo apt install -y tzdata
 
-      - name: Install Gettext And Packer
+      - name: Install Gettext, Packer And Pip
         run: sudo apt install -y gettext packer pip
+
+      - name: Show Packer Version
+        run: packer --version
 
       - name: Install YQ
         run: pip install yq
