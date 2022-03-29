@@ -25,7 +25,7 @@ if [ -z "${PROMTAIL_PASSWORD}" ]; then
   exit 1
 fi
 
-export THEMELIO_NODE_VERSION=$(cat "${ROOT_DIRECTORY}/Cargo.toml" | tomlq .package.version)
+export THEMELIO_NODE_VERSION=$(cat "${ROOT_DIRECTORY}/Cargo.toml" | tomlq .package.version | tr -d '"')
 
 if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
   echo "Building for mainnet."
