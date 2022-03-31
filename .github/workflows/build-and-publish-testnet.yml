@@ -9,21 +9,12 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  build-and-publish-testnet:
 
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - uses: actions/checkout@v2
-
-      - name: Update Apt
-        run: sudo apt update
-
-      - name: Install TzData
-        run: env DEBIAN_FRONTEND="noninteractive" sudo apt install -y tzdata
-
-      - name: Install OpenStack, Packer, JQ, and Envsubst
-        run: sudo apt install -y python3-openstackclient python3-novaclient packer jq gettext-base
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1
@@ -37,32 +28,47 @@ jobs:
           BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
           BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
 
-      - name: Remove Rust
-        run: sudo rm -rf /usr/share/rust/
-
-      - name: Remove Rustc
-        run: sudo rm -rf /home/runner/.cargo/bin/rustc
-
-      - name: Remove Cargo
-        run: sudo rm -rf /home/runner/.cargo/bin/cargo
-
       - name: Fix Directory Permissions
         run: sudo chown -R $(whoami):$(id -ng) /hab
 
-      - name: Cache Biome
-        uses: actions/cache@v2
-        env:
-          CACHE_NAME: cache-biome
-        with:
-          path: |
-            ~/.hab/cache/artifacts
-            /hab/cache/artifacts
-            /hab/pkgs
-          key: ${{ runner.os }}-build-${{ env.CACHE_NAME }}-${{ hashFiles('biome/themelio-node/plan-release.sh') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.CACHE_NAME }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
+      - name: Update Apt
+        run: sudo apt update
+
+      - name: Install Curl
+        run: sudo apt install -y curl
+
+      - name: Add Hashicorp Key
+        run: curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+
+      - name: Add Hashicorp Repository
+        run: sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+
+      - name: Update Apt
+        run: sudo apt update
+
+      - name: Install TzData
+        run: env DEBIAN_FRONTEND="noninteractive" sudo apt install -y tzdata
+
+      - name: Install Gettext, Packer, Pip, And Ansible
+        run: sudo apt install -y gettext packer pip ansible
+
+      - name: Install YQ
+        run: pip install yq
+
+      #      - name: Cache Biome
+      #        uses: actions/cache@v2
+      #        env:
+      #          CACHE_NAME: cache-biome
+      #        with:
+      #          path: |
+      #            ~/.hab/cache/artifacts
+      #            /hab/cache/artifacts
+      #            /hab/pkgs
+      #          key: ${{ runner.os }}-build-${{ env.CACHE_NAME }}-${{ hashFiles('biome/themelio-node/plan-debug.sh') }}
+      #          restore-keys: |
+      #            ${{ runner.os }}-build-${{ env.CACHE_NAME }}-
+      #            ${{ runner.os }}-build-
+      #            ${{ runner.os }}-
 
       - name: Build, Publish Artifact And Mark As Stable, Export And Publish Docker Image, Create Packer Images
         env:
@@ -78,11 +84,5 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-#          OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
-#          OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
-#          OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
-#          OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
-#          OS_USERNAME: ${{ secrets.OS_USERNAME }}
-#          OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
           NETWORK_TO_BUILD: "testnet"
         run: ./biome/themelio-node/scripts/ci-publish.sh

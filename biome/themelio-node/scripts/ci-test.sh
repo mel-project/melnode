@@ -7,7 +7,9 @@ export AWS_SECRET_ACCESS_KEY
 export AWS_DEFAULT_REGION
 
 export SCRIPTS_DIRECTORY="$(dirname "${0}")"
-PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
+export PLAN_DIRECTORY="$(dirname "${SCRIPTS_DIRECTORY}")"
+export BIOME_DIRECTORY="$(dirname "${PLAN_DIRECTORY}")"
+export ROOT_DIRECTORY="$(dirname "${BIOME_DIRECTORY}")"
 
 if [ -z "${PROMTAIL_USERNAME}" ]; then
   echo "The PROMTAIL_USERNAME environment variable must be set."
@@ -23,12 +25,16 @@ if [ -z "${PROMTAIL_PASSWORD}" ]; then
   exit 1
 fi
 
+export THEMELIO_NODE_VERSION=$(cat "${ROOT_DIRECTORY}/Cargo.toml" | tomlq .package.version | tr -d '"')
+
 if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
-  cp "${PLAN_DIRECTORY}/plan-debug-mainnet.sh" "${PLAN_DIRECTORY}/plan.sh"
+  echo "Building for mainnet."
+  envsubst '${THEMELIO_NODE_VERSION}' < "${PLAN_DIRECTORY}/plan-debug-mainnet.sh" > "${PLAN_DIRECTORY}/plan.sh"
   cp -r "${PLAN_DIRECTORY}/hooks-mainnet" "${PLAN_DIRECTORY}/hooks"
 
 elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
-  cp "${PLAN_DIRECTORY}/plan-debug-testnet.sh" "${PLAN_DIRECTORY}/plan.sh"
+  echo "Building for testnet."
+  envsubst '${THEMELIO_NODE_VERSION}' < "${PLAN_DIRECTORY}/plan-debug-testnet.sh" > "${PLAN_DIRECTORY}/plan.sh"
   cp -r "${PLAN_DIRECTORY}/hooks-testnet" "${PLAN_DIRECTORY}/hooks"
 
 else
@@ -37,13 +43,16 @@ else
 fi
 
 sudo bio pkg install --binlink themelio/bats
-sudo bio pkg install --binlink core/curl
+#sudo bio pkg install --binlink core/curl
 sudo bio pkg install --binlink core/nmap
 
 
 source "${PLAN_DIRECTORY}/plan.sh"
 
 sudo bio sup run &
+
+echo "Current directory in the script before the build: $(pwd)"
+echo "Contents of current directory in the script before the build: $(ls -la)"
 
 bio pkg build "${PLAN_DIRECTORY}"
 
