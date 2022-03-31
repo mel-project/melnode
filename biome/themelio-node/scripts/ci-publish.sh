@@ -23,12 +23,16 @@ if [ -z "${PROMTAIL_PASSWORD}" ]; then
   exit 1
 fi
 
+export THEMELIO_NODE_VERSION=$(cat "${ROOT_DIRECTORY}/Cargo.toml" | tomlq .package.version | tr -d '"')
+
 if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
-  cp "${PLAN_DIRECTORY}/plan-release-mainnet.sh" "${PLAN_DIRECTORY}/plan.sh"
+  echo "Building for mainnet."
+  envsubst '${THEMELIO_NODE_VERSION}' < "${PLAN_DIRECTORY}/plan-debug-mainnet.sh" > "${PLAN_DIRECTORY}/plan.sh"
   cp -r "${PLAN_DIRECTORY}/hooks-mainnet" "${PLAN_DIRECTORY}/hooks"
 
 elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
-  cp "${PLAN_DIRECTORY}/plan-release-testnet.sh" "${PLAN_DIRECTORY}/plan.sh"
+  echo "Building for testnet."
+  envsubst '${THEMELIO_NODE_VERSION}' < "${PLAN_DIRECTORY}/plan-debug-testnet.sh" > "${PLAN_DIRECTORY}/plan.sh"
   cp -r "${PLAN_DIRECTORY}/hooks-testnet" "${PLAN_DIRECTORY}/hooks"
 
 else
