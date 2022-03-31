@@ -48,12 +48,6 @@ jobs:
       - name: Install YQ
         run: pip install yq
 
-      - name: Show Current Directory
-        run: pwd
-
-      - name: Show Home Directory
-        run: echo $HOME
-
 #      - name: Cache Biome
 #        uses: actions/cache@v2
 #        env:
