@@ -14,9 +14,11 @@ use std::{
 
 use anyhow::Context;
 use futures_util::{StreamExt, TryStreamExt};
+use lru::LruCache;
 use novasmt::CompressedProof;
+use parking_lot::Mutex;
 use themelio_stf::SealedState;
-use themelio_structs::{AbbrBlock, Block, BlockHeight, ConsensusProof, NetID, Transaction};
+use themelio_structs::{AbbrBlock, Block, BlockHeight, ConsensusProof, NetID, Transaction, TxHash};
 
 use melnet::MelnetError;
 use smol::net::TcpListener;
@@ -75,13 +77,12 @@ impl NodeProtocol {
 #[tracing::instrument(skip(network, storage))]
 async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStorage) {
     let tag = || format!("blksync@{:?}", storage.highest_state().header().height);
-    const FAST_TIME: Duration = Duration::from_millis(500);
     loop {
-        let slow_time: Duration = Duration::from_secs_f64(fastrand::f64() * 5.0);
+        let gap_time: Duration = Duration::from_secs_f64(fastrand::f64() * 1.0);
         let routes = network.routes();
         let random_peer = routes.first().cloned();
         if let Some(peer) = random_peer {
-            log::debug!("picking peer {} out of peers {:?}", peer, routes);
+            log::debug!("picking peer {} out of {} peers", peer, routes.len());
             let client = NodeClient::new(netid, peer);
 
             let res = attempt_blksync(peer, &client, &storage).await;
@@ -103,8 +104,6 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStor
                         peer,
                         e
                     );
-
-                    smol::Timer::after(FAST_TIME).await;
                 }
                 Ok(blklen) => {
                     if blklen > 0 {
@@ -122,16 +121,11 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStor
                             AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
                             storage.highest_height()
                         );
-
-                        smol::Timer::after(FAST_TIME).await;
-                    } else {
-                        smol::Timer::after(slow_time).await;
                     }
                 }
             }
-        } else {
-            smol::Timer::after(slow_time).await;
         }
+        smol::Timer::after(gap_time).await;
     }
 }
 
@@ -209,14 +203,22 @@ struct AuditorResponder {
     network: NetID,
     storage: NodeStorage,
     indexer: Option<BlockIndexer>,
+    recent: Mutex<LruCache<TxHash, Instant>>,
 }
 
 impl NodeServer<MeshaCas> for AuditorResponder {
     fn send_tx(&self, state: melnet::NetState, tx: Transaction) -> anyhow::Result<()> {
+        if let Some(val) = self.recent.lock().peek(&tx.hash_nosigs()) {
+            if val.elapsed().as_secs_f64() < 10.0 {
+                anyhow::bail!("rejecting recently seen")
+            }
+        }
+        self.recent.lock().put(tx.hash_nosigs(), Instant::now());
         log::trace!("handling send_tx");
         let start = Instant::now();
         self.storage
-            .mempool_mut()
+            .try_mempool_mut()
+            .context("mempool contention")?
             .apply_transaction(&tx)
             .map_err(|e| {
                 log::warn!("cannot apply tx: {:?}", e);
@@ -228,6 +230,14 @@ impl NodeServer<MeshaCas> for AuditorResponder {
             &tx.hash_nosigs().to_string()[..10],
             start.elapsed(),
         );
+
+        if start.elapsed().as_secs_f64() > 1.0 {
+            log::warn!(
+                "MONSTER transaction here! {:#?}",
+                tx.clone().with_data(vec![])
+            );
+        }
+
         #[cfg(feature = "metrics")]
         log::debug!(
             "hostname={} public_ip={} network={} region={} instance_id={} txhash {}.. inserted ({:?} applying)",
@@ -241,7 +251,7 @@ impl NodeServer<MeshaCas> for AuditorResponder {
         );
 
         // log::debug!("about to broadcast txhash {:?}", tx.hash_nosigs());
-        for neigh in state.routes().iter().take(4).cloned() {
+        for neigh in state.routes().iter().take(16).cloned() {
             let tx = tx.clone();
             let network = self.network;
             // log::debug!("bcast {:?} => {:?}", tx.hash_nosigs(), neigh);
@@ -351,6 +361,7 @@ impl AuditorResponder {
             } else {
                 None
             },
+            recent: LruCache::new(10000).into(),
         }
     }
 }

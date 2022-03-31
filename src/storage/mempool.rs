@@ -35,10 +35,10 @@ impl Mempool {
 
     /// Tries to add a transaction to the mempool.
     pub fn apply_transaction(&mut self, tx: &Transaction) -> Result<(), StateError> {
-        self.provisional_state.apply_tx(tx)?;
         if !self.txx_in_state.insert(tx.hash_nosigs()) {
             return Err(StateError::DuplicateTx);
         }
+        self.provisional_state.apply_tx(tx)?;
         self.seen.put(tx.hash_nosigs(), tx.clone());
         Ok(())
     }
