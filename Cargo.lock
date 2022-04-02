@@ -1737,9 +1737,9 @@ dependencies = [
 
 [[package]]
 name = "novasymph"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9bdbfb18f83f0cf0caf377b03477b36935880b574e14ccc7a8dafe78505790f0"
+checksum = "d146d4dbde0db8a5e0ef156ea9f50752257c695bf9bc602035569511a83abccc"
 dependencies = [
  "anyhow",
  "async-oneshot 0.5.0",
@@ -1767,6 +1767,7 @@ dependencies = [
  "smolscale",
  "stacker",
  "stdcode",
+ "tap",
  "themelio-stf",
  "themelio-structs",
  "thiserror",
