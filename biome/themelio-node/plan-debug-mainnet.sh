@@ -2,7 +2,7 @@ pkg_name=themelio-node-mainnet
 binary_name=themelio-node
 pkg_origin=themelio
 pkg_maintainer="Meade Kincke <meade@themelio.org>"
-pkg_version="0.5.2-alpha.0"
+pkg_version="$THEMELIO_NODE_VERSION"
 pkg_license=("MPL-2.0")
 pkg_full_path="${HAB_CACHE_SRC_PATH}/${binary_name}"
 pkg_build_deps=(themelio/rust)
@@ -31,16 +31,22 @@ do_check() {
 }
 
 do_build() {
+  build_line "Creating source directory."
   mkdir -p "${pkg_full_path}/src"
 
-  cp -R /src/src/* "${pkg_full_path}/src/"
-
+  build_line "Copying lockfile."
   cp /src/Cargo.lock "${pkg_full_path}"
 
+  build_line "Copying manifest."
   cp /src/Cargo.toml "${pkg_full_path}"
 
+  build_line "Copying all source files into package path."
+  cp -R /src/src/* "${pkg_full_path}/src/"
+
+  build_line "Entering source directory."
   cd "${pkg_full_path}"
 
+  build_line "Starting Build."
   cargo build --locked --features metrics --verbose
 }
 
