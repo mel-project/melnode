@@ -1737,9 +1737,9 @@ dependencies = [
 
 [[package]]
 name = "novasymph"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8013b8444437384891e64ab5a719a276a79d57f18c487f95732bd01034542cef"
+checksum = "9bdbfb18f83f0cf0caf377b03477b36935880b574e14ccc7a8dafe78505790f0"
 dependencies = [
  "anyhow",
  "async-oneshot 0.5.0",
