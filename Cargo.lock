@@ -1737,9 +1737,7 @@ dependencies = [
 
 [[package]]
 name = "novasymph"
-version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5f28bc20bc9c2475438a33379fb3efd06ed17d2ba2e43df2a66ae39ecb0fe31"
+version = "0.1.10-alpha.0"
 dependencies = [
  "anyhow",
  "async-oneshot 0.5.0",
@@ -2224,9 +2222,9 @@ checksum = "cf7e6d18738ecd0902d30d1ad232c9125985a3422929b16c65517b38adc14f96"
 
 [[package]]
 name = "psm"
-version = "0.1.17"
+version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6eca0fa5dd7c4c96e184cec588f0b1db1ee3165e678db21c09793105acb17e6f"
+checksum = "871372391786ccec00d3c5d3d6608905b3d4db263639cfe075d3b60a736d115a"
 dependencies = [
  "cc",
 ]
