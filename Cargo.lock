@@ -1536,16 +1536,18 @@ checksum = "a3e378b66a060d48947b590737b30a1be76706c8dd7b8ba0f2fe3989c68a853f"
 
 [[package]]
 name = "melnet"
-version = "0.2.18"
+version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3219185941d69538983103611921d8c4caf64db4b830fb53d21ce711441a4752"
+checksum = "c2c3abf5a9b6efdd034445a3d6acc4c2d628c0789aedec78a41ab141d90f461e"
 dependencies = [
  "anyhow",
  "async-net",
+ "async-recursion",
  "async-trait",
  "dashmap",
  "derivative",
  "env_logger 0.8.4",
+ "futures-util",
  "lazy_static",
  "log",
  "once_cell",
@@ -1587,9 +1589,9 @@ dependencies = [
 
 [[package]]
 name = "meshanina"
-version = "0.3.14"
+version = "0.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e28307518d63e6ef56361d3311deda1c3d5c5ed518e362171028a3d67238c41b"
+checksum = "03a5d700c6cb4c044847f8c307836930cf06b06d2ff964d7800c3a8852498c59"
 dependencies = [
  "arrayref",
  "blake3",
@@ -1737,7 +1739,9 @@ dependencies = [
 
 [[package]]
 name = "novasymph"
-version = "0.1.10-alpha.0"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32eba9bca4994b0bc7d5091733e3ca3ebac792f19cc9f1adea4ed072c888f4c6"
 dependencies = [
  "anyhow",
  "async-oneshot 0.5.0",
