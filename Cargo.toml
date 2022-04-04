@@ -89,7 +89,7 @@ hostname = "0.3.1"
 imbl = "1.0.1"
 log = "0.4.16"
 lru = "0.7.5"
-melnet = "0.2.20"
+melnet = "0.2.22"
 # meshanina = {path="../../../meshanina"}
 meshanina = "0.3.15"
 novasmt = "0.2.17"
