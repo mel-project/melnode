@@ -32,7 +32,7 @@ pub static RUNTIME: Lazy<Runtime> =
 #[instrument]
 fn main() -> anyhow::Result<()> {
     if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "themelio_node=debug,warn,novasymph");
+        std::env::set_var("RUST_LOG", "themelio_node=debug,warn");
     }
     env_logger::Builder::from_env("RUST_LOG").init();
     let opts = Args::from_args();

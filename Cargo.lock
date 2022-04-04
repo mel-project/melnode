@@ -1515,9 +1515,9 @@ dependencies = [
 
 [[package]]
 name = "lru"
-version = "0.7.3"
+version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcb87f3080f6d1d69e8c564c0fcfde1d7aa8cc451ce40cae89479111f03bc0eb"
+checksum = "32613e41de4c47ab04970c348ca7ae7382cf116625755af070b008a15516a889"
 dependencies = [
  "hashbrown",
 ]
@@ -1536,9 +1536,9 @@ checksum = "a3e378b66a060d48947b590737b30a1be76706c8dd7b8ba0f2fe3989c68a853f"
 
 [[package]]
 name = "melnet"
-version = "0.2.19"
+version = "0.2.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2c3abf5a9b6efdd034445a3d6acc4c2d628c0789aedec78a41ab141d90f461e"
+checksum = "ead23e551ebd7b438df4d33a95a3cabd9af16b5b91e52d3a1dae6e4b70bd8d5a"
 dependencies = [
  "anyhow",
  "async-net",
@@ -1739,9 +1739,9 @@ dependencies = [
 
 [[package]]
 name = "novasymph"
-version = "0.1.9"
+version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32eba9bca4994b0bc7d5091733e3ca3ebac792f19cc9f1adea4ed072c888f4c6"
+checksum = "b42d849324c7061b2a63dbc77c96393038a7e7e850909bfb7608fb8ab4d9dff1"
 dependencies = [
  "anyhow",
  "async-oneshot 0.5.0",
