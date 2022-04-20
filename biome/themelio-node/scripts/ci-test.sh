@@ -50,11 +50,11 @@ source "${PLAN_DIRECTORY}/plan.sh"
 
 sudo bio sup run &
 
-#echo "Current directory in the script before the build: $(pwd)"
-#echo "Contents of current directory in the script before the build: $(ls -la)"
-#
-#sudo bio pkg build "${PLAN_DIRECTORY}"
-#
+echo "Current directory in the script before the build: $(pwd)"
+echo "Contents of current directory in the script before the build: $(ls -la)"
+
+bio pkg build "${PLAN_DIRECTORY}"
+
 #source results/last_build.env
 #
 #sudo bio pkg install --binlink --force "results/${pkg_artifact}"
