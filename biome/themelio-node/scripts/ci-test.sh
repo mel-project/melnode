@@ -25,6 +25,7 @@ if [ -z "${PROMTAIL_PASSWORD}" ]; then
   exit 1
 fi
 
+# I need to add this to the biome docker image and remove it from here.
 pip install yq
 
 export THEMELIO_NODE_VERSION=$(cat "${ROOT_DIRECTORY}/Cargo.toml" | tomlq .package.version | tr -d '"')
