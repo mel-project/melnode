@@ -66,4 +66,4 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
           NETWORK_TO_BUILD: "mainnet"
-        run: sudo biome/themelio-node/scripts/ci-test.sh
+        run: ./biome/themelio-node/scripts/ci-test.sh
