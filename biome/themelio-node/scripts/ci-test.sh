@@ -53,8 +53,8 @@ sudo bio sup run &
 echo "Current directory in the script before the build: $(pwd)"
 echo "Contents of current directory in the script before the build: $(ls -la)"
 
-sudo usermod -a -G docker runner
-newgrp docker
+#sudo usermod -a -G docker runner
+#newgrp docker
 
 sudo bio pkg build "${PLAN_DIRECTORY}"
 
