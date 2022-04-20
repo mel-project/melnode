@@ -18,62 +18,54 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - uses: themeliolabs/actions-biome@v1
-        with:
-          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
-          BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
-
-      - name: Fix Directory Permissions
-        run: sudo chown -R $(whoami):$(id -ng) /hab
-
-#      - name: Update Apt
-#        run: sudo apt update
-#
-#      - name: Install Curl
-#        run: sudo apt install -y curl
-#
-#      - name: Add Hashicorp Key
-#        run: curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-#
-#      - name: Add Hashicorp Repository
-#        run: sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-#
-#      - name: Update Apt
-#        run: sudo apt update
-#
-#      - name: Install TzData
-#        run: env DEBIAN_FRONTEND="noninteractive" sudo apt install -y tzdata
-#
-#      - name: Install Gettext, Packer, Pip, And Ansible
-#        run: sudo apt install -y gettext packer pip ansible
-#
-#      - name: Install YQ
-#        run: pip install yq
-
-#      - name: Cache Biome
-#        uses: actions/cache@v2
-#        env:
-#          CACHE_NAME: cache-biome
+#      - uses: themeliolabs/actions-biome@v1
 #        with:
-#          path: |
-#            ~/.hab/cache/artifacts
-#            /hab/cache/artifacts
-#            /hab/pkgs
-#          key: ${{ runner.os }}-build-${{ env.CACHE_NAME }}-${{ hashFiles('biome/themelio-node/plan-debug.sh') }}
-#          restore-keys: |
-#            ${{ runner.os }}-build-${{ env.CACHE_NAME }}-
-#            ${{ runner.os }}-build-
-#            ${{ runner.os }}-
+#          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
+#          BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
 
-      - name: Build, Run BATS Tests
+      - name: Download Biome
         env:
-          HAB_ORIGIN: "themelio"
+          BIOME_VERSION: "1.6.372"
+        run: curl -L "https://github.com/biome-sh/biome/releases/download/v$BIOME_VERSION/bio-$BIOME_VERSION-x86_64-linux.tar.gz" | tar zxv
+
+      - name: Install Biome
+        run: mv bio /usr/local/bin/bio
+
+      - name: Remove Curl
+        run: apt remove -y curl
+
+      - name: Install Biome
+        env:
           BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
-          PROMTAIL_PASSWORD: ${{ secrets.PROMTAIL_PASSWORD }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-          NETWORK_TO_BUILD: "mainnet"
-        run: ./biome/themelio-node/scripts/ci-test.sh
+        run: echo "$BIOME_PUBLIC_KEY" | bio origin key import
+
+#      - run: echo "$BIOME_PUBLIC_KEY" | sudo bio origin key import
+#        env:
+#          BIOME_PUBLIC_KEY: ${{ inputs.BIOME_PUBLIC_KEY }}
+#        shell: bash
+#
+#      - run: echo "$BIOME_SIGNING_KEY" | bio origin key import
+#        env:
+#          BIOME_SIGNING_KEY: ${{ inputs.BIOME_SIGNING_KEY }}
+#        shell: bash
+#
+#      - run: echo "$BIOME_SIGNING_KEY" | sudo bio origin key import
+#        env:
+#          BIOME_SIGNING_KEY: ${{ inputs.BIOME_SIGNING_KEY }}
+#        shell: bash
+#
+#      - name: Fix Directory Permissions
+#        run: sudo chown -R $(whoami):$(id -ng) /hab
+
+#      - name: Build, Run BATS Tests
+#        env:
+#          HAB_ORIGIN: "themelio"
+#          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#          PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
+#          PROMTAIL_PASSWORD: ${{ secrets.PROMTAIL_PASSWORD }}
+#          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+#          NETWORK_TO_BUILD: "mainnet"
+#        run: ./biome/themelio-node/scripts/ci-test.sh
