@@ -45,28 +45,28 @@ else
   exit 1
 fi
 
-sudo bio pkg install --binlink themelio/bats
-sudo bio pkg install --binlink core/nmap
+bio pkg install --binlink themelio/bats
+bio pkg install --binlink core/nmap
 
 
 source "${PLAN_DIRECTORY}/plan.sh"
 
-sudo bio sup run &
+bio sup run &
 
 echo "Current directory in the script before the build: $(pwd)"
 echo "Contents of current directory in the script before the build: $(ls -la)"
 
-sudo bio pkg build "${PLAN_DIRECTORY}"
+bio pkg build "${PLAN_DIRECTORY}"
 
 source results/last_build.env
 
-sudo bio pkg install --binlink --force "results/${pkg_artifact}"
+bio pkg install --binlink --force "results/${pkg_artifact}"
 
-sudo useradd hab -s /bin/bash -p '*'
+useradd hab -s /bin/bash -p '*'
 
 export DISABLE_HEALTH_CHECK=true
 
-sudo bio svc load "${pkg_ident}"
+bio svc load "${pkg_ident}"
 
 echo "Sleeping for 10 seconds for the service to start."
 sleep 10
@@ -75,24 +75,24 @@ if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
   if bats --print-output-on-failure "${SCRIPTS_DIRECTORY}/test-ci-mainnet.bats"; then
     rm "${PLAN_DIRECTORY}/plan.sh"
     rm -rf "${PLAN_DIRECTORY}/hooks"
-    sudo bio svc unload "${pkg_ident}"
+    bio svc unload "${pkg_ident}"
   else
     rm "${PLAN_DIRECTORY}/plan.sh"
     rm -rf "${PLAN_DIRECTORY}/hooks"
-    sudo bio svc unload "${pkg_ident}"
+    bio svc unload "${pkg_ident}"
     exit 1
   fi
 
 elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
   if bats --print-output-on-failure "${SCRIPTS_DIRECTORY}/test-ci-testnet.bats"; then
-    sudo bio svc unload "${pkg_ident}"
+    bio svc unload "${pkg_ident}"
   else
-    sudo bio svc unload "${pkg_ident}"
+    bio svc unload "${pkg_ident}"
     exit 1
   fi
 
 else
-  sudo bio svc unload "${pkg_ident}"
+  bio svc unload "${pkg_ident}"
   echo "No network specified with NETWORK_TO_BUILD. Exiting."
   exit 1
 fi
