@@ -41,7 +41,7 @@ jobs:
 
       - name: Import Biome Signing Key
         env:
-          BIOME_SIGNING_KEY: ${{ inputs.BIOME_SIGNING_KEY }}
+          BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
         run: echo "$BIOME_SIGNING_KEY" | bio origin key import
 
       - name: Build, Run BATS Tests
