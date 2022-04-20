@@ -43,7 +43,6 @@ else
 fi
 
 sudo bio pkg install --binlink themelio/bats
-#sudo bio pkg install --binlink core/curl
 sudo bio pkg install --binlink core/nmap
 
 
