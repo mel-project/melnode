@@ -19,46 +19,19 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-#      - uses: themeliolabs/actions-biome@v1
-#        with:
-#          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
-#          BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
-
-#      - name: Download Biome
-#        env:
-#          BIOME_VERSION: "1.6.372"
-#        run: curl -L "https://github.com/biome-sh/biome/releases/download/v$BIOME_VERSION/bio-$BIOME_VERSION-x86_64-linux.tar.gz" | tar zxv
-
-#      - name: Install Biome
-#        run: mv bio /usr/local/bin/bio
-
-#      - name: Remove Curl
-#        run: apt remove -y curl
-
       - name: Import Biome Public Key
         env:
           BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
         run: echo "$BIOME_PUBLIC_KEY" | bio origin key import
-
-#      - name: Import Biome Public Key (sudo)
-#        env:
-#          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
-#        run: echo "$BIOME_PUBLIC_KEY" | sudo bio origin key import
 
       - name: Import Biome Signing Key
         env:
           BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
         run: echo "$BIOME_SIGNING_KEY" | bio origin key import
 
-#      - name: Import Biome Signing Key (sudo)
-#        env:
-#          BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
-#        run: echo "$BIOME_SIGNING_KEY" | sudo bio origin key import
-
       - name: Build, Run BATS Tests
         env:
           HAB_ORIGIN: "themelio"
-#          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
           PROMTAIL_PASSWORD: ${{ secrets.PROMTAIL_PASSWORD }}
