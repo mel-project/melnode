@@ -23,16 +23,16 @@ jobs:
 #          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
 #          BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
 
-      - name: Download Biome
-        env:
-          BIOME_VERSION: "1.6.372"
-        run: curl -L "https://github.com/biome-sh/biome/releases/download/v$BIOME_VERSION/bio-$BIOME_VERSION-x86_64-linux.tar.gz" | tar zxv
+#      - name: Download Biome
+#        env:
+#          BIOME_VERSION: "1.6.372"
+#        run: curl -L "https://github.com/biome-sh/biome/releases/download/v$BIOME_VERSION/bio-$BIOME_VERSION-x86_64-linux.tar.gz" | tar zxv
 
-      - name: Install Biome
-        run: mv bio /usr/local/bin/bio
+#      - name: Install Biome
+#        run: mv bio /usr/local/bin/bio
 
-      - name: Remove Curl
-        run: apt remove -y curl
+#      - name: Remove Curl
+#        run: apt remove -y curl
 
       - name: Import Biome Public Key
         env:
