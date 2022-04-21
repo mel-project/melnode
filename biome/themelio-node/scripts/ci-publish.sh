@@ -23,16 +23,18 @@ if [ -z "${PROMTAIL_PASSWORD}" ]; then
   exit 1
 fi
 
+pip install yq
+
 export THEMELIO_NODE_VERSION=$(cat "${ROOT_DIRECTORY}/Cargo.toml" | tomlq .package.version | tr -d '"')
 
 if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
   echo "Building for mainnet."
-  envsubst '${THEMELIO_NODE_VERSION}' < "${PLAN_DIRECTORY}/plan-debug-mainnet.sh" > "${PLAN_DIRECTORY}/plan.sh"
+  envsubst '${THEMELIO_NODE_VERSION}' < "${PLAN_DIRECTORY}/plan-release-mainnet.sh" > "${PLAN_DIRECTORY}/plan.sh"
   cp -r "${PLAN_DIRECTORY}/hooks-mainnet" "${PLAN_DIRECTORY}/hooks"
 
 elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
   echo "Building for testnet."
-  envsubst '${THEMELIO_NODE_VERSION}' < "${PLAN_DIRECTORY}/plan-debug-testnet.sh" > "${PLAN_DIRECTORY}/plan.sh"
+  envsubst '${THEMELIO_NODE_VERSION}' < "${PLAN_DIRECTORY}/plan-release-testnet.sh" > "${PLAN_DIRECTORY}/plan.sh"
   cp -r "${PLAN_DIRECTORY}/hooks-testnet" "${PLAN_DIRECTORY}/hooks"
 
 else
@@ -70,9 +72,9 @@ if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
   for tag in ${tags//,/ }; do
     local_tag="ghcr.io/themeliolabs/themelio-node-mainnet:${tag}"
 
-    docker tag "${name}:${tag}" "${local_tag}"
+    sudo docker tag "${name}:${tag}" "${local_tag}"
 
-  	docker push "${local_tag}"
+  	sudo docker push "${local_tag}"
   done
 
 
@@ -117,9 +119,9 @@ elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
   for tag in ${tags//,/ }; do
     local_tag="ghcr.io/themeliolabs/themelio-node-testnet:${tag}"
 
-    docker tag "${name}:${tag}" "${local_tag}"
+    sudo docker tag "${name}:${tag}" "${local_tag}"
 
-    docker push "${local_tag}"
+    sudo docker push "${local_tag}"
   done
 
   for region in $(cat $SCRIPTS_DIRECTORY/packer/aws_regions); do

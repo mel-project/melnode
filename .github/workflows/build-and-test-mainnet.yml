@@ -10,63 +10,28 @@ env:
 
 jobs:
   build-and-test-mainnet:
-
     runs-on: self-hosted
+
+    container:
+      image: ghcr.io/themeliolabs/biome:latest
+      options: --privileged
 
     steps:
       - uses: actions/checkout@v2
 
-      - uses: themeliolabs/actions-biome@v1
-        with:
+      - name: Import Biome Public Key
+        env:
           BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
+        run: echo "$BIOME_PUBLIC_KEY" | bio origin key import
+
+      - name: Import Biome Signing Key
+        env:
           BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
-
-      - name: Fix Directory Permissions
-        run: sudo chown -R $(whoami):$(id -ng) /hab
-
-      - name: Update Apt
-        run: sudo apt update
-
-      - name: Install Curl
-        run: sudo apt install -y curl
-
-      - name: Add Hashicorp Key
-        run: curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-
-      - name: Add Hashicorp Repository
-        run: sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-
-      - name: Update Apt
-        run: sudo apt update
-
-      - name: Install TzData
-        run: env DEBIAN_FRONTEND="noninteractive" sudo apt install -y tzdata
-
-      - name: Install Gettext, Packer, Pip, And Ansible
-        run: sudo apt install -y gettext packer pip ansible
-
-      - name: Install YQ
-        run: pip install yq
-
-#      - name: Cache Biome
-#        uses: actions/cache@v2
-#        env:
-#          CACHE_NAME: cache-biome
-#        with:
-#          path: |
-#            ~/.hab/cache/artifacts
-#            /hab/cache/artifacts
-#            /hab/pkgs
-#          key: ${{ runner.os }}-build-${{ env.CACHE_NAME }}-${{ hashFiles('biome/themelio-node/plan-debug.sh') }}
-#          restore-keys: |
-#            ${{ runner.os }}-build-${{ env.CACHE_NAME }}-
-#            ${{ runner.os }}-build-
-#            ${{ runner.os }}-
+        run: echo "$BIOME_SIGNING_KEY" | bio origin key import
 
       - name: Build, Run BATS Tests
         env:
           HAB_ORIGIN: "themelio"
-          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
           PROMTAIL_PASSWORD: ${{ secrets.PROMTAIL_PASSWORD }}
