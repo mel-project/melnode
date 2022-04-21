@@ -72,9 +72,9 @@ if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
   for tag in ${tags//,/ }; do
     local_tag="ghcr.io/themeliolabs/themelio-node-mainnet:${tag}"
 
-    docker tag "${name}:${tag}" "${local_tag}"
+    sudo docker tag "${name}:${tag}" "${local_tag}"
 
-  	docker push "${local_tag}"
+  	sudo docker push "${local_tag}"
   done
 
 
@@ -119,9 +119,9 @@ elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
   for tag in ${tags//,/ }; do
     local_tag="ghcr.io/themeliolabs/themelio-node-testnet:${tag}"
 
-    docker tag "${name}:${tag}" "${local_tag}"
+    sudo docker tag "${name}:${tag}" "${local_tag}"
 
-    docker push "${local_tag}"
+    sudo docker push "${local_tag}"
   done
 
   for region in $(cat $SCRIPTS_DIRECTORY/packer/aws_regions); do
