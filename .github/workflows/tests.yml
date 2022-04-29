@@ -11,27 +11,27 @@ env:
 
 jobs:
   tests:
-
     runs-on: self-hosted
 
+    container:
+      image: rust:latest
+      volumes:
+        - /usr/local/cargo/git:/usr/local/cargo/git
+        - /usr/local/cargo/registry:/usr/local/cargo/registry
+        - /usr/local/sccache:/usr/local/sccache
+        - /usr/local/rustup:/usr/local/rustup
+        - /var/lib/docker:/var/lib/docker
+
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-#      - uses: actions/cache@v2
-#        with:
-#          path: |
-#            ~/.cargo/bin/
-#            ~/.cargo/registry/index/
-#            ~/.cargo/registry/cache/
-#            ~/.cargo/git/db/
-#            target/
-#          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: themeliolabs/actions-sccache@v1
 
-      - name: Install Rustup
-        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      - uses: themeliolabs/actions-mold@v1
 
-      - name: Add Rustup To Path
-        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - name: Add Default Toolchain
+        run: rustup default stable
 
-      - name: Run Tests
-        run: cargo test --locked --features metrics --verbose
+      - name: Run tests
+        run: mold --run cargo test --target=x86_64-unknown-linux-gnu --verbose

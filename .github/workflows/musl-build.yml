@@ -8,40 +8,44 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_HOME: "/usr/local/cargo/"
+  RUSTUP_HOME: "/usr/local/rustup"
+  SCCACHE_DIR: "/usr/local/sccache"
+  RUSTC_WRAPPER: "/usr/local/bin/sccache"
 
 jobs:
   musl-build:
 
     runs-on: self-hosted
 
+    container:
+      image: rust:latest
+      volumes:
+        - /usr/local/cargo/git:/usr/local/cargo/git
+        - /usr/local/cargo/registry:/usr/local/cargo/registry
+        - /usr/local/sccache:/usr/local/sccache
+        - /usr/local/rustup:/usr/local/rustup
+        - /var/lib/docker:/var/lib/docker
+
     steps:
-
-      - uses: actions/checkout@v3
-
-#      - uses: actions/cache@v2
-#        with:
-#          path: |
-#            ~/.cargo/bin/
-#            ~/.cargo/registry/index/
-#            ~/.cargo/registry/cache/
-#            ~/.cargo/git/db/
-#            target/
-#          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
       - name: Update Apt
-        run: sudo apt update
+        run: apt update
 
       - name: Install Musl
-        run: sudo apt install -y musl musl-tools
+        run: apt -y install musl musl-tools
 
-      - name: Install Rustup
-        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      - uses: themeliolabs/actions-sccache@v1
 
-      - name: Add Rustup To Path
-        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - uses: themeliolabs/actions-mold@v1
 
-      - name: Add Musl Target
+      - name: Add Default Toolchain
+        run: rustup default stable
+
+      - name: Add Musl Target Triple
         run: rustup target add x86_64-unknown-linux-musl
 
-      - name: Run Musl Build
-        run: cargo build --locked --target x86_64-unknown-linux-musl --features metrics --verbose
+      - name: Run tests
+        run: mold --run cargo build --target x86_64-unknown-linux-musl --features metrics --verbose
