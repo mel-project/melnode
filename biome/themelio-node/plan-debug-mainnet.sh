@@ -25,7 +25,7 @@ pkg_svc_group="$pkg_svc_user"
 
 do_setup_environment() {
   set_buildtime_env SCCACHE_DIR "/usr/local/sccache"
-  set_buildtime_env RUSTC_WRAPPER "/bin/sccache"
+  set_buildtime_env RUSTC_WRAPPER "$(pkg_path_for core/sccache)/bin/sccache"
 }
 
 
