@@ -3,7 +3,7 @@ name: BuildAndPublishTestNet
 on:
   push:
     branches:
-      - master
+      - testnet
 
 env:
   CARGO_TERM_COLOR: always
