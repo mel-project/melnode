@@ -28,7 +28,6 @@ do_setup_environment() {
   set_buildtime_env RUSTC_WRAPPER "$(pkg_path_for core/sccache)/bin/sccache"
 }
 
-
 do_verify() {
   return 0
 }

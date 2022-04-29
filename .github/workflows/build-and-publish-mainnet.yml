@@ -7,6 +7,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  SCCACHE_DIR: "/usr/local/sccache"
+  RUSTC_WRAPPER: "/usr/local/bin/sccache"
 
 jobs:
   build-and-publish-mainnet:
@@ -15,9 +17,14 @@ jobs:
     container:
       image: ghcr.io/themeliolabs/biome:latest
       options: --privileged
+      volumes:
+        - /var/lib/docker:/var/lib/docker
+        - /usr/local/sccache:/usr/local/sccache
+        - /hab/cache/artifacts:/hab/cache/artifacts
+        - /hab/pkgs:/hab/pkgs
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Log Into GitHub Container Registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
