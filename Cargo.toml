@@ -20,12 +20,12 @@ debug = 0
 lto = true
 codegen-units = 1
 
-# [patch.crates-io]
-# themelio-stf={path="../themelio-stf"}  
+[patch.crates-io]
+themelio-stf={path="../themelio-stf"}  
 
 [profile.release-dbg]
 inherits = "release"
-debug = 2
+debug = 2 
 panic = "abort"
 lto = false
 codegen-units = 32
@@ -75,8 +75,8 @@ anyhow = "1.0.56"
 base64 = "0.13.0"
 arc-swap = "1.5.0"
 async-compat = "0.2.1"
-boringdb = "0.3.14"
-# boringdb = {path="../../../boringdb"}
+# boringdb = "0.3.14"
+boringdb = {path="../boringdb"}
 # blkdb = { path = "../../libs/blkdb" }
 dashmap = "4.0.2"
 default-net = "0.6.0"
@@ -90,8 +90,8 @@ imbl = "1.0.1"
 log = "0.4.16"
 lru = "0.7.5"
 melnet = "0.2.22"
-# meshanina = {path="../../../meshanina"}
-meshanina = "0.3.15"
+meshanina = {path="../meshanina"}
+# meshanina = "0.3.15"
 novasmt = "0.2.17"
 novasymph = "0.1.10"
 # novasymph={path="../novasymph"}

@@ -3,7 +3,7 @@ use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
 
 use crate::storage::MeshaCas;
 
-use std::collections::HashSet;
+use std::{collections::HashSet, time::Instant};
 
 use lru::LruCache;
 use themelio_stf::{State, StateError};
@@ -38,8 +38,11 @@ impl Mempool {
         if !self.txx_in_state.insert(tx.hash_nosigs()) {
             return Err(StateError::DuplicateTx);
         }
+        let start = Instant::now();
         self.provisional_state.apply_tx(tx)?;
+        dbg!(start.elapsed());
         self.seen.put(tx.hash_nosigs(), tx.clone());
+        dbg!(start.elapsed());
         Ok(())
     }
 
@@ -64,8 +67,8 @@ impl Mempool {
                 state.height
             );
 
-            if self.provisional_state.transactions.root_hash() != HashVal::default() {
-                let count = self.provisional_state.transactions.val_iter().count();
+            if !self.provisional_state.transactions.is_empty() {
+                let count = self.provisional_state.transactions.len();
                 log::warn!("*** THROWING AWAY {} MEMPOOL TXX ***", count);
             }
             assert!(state.transactions.is_empty());
@@ -80,6 +83,6 @@ impl Mempool {
         self.seen
             .peek(&hash)
             .cloned()
-            .or_else(|| self.provisional_state.transactions.get(&hash).0)
+            .or_else(|| self.provisional_state.transactions.get(&hash).cloned())
     }
 }

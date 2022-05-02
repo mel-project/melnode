@@ -15,9 +15,9 @@ use std::{
 use anyhow::Context;
 use futures_util::{StreamExt, TryStreamExt};
 use lru::LruCache;
-use novasmt::CompressedProof;
+use novasmt::{CompressedProof, Database, InMemoryCas, Tree};
 use parking_lot::Mutex;
-use themelio_stf::SealedState;
+use themelio_stf::{SealedState, SmtMapping};
 use themelio_structs::{AbbrBlock, Block, BlockHeight, ConsensusProof, NetID, Transaction, TxHash};
 
 use melnet::MelnetError;
@@ -148,12 +148,13 @@ async fn attempt_blksync(
     }
     let height_stream = futures_util::stream::iter((my_highest.0..=their_highest.0).skip(1))
         .map(BlockHeight)
-        .take(1024);
+        .take(65536);
     let lookup_tx = |tx| storage.mempool().lookup_recent_tx(tx);
     let mut result_stream = height_stream
         .map(Ok::<_, anyhow::Error>)
         .try_filter_map(|height| async move {
             Ok(Some(async move {
+                let start = Instant::now();
                 let result = client
                     .get_full_block(height, &lookup_tx)
                     .timeout(Duration::from_secs(15))
@@ -162,33 +163,20 @@ async fn attempt_blksync(
                 if result.0.header.height != height {
                     anyhow::bail!("WANTED BLK {}, got {}", height, result.0.header.height);
                 }
+                log::trace!(
+                    "fully resolved block {} from peer {} in {:.2}ms",
+                    result.0.header.height,
+                    addr,
+                    start.elapsed().as_secs_f64() * 1000.0
+                );
                 Ok(result)
             }))
         })
-        .try_buffered(32)
+        .try_buffered(16)
         .boxed();
     let mut toret = 0;
     while let Some(res) = result_stream.try_next().await? {
         let (block, proof): (Block, ConsensusProof) = res;
-        #[cfg(not(feature = "metrics"))]
-        log::debug!(
-            "fully resolved block {} from peer {}",
-            block.header.height,
-            addr
-        );
-        #[cfg(feature = "metrics")]
-        log::debug!(
-            "hostname={} public_ip={} network={} region={} instance_id={} fully resolved block {} from peer {}",
-            crate::prometheus::HOSTNAME.as_str(),
-            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-            crate::prometheus::NETWORK
-                .read()
-                .expect("Could not get a read lock on NETWORK."),
-            AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-            AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
-            block.header.height,
-            addr
-        );
 
         storage
             .apply_block(block, proof)
@@ -204,6 +192,8 @@ struct AuditorResponder {
     storage: NodeStorage,
     indexer: Option<BlockIndexer>,
     recent: Mutex<LruCache<TxHash, Instant>>,
+
+    coin_smts: Mutex<LruCache<BlockHeight, Tree<InMemoryCas>>>,
 }
 
 impl NodeServer<MeshaCas> for AuditorResponder {
@@ -216,6 +206,12 @@ impl NodeServer<MeshaCas> for AuditorResponder {
         self.recent.lock().put(tx.hash_nosigs(), Instant::now());
         log::trace!("handling send_tx");
         let start = Instant::now();
+
+        // let start_smt_get = STAT_SMT_GET_SECS.value();
+        // let start_smt_insert = STAT_SMT_INSERT_SECS.value();
+        // let start_melvm = STAT_MELVM_RUNTIME_SECS.value();
+        // let start_melpow = STAT_MELPOW_SECS.value();
+
         self.storage
             .try_mempool_mut()
             .context("mempool contention")?
@@ -231,12 +227,20 @@ impl NodeServer<MeshaCas> for AuditorResponder {
             start.elapsed(),
         );
 
-        if start.elapsed().as_secs_f64() > 1.0 {
-            log::warn!(
-                "MONSTER transaction here! {:#?}",
-                tx.clone().with_data(vec![])
-            );
-        }
+        // log::debug!(
+        //     "smt_get: {:.2}ms, smt_insert: {:.2}ms, melvm: {:.2}ms, melpow: {:.2}ms",
+        //     1000.0 * (STAT_SMT_GET_SECS.value() - start_smt_get),
+        //     1000.0 * (STAT_SMT_INSERT_SECS.value() - start_smt_insert),
+        //     1000.0 * (STAT_MELVM_RUNTIME_SECS.value() - start_melvm),
+        //     1000.0 * (STAT_MELPOW_SECS.value() - start_melpow)
+        // );
+
+        // if start.elapsed().as_secs_f64() > 1.0 {
+        //     log::warn!(
+        //         "MONSTER transaction here! {:#?}",
+        //         tx.clone().with_data(vec![])
+        //     );
+        // }
 
         #[cfg(feature = "metrics")]
         log::debug!(
@@ -309,24 +313,15 @@ impl NodeServer<MeshaCas> for AuditorResponder {
         let state = self
             .storage
             .get_state(height)
-            .ok_or_else(|| MelnetError::Custom(format!("block {} not confirmed yet", height)))?;
-        let tree = match elem {
-            Substate::Coins => state.inner_ref().coins.inner(),
-            Substate::History => &state.inner_ref().history.mapping,
-            Substate::Pools => &state.inner_ref().pools.mapping,
-            Substate::Stakes => &state.inner_ref().stakes.mapping,
-            Substate::Transactions => &state.inner_ref().transactions.mapping,
+            .context(format!("block {} not confirmed yet", height))?;
+        let ctree = self.get_coin_tree(height)?;
+        let (v, proof) = match elem {
+            Substate::Coins => state.inner_ref().coins.inner().get_with_proof(key.0),
+            Substate::History => state.inner_ref().history.mapping.get_with_proof(key.0),
+            Substate::Pools => state.inner_ref().pools.mapping.get_with_proof(key.0),
+            Substate::Stakes => state.inner_ref().stakes.mapping.get_with_proof(key.0),
+            Substate::Transactions => ctree.get_with_proof(key.0),
         };
-        let (v, proof) = tree.get_with_proof(key.0);
-        if !proof.verify(tree.root_hash(), key.0, &v) {
-            panic!(
-                "get_smt_branch({}, {:?}, {:?}) => {} failed",
-                height,
-                elem,
-                key,
-                hex::encode(&v)
-            )
-        }
         Ok((v.to_vec(), proof.compress()))
     }
 
@@ -361,7 +356,29 @@ impl AuditorResponder {
             } else {
                 None
             },
-            recent: LruCache::new(10000).into(),
+            recent: LruCache::new(1000).into(),
+            coin_smts: LruCache::new(100).into(),
+        }
+    }
+
+    fn get_coin_tree(&self, height: BlockHeight) -> anyhow::Result<Tree<InMemoryCas>> {
+        if let Some(v) = self.coin_smts.lock().get(&height).cloned() {
+            Ok(v)
+        } else {
+            let state = self
+                .storage
+                .get_state(height)
+                .context(format!("block {} not confirmed yet", height))?;
+            let mut mm = SmtMapping::new(
+                Database::new(InMemoryCas::default())
+                    .get_tree(Default::default())
+                    .unwrap(),
+            );
+            for (h, t) in state.inner_ref().transactions.iter() {
+                mm.insert(*h, t.clone());
+            }
+            self.coin_smts.lock().put(height, mm.mapping.clone());
+            Ok(mm.mapping)
         }
     }
 }

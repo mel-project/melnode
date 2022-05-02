@@ -15,14 +15,15 @@ use anyhow::Context;
 use arc_swap::ArcSwap;
 use dashmap::DashMap;
 use futures_util::Stream;
-use parking_lot::RwLock;
+use lru::LruCache;
+use parking_lot::{Mutex, RwLock};
 use smol::{channel::Sender, prelude::*};
 use smol_timeout::TimeoutExt;
 
 use stdcode::StdcodeSerializeExt;
 use themelio_nodeprot::TrustStore;
-use themelio_stf::{CoinMapping, GenesisConfig, SealedState, SmtMapping, State};
-use themelio_structs::{Block, BlockHeight, ConsensusProof, Header, NetID, ProposerAction};
+use themelio_stf::{GenesisConfig, SealedState};
+use themelio_structs::{Block, BlockHeight, ConsensusProof, NetID};
 
 use super::{mempool::Mempool, MeshaCas};
 
@@ -61,7 +62,7 @@ pub struct NodeStorage {
     mempool: Arc<RwLock<Mempool>>,
     metadata: boringdb::Dict,
     highest: Arc<ArcSwap<SealedState<MeshaCas>>>,
-    old_cache: Arc<DashMap<BlockHeight, SealedState<MeshaCas>>>,
+    old_cache: Arc<Mutex<LruCache<BlockHeight, SealedState<MeshaCas>>>>,
     forest: Arc<novasmt::Database<MeshaCas>>,
     _death: Sender<()>,
 }
@@ -91,11 +92,11 @@ impl NodeStorage {
             .unwrap();
         let forest = novasmt::Database::new(MeshaCas::new(mdb));
         let highest = metadata
-            .get(b"last_confirmed")
+            .get(b"last_confirmed_block")
             .expect("db failed")
             .map(|b| {
                 log::warn!("ACTUALLY LOADING DB");
-                SealedState::from_partial_encoding_infallible(&b, &forest)
+                SealedState::from_block(&stdcode::deserialize(&b).unwrap(), &forest)
             })
             .unwrap_or_else(|| genesis.realize(&forest).seal(None));
         log::info!("HIGHEST AT {}", highest.inner_ref().height);
@@ -104,7 +105,7 @@ impl NodeStorage {
             mempool: Arc::new(Mempool::new(highest.next_state()).into()),
             highest: ArcSwap::new(Arc::new(highest)).into(),
             forest: forest.into(),
-            old_cache: Default::default(),
+            old_cache: Arc::new(LruCache::new(100).into()),
             metadata: metadata.clone(),
             _death: send,
         };
@@ -122,7 +123,10 @@ impl NodeStorage {
                 let forest = forest.clone();
                 smol::unblock(move || forest.storage().flush()).await;
                 metadata
-                    .insert(b"last_confirmed".to_vec(), highest.partial_encoding())
+                    .insert(
+                        b"last_confirmed_block".to_vec(),
+                        highest.to_block().stdcode(),
+                    )
                     .unwrap();
                 let elapsed = start.elapsed();
                 if elapsed.as_secs() > 5 {
@@ -139,64 +143,65 @@ impl NodeStorage {
         &mut self,
         mut backup: S,
     ) -> anyhow::Result<()> {
-        defmac::defmac!(read_tree => {
-            let mut empty_tree = self.forest().get_tree(Default::default()).unwrap();
-            async {
-                let count: u64 = backup.next().await.context("cannot read count")?.parse()?;
-                for _ in 0..count {
-                    let line = backup.next().await.context("cannot read tree element")?;
-                    let mut splitted = line.split(';');
-                    let key_base64 = splitted.next().context("no first half")?;
-                    let value_base64 = splitted.next().context("no first half")?;
-                    let key: [u8; 32] = base64::decode(key_base64)?
-                        .try_into()
-                        .ok()
-                        .context("key not 32 bytes")?;
-                    let value = base64::decode(value_base64)?;
-                    empty_tree.insert(key, &value);
-                }
-                Ok::<_, anyhow::Error>(empty_tree)
-            }
-        });
-        let header: Header = stdcode::deserialize(&base64::decode(
-            &backup.next().await.context("cannot read header")?,
-        )?)?;
-        let prop_action: Option<ProposerAction> = stdcode::deserialize(&base64::decode(
-            &backup.next().await.context("cannot read prop action")?,
-        )?)?;
-        let history = read_tree!().await?;
-        let coins = read_tree!().await?;
-        let transactions = read_tree!().await?;
-        let pools = read_tree!().await?;
-        let stakes = read_tree!().await?;
-        let new_state = State {
-            network: header.network,
-            height: header.height,
-            history: SmtMapping::new(history),
-            coins: CoinMapping::new(coins),
-            transactions: SmtMapping::new(transactions),
-            fee_pool: header.fee_pool,
-            fee_multiplier: header.fee_multiplier,
-            tips: Default::default(),
-            dosc_speed: header.dosc_speed,
-            pools: SmtMapping::new(pools),
-            stakes: SmtMapping::new(stakes),
-        };
-        let new_highest = SealedState::from_parts(new_state, prop_action);
-        self.highest.store(Arc::new(new_highest));
-        let block_count: u64 = backup.next().await.context("cannot read count")?.parse()?;
-        for i in 0..block_count {
-            log::info!("additional block {}", i);
-            let block: Block = stdcode::deserialize(&base64::decode(
-                &backup.next().await.context("cannot read block")?,
-            )?)?;
-            let cproof: ConsensusProof = stdcode::deserialize(&base64::decode(
-                &backup.next().await.context("cannot read cproof")?,
-            )?)?;
-            self.apply_block(block, cproof).await?;
-        }
-        smol::Timer::after(Duration::from_secs(3)).await;
-        Ok(())
+        todo!()
+        // defmac::defmac!(read_tree => {
+        //     let mut empty_tree = self.forest().get_tree(Default::default()).unwrap();
+        //     async {
+        //         let count: u64 = backup.next().await.context("cannot read count")?.parse()?;
+        //         for _ in 0..count {
+        //             let line = backup.next().await.context("cannot read tree element")?;
+        //             let mut splitted = line.split(';');
+        //             let key_base64 = splitted.next().context("no first half")?;
+        //             let value_base64 = splitted.next().context("no first half")?;
+        //             let key: [u8; 32] = base64::decode(key_base64)?
+        //                 .try_into()
+        //                 .ok()
+        //                 .context("key not 32 bytes")?;
+        //             let value = base64::decode(value_base64)?;
+        //             empty_tree.insert(key, &value);
+        //         }
+        //         Ok::<_, anyhow::Error>(empty_tree)
+        //     }
+        // });
+        // let header: Header = stdcode::deserialize(&base64::decode(
+        //     &backup.next().await.context("cannot read header")?,
+        // )?)?;
+        // let prop_action: Option<ProposerAction> = stdcode::deserialize(&base64::decode(
+        //     &backup.next().await.context("cannot read prop action")?,
+        // )?)?;
+        // let history = read_tree!().await?;
+        // let coins = read_tree!().await?;
+        // let transactions = read_tree!().await?;
+        // let pools = read_tree!().await?;
+        // let stakes = read_tree!().await?;
+        // let new_state = State {
+        //     network: header.network,
+        //     height: header.height,
+        //     history: SmtMapping::new(history),
+        //     coins: CoinMapping::new(coins),
+        //     transactions: SmtMapping::new(transactions),
+        //     fee_pool: header.fee_pool,
+        //     fee_multiplier: header.fee_multiplier,
+        //     tips: Default::default(),
+        //     dosc_speed: header.dosc_speed,
+        //     pools: SmtMapping::new(pools),
+        //     stakes: SmtMapping::new(stakes),
+        // };
+        // let new_highest = SealedState::from_parts(new_state, prop_action);
+        // self.highest.store(Arc::new(new_highest));
+        // let block_count: u64 = backup.next().await.context("cannot read count")?.parse()?;
+        // for i in 0..block_count {
+        //     log::info!("additional block {}", i);
+        //     let block: Block = stdcode::deserialize(&base64::decode(
+        //         &backup.next().await.context("cannot read block")?,
+        //     )?)?;
+        //     let cproof: ConsensusProof = stdcode::deserialize(&base64::decode(
+        //         &backup.next().await.context("cannot read cproof")?,
+        //     )?)?;
+        //     self.apply_block(block, cproof).await?;
+        // }
+        // smol::Timer::after(Duration::from_secs(3)).await;
+        // Ok(())
     }
 
     /// Serializes the storage in a pruned, textual form that discards history.
@@ -252,7 +257,7 @@ impl NodeStorage {
             for tree in [
                 base_state.inner_ref().history.mapping.clone(),
                 base_state.inner_ref().coins.inner().clone(),
-                base_state.inner_ref().transactions.mapping.clone(),
+                todo!(),
                 base_state.inner_ref().pools.mapping.clone(),
                 base_state.inner_ref().stakes.mapping.clone(),
             ] {
@@ -307,23 +312,18 @@ impl NodeStorage {
         if height == highest.inner_ref().height {
             return Some(highest);
         }
-        self.old_cache
-            .entry(height)
-            .or_try_insert_with(|| {
-                let old_blob = self
-                    .metadata
-                    .get(format!("state-{}", height).as_bytes())
-                    .unwrap()
-                    .context("no such height")?;
-                let old_state =
-                    SealedState::from_partial_encoding_infallible(&old_blob, &self.forest);
-                Ok::<_, anyhow::Error>(old_state)
-            })
-            .ok()
-            .map(|r| {
-                assert_eq!(r.inner_ref().height, height);
-                r.clone()
-            })
+        if let Some(old) = self.old_cache.lock().get(&height).cloned() {
+            Some(old)
+        } else {
+            let old_blob = self
+                .metadata
+                .get(format!("block-{}", height).as_bytes())
+                .unwrap()?;
+            let old_state =
+                SealedState::from_block(&stdcode::deserialize(&old_blob).unwrap(), &self.forest);
+            self.old_cache.lock().put(height, old_state.clone());
+            Some(old_state)
+        }
     }
 
     /// Obtain a historical ConsensusProof.
@@ -347,12 +347,17 @@ impl NodeStorage {
             );
         }
         // TODO!!!! CHECK INTEGRITY?!!?!?!!
-        let new_state = smol::unblock(move || highest_state.apply_block(&blk)).await?;
+        let start = Instant::now();
+        let new_state = highest_state.apply_block(&blk)?;
+        let blkbytes = new_state.to_block().stdcode();
+        let apply_time = start.elapsed();
+        let start = Instant::now();
+        let blklen = blkbytes.len();
         self.metadata.insert(
-            format!("state-{}", new_state.inner_ref().height)
+            format!("block-{}", new_state.inner_ref().height)
                 .as_bytes()
                 .to_vec(),
-            new_state.partial_encoding(),
+            blkbytes,
         )?;
         self.metadata.insert(
             format!("cproof-{}", new_state.inner_ref().height)
@@ -360,25 +365,14 @@ impl NodeStorage {
                 .to_vec(),
             stdcode::serialize(&cproof)?,
         )?;
-        self.highest.store(new_state.into());
-        #[cfg(not(feature = "metrics"))]
-        log::debug!("applied block {}", header.height);
-        #[cfg(feature = "metrics")]
         log::debug!(
-            "hostname={} public_ip={} network={} region={} instance_id={} applied block {}",
-            crate::prometheus::HOSTNAME.as_str(),
-            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-            crate::prometheus::NETWORK
-                .read()
-                .expect("Could not get a read lock on NETWORK."),
-            AWS_REGION
-                .read()
-                .expect("Could not get a read lock on AWS_REGION"),
-            AWS_INSTANCE_ID
-                .read()
-                .expect("Could not get a read lock on AWS_INSTANCE_ID"),
-            header.height
+            "applied block {} of length {} in {:.2}ms (insert {:.2}ms)",
+            new_state.inner_ref().height,
+            blklen,
+            apply_time.as_secs_f64() * 1000.0,
+            start.elapsed().as_secs_f64() * 1000.0
         );
+        self.highest.store(new_state.into());
         let next = self.highest_state().next_state();
         self.mempool_mut().rebase(next);
         Ok(())
