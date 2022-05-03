@@ -23,8 +23,6 @@ pkg_exposes=(port metrics-port)
 pkg_svc_user="root"
 pkg_svc_group="$pkg_svc_user"
 
-# I need to figure out how to copy/symlink the sccache directory into the biome build.
-
 do_setup_environment() {
   set_buildtime_env SCCACHE_DIR "/src/sccache"
   set_buildtime_env RUSTC_WRAPPER "$(pkg_path_for core/sccache)/bin/sccache"

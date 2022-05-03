@@ -16,6 +16,7 @@ jobs:
     container:
       image: rust:latest
       volumes:
+        - /var/lib/docker:/var/lib/docker
         - /usr/local/cargo/git:/usr/local/cargo/git
         - /usr/local/cargo/registry:/usr/local/cargo/registry
         - /usr/local/sccache:/usr/local/sccache
