@@ -59,7 +59,7 @@ do_build() {
 }
 
 do_install() {
-  local release="${pkg_full_path}/target/debug/${binary_name}"
+  local release="${pkg_full_path}/target/x86_64-unknown-linux-gnu/debug/${binary_name}"
   local target="${pkg_prefix}/target"
   local application_path="${pkg_prefix}/bin/"
 
