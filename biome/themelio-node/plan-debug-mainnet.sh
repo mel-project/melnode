@@ -40,6 +40,8 @@ do_check() {
 }
 
 do_build() {
+  ls -la /src/sccache
+  
   build_line "Creating source directory."
   mkdir -p "${pkg_full_path}/src"
 
