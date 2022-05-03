@@ -57,7 +57,7 @@ do_build() {
   cd "${pkg_full_path}"
 
   build_line "Starting Build."
-  cargo build --locked --features metrics --verbose
+  cargo build --locked --target=x86_64-unknown-linux-gnu --features metrics --verbose
 }
 
 do_install() {
