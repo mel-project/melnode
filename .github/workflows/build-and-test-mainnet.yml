@@ -52,7 +52,7 @@ jobs:
         run: ./biome/themelio-node/scripts/ci-test.sh
 
       - name: Remove Old Cache
-        run: sudo rm -rf /usr/local/sccache
+        run: sudo rm -rf /usr/local/sccache/*
 
       - name: Copy SCCache From Build
-        run: sudo cp -a sccache /usr/local/
+        run: sudo cp -a sccache/. /usr/local/sccache/
