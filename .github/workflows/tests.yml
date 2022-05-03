@@ -8,6 +8,10 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_HOME: "/usr/local/cargo/"
+  RUSTUP_HOME: "/usr/local/rustup"
+  SCCACHE_DIR: "/usr/local/sccache"
+  RUSTC_WRAPPER: "/usr/local/bin/sccache"
 
 jobs:
   tests:

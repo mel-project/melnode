@@ -37,7 +37,7 @@ jobs:
         run: echo "$BIOME_SIGNING_KEY" | bio origin key import
 
       - name: Create SCCache Symbolic Link
-        run: ln -s /usr/local/sccache sccache
+        run: cp -a /usr/local/sccache sccache
 
       - name: Build, Run BATS Tests
         env:
