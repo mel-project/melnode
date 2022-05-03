@@ -56,6 +56,3 @@ jobs:
 
       - name: Copy SCCache From Build
         run: sudo cp -a sccache/. /usr/local/sccache/
-
-      - name: Verify SCCache
-        run: sudo ls -la /usr/local/sccache/
