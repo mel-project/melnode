@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: List Biome Packages
-        run: ls -la /hab/pkgs
+        run: ls -la /hab/pkgs/themelio
 
       - name: Import Biome Public Key
         env:
