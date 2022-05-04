@@ -26,6 +26,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: List Biome Packages
+        run: ls -la /hab/pkgs
+
       - name: Import Biome Public Key
         env:
           BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
