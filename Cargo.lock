@@ -1577,9 +1577,9 @@ dependencies = [
 
 [[package]]
 name = "melpow"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fec545a7e74ebc97f211978de109d2c3bdfbdaadea57e9ef5807748218164fb2"
+checksum = "84a0fbaa0904b32197a5f5aeb2a12481ee485c8f6c9fe3a28a10b2b6cb0f19f6"
 dependencies = [
  "blake3",
  "rustc-hash",
