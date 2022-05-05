@@ -382,7 +382,9 @@ dependencies = [
 
 [[package]]
 name = "boringdb"
-version = "0.3.15-alpha.0"
+version = "0.3.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d1ddc91ad271a8ca312eed5b16b033962730861422df886a9e96878c6ddbe630"
 dependencies = [
  "bytes",
  "dashmap",
