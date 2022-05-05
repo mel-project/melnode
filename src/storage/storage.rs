@@ -6,18 +6,13 @@ use std::{
     time::Instant,
 };
 
-#[cfg(feature = "metrics")]
-use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
-
 use std::time::Duration;
 
-use anyhow::Context;
 use arc_swap::ArcSwap;
-use dashmap::DashMap;
 use futures_util::Stream;
 use lru::LruCache;
 use parking_lot::{Mutex, RwLock};
-use smol::{channel::Sender, prelude::*};
+use smol::channel::Sender;
 use smol_timeout::TimeoutExt;
 
 use stdcode::StdcodeSerializeExt;
@@ -141,7 +136,7 @@ impl NodeStorage {
     /// Restores from a backup. Requires *exclusive* access to the storage, so do this before sharing the storage.
     pub async fn restore_pruned<S: Stream<Item = String> + Unpin>(
         &mut self,
-        mut backup: S,
+        _backup: S,
     ) -> anyhow::Result<()> {
         todo!()
         // defmac::defmac!(read_tree => {
@@ -204,97 +199,97 @@ impl NodeStorage {
         // Ok(())
     }
 
-    /// Serializes the storage in a pruned, textual form that discards history.
-    pub fn backup_pruned(&self) -> impl Stream<Item = String> {
-        let (send, recv) = smol::channel::bounded::<String>(1);
-        let this = self.clone();
-        smolscale::spawn(async move {
-            let send_tree = {
-                let send = &send;
-                move |tree: novasmt::Tree<MeshaCas>| async move {
-                    log::info!("** backing up tree with {} elements **", tree.count());
-                    send.send(format!("{}", tree.count())).await?;
-                    let count = tree.count();
-                    let start = Instant::now();
-                    for (i, (k, v)) in tree.iter().enumerate() {
-                        let s = format!(
-                            "{};{}",
-                            base64::encode_config(&k, base64::STANDARD_NO_PAD),
-                            base64::encode_config(&v, base64::STANDARD_NO_PAD)
-                        );
-                        send.send(s).await?;
-                        if i as u64 % (count / 1000).max(1) == 0 {
-                            log::debug!(
-                                "** {}% done ({} Hz) **",
-                                ((i as u64 * 1000) / count) as f64 / 10.0,
-                                (i as f64) / start.elapsed().as_secs_f64()
-                            );
-                        }
-                    }
-                    Ok::<_, anyhow::Error>(())
-                }
-            };
-            let base_state = if this.highest_height().0 <= 10000 {
-                this.highest_state()
-            } else {
-                this.get_state(this.highest_height() - BlockHeight(10000))
-                    .unwrap_or_else(|| this.highest_state())
-            };
-            log::info!(
-                "** backup base state at height {} **",
-                base_state.inner_ref().height
-            );
-            send.send(base64::encode_config(
-                base_state.header().stdcode(),
-                base64::STANDARD_NO_PAD,
-            ))
-            .await?;
-            send.send(base64::encode_config(
-                base_state.proposer_action().stdcode(),
-                base64::STANDARD_NO_PAD,
-            ))
-            .await?;
-            for tree in [
-                base_state.inner_ref().history.mapping.clone(),
-                base_state.inner_ref().coins.inner().clone(),
-                todo!(),
-                base_state.inner_ref().pools.mapping.clone(),
-                base_state.inner_ref().stakes.mapping.clone(),
-            ] {
-                send_tree(tree).await?;
-            }
-            // then for every state up to the highest state, we send the whole block
-            let highest = this.highest_height();
-            let count = (base_state.inner_ref().height.0..=highest.0)
-                .skip(1)
-                .count();
-            log::info!("total number of blocks {}", count);
-            send.send(format!("{}", count)).await?;
-            for later_height in (base_state.inner_ref().height.0..=highest.0).skip(1) {
-                log::info!("** backing up subsequent block {} **", later_height);
-                let block = this
-                    .get_state(later_height.into())
-                    .expect("cannot get older state while backing up")
-                    .to_block();
-                let cproof = this
-                    .get_consensus(later_height.into())
-                    .expect("cannot get older cproof while backing up");
-                send.send(base64::encode_config(
-                    &block.stdcode(),
-                    base64::STANDARD_NO_PAD,
-                ))
-                .await?;
-                send.send(base64::encode_config(
-                    &cproof.stdcode(),
-                    base64::STANDARD_NO_PAD,
-                ))
-                .await?;
-            }
-            Ok::<_, anyhow::Error>(())
-        })
-        .detach();
-        recv
-    }
+    // /// Serializes the storage in a pruned, textual form that discards history.
+    // pub fn backup_pruned(&self) -> impl Stream<Item = String> {
+    //     let (send, recv) = smol::channel::bounded::<String>(1);
+    //     let this = self.clone();
+    //     smolscale::spawn(async move {
+    //         let send_tree = {
+    //             let send = &send;
+    //             move |tree: novasmt::Tree<MeshaCas>| async move {
+    //                 log::info!("** backing up tree with {} elements **", tree.count());
+    //                 send.send(format!("{}", tree.count())).await?;
+    //                 let count = tree.count();
+    //                 let start = Instant::now();
+    //                 for (i, (k, v)) in tree.iter().enumerate() {
+    //                     let s = format!(
+    //                         "{};{}",
+    //                         base64::encode_config(&k, base64::STANDARD_NO_PAD),
+    //                         base64::encode_config(&v, base64::STANDARD_NO_PAD)
+    //                     );
+    //                     send.send(s).await?;
+    //                     if i as u64 % (count / 1000).max(1) == 0 {
+    //                         log::debug!(
+    //                             "** {}% done ({} Hz) **",
+    //                             ((i as u64 * 1000) / count) as f64 / 10.0,
+    //                             (i as f64) / start.elapsed().as_secs_f64()
+    //                         );
+    //                     }
+    //                 }
+    //                 Ok::<_, anyhow::Error>(())
+    //             }
+    //         };
+    //         let base_state = if this.highest_height().0 <= 10000 {
+    //             this.highest_state()
+    //         } else {
+    //             this.get_state(this.highest_height() - BlockHeight(10000))
+    //                 .unwrap_or_else(|| this.highest_state())
+    //         };
+    //         log::info!(
+    //             "** backup base state at height {} **",
+    //             base_state.inner_ref().height
+    //         );
+    //         send.send(base64::encode_config(
+    //             base_state.header().stdcode(),
+    //             base64::STANDARD_NO_PAD,
+    //         ))
+    //         .await?;
+    //         send.send(base64::encode_config(
+    //             base_state.proposer_action().stdcode(),
+    //             base64::STANDARD_NO_PAD,
+    //         ))
+    //         .await?;
+    //         for tree in [
+    //             base_state.inner_ref().history.mapping.clone(),
+    //             base_state.inner_ref().coins.inner().clone(),
+    //             todo!(),
+    //             base_state.inner_ref().pools.mapping.clone(),
+    //             base_state.inner_ref().stakes.mapping.clone(),
+    //         ] {
+    //             send_tree(tree).await?;
+    //         }
+    //         // then for every state up to the highest state, we send the whole block
+    //         let highest = this.highest_height();
+    //         let count = (base_state.inner_ref().height.0..=highest.0)
+    //             .skip(1)
+    //             .count();
+    //         log::info!("total number of blocks {}", count);
+    //         send.send(format!("{}", count)).await?;
+    //         for later_height in (base_state.inner_ref().height.0..=highest.0).skip(1) {
+    //             log::info!("** backing up subsequent block {} **", later_height);
+    //             let block = this
+    //                 .get_state(later_height.into())
+    //                 .expect("cannot get older state while backing up")
+    //                 .to_block();
+    //             let cproof = this
+    //                 .get_consensus(later_height.into())
+    //                 .expect("cannot get older cproof while backing up");
+    //             send.send(base64::encode_config(
+    //                 &block.stdcode(),
+    //                 base64::STANDARD_NO_PAD,
+    //             ))
+    //             .await?;
+    //             send.send(base64::encode_config(
+    //                 &cproof.stdcode(),
+    //                 base64::STANDARD_NO_PAD,
+    //             ))
+    //             .await?;
+    //         }
+    //         Ok::<_, anyhow::Error>(())
+    //     })
+    //     .detach();
+    //     recv
+    // }
 
     /// Obtain the highest state.
     pub fn highest_state(&self) -> SealedState<MeshaCas> {
@@ -312,7 +307,8 @@ impl NodeStorage {
         if height == highest.inner_ref().height {
             return Some(highest);
         }
-        if let Some(old) = self.old_cache.lock().get(&height).cloned() {
+        let old = self.old_cache.lock().get(&height).cloned();
+        if let Some(old) = old {
             Some(old)
         } else {
             let old_blob = self

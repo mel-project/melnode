@@ -8,7 +8,6 @@ use std::{collections::HashSet, time::Instant};
 use lru::LruCache;
 use themelio_stf::{State, StateError};
 use themelio_structs::{Transaction, TxHash};
-use tmelcrypt::HashVal;
 
 /// Mempool encapsulates a "mempool" --- a provisional state that is used to form new blocks by stakers, or provisionally validate transactions by auditors.
 pub struct Mempool {

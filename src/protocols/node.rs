@@ -1,7 +1,4 @@
-use crate::{
-    blkidx::BlockIndexer,
-    storage::{MeshaCas, NodeStorage},
-};
+use crate::{blkidx::BlockIndexer, storage::NodeStorage};
 
 #[cfg(feature = "metrics")]
 use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
@@ -17,7 +14,7 @@ use futures_util::{StreamExt, TryStreamExt};
 use lru::LruCache;
 use novasmt::{CompressedProof, Database, InMemoryCas, Tree};
 use parking_lot::Mutex;
-use themelio_stf::{SealedState, SmtMapping};
+use themelio_stf::SmtMapping;
 use themelio_structs::{AbbrBlock, Block, BlockHeight, ConsensusProof, NetID, Transaction, TxHash};
 
 use melnet::MelnetError;
@@ -148,7 +145,12 @@ async fn attempt_blksync(
     }
     let height_stream = futures_util::stream::iter((my_highest.0..=their_highest.0).skip(1))
         .map(BlockHeight)
-        .take(65536);
+        .take(
+            std::env::var("THEMELIO_BLKSYNC_BATCH")
+                .ok()
+                .and_then(|d| d.parse().ok())
+                .unwrap_or(1000),
+        );
     let lookup_tx = |tx| storage.mempool().lookup_recent_tx(tx);
     let mut result_stream = height_stream
         .map(Ok::<_, anyhow::Error>)
@@ -196,7 +198,7 @@ struct AuditorResponder {
     coin_smts: Mutex<LruCache<BlockHeight, Tree<InMemoryCas>>>,
 }
 
-impl NodeServer<MeshaCas> for AuditorResponder {
+impl NodeServer for AuditorResponder {
     fn send_tx(&self, state: melnet::NetState, tx: Transaction) -> anyhow::Result<()> {
         if let Some(val) = self.recent.lock().peek(&tx.hash_nosigs()) {
             if val.elapsed().as_secs_f64() < 10.0 {
@@ -298,9 +300,13 @@ impl NodeServer<MeshaCas> for AuditorResponder {
         })
     }
 
-    fn get_state(&self, height: BlockHeight) -> anyhow::Result<SealedState<MeshaCas>> {
+    fn get_block(&self, height: BlockHeight) -> anyhow::Result<Block> {
         log::trace!("handling get_state({})", height);
-        self.storage.get_state(height).context("no such height")
+        Ok(self
+            .storage
+            .get_state(height)
+            .context("no such height")?
+            .to_block())
     }
 
     fn get_smt_branch(
@@ -362,7 +368,8 @@ impl AuditorResponder {
     }
 
     fn get_coin_tree(&self, height: BlockHeight) -> anyhow::Result<Tree<InMemoryCas>> {
-        if let Some(v) = self.coin_smts.lock().get(&height).cloned() {
+        let otree = self.coin_smts.lock().get(&height).cloned();
+        if let Some(v) = otree {
             Ok(v)
         } else {
             let state = self

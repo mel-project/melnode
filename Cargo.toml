@@ -62,7 +62,7 @@ version = "0.1.8"
 optional = true
 
 [dependencies.themelio-nodeprot]
-version = "0.10.14"
+version = "0.11.0"
 features = ["server"]
 
 [dependencies.tokio]
@@ -90,10 +90,10 @@ imbl = "1.0.1"
 log = "0.4.16"
 lru = "0.7.5"
 melnet = "0.2.22"
-meshanina = {path="../meshanina"}
-# meshanina = "0.3.15"
+# meshanina = {path="../meshanina"}
+meshanina = "0.3.15"
 novasmt = "0.2.17"
-novasymph = "0.1.10"
+novasymph = "0.2"
 # novasymph={path="../novasymph"}
 once_cell = "1.10.0"
 parking_lot = "0.12.0"
@@ -108,7 +108,7 @@ stdcode = "0.1.7"
 structopt = "0.3.26"
 tap = "1.0.1"
 tracing = "0.1.33"
-themelio-stf = "0.9.16"
+themelio-stf = "0.10"
 tmelcrypt = "0.2.4"
 themelio-bootstrap = "0.5.2"
 tracing-subscriber = "0.3.11"
