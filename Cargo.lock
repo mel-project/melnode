@@ -1796,7 +1796,7 @@ dependencies = [
  "stacker",
  "stdcode",
  "tap",
- "themelio-stf 0.10.0",
+ "themelio-stf 0.10.1",
  "themelio-structs",
  "thiserror",
  "tmelcrypt",
@@ -3137,7 +3137,7 @@ dependencies = [
  "tap",
  "themelio-bootstrap",
  "themelio-nodeprot 0.11.0",
- "themelio-stf 0.10.0",
+ "themelio-stf 0.10.1",
  "themelio-structs",
  "tmelcrypt",
  "tokio",
@@ -3193,7 +3193,7 @@ dependencies = [
  "smol",
  "smolscale",
  "stdcode",
- "themelio-stf 0.10.0",
+ "themelio-stf 0.10.1",
  "themelio-structs",
  "thiserror",
  "tmelcrypt",
@@ -3240,9 +3240,9 @@ dependencies = [
 
 [[package]]
 name = "themelio-stf"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8142a9b6eba1dffee0c5f256603616f686dedeb34087d0ca31e5fc417ca3fe5"
+checksum = "11486245119ab15a35676ac1b6dad722f2170440d19d3fc917c05155ee39561e"
 dependencies = [
  "arbitrary",
  "assoc",
