@@ -39,12 +39,12 @@ jobs:
       - name: Import Biome Public Key (root)
         env:
           BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
-        run: echo "$BIOME_PUBLIC_KEY" | sudo bio origin key import
+        run: echo "$BIOME_PUBLIC_KEY" | sudo bio origin key import --cache-key-path /hab/cache/keys
 
       - name: Import Biome Signing Key (root)
         env:
           BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
-        run: echo "$BIOME_SIGNING_KEY" | sudo bio origin key import
+        run: echo "$BIOME_SIGNING_KEY" | sudo bio origin key import --cache-key-path /hab/cache/keys
 
       - name: Copy SCCache To Current Directory
         run: sudo cp -a /usr/local/sccache sccache
