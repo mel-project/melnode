@@ -49,6 +49,15 @@ sudo bio pkg install --binlink core/curl
 sudo bio pkg install --binlink core/nmap
 
 
+echo "Testing a pre-install block"
+sudo bio pkg install --binlink core/sccache
+sudo bio pkg install --binlink themelio/rust
+sudo bio pkg install --binlink core/curl
+sudo bio pkg install --binlink core/gcc-libs
+sudo bio pkg install --binlink core/nmap
+echo "Done with the pre-install block"
+
+
 source "${PLAN_DIRECTORY}/plan.sh"
 
 sudo bio sup run &
