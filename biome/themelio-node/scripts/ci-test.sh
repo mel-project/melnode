@@ -56,7 +56,7 @@ sudo bio sup run &
 echo "Current directory in the script before the build: $(pwd)"
 echo "Contents of current directory in the script before the build: $(ls -la)"
 
-bio pkg build "${PLAN_DIRECTORY}"
+sudo bio pkg build "${PLAN_DIRECTORY}"
 
 source results/last_build.env
 
