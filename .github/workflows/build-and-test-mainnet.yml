@@ -47,6 +47,9 @@ jobs:
         run: echo "$BIOME_SIGNING_KEY" | sudo bio origin key import --cache-key-path /hab/cache/keys
 
       - name: List
+        run: ls -la ~/.hab/cache/keys
+
+      - name: List (root)
         run: sudo ls -la /hab/cache/keys
 
 #      - name: Copy SCCache To Current Directory
