@@ -16,7 +16,7 @@ jobs:
 
     container:
       image: ghcr.io/themeliolabs/biome:latest
-      options: --privileged
+      options: --privileged --user root
       volumes:
         - /var/lib/docker:/var/lib/docker
         - /usr/local/sccache:/usr/local/sccache
@@ -36,15 +36,18 @@ jobs:
           BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
         run: echo "$BIOME_SIGNING_KEY" | bio origin key import
 
-      - name: Import Biome Public Key (root)
-        env:
-          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
-        run: echo "$BIOME_PUBLIC_KEY" | sudo bio origin key import --cache-key-path /hab/cache/keys
+      - name: Whoami
+        run: whoami
 
-      - name: Import Biome Signing Key (root)
-        env:
-          BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
-        run: echo "$BIOME_SIGNING_KEY" | sudo bio origin key import --cache-key-path /hab/cache/keys
+#      - name: Import Biome Public Key (root)
+#        env:
+#          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
+#        run: echo "$BIOME_PUBLIC_KEY" | sudo bio origin key import --cache-key-path /hab/cache/keys
+#
+#      - name: Import Biome Signing Key (root)
+#        env:
+#          BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
+#        run: echo "$BIOME_SIGNING_KEY" | sudo bio origin key import --cache-key-path /hab/cache/keys
 
       - name: List
         run: ls -la ~/.hab/cache/keys
