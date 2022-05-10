@@ -18,7 +18,7 @@ jobs:
       image: ghcr.io/themeliolabs/biome:latest
       options: --privileged --user root
       volumes:
-        - /var/lib/docker:/var/lib/docker
+#        - /var/lib/docker:/var/lib/docker
         - /usr/local/sccache:/usr/local/sccache
         - /hab/cache/artifacts:/hab/cache/artifacts
         - /hab/pkgs:/hab/pkgs
