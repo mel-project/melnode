@@ -122,7 +122,10 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
     std::thread::spawn(|| RUNTIME.block_on(crate::prometheus::prometheus()));
 
     #[cfg(feature = "dhat-heap")]
-    smol::Timer::after(Duration::from_secs(300)).await;
+    for i in 0..300 {
+        smol::Timer::after(Duration::from_secs(1)).await;
+        dbg!(i);
+    }
 
     #[cfg(not(feature = "dhat-heap"))]
     let _: u64 = smol::future::pending().await;
