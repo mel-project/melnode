@@ -10,6 +10,7 @@ mod storage;
 #[cfg(feature = "metrics")]
 use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
 
+use std::time::Duration;
 #[cfg(feature = "metrics")]
 use tokio::runtime::Runtime;
 
@@ -25,9 +26,9 @@ use tracing::instrument;
 pub static RUNTIME: Lazy<Runtime> =
     Lazy::new(|| Runtime::new().expect("Could not create tokio runtime."));
 
-// #[cfg(unix)]
-// #[global_allocator]
-// static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+#[cfg(feature = "dhat-heap")]
+#[global_allocator]
+static ALLOC: dhat::Alloc = dhat::Alloc;
 
 #[instrument]
 fn main() -> anyhow::Result<()> {
@@ -45,6 +46,9 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Runs the main function for a node.
 #[instrument(skip(opt))]
 pub async fn main_async(opt: Args) -> anyhow::Result<()> {
+    #[cfg(feature = "dhat-heap")]
+    let _profiler = dhat::Profiler::new_heap();
+
     #[cfg(not(feature = "metrics"))]
     log::info!("themelio-core v{} initializing...", VERSION);
 
@@ -117,5 +121,11 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
     #[cfg(feature = "metrics")]
     std::thread::spawn(|| RUNTIME.block_on(crate::prometheus::prometheus()));
 
-    smol::future::pending().await
+    #[cfg(feature = "dhat-heap")]
+    smol::Timer::after(Duration::from_secs(300)).await;
+
+    #[cfg(not(feature = "dhat-heap"))]
+    let _: u64 = smol::future::pending().await;
+
+    Ok(())
 }

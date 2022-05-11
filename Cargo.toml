@@ -22,7 +22,7 @@ codegen-units = 1
 strip="debuginfo"
 
 # [patch.crates-io]
-# themelio-stf={path="../themelio-stf"}  
+# novasmt={path="../novasmt"}  
 
 [profile.release-dbg]
 inherits = "release"
@@ -114,9 +114,11 @@ tmelcrypt = "0.2.4"
 themelio-bootstrap = "0.5.2"
 tracing-subscriber = "0.3.11"
 themelio-structs = "0.2.2"
+dhat = "0.3.0"
 
 # [target.'cfg(unix)'.dependencies]
 # mimalloc = "0.1.28"
 
 [features]
 metrics = ["prometheus", "gethostname", "public-ip", "reqwest", "rweb", "systemstat", "tokio"]
+dhat-heap = []
