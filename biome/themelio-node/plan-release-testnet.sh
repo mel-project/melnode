@@ -24,7 +24,7 @@ pkg_svc_user="root"
 pkg_svc_group="$pkg_svc_user"
 
 do_setup_environment() {
-  set_buildtime_env SCCACHE_DIR "/usr/local/sccache"
+  set_buildtime_env SCCACHE_DIR "/src/sccache"
   set_buildtime_env RUSTC_WRAPPER "$(pkg_path_for core/sccache)/bin/sccache"
 }
 
@@ -55,11 +55,11 @@ do_build() {
   cd "${pkg_full_path}"
 
   build_line "Starting Build."
-  cargo build --locked --release --features metrics --verbose
+  cargo build --locked --target=x86_64-unknown-linux-gnu --features metrics --verbose
 }
 
 do_install() {
-  local release="${pkg_full_path}/target/release/${binary_name}"
+  local release="${pkg_full_path}/target/x86_64-unknown-linux-gnu/release/${binary_name}"
   local target="${pkg_prefix}/target"
   local application_path="${pkg_prefix}/bin/"
 
