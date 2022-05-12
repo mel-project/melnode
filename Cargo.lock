@@ -382,20 +382,18 @@ dependencies = [
 
 [[package]]
 name = "boringdb"
-version = "0.3.15"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2df2a101cca66d20acc93a284575bb85db91ab19fb8fc2ef0fe5a94356d2e111"
+checksum = "2ccafab7ef56ab3867f609a5e348e4f4d0cb016aaff4f2f6998c710777ff2d5f"
 dependencies = [
  "bytes",
- "dashmap",
  "fastrand",
  "flume",
  "genawaiter",
- "itertools",
  "log",
  "parking_lot 0.11.2",
- "priority-queue",
  "rusqlite",
+ "scopeguard",
  "thiserror",
 ]
 
@@ -2138,16 +2136,6 @@ name = "ppv-lite86"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eb9f9e6e233e5c4a35559a617bf40a4ec447db2e84c20b55a6f83167b7e57872"
-
-[[package]]
-name = "priority-queue"
-version = "1.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00ba480ac08d3cfc40dea10fd466fd2c14dee3ea6fc7873bc4079eda2727caf0"
-dependencies = [
- "autocfg",
- "indexmap",
-]
 
 [[package]]
 name = "proc-macro-crate"
