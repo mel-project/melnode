@@ -56,7 +56,7 @@ jobs:
 #        run: sudo ls -la /hab/cache/keys
 
       - name: Copy SCCache To Current Directory
-        run: sudo cp -a /usr/local/sccache sccache
+        run: cp -a /usr/local/sccache sccache
 
       - name: Build, Run BATS Tests
         env:
@@ -71,7 +71,7 @@ jobs:
         run: ./biome/themelio-node/scripts/ci-test.sh
 
       - name: Remove Old Cache
-        run: sudo rm -rf /usr/local/sccache/*
+        run: rm -rf /usr/local/sccache/*
 
       - name: Copy SCCache From Build
-        run: sudo cp -a sccache/. /usr/local/sccache/
+        run: cp -a sccache/. /usr/local/sccache/
