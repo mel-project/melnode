@@ -16,7 +16,7 @@ source "${BATS_TEST_DIRNAME}/../plan.sh"
 }
 
 @test "Service is running" {
-  [ "$(sudo bio svc status | grep "themelio-node-mainnet\.default" | awk '{print $4}' | grep up)" ]
+  [ "$(bio svc status | grep "themelio-node-mainnet\.default" | awk '{print $4}' | grep up)" ]
 }
 
 @test "Metrics webserver is running" {
