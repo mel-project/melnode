@@ -16,7 +16,7 @@ jobs:
 
     container:
       image: ghcr.io/themeliolabs/biome:latest
-      options: --privileged
+      options: --privileged --user root
       volumes:
         - /var/lib/docker:/var/lib/docker
         - /usr/local/sccache:/usr/local/sccache
@@ -39,6 +39,9 @@ jobs:
           BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
         run: echo "$BIOME_SIGNING_KEY" | bio origin key import
 
+      - name: Copy SCCache To Current Directory
+        run: cp -a /usr/local/sccache sccache
+
       - name: Build, Publish Artifact And Mark As Stable, Export And Publish Docker Image, Create Packer Images
         env:
           HAB_ORIGIN: "themelio"
@@ -55,3 +58,9 @@ jobs:
           AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
           NETWORK_TO_BUILD: "testnet"
         run: ./biome/themelio-node/scripts/ci-publish.sh
+
+      - name: Remove Old Cache
+        run: rm -rf /usr/local/sccache/*
+
+      - name: Copy SCCache From Build
+        run: cp -a sccache/. /usr/local/sccache/
