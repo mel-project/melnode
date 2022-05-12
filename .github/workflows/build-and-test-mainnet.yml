@@ -22,6 +22,8 @@ jobs:
         - /usr/local/sccache:/usr/local/sccache
         - /hab/cache/artifacts:/hab/cache/artifacts
         - /hab/pkgs:/hab/pkgs
+        - /usr/local/cargo/git:/usr/local/cargo/git
+        - /usr/local/cargo/registry:/usr/local/cargo/registry
 
     steps:
       - uses: actions/checkout@v3
@@ -39,6 +41,9 @@ jobs:
       - name: Copy SCCache To Current Directory
         run: cp -a /usr/local/sccache sccache
 
+      - name: Copy Cargo Cache To Current Directory
+        run: cp -a /usr/local/cargo cargo
+
       - name: Build, Run BATS Tests
         env:
           HAB_ORIGIN: "themelio"
@@ -51,8 +56,14 @@ jobs:
           NETWORK_TO_BUILD: "mainnet"
         run: ./biome/themelio-node/scripts/ci-test.sh
 
-      - name: Remove Old Cache
+      - name: Remove Old SCCache
         run: rm -rf /usr/local/sccache/*
 
       - name: Copy SCCache From Build
         run: cp -a sccache/. /usr/local/sccache/
+
+      - name: Remove Old Cargo Cache
+        run: rm -rf /usr/local/cargo/*
+
+      - name: Copy Cargo Cache From Build
+        run: cp -a cargo/. /usr/local/cargo/
