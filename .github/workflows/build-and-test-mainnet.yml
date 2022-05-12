@@ -41,8 +41,14 @@ jobs:
       - name: Copy SCCache To Current Directory
         run: cp -a /usr/local/sccache sccache
 
-      - name: Copy Cargo Cache To Current Directory
-        run: cp -a /usr/local/cargo cargo
+      - name: Create Cargo Directory
+        run: mkdir cargo
+
+      - name: Copy Cargo Git Cache To Current Directory
+        run: cp -a /usr/local/cargo/git cargo/git
+
+      - name: Copy Cargo Registry Cache To Current Directory
+        run: cp -a /usr/local/cargo/registry cargo/registry
 
       - name: Build, Run BATS Tests
         env:
@@ -62,8 +68,14 @@ jobs:
       - name: Copy SCCache From Build
         run: cp -a sccache/. /usr/local/sccache/
 
-      - name: Remove Old Cargo Cache
-        run: rm -rf /usr/local/cargo/*
+      - name: Remove Old Cargo Git Cache
+        run: rm -rf /usr/local/cargo/git/*
 
-      - name: Copy Cargo Cache From Build
-        run: cp -a cargo/. /usr/local/cargo/
+      - name: Copy Cargo Git Cache From Build
+        run: cp -a cargo/git/. /usr/local/cargo/git/
+
+      - name: Remove Old Cargo Registry Cache
+        run: rm -rf /usr/local/cargo/registry/*
+
+      - name: Copy Cargo Registry Cache From Build
+        run: cp -a cargo/registry/. /usr/local/cargo/registry/
