@@ -1,6 +1,3 @@
-#[cfg(feature = "metrics")]
-use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
-
 use crate::storage::{MeshaCas, NodeStorage};
 
 use std::{
@@ -15,7 +12,6 @@ use smol::prelude::*;
 use themelio_stf::SealedState;
 use themelio_structs::{Address, Block, BlockHeight, NetID, ProposerAction, Transaction, TxHash};
 use tmelcrypt::Ed25519SK;
-use tracing::instrument;
 
 static MAINNET_START_TIME: Lazy<SystemTime> =
     Lazy::new(|| std::time::UNIX_EPOCH + Duration::from_secs(1618365600)); // Apr 14 2021
@@ -43,19 +39,8 @@ impl StakerProtocol {
                 let x = storage.highest_height();
                 smol::Timer::after(Duration::from_secs(10)).await;
                 let y = storage.highest_height();
-                #[cfg(not(feature = "metrics"))]
                 log::info!(
                     "delta-height = {}; must be less than 5 to start staker",
-                    y - x
-                );
-                #[cfg(feature = "metrics")]
-                log::info!(
-                    "hostname={} public_ip={} network={} region={} instance_id={} delta-height = {}; must be less than 5 to start staker",
-                    crate::prometheus::HOSTNAME.as_str(),
-                    crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-                    crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-                    AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-                    AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
                     y - x
                 );
 
@@ -66,18 +51,7 @@ impl StakerProtocol {
             loop {
                 let genesis_epoch = storage.highest_height().epoch();
                 for current_epoch in genesis_epoch.. {
-                    #[cfg(not(feature = "metrics"))]
                     log::info!("epoch transitioning into {}!", current_epoch);
-                    #[cfg(feature = "metrics")]
-                    log::info!(
-                        "hostname={} public_ip={} network={} region={} instance_id={} epoch transitioning into {}!",
-                        crate::prometheus::HOSTNAME.as_str(),
-                        crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-                        crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-                        AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-                        AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
-                        current_epoch
-                    );
 
                     smol::Timer::after(Duration::from_secs(1)).await;
                     // we race the staker loop with epoch termination. epoch termination for now is just a sleep loop that waits until the last block in the epoch is confirmed.
@@ -99,18 +73,7 @@ impl StakerProtocol {
                         }
                     };
                     if let Err(err) = staker_fut.race(epoch_termination).await {
-                        #[cfg(not(feature = "metrics"))]
                         log::warn!("staker rebooting: {:?}", err);
-                        #[cfg(feature = "metrics")]
-                        log::warn!(
-                            "hostname={} public_ip={} network={} region={} instance_id={} staker rebooting: {:?}",
-                            crate::prometheus::HOSTNAME.as_str(),
-                            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-                            crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-                            AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-                            AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
-                            err
-                        );
 
                         break;
                     }
@@ -121,8 +84,6 @@ impl StakerProtocol {
     }
 }
 
-#[allow(clippy::or_fun_call)]
-#[instrument(skip(storage, my_sk))]
 async fn one_epoch_loop(
     epoch: u64,
     addr: SocketAddr,
@@ -169,20 +130,8 @@ async fn one_epoch_loop(
                 .apply_block(confirmed.inner().to_block(), confirmed.cproof().clone())
                 .await
             {
-                #[cfg(not(feature = "metrics"))]
                 log::warn!(
                     "could not apply confirmed block {} from novasymph: {:?}",
-                    height,
-                    err
-                );
-                #[cfg(feature = "metrics")]
-                log::warn!(
-                    "hostname={} public_ip={} network={} region={} instance_id={} could not apply confirmed block {} from novasymph: {:?}",
-                    crate::prometheus::HOSTNAME.as_str(),
-                    crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-                    crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-                    AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-                    AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
                     height,
                     err
                 );
@@ -222,20 +171,8 @@ impl BlockBuilder<MeshaCas> for StorageBlockBuilder {
             .to_state()
             .seal(Some(proposer_action));
         if mempool_state.header().previous != tip.header().hash() {
-            #[cfg(not(feature = "metrics"))]
             log::warn!(
                 "mempool {} doesn't extend from tip {}; building quasiempty block",
-                mempool_state.header().height,
-                tip.header().height
-            );
-            #[cfg(feature = "metrics")]
-            log::warn!(
-                "hostname={} public_ip={} network={} region={} instance_id={} mempool {} doesn't extend from tip {}; building quasiempty block",
-                crate::prometheus::HOSTNAME.as_str(),
-                crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-                crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-                AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-                AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
                 mempool_state.header().height,
                 tip.header().height
             );

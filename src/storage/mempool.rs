@@ -1,6 +1,3 @@
-#[cfg(feature = "metrics")]
-use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
-
 use crate::storage::MeshaCas;
 
 use std::{collections::HashSet, time::Instant};
@@ -48,24 +45,11 @@ impl Mempool {
     /// Forcibly replaces the internal state of the mempool with the given state.
     pub fn rebase(&mut self, state: State<MeshaCas>) {
         if state.height > self.provisional_state.height {
-            #[cfg(not(feature = "metrics"))]
             log::trace!(
                 "rebasing mempool {} => {}",
                 self.provisional_state.height,
                 state.height
             );
-            #[cfg(feature = "metrics")]
-            log::trace!(
-                "hostname={} public_ip={} network={} region={} instance_id={} rebasing mempool {} => {}",
-                crate::prometheus::HOSTNAME.as_str(),
-                crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-                crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-                AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-                AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
-                self.provisional_state.height,
-                state.height
-            );
-
             if !self.provisional_state.transactions.is_empty() {
                 let count = self.provisional_state.transactions.len();
                 log::warn!("*** THROWING AWAY {} MEMPOOL TXX ***", count);

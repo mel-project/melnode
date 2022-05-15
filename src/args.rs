@@ -1,5 +1,4 @@
-#[cfg(feature = "metrics")]
-use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
+
 
 use crate::storage::NodeStorage;
 
@@ -89,8 +88,7 @@ impl Args {
             #[cfg(feature = "metrics")]
             {
                 *crate::prometheus::NETWORK
-                    .write()
-                    .expect("Could not get a write lock on NETWORK") = "testnet";
+                    .write() = "testnet";
             }
 
             Ok(GenesisConfig::std_testnet())
@@ -184,14 +182,11 @@ impl Args {
             crate::prometheus::HOSTNAME.as_str(),
             crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
             crate::prometheus::NETWORK
+                .read(),
+            crate::AWS_REGION
+                .read(),
+            crate::AWS_INSTANCE_ID
                 .read()
-                .expect("Could not get a read lock on NETWORK."),
-            AWS_REGION
-                .read()
-                .expect("Could not get a read lock on AWS_REGION"),
-            AWS_INSTANCE_ID
-                .read()
-                .expect("Could not get a read lock on AWS_INSTANCE_ID")
         );
 
         Ok(storage)
