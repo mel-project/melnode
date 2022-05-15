@@ -1,8 +1,5 @@
 use crate::{blkidx::BlockIndexer, storage::NodeStorage};
 
-#[cfg(feature = "metrics")]
-use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
-
 use std::{
     collections::BTreeMap,
     net::SocketAddr,
@@ -71,7 +68,6 @@ impl NodeProtocol {
     }
 }
 
-#[tracing::instrument(skip(network, storage))]
 async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStorage) {
     let tag = || format!("blksync@{:?}", storage.highest_state().header().height);
     loop {
@@ -85,39 +81,11 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStor
             let res = attempt_blksync(peer, &client, &storage).await;
             match res {
                 Err(e) => {
-                    #[cfg(not(feature = "metrics"))]
                     log::warn!("{}: failed to blksync with {}: {:?}", tag(), peer, e);
-                    #[cfg(feature = "metrics")]
-                    log::warn!(
-                        "hostname={} public_ip={} network={} region={} instance_id={} {}: failed to blksync with {}: {:?}",
-                        crate::prometheus::HOSTNAME.as_str(),
-                        crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-                        crate::prometheus::NETWORK
-                            .read()
-                            .expect("Could not get a read lock on NETWORK."),
-                        AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-                        AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
-                        tag(),
-                        peer,
-                        e
-                    );
                 }
                 Ok(blklen) => {
                     if blklen > 0 {
-                        #[cfg(not(feature = "metrics"))]
                         log::debug!("synced to height {}", storage.highest_height());
-                        #[cfg(feature = "metrics")]
-                        log::warn!(
-                            "hostname={} public_ip={} network={} region={} instance_id={} synced to height {}",
-                            crate::prometheus::HOSTNAME.as_str(),
-                            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-                            crate::prometheus::NETWORK
-                                .read()
-                                .expect("Could not get a read lock on NETWORK."),
-                            AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-                            AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
-                            storage.highest_height()
-                        );
                     }
                 }
             }
@@ -222,36 +190,9 @@ impl NodeServer for AuditorResponder {
                 log::warn!("cannot apply tx: {:?}", e);
                 MelnetError::Custom(e.to_string())
             })?;
-        #[cfg(not(feature = "metrics"))]
+
         log::debug!(
             "txhash {}.. inserted ({:?} applying)",
-            &tx.hash_nosigs().to_string()[..10],
-            start.elapsed(),
-        );
-
-        // log::debug!(
-        //     "smt_get: {:.2}ms, smt_insert: {:.2}ms, melvm: {:.2}ms, melpow: {:.2}ms",
-        //     1000.0 * (STAT_SMT_GET_SECS.value() - start_smt_get),
-        //     1000.0 * (STAT_SMT_INSERT_SECS.value() - start_smt_insert),
-        //     1000.0 * (STAT_MELVM_RUNTIME_SECS.value() - start_melvm),
-        //     1000.0 * (STAT_MELPOW_SECS.value() - start_melpow)
-        // );
-
-        // if start.elapsed().as_secs_f64() > 1.0 {
-        //     log::warn!(
-        //         "MONSTER transaction here! {:#?}",
-        //         tx.clone().with_data(vec![])
-        //     );
-        // }
-
-        #[cfg(feature = "metrics")]
-        log::debug!(
-            "hostname={} public_ip={} network={} region={} instance_id={} txhash {}.. inserted ({:?} applying)",
-            crate::prometheus::HOSTNAME.as_str(),
-            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-            crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-            AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-            AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
             &tx.hash_nosigs().to_string()[..10],
             start.elapsed(),
         );
