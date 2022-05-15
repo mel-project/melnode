@@ -177,14 +177,8 @@ impl NodeServer for AuditorResponder {
         log::trace!("handling send_tx");
         let start = Instant::now();
 
-        // let start_smt_get = STAT_SMT_GET_SECS.value();
-        // let start_smt_insert = STAT_SMT_INSERT_SECS.value();
-        // let start_melvm = STAT_MELVM_RUNTIME_SECS.value();
-        // let start_melpow = STAT_MELPOW_SECS.value();
-
         self.storage
-            .try_mempool_mut()
-            .context("mempool contention")?
+            .mempool_mut()
             .apply_transaction(&tx)
             .map_err(|e| {
                 log::warn!("cannot apply tx: {:?}", e);

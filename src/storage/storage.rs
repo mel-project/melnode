@@ -68,11 +68,6 @@ impl NodeStorage {
         self.mempool.read()
     }
 
-    /// Try to get a mutable reference to the mempool.
-    pub fn try_mempool_mut(&self) -> Option<impl DerefMut<Target = Mempool> + '_> {
-        self.mempool.try_write()
-    }
-
     /// Gets a mutable reference to the mempool.
     pub fn mempool_mut(&self) -> impl DerefMut<Target = Mempool> + '_ {
         self.mempool.write()

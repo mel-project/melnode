@@ -1285,17 +1285,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hostname"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c731c3e10504cc8ed35cfe2f1db4c9274c3d35fa486e3b31df46f068ef3e867"
-dependencies = [
- "libc",
- "match_cfg",
- "winapi",
-]
-
-[[package]]
 name = "http"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1547,12 +1536,6 @@ checksum = "32613e41de4c47ab04970c348ca7ae7382cf116625755af070b008a15516a889"
 dependencies = [
  "hashbrown",
 ]
-
-[[package]]
-name = "match_cfg"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ffbee8634e0d45d258acb448e7eaab3fce7a0a467395d4d9f228e3c1f01fb2e4"
 
 [[package]]
 name = "matches"
@@ -2840,15 +2823,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "smol_str"
-version = "0.1.23"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7475118a28b7e3a2e157ce0131ba8c5526ea96e90ee601d9f6bb2e286a35ab44"
-dependencies = [
- "serde",
-]
-
-[[package]]
 name = "smolscale"
 version = "0.3.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3073,7 +3047,6 @@ dependencies = [
  "anyhow",
  "arc-swap",
  "async-compat",
- "base64",
  "boringdb",
  "dashmap",
  "default-net",
@@ -3085,7 +3058,6 @@ dependencies = [
  "futures-util",
  "gethostname",
  "hex",
- "hostname",
  "imbl",
  "log",
  "lru",
@@ -3104,7 +3076,6 @@ dependencies = [
  "serde_json",
  "smol",
  "smol-timeout",
- "smol_str",
  "smolscale",
  "stdcode",
  "structopt",

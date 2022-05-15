@@ -45,6 +45,7 @@ fn main() -> anyhow::Result<()> {
             r.args())
         });
     }
+    builder.init();
     let opts = Args::from_args();
 
     smolscale::block_on(main_async(opts))
