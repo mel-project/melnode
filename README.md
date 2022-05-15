@@ -1,7 +1,7 @@
 # themelio-node: Themelio's reference implementation
 
-[![](https://img.shields.io/crates/v/themelio-core)](https://crates.io/crates/themelio-core)
-![](https://img.shields.io/crates/l/themelio-core)
+[![](https://img.shields.io/crates/v/themelio-node)](https://crates.io/crates/themelio-node)
+![](https://img.shields.io/crates/l/themelio-node)
 
 [Themelio](https://themelio.org) is a new public blockchain focused on security, performance, and long-term stability. `themelio-node` is Themelio's reference implementation in Rust.
 
