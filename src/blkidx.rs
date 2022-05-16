@@ -4,7 +4,7 @@ use dashmap::DashMap;
 use std::time::Duration;
 use themelio_structs::{Address, Block, BlockHeight, CoinID, NetID, TxKind};
 
-use super::NodeStorage;
+use super::Storage;
 
 /// Indexes blocks (by pulling them out of storage)
 pub struct BlockIndexer {
@@ -14,7 +14,7 @@ pub struct BlockIndexer {
 
 impl BlockIndexer {
     /// Creates a new block indexer that pulls blocks out of the given storage, asynchronously.
-    pub fn new(storage: NodeStorage) -> Self {
+    pub fn new(storage: Storage) -> Self {
         let height_to_map: Arc<DashMap<BlockHeight, CoinIndex>> = Default::default();
         let h2m = height_to_map.clone();
         let _task = smolscale::spawn(async move {

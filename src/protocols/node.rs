@@ -1,4 +1,4 @@
-use crate::{blkidx::BlockIndexer, storage::NodeStorage};
+use crate::{blkidx::BlockIndexer, storage::Storage};
 
 use std::{
     collections::BTreeMap,
@@ -41,7 +41,7 @@ impl NodeProtocol {
         listen_addr: SocketAddr,
         advertise_addr: Option<SocketAddr>,
         bootstrap: Vec<SocketAddr>,
-        storage: NodeStorage,
+        storage: Storage,
         index: bool,
     ) -> Self {
         let network = melnet::NetState::new_with_name(netname(netid));
@@ -68,7 +68,7 @@ impl NodeProtocol {
     }
 }
 
-async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStorage) {
+async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: Storage) {
     let tag = || format!("blksync@{:?}", storage.highest_state().header().height);
     loop {
         let gap_time: Duration = Duration::from_secs_f64(fastrand::f64() * 1.0);
@@ -98,7 +98,7 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStor
 async fn attempt_blksync(
     addr: SocketAddr,
     client: &NodeClient,
-    storage: &NodeStorage,
+    storage: &Storage,
 ) -> anyhow::Result<usize> {
     let their_highest = client
         .get_summary()
@@ -159,7 +159,7 @@ async fn attempt_blksync(
 
 struct AuditorResponder {
     network: NetID,
-    storage: NodeStorage,
+    storage: Storage,
     indexer: Option<BlockIndexer>,
     recent: Mutex<LruCache<TxHash, Instant>>,
 
@@ -288,7 +288,7 @@ impl NodeServer for AuditorResponder {
 }
 
 impl AuditorResponder {
-    fn new(network: NetID, storage: NodeStorage, index: bool) -> Self {
+    fn new(network: NetID, storage: Storage, index: bool) -> Self {
         Self {
             network,
             storage: storage.clone(),

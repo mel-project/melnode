@@ -16,44 +16,14 @@ use smol::channel::Sender;
 use smol_timeout::TimeoutExt;
 
 use stdcode::StdcodeSerializeExt;
-use themelio_nodeprot::TrustStore;
 use themelio_stf::{GenesisConfig, SealedState};
-use themelio_structs::{Block, BlockHeight, ConsensusProof, NetID};
+use themelio_structs::{Block, BlockHeight, CoinValue, ConsensusProof};
 
 use super::{mempool::Mempool, MeshaCas};
 
+/// Storage encapsulates all storage used by a Themelio full node (auditor or staker).
 #[derive(Clone)]
-pub struct NodeTrustStore(pub NodeStorage);
-
-impl TrustStore for NodeTrustStore {
-    fn set(&self, netid: NetID, trusted: themelio_nodeprot::TrustedHeight) {
-        self.0
-            .metadata
-            .insert(
-                stdcode::serialize(&netid).expect("cannot serialize netid"),
-                stdcode::serialize(&(trusted.height, trusted.header_hash))
-                    .expect("Cannot serialize trusted height"),
-            )
-            .expect("could not set trusted height");
-    }
-
-    fn get(&self, netid: NetID) -> Option<themelio_nodeprot::TrustedHeight> {
-        let pair: (BlockHeight, tmelcrypt::HashVal) = self
-            .0
-            .metadata
-            .get(&stdcode::serialize(&netid).expect("cannot serialize netid"))
-            .expect("cannot get")
-            .map(|b| stdcode::deserialize(&b).expect("cannot deserialize"))?;
-        Some(themelio_nodeprot::TrustedHeight {
-            height: pair.0,
-            header_hash: pair.1,
-        })
-    }
-}
-
-/// NodeStorage encapsulates all storage used by a Themelio full node (auditor or staker).
-#[derive(Clone)]
-pub struct NodeStorage {
+pub struct Storage {
     mempool: Arc<RwLock<Mempool>>,
     metadata: boringdb::Dict,
     highest: Arc<ArcSwap<SealedState<MeshaCas>>>,
@@ -62,7 +32,7 @@ pub struct NodeStorage {
     _death: Sender<()>,
 }
 
-impl NodeStorage {
+impl Storage {
     /// Gets an immutable reference to the mempool.
     pub fn mempool(&self) -> impl Deref<Target = Mempool> + '_ {
         self.mempool.read()
@@ -337,7 +307,31 @@ impl NodeStorage {
                 highest_state.inner_ref().height
             );
         }
-        // TODO!!!! CHECK INTEGRITY?!!?!?!!
+
+        // Check the consensus proof
+        let mut total_votes = CoinValue(0);
+        let mut present_votes = CoinValue(0);
+        for stake_doc in highest_state.inner_ref().stakes.val_iter() {
+            if blk.header.height.epoch() >= stake_doc.e_start
+                && blk.header.height.epoch() < stake_doc.e_post_end
+            {
+                total_votes += stake_doc.syms_staked;
+                if let Some(v) = cproof.get(&stake_doc.pubkey) {
+                    if stake_doc.pubkey.verify(&blk.header.hash(), v) {
+                        present_votes += total_votes;
+                    }
+                }
+            }
+        }
+        if present_votes.0 <= 2 * total_votes.0 / 3 {
+            anyhow::bail!(
+                "rejecting putative block {} due to insufficient votes ({}/{})",
+                blk.header.height,
+                present_votes,
+                total_votes
+            )
+        }
+
         let start = Instant::now();
         let new_state = highest_state.apply_block(&blk)?;
         let blkbytes = new_state.to_block().stdcode();

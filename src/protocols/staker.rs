@@ -1,4 +1,4 @@
-use crate::storage::{MeshaCas, NodeStorage};
+use crate::storage::{MeshaCas, Storage};
 
 use std::{
     net::SocketAddr,
@@ -29,7 +29,7 @@ impl StakerProtocol {
     pub fn new(
         addr: SocketAddr,
         bootstrap: Vec<SocketAddr>,
-        storage: NodeStorage,
+        storage: Storage,
         my_sk: Ed25519SK,
         payout_address: Address,
         target_fee_multiplier: u128,
@@ -86,7 +86,7 @@ impl StakerProtocol {
 async fn one_epoch_loop(
     addr: SocketAddr,
     bootstrap: Vec<SocketAddr>,
-    storage: NodeStorage,
+    storage: Storage,
     my_sk: Ed25519SK,
     payout_covhash: Address,
     target_fee_multiplier: u128,
@@ -148,7 +148,7 @@ async fn one_epoch_loop(
 }
 
 struct StorageBlockBuilder {
-    storage: NodeStorage,
+    storage: Storage,
     payout_covhash: Address,
     target_fee_multiplier: u128,
 }

@@ -1,4 +1,4 @@
-use crate::storage::NodeStorage;
+use crate::storage::Storage;
 
 use async_compat::CompatExt;
 use parking_lot::RwLock;
@@ -189,7 +189,7 @@ pub async fn update_aws_information() {
     *aws_instance_id_write = aws_instance_id;
 }
 
-pub static GLOBAL_STORAGE: OnceCell<NodeStorage> = OnceCell::new();
+pub static GLOBAL_STORAGE: OnceCell<Storage> = OnceCell::new();
 
 pub static NETWORK: Lazy<RwLock<&str>> = Lazy::new(|| RwLock::new("mainnet"));
 
@@ -445,7 +445,7 @@ fn metrics() -> Result<String, rweb::http::Error> {
 }
 
 fn set_highest_block() {
-    let storage: &NodeStorage = GLOBAL_STORAGE
+    let storage: &Storage = GLOBAL_STORAGE
         .get()
         .expect("Could not get a lock on GLOBAL_STORAGE");
 

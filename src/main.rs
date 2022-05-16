@@ -7,15 +7,16 @@ mod storage;
 
 #[cfg(feature = "metrics")]
 use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
-
+#[cfg(feature = "metrics")]
 use std::time::Duration;
 #[cfg(feature = "metrics")]
 use tokio::runtime::Runtime;
 
 use crate::protocols::{NodeProtocol, StakerProtocol};
-use crate::storage::NodeStorage;
+use crate::storage::Storage;
 
 use args::Args;
+#[cfg(feature = "metrics")]
 use once_cell::sync::Lazy;
 use structopt::StructOpt;
 
@@ -60,7 +61,7 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
 
     let genesis = opt.genesis_config().await?;
     let netid = genesis.network;
-    let storage: NodeStorage = opt.storage().await?;
+    let storage: Storage = opt.storage().await?;
     let bootstrap = opt.bootstrap().await?;
 
     log::info!("bootstrapping with {:?}", bootstrap);

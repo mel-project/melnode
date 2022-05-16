@@ -1,4 +1,4 @@
-use crate::storage::NodeStorage;
+use crate::storage::Storage;
 
 use std::{net::SocketAddr, path::PathBuf};
 
@@ -93,7 +93,7 @@ impl Args {
         }
     }
 
-    pub async fn storage(&self) -> anyhow::Result<NodeStorage> {
+    pub async fn storage(&self) -> anyhow::Result<Storage> {
         let database_base_path = PathBuf::from(self.database.to_string());
         let metadata_path = database_base_path
             .clone()
@@ -109,7 +109,7 @@ impl Args {
             meshanina::Mapping::open(&smt_path).context("cannot open meshanina database")?;
         log::debug!("database opened at {}", self.database);
 
-        let storage = NodeStorage::new(smt_db, meta_db, self.genesis_config().await?);
+        let storage = Storage::new(smt_db, meta_db, self.genesis_config().await?);
 
         // Reset block. This is used to roll back history in emergencies
         if let Some(_height) = self.emergency_reset_block {
