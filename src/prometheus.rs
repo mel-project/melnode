@@ -164,9 +164,7 @@ pub async fn update_aws_information() {
         }
     };
 
-    let mut aws_region_write = AWS_REGION.write();
-
-    *aws_region_write = aws_region;
+    *AWS_REGION.write() = aws_region;
 
     let aws_instance_id_result: Result<String, AWSError> = aws_instance_id().await;
 
@@ -533,12 +531,7 @@ fn set_system_metrics() {
             });
         }
         Err(error) => log::debug!(
-            "hostname={} public_ip={} network={} region={} instance_id={} There was an error retrieving filesystem information: {}",
-            crate::prometheus::HOSTNAME.as_str(),
-            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-            crate::prometheus::NETWORK.read(),
-            AWS_REGION.read(),
-            AWS_INSTANCE_ID.read(),
+            "There was an error retrieving filesystem information: {}",
             error
         ),
     }
