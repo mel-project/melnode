@@ -117,6 +117,7 @@ themelio-bootstrap = "0.6"
 # tracing-subscriber = "0.3.11"
 themelio-structs = "0.2.2"
 dhat = "0.3.0"
+async-trait = "0.1.53"
 
 # [target.'cfg(unix)'.dependencies]
 # mimalloc = "0.1.28"

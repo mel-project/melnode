@@ -1,5 +1,6 @@
 use crate::storage::NodeStorage;
 
+use async_compat::CompatExt;
 use parking_lot::RwLock;
 use std::fmt;
 use std::thread;
@@ -15,6 +16,12 @@ use smol::Timer;
 use smol_timeout::TimeoutExt;
 use systemstat::platform::PlatformImpl;
 use systemstat::{CPULoad, Memory, Platform, System};
+
+pub static PUBLIC_IP_ADDRESS: Lazy<String> = Lazy::new(|| {
+    smol::future::block_on(public_ip::addr().compat())
+        .expect("Could not obtain the public IP address.")
+        .to_string()
+});
 
 // Complete list of metadata endpoints available here: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-categories.html
 const AWS_API_TOKEN_URL: &str = "http://169.254.169.254/latest/api/token";
@@ -481,15 +488,7 @@ fn set_system_metrics() {
         Ok(uptime) => {
             SYSTEM_UPTIME_SECONDS.set(uptime.as_secs() as i64);
         }
-        Err(error) => log::debug!(
-            "hostname={} public_ip={} network={} region={} instance_id={} There was an error retrieving system uptime: {}",
-            crate::prometheus::HOSTNAME.as_str(),
-            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-            crate::prometheus::NETWORK.read(),
-            AWS_REGION.read(),
-            AWS_INSTANCE_ID.read(),
-            error
-        ),
+        Err(error) => log::debug!("There was an error retrieving system uptime: {}", error),
     }
 
     let default_network_interface: String = default_net::interface::get_default_interface_name()
@@ -505,12 +504,7 @@ fn set_system_metrics() {
             NETWORK_RECEIVED_BYTES.set(received_bytes as i64);
         }
         Err(error) => log::debug!(
-            "hostname={} public_ip={} network={} region={} instance_id={} There was an error retrieving network traffic information: {}",
-            crate::prometheus::HOSTNAME.as_str(),
-            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-            crate::prometheus::NETWORK.read(),
-            AWS_REGION.read(),
-            AWS_INSTANCE_ID.read(),
+            "There was an error retrieving network traffic information: {}",
             error
         ),
     }
@@ -555,14 +549,7 @@ pub async fn prometheus() {
     let three_seconds: time::Duration = time::Duration::from_secs(3);
     Timer::after(three_seconds).await;
 
-    log::debug!(
-        "hostname={} public_ip={} network={} region={} instance_id={} Prometheus metrics listening on http://127.0.0.1:8080",
-        crate::prometheus::HOSTNAME.as_str(),
-        crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-        crate::prometheus::NETWORK.read(),
-        AWS_REGION.read(),
-        AWS_INSTANCE_ID.read()
-    );
+    log::debug!("Prometheus metrics listening on http://127.0.0.1:8080");
 
     REGISTRY
         .register(Box::new(HIGHEST_BLOCK.clone()))

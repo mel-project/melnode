@@ -3,8 +3,6 @@ mod blkidx;
 #[cfg(feature = "metrics")]
 mod prometheus;
 mod protocols;
-#[cfg(feature = "metrics")]
-mod public_ip_address;
 mod storage;
 
 #[cfg(feature = "metrics")]
@@ -38,7 +36,7 @@ fn main() -> anyhow::Result<()> {
     {
         use std::io::Write;
         builder.format(|f, r| {
-            writeln!(f, "hostname={} public_ip={} network={} region={} instance_id={} level={} message={:?}", crate::prometheus::HOSTNAME.as_str(), crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(), crate::prometheus::NETWORK.read(),
+            writeln!(f, "hostname={} public_ip={} network={} region={} instance_id={} level={} message={:?}", crate::prometheus::HOSTNAME.as_str(), crate::prometheus::PUBLIC_IP_ADDRESS.as_str(), crate::prometheus::NETWORK.read(),
             AWS_REGION.read(),
                AWS_INSTANCE_ID.read(),
             r.level(),

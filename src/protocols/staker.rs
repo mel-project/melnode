@@ -56,7 +56,6 @@ impl StakerProtocol {
                     smol::Timer::after(Duration::from_secs(1)).await;
                     // we race the staker loop with epoch termination. epoch termination for now is just a sleep loop that waits until the last block in the epoch is confirmed.
                     let staker_fut = one_epoch_loop(
-                        current_epoch,
                         addr,
                         bootstrap.clone(),
                         storage.clone(),
@@ -85,7 +84,6 @@ impl StakerProtocol {
 }
 
 async fn one_epoch_loop(
-    epoch: u64,
     addr: SocketAddr,
     bootstrap: Vec<SocketAddr>,
     storage: NodeStorage,
