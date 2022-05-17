@@ -7,7 +7,9 @@
 
 ## Organization of this repository
 
-This repository contains the core node implementation of Themelio.
+This repository contains the core node implementation of Themelio. Here's a high-level diagram of the different parts inside:
+
+![](diagram.png)
 
 ## Usage
 
