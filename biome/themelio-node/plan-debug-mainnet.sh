@@ -12,6 +12,7 @@ pkg_build_deps=(
 pkg_deps=(
   core/curl
   core/gcc-libs
+  core/glibc
   core/nmap
 )
 pkg_bin_dirs=(bin)
@@ -56,7 +57,6 @@ do_build() {
   cd "${pkg_full_path}"
 
   build_line "Starting Build."
-  cargo clean
   cargo build --locked --target=x86_64-unknown-linux-gnu --features metrics --verbose
 }
 
