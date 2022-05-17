@@ -2,9 +2,9 @@ use crate::storage::Storage;
 
 use async_compat::CompatExt;
 use parking_lot::RwLock;
-use std::fmt;
-use std::thread;
 use std::time;
+use std::{fmt, sync::atomic::AtomicBool};
+use std::{sync::atomic::Ordering, thread};
 
 use once_cell::sync::{Lazy, OnceCell};
 use prometheus::{
@@ -160,33 +160,36 @@ pub static AWS_REGION: Lazy<RwLock<String>> = Lazy::new(|| RwLock::new(String::f
 pub static AWS_INSTANCE_ID: Lazy<RwLock<String>> = Lazy::new(|| RwLock::new(String::from("")));
 
 pub async fn update_aws_information() {
-    let aws_region_result: Result<String, AWSError> = aws_region().await;
+    static HAS_RUN: AtomicBool = AtomicBool::new(false);
+    if !HAS_RUN.fetch_or(true, Ordering::SeqCst) {
+        let aws_region_result: Result<String, AWSError> = aws_region().await;
 
-    let aws_region: String = match aws_region_result {
-        Ok(thing) => thing,
-        Err(error) => {
-            log::debug!("{}", error);
+        let aws_region: String = match aws_region_result {
+            Ok(thing) => thing,
+            Err(error) => {
+                log::debug!("{}", error);
 
-            String::from("")
-        }
-    };
+                String::from("")
+            }
+        };
 
-    *AWS_REGION.write() = aws_region;
+        *AWS_REGION.write() = aws_region;
 
-    let aws_instance_id_result: Result<String, AWSError> = aws_instance_id().await;
+        let aws_instance_id_result: Result<String, AWSError> = aws_instance_id().await;
 
-    let aws_instance_id: String = match aws_instance_id_result {
-        Ok(thing) => thing,
-        Err(error) => {
-            log::debug!("{}", error);
+        let aws_instance_id: String = match aws_instance_id_result {
+            Ok(thing) => thing,
+            Err(error) => {
+                log::debug!("{}", error);
 
-            String::from("")
-        }
-    };
+                String::from("")
+            }
+        };
 
-    let mut aws_instance_id_write = AWS_INSTANCE_ID.write();
+        let mut aws_instance_id_write = AWS_INSTANCE_ID.write();
 
-    *aws_instance_id_write = aws_instance_id;
+        *aws_instance_id_write = aws_instance_id;
+    }
 }
 
 pub static GLOBAL_STORAGE: OnceCell<Storage> = OnceCell::new();
@@ -204,7 +207,7 @@ pub static HOSTNAME: Lazy<String> = Lazy::new(|| {
 });
 
 static HIGHEST_BLOCK: Lazy<IntGauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
     let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
@@ -222,7 +225,7 @@ static HIGHEST_BLOCK: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static THEMELIO_NODE_UPTIME_SECONDS: Lazy<IntGauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
     let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
@@ -240,7 +243,7 @@ static THEMELIO_NODE_UPTIME_SECONDS: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static SYSTEM_UPTIME_SECONDS: Lazy<IntGauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
     let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
@@ -258,7 +261,7 @@ static SYSTEM_UPTIME_SECONDS: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static MEMORY_TOTAL_BYTES: Lazy<IntGauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
     let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
@@ -276,7 +279,7 @@ static MEMORY_TOTAL_BYTES: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static MEMORY_FREE_BYTES: Lazy<IntGauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
     let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
@@ -294,7 +297,7 @@ static MEMORY_FREE_BYTES: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static NETWORK_TRANSMITTED_BYTES: Lazy<IntGauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
     let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
@@ -312,7 +315,7 @@ static NETWORK_TRANSMITTED_BYTES: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static NETWORK_RECEIVED_BYTES: Lazy<IntGauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
     let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
@@ -330,7 +333,7 @@ static NETWORK_RECEIVED_BYTES: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static ROOT_FILESYSTEM_TOTAL_BYTES: Lazy<IntGauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
     let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
@@ -348,7 +351,7 @@ static ROOT_FILESYSTEM_TOTAL_BYTES: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static ROOT_FILESYSTEM_FREE_BYTES: Lazy<IntGauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
     let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
@@ -366,7 +369,7 @@ static ROOT_FILESYSTEM_FREE_BYTES: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static CPU_LOAD_USER: Lazy<Gauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
     let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
@@ -384,7 +387,7 @@ static CPU_LOAD_USER: Lazy<Gauge> = Lazy::new(|| {
 });
 
 static CPU_LOAD_SYSTEM: Lazy<Gauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
     let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
@@ -402,7 +405,7 @@ static CPU_LOAD_SYSTEM: Lazy<Gauge> = Lazy::new(|| {
 });
 
 static CPU_LOAD_IDLE: Lazy<Gauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
     let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 

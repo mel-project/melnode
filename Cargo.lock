@@ -496,6 +496,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "clone-macro"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11b52aa11e0a83701c2f8a2b683c254889d8a957e7f58a5a06c5f98ebb4fc3c1"
+
+[[package]]
 name = "concurrent-queue"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3042,13 +3048,14 @@ dependencies = [
 
 [[package]]
 name = "themelio-node"
-version = "0.7.1"
+version = "0.7.2-alpha.0"
 dependencies = [
  "anyhow",
  "arc-swap",
  "async-compat",
  "async-trait",
  "boringdb",
+ "clone-macro",
  "dashmap",
  "default-net",
  "defmac",
@@ -3087,7 +3094,6 @@ dependencies = [
  "themelio-stf",
  "themelio-structs",
  "tmelcrypt",
- "tokio",
 ]
 
 [[package]]
@@ -3268,9 +3274,7 @@ dependencies = [
  "mio",
  "num_cpus",
  "once_cell",
- "parking_lot 0.12.0",
  "pin-project-lite 0.2.9",
- "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "winapi",

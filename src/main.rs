@@ -9,20 +9,13 @@ mod storage;
 use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
 #[cfg(feature = "metrics")]
 use std::time::Duration;
-#[cfg(feature = "metrics")]
-use tokio::runtime::Runtime;
 
 use crate::protocols::{NodeProtocol, StakerProtocol};
 use crate::storage::Storage;
 
 use args::Args;
-#[cfg(feature = "metrics")]
-use once_cell::sync::Lazy;
-use structopt::StructOpt;
 
-#[cfg(feature = "metrics")]
-pub static RUNTIME: Lazy<Runtime> =
-    Lazy::new(|| Runtime::new().expect("Could not create tokio runtime."));
+use structopt::StructOpt;
 
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
@@ -96,11 +89,12 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
 
     #[cfg(feature = "metrics")]
     {
+        use async_compat::CompatExt;
         crate::prometheus::GLOBAL_STORAGE
             .set(storage)
             .ok()
             .expect("Could not write to GLOBAL_STORAGE");
-        std::thread::spawn(|| RUNTIME.block_on(crate::prometheus::prometheus()));
+        smolscale::spawn(crate::prometheus::prometheus().compat()).detach();
     }
 
     #[cfg(feature = "dhat-heap")]
