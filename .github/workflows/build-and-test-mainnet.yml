@@ -7,8 +7,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  SCCACHE_DIR: "/usr/local/sccache"
-  RUSTC_WRAPPER: "/usr/local/bin/sccache"
+#  SCCACHE_DIR: "/usr/local/sccache"
+#  RUSTC_WRAPPER: "/usr/local/bin/sccache"
 
 jobs:
   build-and-test-mainnet:
@@ -19,11 +19,11 @@ jobs:
       options: --privileged --user root
       volumes:
         - /var/lib/docker:/var/lib/docker
-        - /usr/local/sccache:/usr/local/sccache
+#        - /usr/local/sccache:/usr/local/sccache
         - /hab/cache/artifacts:/hab/cache/artifacts
         - /hab/pkgs:/hab/pkgs
-        - /usr/local/cargo/git:/usr/local/cargo/git
-        - /usr/local/cargo/registry:/usr/local/cargo/registry
+#        - /usr/local/cargo/git:/usr/local/cargo/git
+#        - /usr/local/cargo/registry:/usr/local/cargo/registry
 
     steps:
       - uses: actions/checkout@v3
@@ -38,17 +38,17 @@ jobs:
           BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
         run: echo "$BIOME_SIGNING_KEY" | bio origin key import
 
-      - name: Copy SCCache To Current Directory
-        run: cp -a /usr/local/sccache sccache
-
-      - name: Create Cargo Directory
-        run: mkdir cargo
-
-      - name: Copy Cargo Git Cache To Current Directory
-        run: cp -a /usr/local/cargo/git cargo/git
-
-      - name: Copy Cargo Registry Cache To Current Directory
-        run: cp -a /usr/local/cargo/registry cargo/registry
+#      - name: Copy SCCache To Current Directory
+#        run: cp -a /usr/local/sccache sccache
+#
+#      - name: Create Cargo Directory
+#        run: mkdir cargo
+#
+#      - name: Copy Cargo Git Cache To Current Directory
+#        run: cp -a /usr/local/cargo/git cargo/git
+#
+#      - name: Copy Cargo Registry Cache To Current Directory
+#        run: cp -a /usr/local/cargo/registry cargo/registry
 
       - name: Build, Run BATS Tests
         env:
@@ -62,20 +62,20 @@ jobs:
           NETWORK_TO_BUILD: "mainnet"
         run: ./biome/themelio-node/scripts/ci-test.sh
 
-      - name: Remove Old SCCache
-        run: rm -rf /usr/local/sccache/*
-
-      - name: Copy SCCache From Build
-        run: cp -a sccache/. /usr/local/sccache/
-
-      - name: Remove Old Cargo Git Cache
-        run: rm -rf /usr/local/cargo/git/*
-
-      - name: Copy Cargo Git Cache From Build
-        run: cp -a cargo/git/. /usr/local/cargo/git/
-
-      - name: Remove Old Cargo Registry Cache
-        run: rm -rf /usr/local/cargo/registry/*
-
-      - name: Copy Cargo Registry Cache From Build
-        run: cp -a cargo/registry/. /usr/local/cargo/registry/
+#      - name: Remove Old SCCache
+#        run: rm -rf /usr/local/sccache/*
+#
+#      - name: Copy SCCache From Build
+#        run: cp -a sccache/. /usr/local/sccache/
+#
+#      - name: Remove Old Cargo Git Cache
+#        run: rm -rf /usr/local/cargo/git/*
+#
+#      - name: Copy Cargo Git Cache From Build
+#        run: cp -a cargo/git/. /usr/local/cargo/git/
+#
+#      - name: Remove Old Cargo Registry Cache
+#        run: rm -rf /usr/local/cargo/registry/*
+#
+#      - name: Copy Cargo Registry Cache From Build
+#        run: cp -a cargo/registry/. /usr/local/cargo/registry/
