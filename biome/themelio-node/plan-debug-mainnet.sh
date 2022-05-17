@@ -56,6 +56,7 @@ do_build() {
   cd "${pkg_full_path}"
 
   build_line "Starting Build."
+  cargo clean
   cargo build --locked --target=x86_64-unknown-linux-gnu --features metrics --verbose
 }
 
