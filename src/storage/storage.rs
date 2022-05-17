@@ -13,14 +13,18 @@ use smol::Task;
 use stdcode::StdcodeSerializeExt;
 use themelio_stf::{GenesisConfig, SealedState};
 use themelio_structs::{Block, BlockHeight, CoinValue, ConsensusProof};
+use tmelcrypt::HashVal;
 
 use super::{mempool::Mempool, MeshaCas};
 
 /// Storage encapsulates all storage used by a Themelio full node (auditor or staker).
 #[derive(Clone)]
 pub struct Storage {
+    genesis_id: HashVal,
+
     mempool: Arc<RwLock<Mempool>>,
     metadata: boringdb::Dict,
+    database: Arc<boringdb::Database>,
     highest: Arc<RwLock<SealedState<MeshaCas>>>,
     old_cache: Arc<Mutex<LruCache<BlockHeight, SealedState<MeshaCas>>>>,
     forest: Arc<novasmt::Database<MeshaCas>>,
@@ -37,6 +41,13 @@ impl Storage {
     /// Gets a mutable reference to the mempool.
     pub fn mempool_mut(&self) -> impl DerefMut<Target = Mempool> + '_ {
         self.mempool.write()
+    }
+
+    /// Opens a miscellaneous metadata database, given the name.
+    pub fn open_dict(&self, name: &str) -> boringdb::Dict {
+        self.database
+            .open_dict(&format!("{}_{}", name, self.genesis_id))
+            .expect("boringdb failed to open dictionary")
     }
 
     /// Opens a NodeStorage, given a meshanina and boringdb database.
@@ -80,8 +91,11 @@ impl Storage {
         }))
         .into();
         Self {
+            genesis_id,
+
             mempool,
             highest,
+            database: Arc::new(bdb),
             forest: forest.into(),
             old_cache: Arc::new(LruCache::new(100).into()),
             metadata,

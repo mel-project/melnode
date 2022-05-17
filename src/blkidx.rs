@@ -1,7 +1,9 @@
 use std::{sync::Arc, time::Instant};
 
 use dashmap::DashMap;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use stdcode::StdcodeSerializeExt;
 use themelio_structs::{Address, Block, BlockHeight, CoinID, NetID, TxKind};
 
 use super::Storage;
@@ -15,10 +17,25 @@ pub struct BlockIndexer {
 impl BlockIndexer {
     /// Creates a new block indexer that pulls blocks out of the given storage, asynchronously.
     pub fn new(storage: Storage) -> Self {
+        let persist = storage.open_dict("blkidx_backup");
+
         let height_to_map: Arc<DashMap<BlockHeight, CoinIndex>> = Default::default();
         let h2m = height_to_map.clone();
         let _task = smolscale::spawn(async move {
+            // we try to read the next unindexed from storage
             let mut next_unindexed = BlockHeight(1);
+            // we try to restore the actual mapping
+            let restored: Option<CoinIndex> = persist.get(b"latest").unwrap().map(|b| {
+                let value: CoinIndex =
+                    stdcode::deserialize(&lz4_flex::decompress_size_prepended(&b).unwrap())
+                        .unwrap();
+                value
+            });
+            if let Some(restored) = restored {
+                log::info!("Coin index restored at height {}", restored.height);
+                next_unindexed = restored.height + BlockHeight(1);
+                h2m.insert(restored.height, restored);
+            }
             let mut last_run = Instant::now();
             loop {
                 if storage.highest_height() >= next_unindexed {
@@ -36,9 +53,19 @@ impl BlockIndexer {
                             .map(|r| r.value().clone())
                             .unwrap_or_default();
                         let new = apply_onto.process_block(&state.to_block());
-                        h2m.insert(height, new);
+                        h2m.insert(height, new.clone());
                         if height > BlockHeight(10000) {
                             h2m.remove(&(height - BlockHeight(10000)));
+                        }
+                        assert_eq!(height, new.height);
+                        if height.0 % 10000 == 0 {
+                            let serialized = lz4_flex::compress_prepend_size(&new.stdcode());
+                            log::info!(
+                                "PERSISTING coin index of length {} at height {}",
+                                serialized.len(),
+                                height
+                            );
+                            persist.insert(b"latest".to_vec(), serialized).unwrap();
                         }
                         smol::future::yield_now().await;
                         next_unindexed = BlockHeight(height.0 + 1);
@@ -59,10 +86,11 @@ impl BlockIndexer {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 pub struct CoinIndex {
     owner_to_coins: imbl::HashMap<Address, imbl::HashSet<CoinID>>,
     coin_to_owner: imbl::HashMap<CoinID, Address>,
+    height: BlockHeight,
 }
 
 impl CoinIndex {
@@ -115,6 +143,7 @@ impl CoinIndex {
             let pseudo_coin = CoinID::proposer_reward(blk.header.height);
             self.add_coin(pseudo_coin, reward_addr)
         }
+        self.height += BlockHeight(1);
         self
     }
 
