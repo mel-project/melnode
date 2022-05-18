@@ -50,13 +50,10 @@ jobs:
       - name: Run Musl Build
         run: mold --run cargo build --target x86_64-unknown-linux-musl --features metrics --verbose
 
-      - name: Create Themelio-Node Archive
-        run: tar -czvf /tmp/themelio-node-mainnet-dev.tar.gz -C target/x86_64-unknown-linux-musl/ debug/themelio-node
-
       - uses: actions/upload-artifact@v3
         with:
           name: themelio-node-mainnet-dev
-          path: /tmp/themelio-node-mainnet-dev.tar.gz
+          path: target/x86_64-unknown-linux-musl/debug/themelio-node
 
 
 
