@@ -7,75 +7,127 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-#  SCCACHE_DIR: "/usr/local/sccache"
-#  RUSTC_WRAPPER: "/usr/local/bin/sccache"
+  CARGO_HOME: "/usr/local/cargo/"
+  RUSTUP_HOME: "/usr/local/rustup"
+  SCCACHE_DIR: "/usr/local/sccache"
+  RUSTC_WRAPPER: "/usr/local/bin/sccache"
 
 jobs:
-  build-and-test-mainnet:
+  musl-build-mainnet:
+
     runs-on: self-hosted
 
     container:
-      image: ghcr.io/themeliolabs/biome:latest
-      options: --privileged --user root
+      image: rust:latest
       volumes:
         - /var/lib/docker:/var/lib/docker
-#        - /usr/local/sccache:/usr/local/sccache
-#        - /hab/cache/artifacts:/hab/cache/artifacts
-#        - /hab/pkgs:/hab/pkgs
-#        - /usr/local/cargo/git:/usr/local/cargo/git
-#        - /usr/local/cargo/registry:/usr/local/cargo/registry
+        - /usr/local/cargo/git:/usr/local/cargo/git
+        - /usr/local/cargo/registry:/usr/local/cargo/registry
+        - /usr/local/sccache:/usr/local/sccache
+        - /usr/local/rustup:/usr/local/rustup
+        - /var/lib/docker:/var/lib/docker
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Import Biome Public Key
-        env:
-          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
-        run: echo "$BIOME_PUBLIC_KEY" | bio origin key import
+      - name: Update Apt
+        run: apt update
 
-      - name: Import Biome Signing Key
-        env:
-          BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
-        run: echo "$BIOME_SIGNING_KEY" | bio origin key import
+      - name: Install Musl
+        run: apt -y install musl musl-tools
 
-#      - name: Copy SCCache To Current Directory
-#        run: cp -a /usr/local/sccache sccache
-#
-#      - name: Create Cargo Directory
-#        run: mkdir cargo
-#
-#      - name: Copy Cargo Git Cache To Current Directory
-#        run: cp -a /usr/local/cargo/git cargo/git
-#
-#      - name: Copy Cargo Registry Cache To Current Directory
-#        run: cp -a /usr/local/cargo/registry cargo/registry
+      - uses: themeliolabs/actions-sccache@v1
 
-      - name: Build, Run BATS Tests
-        env:
-          HAB_ORIGIN: "themelio"
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
-          PROMTAIL_PASSWORD: ${{ secrets.PROMTAIL_PASSWORD }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-          NETWORK_TO_BUILD: "mainnet"
-        run: ./biome/themelio-node/scripts/ci-test.sh
+      - uses: themeliolabs/actions-mold@v1
 
-#      - name: Remove Old SCCache
-#        run: rm -rf /usr/local/sccache/*
+      - name: Add Default Toolchain
+        run: rustup default stable
+
+      - name: Add Musl Target Triple
+        run: rustup target add x86_64-unknown-linux-musl
+
+      - name: Run Musl Build
+        run: mold --run cargo build --target x86_64-unknown-linux-musl --features metrics --verbose
+
+      - name: Create MelwalletD Archive
+        run: tar -czvf /tmp/melwalletd.tar.gz -C target/x86_64-unknown-linux-gnu debug/themelio-node
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: themelio-node-mainnet-dev
+          path: /tmp/themelio-node-mainnet-dev.tar.gz
+
+
+
+#  build-and-test-mainnet:
+#    runs-on: self-hosted
 #
-#      - name: Copy SCCache From Build
-#        run: cp -a sccache/. /usr/local/sccache/
+#    container:
+#      image: ghcr.io/themeliolabs/biome:latest
+#      options: --privileged --user root
+#      volumes:
+#        - /var/lib/docker:/var/lib/docker
+##        - /usr/local/sccache:/usr/local/sccache
+##        - /hab/cache/artifacts:/hab/cache/artifacts
+##        - /hab/pkgs:/hab/pkgs
+##        - /usr/local/cargo/git:/usr/local/cargo/git
+##        - /usr/local/cargo/registry:/usr/local/cargo/registry
 #
-#      - name: Remove Old Cargo Git Cache
-#        run: rm -rf /usr/local/cargo/git/*
+#    needs:
+#      - musl-build-mainnet
 #
-#      - name: Copy Cargo Git Cache From Build
-#        run: cp -a cargo/git/. /usr/local/cargo/git/
+#    steps:
+#      - uses: actions/checkout@v3
 #
-#      - name: Remove Old Cargo Registry Cache
-#        run: rm -rf /usr/local/cargo/registry/*
+#      - name: Import Biome Public Key
+#        env:
+#          BIOME_PUBLIC_KEY: ${{ secrets.BIOME_PUBLIC_KEY }}
+#        run: echo "$BIOME_PUBLIC_KEY" | bio origin key import
 #
-#      - name: Copy Cargo Registry Cache From Build
-#        run: cp -a cargo/registry/. /usr/local/cargo/registry/
+#      - name: Import Biome Signing Key
+#        env:
+#          BIOME_SIGNING_KEY: ${{ secrets.BIOME_SIGNING_KEY }}
+#        run: echo "$BIOME_SIGNING_KEY" | bio origin key import
+#
+##      - name: Copy SCCache To Current Directory
+##        run: cp -a /usr/local/sccache sccache
+##
+##      - name: Create Cargo Directory
+##        run: mkdir cargo
+##
+##      - name: Copy Cargo Git Cache To Current Directory
+##        run: cp -a /usr/local/cargo/git cargo/git
+##
+##      - name: Copy Cargo Registry Cache To Current Directory
+##        run: cp -a /usr/local/cargo/registry cargo/registry
+#
+#      - name: Build, Run BATS Tests
+#        env:
+#          HAB_ORIGIN: "themelio"
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#          PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
+#          PROMTAIL_PASSWORD: ${{ secrets.PROMTAIL_PASSWORD }}
+#          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+#          NETWORK_TO_BUILD: "mainnet"
+#        run: ./biome/themelio-node/scripts/ci-test.sh
+#
+##      - name: Remove Old SCCache
+##        run: rm -rf /usr/local/sccache/*
+##
+##      - name: Copy SCCache From Build
+##        run: cp -a sccache/. /usr/local/sccache/
+##
+##      - name: Remove Old Cargo Git Cache
+##        run: rm -rf /usr/local/cargo/git/*
+##
+##      - name: Copy Cargo Git Cache From Build
+##        run: cp -a cargo/git/. /usr/local/cargo/git/
+##
+##      - name: Remove Old Cargo Registry Cache
+##        run: rm -rf /usr/local/cargo/registry/*
+##
+##      - name: Copy Cargo Registry Cache From Build
+##        run: cp -a cargo/registry/. /usr/local/cargo/registry/
