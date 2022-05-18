@@ -20,8 +20,8 @@ debug = 0
 lto = 'thin'
 codegen-units = 1 
 
-# [patch.crates-io]
-# novasmt={path="../novasmt"}  
+[patch.crates-io]
+themelio-stf={path="../themelio-stf"}  
 
 [profile.release-dbg]
 inherits = "release"
