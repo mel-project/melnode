@@ -88,3 +88,20 @@
         daemon_reload: yes
         state: started
         enabled: yes
+
+    - name: Copy the update-images-and-restart systemd service file onto the server
+      ansible.builtin.copy:
+        src: update-images-and-restart.service
+        dest: /usr/lib/systemd/system/update-images-and-restart.service
+
+    - name: Copy the update-images-and-restart systemd timer file onto the server
+      ansible.builtin.copy:
+        src: update-images-and-restart.timer
+        dest: /usr/lib/systemd/system/update-images-and-restart.timer
+
+    - name: Enable and start the update-images-and-restart timer
+      ansible.builtin.systemd:
+        name: themelio-node.timer
+        daemon_reload: yes
+        state: started
+        enabled: yes
