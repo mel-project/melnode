@@ -33,7 +33,4 @@ done
 
 
 # The above is an example from here: https://stackoverflow.com/questions/26423515/how-to-automatically-update-your-docker-containers-if-base-images-are-updated
-#
-# I need to adapt this, update the ansible/packer playbook to copy it into /usr/local/bin/, then have that be run through a systemd timer every 30 seconds
-#
-# Look here for the service/timer solution: https://stackoverflow.com/a/53557536
+# I need to adapt this, update the ansible/packer playbook to copy it into /usr/local/bin/

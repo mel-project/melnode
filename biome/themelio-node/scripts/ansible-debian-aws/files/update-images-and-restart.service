@@ -1,5 +1,0 @@
-[Unit]
-Description=Pull Latest Themelio-Node Image And Restart The Service
-[Service]
-User=admin
-ExecStart=/usr/local/bin/update-images-and-restart.sh
