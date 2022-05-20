@@ -2,4 +2,5 @@
 Description=Pull Latest Themelio-Node Image And Restart The Service
 [Service]
 User=admin
+Environment="NETWORK=testnet"
 ExecStart=/usr/local/bin/update-images-and-restart.sh

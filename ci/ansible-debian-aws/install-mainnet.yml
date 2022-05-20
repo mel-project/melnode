@@ -91,7 +91,7 @@
 
     - name: Copy the update-images-and-restart systemd service file onto the server
       ansible.builtin.copy:
-        src: update-images-and-restart.service
+        src: update-images-and-restart.service-mainnet
         dest: /usr/lib/systemd/system/update-images-and-restart.service
 
     - name: Copy the update-images-and-restart systemd timer file onto the server
