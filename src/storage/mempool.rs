@@ -11,7 +11,7 @@ pub struct Mempool {
     provisional_state: State<MeshaCas>,
     last_rebase: State<MeshaCas>,
     txx_in_state: HashSet<TxHash>,
-    seen: LruCache<TxHash, Transaction>,
+    // seen: LruCache<TxHash, ()>,
 }
 
 impl Mempool {
@@ -21,7 +21,7 @@ impl Mempool {
             provisional_state: state.clone(),
             last_rebase: state,
             txx_in_state: Default::default(),
-            seen: LruCache::new(100000),
+            // seen: LruCache::new(10000),
         }
     }
     /// Creates a State based on the present state of the mempool.
@@ -30,16 +30,17 @@ impl Mempool {
     }
 
     /// Tries to add a transaction to the mempool.
-    pub fn apply_transaction(&mut self, tx: &Transaction) -> Result<(), StateError> {
-        if !self.txx_in_state.insert(tx.hash_nosigs()) {
-            return Err(StateError::DuplicateTx);
+    pub fn apply_transaction(&mut self, tx: &Transaction) -> anyhow::Result<()> {
+        if self.provisional_state.transactions.len() < 100 {
+            if !self.txx_in_state.insert(tx.hash_nosigs()) {
+                return Err(StateError::DuplicateTx.into());
+            }
+            self.provisional_state.apply_tx(tx)?;
+            // self.seen.put(tx.hash_nosigs(), ());
+            Ok(())
+        } else {
+            anyhow::bail!("mempool is full")
         }
-        let start = Instant::now();
-        self.provisional_state.apply_tx(tx)?;
-        dbg!(start.elapsed());
-        self.seen.put(tx.hash_nosigs(), tx.clone());
-        dbg!(start.elapsed());
-        Ok(())
     }
 
     /// Forcibly replaces the internal state of the mempool with the given state.
@@ -63,9 +64,10 @@ impl Mempool {
 
     /// Lookups a recent transaction.
     pub fn lookup_recent_tx(&self, hash: TxHash) -> Option<Transaction> {
-        self.seen
-            .peek(&hash)
-            .cloned()
-            .or_else(|| self.provisional_state.transactions.get(&hash).cloned())
+        None
+        // self.seen
+        //     .peek(&hash)
+        //     .cloned()
+        //     .or_else(|| self.provisional_state.transactions.get(&hash).cloned())
     }
 }
