@@ -11,7 +11,7 @@ use futures_util::{StreamExt, TryStreamExt};
 use lru::LruCache;
 use novasmt::{CompressedProof, Database, InMemoryCas, Tree};
 use parking_lot::Mutex;
-use themelio_stf::SmtMapping;
+use themelio_stf::{SmtMapping, StateError};
 use themelio_structs::{AbbrBlock, Block, BlockHeight, ConsensusProof, NetID, Transaction, TxHash};
 
 use melnet::MelnetError;
@@ -181,7 +181,9 @@ impl NodeServer for AuditorResponder {
             .mempool_mut()
             .apply_transaction(&tx)
             .map_err(|e| {
-                log::warn!("cannot apply tx: {:?}", e);
+                if !e.to_string().contains("duplicate") {
+                    log::warn!("cannot apply tx: {:?}", e);
+                }
                 MelnetError::Custom(e.to_string())
             })?;
 
