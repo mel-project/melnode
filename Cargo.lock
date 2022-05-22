@@ -3002,9 +3002,9 @@ dependencies = [
 
 [[package]]
 name = "systemstat"
-version = "0.1.10"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8862adb0fd5f4c5707b0eeb6c2ec7610bd7a8bf5e069150bd6dde04a7f40ebf7"
+checksum = "5f5dc96f7634f46ac7e485b8c051f5b89ec8ee5cc023236dd12fe4ae2fb52f80"
 dependencies = [
  "bytesize",
  "chrono",
@@ -3116,11 +3116,12 @@ dependencies = [
 
 [[package]]
 name = "themelio-nodeprot"
-version = "0.11.1"
+version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3c33ea227c7f4cd68051a6d742c1d826267f26de482c2f73993759a8c814307"
+checksum = "05c4d487658b3838d52ef51a5765b225bed48c5f7913457eda8d64fb1ba30f5d"
 dependencies = [
  "anyhow",
+ "arrayref",
  "async-recursion",
  "async-trait",
  "bytes",
@@ -3131,6 +3132,8 @@ dependencies = [
  "melnet",
  "novasmt",
  "once_cell",
+ "parking_lot 0.12.0",
+ "rustc-hash",
  "serde",
  "smol",
  "smolscale",

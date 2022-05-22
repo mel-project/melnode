@@ -163,6 +163,7 @@ struct AuditorResponder {
     indexer: Option<BlockIndexer>,
     recent: Mutex<LruCache<TxHash, Instant>>,
 
+    summary: Mutex<LruCache<BlockHeight, StateSummary>>,
     coin_smts: Mutex<LruCache<BlockHeight, Tree<InMemoryCas>>>,
 }
 
@@ -225,16 +226,29 @@ impl NodeServer for AuditorResponder {
     fn get_summary(&self) -> anyhow::Result<StateSummary> {
         log::trace!("handling get_summary()");
         let highest = self.storage.highest_state();
-        let proof = self
-            .storage
-            .get_consensus(highest.header().height)
-            .unwrap_or_default();
-        Ok(StateSummary {
-            netid: self.network,
-            height: highest.inner_ref().height,
-            header: highest.header(),
-            proof,
-        })
+        let res = self
+            .summary
+            .lock()
+            .get(&highest.inner_ref().height)
+            .cloned();
+        if let Some(res) = res {
+            Ok(res)
+        } else {
+            let proof = self
+                .storage
+                .get_consensus(highest.inner_ref().height)
+                .unwrap_or_default();
+            let heh = StateSummary {
+                netid: self.network,
+                height: highest.inner_ref().height,
+                header: highest.header(),
+                proof,
+            };
+            self.summary
+                .lock()
+                .push(highest.inner_ref().height, heh.clone());
+            Ok(heh)
+        }
     }
 
     fn get_block(&self, height: BlockHeight) -> anyhow::Result<Block> {
@@ -301,6 +315,7 @@ impl AuditorResponder {
             },
             recent: LruCache::new(1000).into(),
             coin_smts: LruCache::new(100).into(),
+            summary: LruCache::new(10).into(),
         }
     }
 

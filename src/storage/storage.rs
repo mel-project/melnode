@@ -71,21 +71,25 @@ impl Storage {
         let mempool = Arc::new(Mempool::new(highest.next_state()).into());
         let highest = Arc::new(RwLock::new(highest));
         let _disk_sync = smolscale::spawn(clone!([highest, forest, metadata], async move {
+            let mut highest_height = BlockHeight(0);
             loop {
-                smol::Timer::after(Duration::from_secs(5)).await;
-                let start = Instant::now();
-                let highest = highest.read().clone();
-                let forest = forest.clone();
-                smol::unblock(move || forest.storage().flush()).await;
-                metadata
-                    .insert(
-                        b"last_confirmed_block".to_vec(),
-                        highest.to_block().stdcode(),
-                    )
-                    .unwrap();
-                let elapsed = start.elapsed();
-                if elapsed.as_secs() > 5 {
-                    log::warn!("**** FLUSHED IN {:?} ****", elapsed);
+                smol::Timer::after(Duration::from_secs(1)).await;
+                if highest.read().inner_ref().height > highest_height {
+                    let start = Instant::now();
+                    let highest = highest.read().clone();
+                    highest_height = highest.inner_ref().height;
+                    let forest = forest.clone();
+                    smol::unblock(move || forest.storage().flush()).await;
+                    metadata
+                        .insert(
+                            b"last_confirmed_block".to_vec(),
+                            highest.to_block().stdcode(),
+                        )
+                        .unwrap();
+                    let elapsed = start.elapsed();
+                    if elapsed.as_secs() > 5 {
+                        log::warn!("**** FLUSHED IN {:?} ****", elapsed);
+                    }
                 }
             }
         }))
