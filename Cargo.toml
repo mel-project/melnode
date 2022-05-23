@@ -1,6 +1,6 @@
 [package]
 name = "themelio-node"
-version = "0.7.2-alpha.0"
+version = "0.7.2"
 repository ="https://github.com/themeliolabs/themelio-node"
 license = "MPL-2.0"
 description = "Reference implementation of Themelio"
