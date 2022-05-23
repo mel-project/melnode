@@ -2,35 +2,42 @@
 
 set -e
 
-BASE_IMAGE="registry"
-REGISTRY="registry.hub.docker.com"
-IMAGE="$REGISTRY/$BASE_IMAGE"
-CID=$(docker ps | grep $IMAGE | awk '{print $1}')
-docker pull $IMAGE
 
-for im in $CID
-do
-    LATEST=`docker inspect --format "{{.Id}}" $IMAGE`
-    RUNNING=`docker inspect --format "{{.Image}}" $im`
-    NAME=`docker inspect --format '{{.Name}}' $im | sed "s/\///g"`
-    echo "Latest:" $LATEST
-    echo "Running:" $RUNNING
-    if [ "$RUNNING" != "$LATEST" ];then
-        echo "upgrading $NAME"
-        stop docker-$NAME
-        docker rm -f $NAME
-        start docker-$NAME
-    else
-        echo "$NAME up to date"
-    fi
-done
+if [ "${NETWORK}" == "mainnet" ]; then
+  IMAGE=ghcr.io/themeliolabs/themelio-node-mainnet
+  CURRENT_CONTAINER_ID=$(docker ps | grep ${IMAGE} | awk '{print $1}')
+elif [ "${NETWORK}" == "testnet" ]; then
+  IMAGE=ghcr.io/themeliolabs/themelio-node-testnet
+  CURRENT_CONTAINER_ID=$(docker ps | grep ${IMAGE} | awk '{print $1}')
+else
+  echo "NETWORK not specified. Not running update."
+  exit 1
+fi
 
 
+echo "Image is: ${IMAGE}"
 
-#ExecStartPre=/usr/local/bin/docker-compose -f /home/admin/compose/docker-compose.yml down
-#ExecStart=/usr/bin/bash -c 'HOSTNAME=$HOSTNAME exec /usr/local/bin/docker-compose -f /home/admin/compose/docker-compose.yml up'
-#ExecStop=/usr/local/bin/docker-compose -f /home/admin/compose/docker-compose.yml down
+echo "Running container ID is: ${CURRENT_CONTAINER_ID}"
+
+echo "Pulling latest image"
+docker pull "${IMAGE}" > /dev/null 2>&1
+
+CURRENT_IMAGE_SHA=$(docker inspect --format "{{.Image}}" "${CURRENT_CONTAINER_ID}")
+
+LATEST_IMAGE_SHA=$(docker inspect --format "{{.Id}}" "${IMAGE}")
+
+echo "Current image SHA is: ${CURRENT_IMAGE_SHA}"
+
+echo "Latest image SHA is: ${LATEST_IMAGE_SHA}"
 
 
-# The above is an example from here: https://stackoverflow.com/questions/26423515/how-to-automatically-update-your-docker-containers-if-base-images-are-updated
-# I need to adapt this, update the ansible/packer playbook to copy it into /usr/local/bin/
+
+if [ "${CURRENT_IMAGE_SHA}" != "${LATEST_IMAGE_SHA}" ];then
+  echo "Upgrading to the latest image."
+  systemctl restart themelio-node
+
+  echo "Removing old images."
+  docker image prune -a -f
+else
+  echo "Already running the latest image."
+fi
