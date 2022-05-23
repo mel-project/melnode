@@ -1626,9 +1626,9 @@ dependencies = [
 
 [[package]]
 name = "meshanina"
-version = "0.3.18"
+version = "0.3.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6df599b6f236a18854074688a1079a369d733c03778bd55aa663e9f264f2ebdf"
+checksum = "6a6e28a04b3f18d2279d2bac219dc0f92b5180f7bd99e84ae5fe00c41ac923c0"
 dependencies = [
  "arrayref",
  "blake3",
@@ -1741,9 +1741,9 @@ dependencies = [
 
 [[package]]
 name = "novasmt"
-version = "0.2.18"
+version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "52cca6c403323ccecd51049ab50c859884b80b9b47256a69c68437dcf1250d5e"
+checksum = "b044639a0bcf51231391d325e432ffe04a293caee4f86154c3716e81fca2943e"
 dependencies = [
  "arrayref",
  "backtrace",
@@ -1930,9 +1930,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.11.0"
+version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b10983b38c53aebdf33f542c6275b0f58a238129d00c4ae0e6fb59738d783ca"
+checksum = "7709cef83f0c1f58f666e746a08b21e0085f7440fa6a29cc194d68aac97a4225"
 
 [[package]]
 name = "opaque-debug"
@@ -3145,7 +3145,9 @@ dependencies = [
 
 [[package]]
 name = "themelio-stf"
-version = "0.10.4"
+version = "0.10.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "192373f0f5493bc91d69a60d0563bcf08e1f94c82adc3c3979d4f27ec4481d6c"
 dependencies = [
  "arbitrary",
  "assoc",

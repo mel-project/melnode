@@ -23,7 +23,7 @@ static ALLOC: dhat::Alloc = dhat::Alloc;
 
 fn main() -> anyhow::Result<()> {
     if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "themelio_node=debug,warn");
+        std::env::set_var("RUST_LOG", "themelio_node::=debug,warn");
     }
     let mut builder = env_logger::Builder::from_env("RUST_LOG");
     #[cfg(feature = "metrics")]
