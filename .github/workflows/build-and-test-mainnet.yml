@@ -74,14 +74,11 @@ jobs:
       - name: Install Yq
         run: pip install yq
 
-      - name: Echo Version
-        run: echo $(cat Cargo.toml | tomlq .package.version | tr -d '"')
+      - name: Create Version Environment Variable
+        run: echo "THEMELIO_NODE_VERSION=$(cat Cargo.toml | tomlq .package.version | tr -d '"')" >> $GITHUB_ENV
 
-#      - name: Create Tag Date
-#        run: echo "TAG_DATE=$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
-#
-#      - name: Build Docker Image
-#        run: docker build -t "ghcr.io/themeliolabs/biome:${TAG_DATE}" biome/
+      - name: Build Docker Image
+        run: docker build -t "ghcr.io/themeliolabs/themelio-node:${THEMELIO_NODE_VERSION}" docker/
 
 
 
