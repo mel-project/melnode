@@ -60,17 +60,6 @@ jobs:
   build-and-test-mainnet:
     runs-on: self-hosted
 
-    container:
-      image: ghcr.io/themeliolabs/biome:latest
-      options: --privileged --user root
-      volumes:
-        - /var/lib/docker:/var/lib/docker
-#        - /usr/local/sccache:/usr/local/sccache
-#        - /hab/cache/artifacts:/hab/cache/artifacts
-#        - /hab/pkgs:/hab/pkgs
-#        - /usr/local/cargo/git:/usr/local/cargo/git
-#        - /usr/local/cargo/registry:/usr/local/cargo/registry
-
     needs:
       - musl-build-mainnet
 
@@ -80,9 +69,21 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: themelio-node-mainnet-dev
+          path: docker/
 
-      - name: List
-        run: ls -la
+      - name: Install Yq
+        run: pip install yq
+
+      - name: Echo Version
+        run: echo $(cat Cargo.toml | tomlq .package.version | tr -d '"')
+
+#      - name: Create Tag Date
+#        run: echo "TAG_DATE=$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+#
+#      - name: Build Docker Image
+#        run: docker build -t "ghcr.io/themeliolabs/biome:${TAG_DATE}" biome/
+
+
 
 #      - name: Build, Run BATS Tests
 #        env:
