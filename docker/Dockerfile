@@ -1,7 +1,7 @@
-FROM summerwind/actions-runner:latest
+FROM debian:stable-slim
 
-RUN sudo apt update
-RUN sudo apt -y install curl
+RUN apt update
+RUN apt -y install curl
 
 COPY themelio-node /usr/local/bin/themelio-node
 COPY run.sh /usr/local/bin/run.sh
