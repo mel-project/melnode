@@ -35,7 +35,7 @@ jobs:
         run: apt update
 
       - name: Install Musl
-        run: apt -y install musl musl-tools p7zip
+        run: apt -y install musl musl-tools p7zip pigz
 
       - uses: themeliolabs/actions-sccache@v1
 
@@ -53,13 +53,19 @@ jobs:
 #      - name: Create Themelio-Node Archive
 #        run: tar -czvf themelio-node.tar.gz -C target/x86_64-unknown-linux-musl/ debug/themelio-node
 
+#      - name: Create Themelio-Node Archive
+#        run: 7zr a themelio-node.7z target/x86_64-unknown-linux-musl/debug/themelio-node
+
       - name: Create Themelio-Node Archive
-        run: 7zr a themelio-node.7z target/x86_64-unknown-linux-musl/debug/themelio-node
+        run: pigz --best target/x86_64-unknown-linux-musl/debug/themelio-node
+
+      - name: Move Themelio-Node Archive
+        run: mv target/x86_64-unknown-linux-musl/debug/themelio-node.gz .
 
       - uses: actions/upload-artifact@v3
         with:
           name: themelio-node-mainnet-dev
-          path: themelio-node.7z
+          path: themelio-node.gz
 
 
 
@@ -83,7 +89,7 @@ jobs:
         run: apt update
 
       - name: Install Musl
-        run: apt -y install p7zip
+        run: apt -y install p7zip pigz
 
       - uses: actions/download-artifact@v3
         with:
@@ -92,8 +98,11 @@ jobs:
 #      - name: Extract Themelio-Node Archive
 #        run: tar -xf docker/dev/themelio-node.tar.gz -C docker/dev/
 
+#      - name: Extract Themelio-Node Archive
+#        run: 7zr e themelio-node.7z
+
       - name: Extract Themelio-Node Archive
-        run: 7zr e themelio-node.7z
+        run: unpigz themelio-node.gz
 
       - name: Move Themelio-Node Binary
         run: mv themelio-node docker/dev/
