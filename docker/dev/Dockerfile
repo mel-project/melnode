@@ -26,4 +26,7 @@ COPY ci.bats /tmp/ci.bats
 
 WORKDIR /
 
+EXPOSE 8080
+EXPOSE 11814
+
 ENTRYPOINT ["run.sh"]

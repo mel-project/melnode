@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - master
+      - testnet
 
 env:
   CARGO_TERM_COLOR: always
@@ -13,7 +14,7 @@ env:
   RUSTC_WRAPPER: "/usr/local/bin/sccache"
 
 jobs:
-  musl-build-mainnet:
+  musl-build:
 
     runs-on: self-hosted
 
@@ -57,7 +58,7 @@ jobs:
 
 
 
-  build-docker-image-and-run-bats-mainnet:
+  build-docker-image-and-run-bats:
     runs-on: self-hosted
 
     container:
@@ -90,9 +91,6 @@ jobs:
 
       - name: Run Docker Image
         run: docker run -p 11814:11814 -p 8080:8080 ghcr.io/themeliolabs/themelio-node-mainnet:${THEMELIO_NODE_VERSION}
-
-#      - name: Exit
-#        run: exit $(echo $?)
 
 
 #      - name: Build, Run BATS Tests
