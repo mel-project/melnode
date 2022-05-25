@@ -80,7 +80,7 @@ jobs:
           path: docker/dev/
 
       - name: Create Themelio-Node Archive
-        run: tar -xf themelio-node.tar.gz
+        run: pushd docker/dev/; tar -xf themelio-node.tar.gz; popd
 
       - name: List Contents
         run: ls -la docker/dev
