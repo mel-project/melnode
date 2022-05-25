@@ -79,8 +79,8 @@ jobs:
           name: themelio-node-mainnet-dev
           path: docker/dev/
 
-      - name: Create Themelio-Node Archive
-        run: pushd docker/dev/; tar -xf themelio-node.tar.gz; popd
+      - name: Extract Themelio-Node Archive
+        run: tar -xf docker/dev/themelio-node.tar.gz -C docker/dev/
 
       - name: List Contents
         run: ls -la docker/dev
