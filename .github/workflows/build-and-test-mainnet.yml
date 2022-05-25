@@ -81,7 +81,7 @@ jobs:
         run: docker build -t "ghcr.io/themeliolabs/themelio-node-mainnet:${THEMELIO_NODE_VERSION}" docker/dev/
 
       - name: Run Docker Image
-        run: docker run -p 11814:11814 -p 8080:8080 ghcr.io/themeliolabs/themelio-node-mainnet:${THEMELIO_NODE_VERSION}
+        run: sudo docker run -p 11814:11814 -p 8080:8080 ghcr.io/themeliolabs/themelio-node-mainnet:${THEMELIO_NODE_VERSION}
 
 #      - name: Exit
 #        run: exit $(echo $?)
