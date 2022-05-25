@@ -1,5 +1,8 @@
 FROM debian:stable-slim
 
+ARG themelio_node_version
+ENV THEMELIO_NODE_VERSION ${themelio_node_version}
+
 RUN apt update
 RUN apt -y install curl wget nmap
 

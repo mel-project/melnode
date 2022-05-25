@@ -60,6 +60,10 @@ jobs:
   build-docker-image-and-run-bats-mainnet:
     runs-on: self-hosted
 
+    container:
+      image: summerwind/actions-runner-dind:latest
+      options: --privileged --user root
+
     needs:
       - musl-build-mainnet
 
@@ -78,10 +82,10 @@ jobs:
         run: echo "THEMELIO_NODE_VERSION=$(cat Cargo.toml | tomlq .package.version | tr -d '"')" >> $GITHUB_ENV
 
       - name: Build Docker Image
-        run: docker build -t "ghcr.io/themeliolabs/themelio-node-mainnet:${THEMELIO_NODE_VERSION}" docker/dev/
+        run: docker build --build-arg themelio_node_version=${THEMELIO_NODE_VERSION} -t "ghcr.io/themeliolabs/themelio-node-mainnet:${THEMELIO_NODE_VERSION}" docker/dev/
 
       - name: Run Docker Image
-        run: sudo docker run -p 11814:11814 -p 8080:8080 ghcr.io/themeliolabs/themelio-node-mainnet:${THEMELIO_NODE_VERSION}
+        run: docker run -p 11814:11814 -p 8080:8080 ghcr.io/themeliolabs/themelio-node-mainnet:${THEMELIO_NODE_VERSION}
 
 #      - name: Exit
 #        run: exit $(echo $?)
