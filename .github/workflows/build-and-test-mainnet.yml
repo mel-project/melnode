@@ -34,8 +34,8 @@ jobs:
       - name: Update Apt
         run: apt update
 
-      - name: Install Musl
-        run: apt -y install musl musl-tools p7zip pigz
+      - name: Install Requirements
+        run: apt -y install musl musl-tools p7zip
 
       - uses: themeliolabs/actions-sccache@v1
 
@@ -79,7 +79,7 @@ jobs:
       - name: Update Apt
         run: apt update
 
-      - name: Install Musl
+      - name: Install P7Zip
         run: apt -y install p7zip
 
       - uses: actions/download-artifact@v3
@@ -91,9 +91,6 @@ jobs:
 
       - name: Move Themelio-Node Binary
         run: mv themelio-node docker/dev/
-
-      - name: List Contents
-        run: ls -la docker/dev
 
       - name: Install Yq
         run: pip install yq
