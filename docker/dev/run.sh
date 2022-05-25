@@ -9,6 +9,5 @@ else
   themelio-node --database /var/lib/themelio-node/main --listen 0.0.0.0:11814 --advertise "${PUBLIC_IP_ADDRESS}":11814 &
   sleep 3
   bats --print-output-on-failure /tmp/ci.bats
-  killall themelio-node
   exit 0
 fi
