@@ -75,6 +75,10 @@ jobs:
           name: themelio-node-mainnet-dev
           path: docker/dev/
 
+      - name: List Contents
+        run: ls -la docker/dev
+
+
       - name: Install Yq
         run: pip install yq
 

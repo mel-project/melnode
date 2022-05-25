@@ -7,6 +7,7 @@ RUN apt update
 RUN apt -y install curl wget nmap
 
 COPY themelio-node /usr/local/bin/themelio-node
+RUN chmod +x /usr/local/bin/themelio-node
 COPY run.sh /usr/local/bin/run.sh
 
 WORKDIR /tmp

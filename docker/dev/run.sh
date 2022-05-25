@@ -8,5 +8,5 @@ else
   PUBLIC_IP_ADDRESS="$(curl -s http://checkip.amazonaws.com)"
   themelio-node --database /var/lib/themelio-node/main --listen 0.0.0.0:11814 --advertise "${PUBLIC_IP_ADDRESS}":11814 &
   sleep 5
-  bats --print-output-on-failure /tmp/test-ci-mainnet.bats
+  bats --print-output-on-failure /tmp/ci.bats
 fi
