@@ -1561,9 +1561,9 @@ checksum = "a3e378b66a060d48947b590737b30a1be76706c8dd7b8ba0f2fe3989c68a853f"
 
 [[package]]
 name = "melnet"
-version = "0.2.25"
+version = "0.2.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14311ac28cec5f1ab21b4e1b0ca18545d8bcdb2e864b08edd9cb1649741a15ba"
+checksum = "1e3e6f6e47179e604e22e447062c0fbe35873f30705e5615e5c6065122a49fe3"
 dependencies = [
  "anyhow",
  "async-net",

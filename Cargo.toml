@@ -89,7 +89,7 @@ hex = "0.4.3"
 imbl = { version = "1.0.1", features = ["serde"] }
 log = "0.4.17"
 lru = "0.7.5"
-melnet = "0.2.25"
+melnet = "0.2.26"
 # meshanina = {path="../meshanina"}
 meshanina = "0.3.19"
 novasmt = "0.2.19"
