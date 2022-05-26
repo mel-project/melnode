@@ -15,7 +15,7 @@ if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
     export AWS_REGION=${region}
 
     envsubst < "${CI_DIRECTORY}/packer/base-image.pkr.hcl.temp" > "${CI_DIRECTORY}/packer/temporary-templates/base-image-$region.pkr.hcl"
-    envsubst < "${CI_DIRECTORY}/packer/mainnet.pkr.hcl.temp" > "${CI_DIRECTORY}/packer/temporary-templates/mainnet-$region.pkr.hcl"
+#    envsubst < "${CI_DIRECTORY}/packer/mainnet.pkr.hcl.temp" > "${CI_DIRECTORY}/packer/temporary-templates/mainnet-$region.pkr.hcl"
   done
 
   echo "Joining packer templates"
