@@ -80,7 +80,7 @@ jobs:
         run: apt update
 
       - name: Install Requirements
-        run: apt -y install p7zip gettext
+        run: apt -y install p7zip gettext packer
 
       - uses: actions/download-artifact@v3
         with:
