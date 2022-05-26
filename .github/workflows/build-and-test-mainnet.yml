@@ -104,15 +104,12 @@ jobs:
       - name: Run Docker Image
         run: docker run -p 11814:11814 -p 8080:8080 ghcr.io/themeliolabs/themelio-node-mainnet:${THEMELIO_NODE_VERSION}
 
-
-#      - name: Build, Run BATS Tests
-#        env:
-#          HAB_ORIGIN: "themelio"
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#          PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
-#          PROMTAIL_PASSWORD: ${{ secrets.PROMTAIL_PASSWORD }}
-#          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-#          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-#          NETWORK_TO_BUILD: "mainnet"
-#        run: ./biome/themelio-node/scripts/ci-test.sh
+      - name: Verify Packer
+        env:
+          PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
+          PROMTAIL_PASSWORD: ${{ secrets.PROMTAIL_PASSWORD }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+          NETWORK_TO_BUILD: "mainnet"
+        run: ./ci/packer-test.sh
