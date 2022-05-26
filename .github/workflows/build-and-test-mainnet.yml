@@ -121,7 +121,7 @@ jobs:
         run: sudo apt update
 
       - name: Install Requirements
-        run: sudo apt -y install gettext packer
+        run: sudo apt -y install gettext packer ansible
 
       - name: Show Packer Version
         run: packer --version
