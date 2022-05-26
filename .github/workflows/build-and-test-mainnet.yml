@@ -117,7 +117,10 @@ jobs:
       - name: Install Requirements
         run: sudo apt -y install gettext packer
 
-      - name: Verify Packer
-        env:
-          NETWORK_TO_BUILD: "mainnet"
-        run: ./ci/packer-test.sh
+      - name: Show Packer Version
+        run: packer --version
+
+#      - name: Verify Packer
+#        env:
+#          NETWORK_TO_BUILD: "mainnet"
+#        run: ./ci/packer-test.sh
