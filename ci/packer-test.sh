@@ -2,9 +2,25 @@
 
 set -ex
 
+export PROMTAIL_USERNAME
+
 export CI_DIRECTORY="$(dirname "${0}")"
 export ROOT_DIRECTORY="$(dirname "${CI_DIRECTORY}")"
 
+
+if [ -z "${PROMTAIL_USERNAME}" ]; then
+  echo "The PROMTAIL_USERNAME environment variable must be set."
+  echo "Exiting."
+
+  exit 1
+fi
+
+if [ -z "${PROMTAIL_PASSWORD}" ]; then
+  echo "The PROMTAIL_PASSWORD environment variable must be set."
+  echo "Exiting."
+
+  exit 1
+fi
 
 mkdir -p ${CI_DIRECTORY}/packer/temporary-templates
 

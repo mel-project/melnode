@@ -128,5 +128,7 @@ jobs:
 
       - name: Verify Packer
         env:
+          PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
+          PROMTAIL_PASSWORD: ${{ secrets.PROMTAIL_PASSWORD }}
           NETWORK_TO_BUILD: "mainnet"
         run: ./ci/packer-test.sh
