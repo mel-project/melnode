@@ -60,7 +60,7 @@ jobs:
 
 
 
-  build-docker-image-and-run-bats:
+  build-docker-image-run-bats-and-verify-packer:
     runs-on: self-hosted
 
     container:
@@ -79,8 +79,8 @@ jobs:
       - name: Update Apt
         run: apt update
 
-      - name: Install P7Zip
-        run: apt -y install p7zip
+      - name: Install Requirements
+        run: apt -y install p7zip gettext
 
       - uses: actions/download-artifact@v3
         with:
