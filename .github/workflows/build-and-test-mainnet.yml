@@ -111,6 +111,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Add Packer Apt Key
+        run: curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+
+      - name: Add Packer Repository Key
+        run: sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+
       - name: Update Apt
         run: sudo apt update
 
@@ -120,7 +126,7 @@ jobs:
       - name: Show Packer Version
         run: packer --version
 
-#      - name: Verify Packer
-#        env:
-#          NETWORK_TO_BUILD: "mainnet"
-#        run: ./ci/packer-test.sh
+      - name: Verify Packer
+        env:
+          NETWORK_TO_BUILD: "mainnet"
+        run: ./ci/packer-test.sh
