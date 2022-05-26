@@ -21,7 +21,7 @@ build {
 
   provisioner "ansible" {
     groups = ["themelio_node"]
-    playbook_file = "$SCRIPTS_DIRECTORY/ansible-debian-aws/install-testnet.yml"
+    playbook_file = "$CI_DIRECTORY/ansible-debian-aws/install-testnet.yml"
     user = "admin"
     extra_arguments = [
       "--extra-vars", "aws_region=$AWS_REGION promtail_username=$PROMTAIL_USERNAME promtail_password=$PROMTAIL_PASSWORD"
