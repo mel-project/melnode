@@ -2,10 +2,6 @@
 
 set -ex
 
-export AWS_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY
-export AWS_DEFAULT_REGION
-
 export CI_DIRECTORY="$(dirname "${0}")"
 export ROOT_DIRECTORY="$(dirname "${CI_DIRECTORY}")"
 
@@ -30,8 +26,11 @@ if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
   rm ${CI_DIRECTORY}/themelio-node-mainnet-debian-aws.pkr.hcl.temp
   rm -rf ${CI_DIRECTORY}/packer/temporary-templates
 
-  echo "Validating packer mainnet template"
-  packer validate "${CI_DIRECTORY}/themelio-node-mainnet-debian-aws.pkr.hcl"
+#  echo "Validating packer mainnet template"
+#  packer validate "${CI_DIRECTORY}/themelio-node-mainnet-debian-aws.pkr.hcl"
+
+  echo "Show Packer Template"
+  cat "${CI_DIRECTORY}/themelio-node-mainnet-debian-aws.pkr.hcl"
 
 elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
   for region in $(cat $CI_DIRECTORY/packer/aws_regions); do
