@@ -1,4 +1,4 @@
-name: BuildAndTestMainNet
+name: BuildAndTest
 
 on:
   pull_request:
@@ -123,12 +123,12 @@ jobs:
       - name: Install Requirements
         run: sudo apt -y install gettext packer ansible
 
-      - name: Show Packer Version
-        run: packer --version
+      - name: Set Network
+        run: ./ci/set-network.sh
 
       - name: Verify Packer
         env:
           PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
           PROMTAIL_PASSWORD: ${{ secrets.PROMTAIL_PASSWORD }}
-          NETWORK_TO_BUILD: "mainnet"
+#          NETWORK_TO_BUILD: "mainnet"
         run: ./ci/packer-test.sh
