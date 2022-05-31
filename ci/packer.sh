@@ -42,8 +42,14 @@ if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
   rm ${CI_DIRECTORY}/themelio-node-mainnet-debian-aws.pkr.hcl.temp
   rm -rf ${CI_DIRECTORY}/packer/temporary-templates
 
-  echo "Validating packer mainnet template"
-  packer validate "${CI_DIRECTORY}/themelio-node-mainnet-debian-aws.pkr.hcl"
+
+  if [ "${PUBLISH}" == "true" ]; then
+    echo "Building packer mainnet images"
+    packer build "${CI_DIRECTORY}/themelio-node-mainnet-debian-aws.pkr.hcl"
+  else
+    echo "Validating packer mainnet template"
+    packer validate "${CI_DIRECTORY}/themelio-node-mainnet-debian-aws.pkr.hcl"
+  fi
 
 elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
   for region in $(cat $CI_DIRECTORY/packer/aws_regions); do
@@ -63,8 +69,13 @@ elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
     rm ${CI_DIRECTORY}/themelio-node-testnet-debian-aws.pkr.hcl.temp
     rm -rf ${CI_DIRECTORY}/packer/temporary-templates
 
+  if [ "${PUBLISH}" == "true" ]; then
+    echo "Building packer testnet images"
+    packer build "${CI_DIRECTORY}/themelio-node-testnet-debian-aws.pkr.hcl"
+  else
     echo "Validating packer testnet template"
     packer validate "${CI_DIRECTORY}/themelio-node-testnet-debian-aws.pkr.hcl"
+  fi
 
 else
   echo "No network specified with NETWORK_TO_BUILD. Exiting."

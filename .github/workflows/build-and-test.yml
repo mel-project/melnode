@@ -55,7 +55,7 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
-          name: themelio-node-mainnet-dev
+          name: themelio-node-dev
           path: themelio-node.7z
 
 
@@ -84,7 +84,7 @@ jobs:
 
       - uses: actions/download-artifact@v3
         with:
-          name: themelio-node-mainnet-dev
+          name: themelio-node-dev
 
       - name: Extract Themelio-Node Archive
         run: 7zr e themelio-node.7z
@@ -98,11 +98,18 @@ jobs:
       - name: Create Version Environment Variable
         run: echo "THEMELIO_NODE_VERSION=$(cat Cargo.toml | tomlq .package.version | tr -d '"')" >> $GITHUB_ENV
 
+      - name: Set Network
+        run: ./ci/set-network.sh
+
       - name: Build Docker Image
-        run: docker build --build-arg themelio_node_version=${THEMELIO_NODE_VERSION} -t "ghcr.io/themeliolabs/themelio-node-mainnet:${THEMELIO_NODE_VERSION}" docker/dev/
+        env:
+          NETWORK_TO_BUILD: ${{ env.NETWORK_TO_BUILD }}
+        run: docker build --build-arg themelio_node_version=${THEMELIO_NODE_VERSION} -t "ghcr.io/themeliolabs/themelio-node-${NETWORK_TO_BUILD}:${THEMELIO_NODE_VERSION}" docker/dev/
 
       - name: Run Docker Image
-        run: docker run -p 11814:11814 -p 8080:8080 ghcr.io/themeliolabs/themelio-node-mainnet:${THEMELIO_NODE_VERSION}
+        env:
+          NETWORK_TO_BUILD: ${{ env.NETWORK_TO_BUILD }}
+        run: docker run -p 11814:11814 -p 8080:8080 ghcr.io/themeliolabs/themelio-node-${NETWORK_TO_BUILD}:${THEMELIO_NODE_VERSION}
 
   verify-packer:
     runs-on: self-hosted
@@ -130,5 +137,4 @@ jobs:
         env:
           PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
           PROMTAIL_PASSWORD: ${{ secrets.PROMTAIL_PASSWORD }}
-#          NETWORK_TO_BUILD: "mainnet"
-        run: ./ci/packer-test.sh
+        run: ./ci/packer.sh

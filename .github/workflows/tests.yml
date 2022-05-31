@@ -31,12 +31,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - uses: themeliolabs/actions-sccache@v1
-
-      - uses: themeliolabs/actions-mold@v1
-
-      - name: Add Default Toolchain
-        run: rustup default stable
-
-      - name: Run tests
-        run: mold --run cargo test --target=x86_64-unknown-linux-gnu --verbose
+#      - uses: themeliolabs/actions-sccache@v1
+#
+#      - uses: themeliolabs/actions-mold@v1
+#
+#      - name: Add Default Toolchain
+#        run: rustup default stable
+#
+#      - name: Run tests
+#        run: mold --run cargo test --target=x86_64-unknown-linux-gnu --verbose
