@@ -1,13 +1,7 @@
 name: BuildAndPublish
 
-#on:
-#  push:
-#    branches:
-#      - master
-#      - testnet
-
 on:
-  pull_request:
+  push:
     branches:
       - master
       - testnet
