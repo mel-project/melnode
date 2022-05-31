@@ -101,7 +101,7 @@
 
     - name: Enable and start the update-images-and-restart timer
       ansible.builtin.systemd:
-        name: themelio-node.timer
+        name: update-images-and-restart.timer
         daemon_reload: yes
         state: started
         enabled: yes
