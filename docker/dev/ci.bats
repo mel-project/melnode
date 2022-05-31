@@ -1,8 +1,6 @@
-source "${BATS_TEST_DIRNAME}/../plan.sh"
-
 @test "Version matches" {
   output="$(themelio-node --version | head -1 | awk '{print $2}')"
-  [ "$output" = "${pkg_version}" ]
+  [ "$output" = "${THEMELIO_NODE_VERSION}" ]
 }
 
 @test "Help flag works" {
@@ -13,10 +11,6 @@ source "${BATS_TEST_DIRNAME}/../plan.sh"
 @test "Service is running (via nmap)" {
   output="$(nmap 127.0.0.1 -p 11814 | tail -3 | head -1 | awk '{print $2}')"
   [ "$output" = "open" ]
-}
-
-@test "Service is running" {
-  [ "$(bio svc status | grep "themelio-node-mainnet\.default" | awk '{print $4}' | grep up)" ]
 }
 
 @test "Metrics webserver is running" {

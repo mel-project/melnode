@@ -1,0 +1,12 @@
+[Unit]
+Description=themelio-node
+Requires=docker.service
+After=docker.service
+[Service]
+Restart=always
+User=admin
+ExecStartPre=/usr/local/bin/docker-compose -f /home/admin/compose/docker-compose.yml down
+ExecStart=/usr/bin/bash -c 'HOSTNAME=$HOSTNAME exec /usr/local/bin/docker-compose -f /home/admin/compose/docker-compose.yml up'
+ExecStop=/usr/local/bin/docker-compose -f /home/admin/compose/docker-compose.yml down
+[Install]
+WantedBy=multi-user.target

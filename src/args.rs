@@ -1,13 +1,8 @@
-#[cfg(feature = "metrics")]
-use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
-
-use crate::storage::NodeStorage;
+use crate::storage::Storage;
 
 use std::{net::SocketAddr, path::PathBuf};
 
 use anyhow::Context;
-use smol::{io::AsyncWriteExt, stream::StreamExt};
-use std::time::Duration;
 use structopt::StructOpt;
 use tap::Tap;
 use themelio_stf::GenesisConfig;
@@ -56,10 +51,9 @@ pub struct Args {
     #[structopt(long)]
     testnet: bool,
 
-    /// If set, prunes the database at start and, on average, every 24 hours.
-    #[structopt(long)]
-    prune: bool,
-
+    // /// If set, prunes the database at start and, on average, every 24 hours.
+    // #[structopt(long)]
+    // prune: bool,
     /// Fee multiplier to target. Default is 1000.
     #[structopt(long, default_value = "1000")]
     target_fee_multiplier: u128,
@@ -90,9 +84,7 @@ impl Args {
         } else if self.testnet {
             #[cfg(feature = "metrics")]
             {
-                *crate::prometheus::NETWORK
-                    .write()
-                    .expect("Could not get a write lock on NETWORK") = "testnet";
+                *crate::prometheus::NETWORK.write() = "testnet";
             }
 
             Ok(GenesisConfig::std_testnet())
@@ -101,7 +93,7 @@ impl Args {
         }
     }
 
-    pub async fn storage(&self) -> anyhow::Result<NodeStorage> {
+    pub async fn storage(&self) -> anyhow::Result<Storage> {
         let database_base_path = PathBuf::from(self.database.to_string());
         let metadata_path = database_base_path
             .clone()
@@ -117,76 +109,13 @@ impl Args {
             meshanina::Mapping::open(&smt_path).context("cannot open meshanina database")?;
         log::debug!("database opened at {}", self.database);
 
-        let storage = if self.prune {
-            let from_space = NodeStorage::new(smt_db, meta_db, self.genesis_config().await?);
-            let temp_metadata_path = database_base_path
-                .clone()
-                .tap_mut(|path| path.push("new-metadata.db"));
-            let temp_metadata_journal_path = database_base_path
-                .clone()
-                .tap_mut(|path| path.push("new-metadata.db-journal"));
-            let temp_smt_path = database_base_path
-                .clone()
-                .tap_mut(|path| path.push("new-smt.db"));
-            let meta_db = boringdb::Database::open(&temp_metadata_path)
-                .context("cannot open boringdb database")?;
-            let smt_db = meshanina::Mapping::open(&temp_smt_path)
-                .context("cannot open meshanina database")?;
-            let mut to_space = NodeStorage::new(smt_db, meta_db, self.genesis_config().await?);
-            to_space.restore_pruned(from_space.backup_pruned()).await?;
-            drop(to_space);
-            drop(from_space);
-            smol::Timer::after(Duration::from_secs(1)).await;
-            std::fs::rename(&temp_smt_path, &smt_path)?;
-            std::fs::rename(&temp_metadata_path, &metadata_path)?;
-            let _ = std::fs::remove_file(
-                &database_base_path
-                    .clone()
-                    .tap_mut(|path| path.push("metadata.db-journal")),
-            );
-            let _ = std::fs::rename(
-                &temp_metadata_journal_path,
-                &database_base_path
-                    .clone()
-                    .tap_mut(|path| path.push("metadata.db-journal")),
-            );
-            eprintln!("**********************");
-            smol::Timer::after(Duration::from_secs(3)).await;
-            let meta_db = boringdb::Database::open(&dbg!(metadata_path))
-                .context("cannot open boringdb database")?;
-            let smt_db = meshanina::Mapping::open(&smt_path)
-                .context("cannot open meshanina database for the second time")?;
-            NodeStorage::new(smt_db, meta_db, self.genesis_config().await?)
-        } else {
-            NodeStorage::new(smt_db, meta_db, self.genesis_config().await?)
-        };
-
-        if std::env::var("THEMELIO_DUMP_STATE").is_ok() {
-            let mut lines = storage.backup_pruned();
-            let mut output = smol::fs::File::create("output.dump").await?;
-            while let Some(line) = lines.next().await {
-                output.write(line.as_bytes()).await?;
-                output.write(b"\n").await?;
-            }
-            output.flush().await?;
-        }
+        let storage = Storage::new(smt_db, meta_db, self.genesis_config().await?);
 
         // Reset block. This is used to roll back history in emergencies
         if let Some(_height) = self.emergency_reset_block {
             todo!()
         }
-
-        #[cfg(not(feature = "metrics"))]
         log::debug!("node storage opened");
-        #[cfg(feature = "metrics")]
-        log::debug!(
-            "hostname={} public_ip={} network={} region={} instance_id={} node storage opened",
-            crate::prometheus::HOSTNAME.as_str(),
-            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-            crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-            AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-            AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID")
-        );
 
         Ok(storage)
     }

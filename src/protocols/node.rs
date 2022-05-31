@@ -1,10 +1,4 @@
-use crate::{
-    blkidx::BlockIndexer,
-    storage::{MeshaCas, NodeStorage},
-};
-
-#[cfg(feature = "metrics")]
-use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
+use crate::{blkidx::BlockIndexer, storage::Storage};
 
 use std::{
     collections::BTreeMap,
@@ -15,9 +9,9 @@ use std::{
 use anyhow::Context;
 use futures_util::{StreamExt, TryStreamExt};
 use lru::LruCache;
-use novasmt::CompressedProof;
+use novasmt::{CompressedProof, Database, InMemoryCas, Tree};
 use parking_lot::Mutex;
-use themelio_stf::SealedState;
+use themelio_stf::{SmtMapping, StateError};
 use themelio_structs::{AbbrBlock, Block, BlockHeight, ConsensusProof, NetID, Transaction, TxHash};
 
 use melnet::MelnetError;
@@ -47,7 +41,7 @@ impl NodeProtocol {
         listen_addr: SocketAddr,
         advertise_addr: Option<SocketAddr>,
         bootstrap: Vec<SocketAddr>,
-        storage: NodeStorage,
+        storage: Storage,
         index: bool,
     ) -> Self {
         let network = melnet::NetState::new_with_name(netname(netid));
@@ -74,8 +68,7 @@ impl NodeProtocol {
     }
 }
 
-#[tracing::instrument(skip(network, storage))]
-async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStorage) {
+async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: Storage) {
     let tag = || format!("blksync@{:?}", storage.highest_state().header().height);
     loop {
         let gap_time: Duration = Duration::from_secs_f64(fastrand::f64() * 1.0);
@@ -88,39 +81,11 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStor
             let res = attempt_blksync(peer, &client, &storage).await;
             match res {
                 Err(e) => {
-                    #[cfg(not(feature = "metrics"))]
                     log::warn!("{}: failed to blksync with {}: {:?}", tag(), peer, e);
-                    #[cfg(feature = "metrics")]
-                    log::warn!(
-                        "hostname={} public_ip={} network={} region={} instance_id={} {}: failed to blksync with {}: {:?}",
-                        crate::prometheus::HOSTNAME.as_str(),
-                        crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-                        crate::prometheus::NETWORK
-                            .read()
-                            .expect("Could not get a read lock on NETWORK."),
-                        AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-                        AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
-                        tag(),
-                        peer,
-                        e
-                    );
                 }
                 Ok(blklen) => {
                     if blklen > 0 {
-                        #[cfg(not(feature = "metrics"))]
                         log::debug!("synced to height {}", storage.highest_height());
-                        #[cfg(feature = "metrics")]
-                        log::warn!(
-                            "hostname={} public_ip={} network={} region={} instance_id={} synced to height {}",
-                            crate::prometheus::HOSTNAME.as_str(),
-                            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-                            crate::prometheus::NETWORK
-                                .read()
-                                .expect("Could not get a read lock on NETWORK."),
-                            AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-                            AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
-                            storage.highest_height()
-                        );
                     }
                 }
             }
@@ -133,7 +98,7 @@ async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: NodeStor
 async fn attempt_blksync(
     addr: SocketAddr,
     client: &NodeClient,
-    storage: &NodeStorage,
+    storage: &Storage,
 ) -> anyhow::Result<usize> {
     let their_highest = client
         .get_summary()
@@ -148,12 +113,18 @@ async fn attempt_blksync(
     }
     let height_stream = futures_util::stream::iter((my_highest.0..=their_highest.0).skip(1))
         .map(BlockHeight)
-        .take(1024);
+        .take(
+            std::env::var("THEMELIO_BLKSYNC_BATCH")
+                .ok()
+                .and_then(|d| d.parse().ok())
+                .unwrap_or(1000),
+        );
     let lookup_tx = |tx| storage.mempool().lookup_recent_tx(tx);
     let mut result_stream = height_stream
         .map(Ok::<_, anyhow::Error>)
         .try_filter_map(|height| async move {
             Ok(Some(async move {
+                let start = Instant::now();
                 let result = client
                     .get_full_block(height, &lookup_tx)
                     .timeout(Duration::from_secs(15))
@@ -162,33 +133,20 @@ async fn attempt_blksync(
                 if result.0.header.height != height {
                     anyhow::bail!("WANTED BLK {}, got {}", height, result.0.header.height);
                 }
+                log::trace!(
+                    "fully resolved block {} from peer {} in {:.2}ms",
+                    result.0.header.height,
+                    addr,
+                    start.elapsed().as_secs_f64() * 1000.0
+                );
                 Ok(result)
             }))
         })
-        .try_buffered(32)
+        .try_buffered(64)
         .boxed();
     let mut toret = 0;
     while let Some(res) = result_stream.try_next().await? {
         let (block, proof): (Block, ConsensusProof) = res;
-        #[cfg(not(feature = "metrics"))]
-        log::debug!(
-            "fully resolved block {} from peer {}",
-            block.header.height,
-            addr
-        );
-        #[cfg(feature = "metrics")]
-        log::debug!(
-            "hostname={} public_ip={} network={} region={} instance_id={} fully resolved block {} from peer {}",
-            crate::prometheus::HOSTNAME.as_str(),
-            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-            crate::prometheus::NETWORK
-                .read()
-                .expect("Could not get a read lock on NETWORK."),
-            AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-            AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
-            block.header.height,
-            addr
-        );
 
         storage
             .apply_block(block, proof)
@@ -201,12 +159,15 @@ async fn attempt_blksync(
 
 struct AuditorResponder {
     network: NetID,
-    storage: NodeStorage,
+    storage: Storage,
     indexer: Option<BlockIndexer>,
     recent: Mutex<LruCache<TxHash, Instant>>,
+
+    summary: Mutex<LruCache<BlockHeight, StateSummary>>,
+    coin_smts: Mutex<LruCache<BlockHeight, Tree<InMemoryCas>>>,
 }
 
-impl NodeServer<MeshaCas> for AuditorResponder {
+impl NodeServer for AuditorResponder {
     fn send_tx(&self, state: melnet::NetState, tx: Transaction) -> anyhow::Result<()> {
         if let Some(val) = self.recent.lock().peek(&tx.hash_nosigs()) {
             if val.elapsed().as_secs_f64() < 10.0 {
@@ -216,36 +177,19 @@ impl NodeServer<MeshaCas> for AuditorResponder {
         self.recent.lock().put(tx.hash_nosigs(), Instant::now());
         log::trace!("handling send_tx");
         let start = Instant::now();
+
         self.storage
-            .try_mempool_mut()
-            .context("mempool contention")?
+            .mempool_mut()
             .apply_transaction(&tx)
             .map_err(|e| {
-                log::warn!("cannot apply tx: {:?}", e);
+                if !e.to_string().contains("duplicate") {
+                    log::warn!("cannot apply tx: {:?}", e);
+                }
                 MelnetError::Custom(e.to_string())
             })?;
-        #[cfg(not(feature = "metrics"))]
+
         log::debug!(
             "txhash {}.. inserted ({:?} applying)",
-            &tx.hash_nosigs().to_string()[..10],
-            start.elapsed(),
-        );
-
-        if start.elapsed().as_secs_f64() > 1.0 {
-            log::warn!(
-                "MONSTER transaction here! {:#?}",
-                tx.clone().with_data(vec![])
-            );
-        }
-
-        #[cfg(feature = "metrics")]
-        log::debug!(
-            "hostname={} public_ip={} network={} region={} instance_id={} txhash {}.. inserted ({:?} applying)",
-            crate::prometheus::HOSTNAME.as_str(),
-            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-            crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-            AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-            AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
             &tx.hash_nosigs().to_string()[..10],
             start.elapsed(),
         );
@@ -282,21 +226,38 @@ impl NodeServer<MeshaCas> for AuditorResponder {
     fn get_summary(&self) -> anyhow::Result<StateSummary> {
         log::trace!("handling get_summary()");
         let highest = self.storage.highest_state();
-        let proof = self
-            .storage
-            .get_consensus(highest.header().height)
-            .unwrap_or_default();
-        Ok(StateSummary {
-            netid: self.network,
-            height: highest.inner_ref().height,
-            header: highest.header(),
-            proof,
-        })
+        let res = self
+            .summary
+            .lock()
+            .get(&highest.inner_ref().height)
+            .cloned();
+        if let Some(res) = res {
+            Ok(res)
+        } else {
+            let proof = self
+                .storage
+                .get_consensus(highest.inner_ref().height)
+                .unwrap_or_default();
+            let heh = StateSummary {
+                netid: self.network,
+                height: highest.inner_ref().height,
+                header: highest.header(),
+                proof,
+            };
+            self.summary
+                .lock()
+                .push(highest.inner_ref().height, heh.clone());
+            Ok(heh)
+        }
     }
 
-    fn get_state(&self, height: BlockHeight) -> anyhow::Result<SealedState<MeshaCas>> {
+    fn get_block(&self, height: BlockHeight) -> anyhow::Result<Block> {
         log::trace!("handling get_state({})", height);
-        self.storage.get_state(height).context("no such height")
+        Ok(self
+            .storage
+            .get_state(height)
+            .context("no such height")?
+            .to_block())
     }
 
     fn get_smt_branch(
@@ -309,24 +270,15 @@ impl NodeServer<MeshaCas> for AuditorResponder {
         let state = self
             .storage
             .get_state(height)
-            .ok_or_else(|| MelnetError::Custom(format!("block {} not confirmed yet", height)))?;
-        let tree = match elem {
-            Substate::Coins => state.inner_ref().coins.inner(),
-            Substate::History => &state.inner_ref().history.mapping,
-            Substate::Pools => &state.inner_ref().pools.mapping,
-            Substate::Stakes => &state.inner_ref().stakes.mapping,
-            Substate::Transactions => &state.inner_ref().transactions.mapping,
+            .context(format!("block {} not confirmed yet", height))?;
+        let ctree = self.get_coin_tree(height)?;
+        let (v, proof) = match elem {
+            Substate::Coins => state.inner_ref().coins.inner().get_with_proof(key.0),
+            Substate::History => state.inner_ref().history.mapping.get_with_proof(key.0),
+            Substate::Pools => state.inner_ref().pools.mapping.get_with_proof(key.0),
+            Substate::Stakes => state.inner_ref().stakes.mapping.get_with_proof(key.0),
+            Substate::Transactions => ctree.get_with_proof(key.0),
         };
-        let (v, proof) = tree.get_with_proof(key.0);
-        if !proof.verify(tree.root_hash(), key.0, &v) {
-            panic!(
-                "get_smt_branch({}, {:?}, {:?}) => {} failed",
-                height,
-                elem,
-                key,
-                hex::encode(&v)
-            )
-        }
         Ok((v.to_vec(), proof.compress()))
     }
 
@@ -352,7 +304,7 @@ impl NodeServer<MeshaCas> for AuditorResponder {
 }
 
 impl AuditorResponder {
-    fn new(network: NetID, storage: NodeStorage, index: bool) -> Self {
+    fn new(network: NetID, storage: Storage, index: bool) -> Self {
         Self {
             network,
             storage: storage.clone(),
@@ -361,7 +313,31 @@ impl AuditorResponder {
             } else {
                 None
             },
-            recent: LruCache::new(10000).into(),
+            recent: LruCache::new(1000).into(),
+            coin_smts: LruCache::new(100).into(),
+            summary: LruCache::new(10).into(),
+        }
+    }
+
+    fn get_coin_tree(&self, height: BlockHeight) -> anyhow::Result<Tree<InMemoryCas>> {
+        let otree = self.coin_smts.lock().get(&height).cloned();
+        if let Some(v) = otree {
+            Ok(v)
+        } else {
+            let state = self
+                .storage
+                .get_state(height)
+                .context(format!("block {} not confirmed yet", height))?;
+            let mut mm = SmtMapping::new(
+                Database::new(InMemoryCas::default())
+                    .get_tree(Default::default())
+                    .unwrap(),
+            );
+            for (h, t) in state.inner_ref().transactions.iter() {
+                mm.insert(*h, t.clone());
+            }
+            self.coin_smts.lock().put(height, mm.mapping.clone());
+            Ok(mm.mapping)
         }
     }
 }

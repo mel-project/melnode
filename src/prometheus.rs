@@ -1,9 +1,10 @@
-use crate::storage::NodeStorage;
+use crate::storage::Storage;
 
-use std::fmt;
-use std::sync::RwLock;
-use std::thread;
+use async_compat::CompatExt;
+use parking_lot::RwLock;
 use std::time;
+use std::{fmt, sync::atomic::AtomicBool};
+use std::{sync::atomic::Ordering, thread};
 
 use once_cell::sync::{Lazy, OnceCell};
 use prometheus::{
@@ -15,6 +16,12 @@ use smol::Timer;
 use smol_timeout::TimeoutExt;
 use systemstat::platform::PlatformImpl;
 use systemstat::{CPULoad, Memory, Platform, System};
+
+pub static PUBLIC_IP_ADDRESS: Lazy<String> = Lazy::new(|| {
+    smol::future::block_on(public_ip::addr().compat())
+        .expect("Could not obtain the public IP address.")
+        .to_string()
+});
 
 // Complete list of metadata endpoints available here: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-categories.html
 const AWS_API_TOKEN_URL: &str = "http://169.254.169.254/latest/api/token";
@@ -153,42 +160,39 @@ pub static AWS_REGION: Lazy<RwLock<String>> = Lazy::new(|| RwLock::new(String::f
 pub static AWS_INSTANCE_ID: Lazy<RwLock<String>> = Lazy::new(|| RwLock::new(String::from("")));
 
 pub async fn update_aws_information() {
-    let aws_region_result: Result<String, AWSError> = aws_region().await;
+    static HAS_RUN: AtomicBool = AtomicBool::new(false);
+    if !HAS_RUN.fetch_or(true, Ordering::SeqCst) {
+        let aws_region_result: Result<String, AWSError> = aws_region().await;
 
-    let aws_region: String = match aws_region_result {
-        Ok(thing) => thing,
-        Err(error) => {
-            log::debug!("{}", error);
+        let aws_region: String = match aws_region_result {
+            Ok(thing) => thing,
+            Err(error) => {
+                log::debug!("{}", error);
 
-            String::from("")
-        }
-    };
+                String::from("")
+            }
+        };
 
-    let mut aws_region_write = AWS_REGION
-        .write()
-        .expect("Could not get a write lock on AWS_REGION.");
+        *AWS_REGION.write() = aws_region;
 
-    *aws_region_write = aws_region;
+        let aws_instance_id_result: Result<String, AWSError> = aws_instance_id().await;
 
-    let aws_instance_id_result: Result<String, AWSError> = aws_instance_id().await;
+        let aws_instance_id: String = match aws_instance_id_result {
+            Ok(thing) => thing,
+            Err(error) => {
+                log::debug!("{}", error);
 
-    let aws_instance_id: String = match aws_instance_id_result {
-        Ok(thing) => thing,
-        Err(error) => {
-            log::debug!("{}", error);
+                String::from("")
+            }
+        };
 
-            String::from("")
-        }
-    };
+        let mut aws_instance_id_write = AWS_INSTANCE_ID.write();
 
-    let mut aws_instance_id_write = AWS_INSTANCE_ID
-        .write()
-        .expect("Could not get a write lock on AWS_INSTANCE_ID.");
-
-    *aws_instance_id_write = aws_instance_id;
+        *aws_instance_id_write = aws_instance_id;
+    }
 }
 
-pub static GLOBAL_STORAGE: OnceCell<NodeStorage> = OnceCell::new();
+pub static GLOBAL_STORAGE: OnceCell<Storage> = OnceCell::new();
 
 pub static NETWORK: Lazy<RwLock<&str>> = Lazy::new(|| RwLock::new("mainnet"));
 
@@ -203,23 +207,17 @@ pub static HOSTNAME: Lazy<String> = Lazy::new(|| {
 });
 
 static HIGHEST_BLOCK: Lazy<IntGauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
-    let aws_instance_id: String = AWS_INSTANCE_ID
-        .read()
-        .expect("Could not get a read lock on AWS_INSTANCE_ID")
-        .clone();
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
-    let aws_region: String = AWS_REGION
-        .read()
-        .expect("Could not get a read lock on AWS_REGION")
-        .clone();
+    let aws_region: String = AWS_REGION.read().clone();
 
     register_int_gauge!(opts!(
         "themelio_node_highest_block",
         "Highest Block",
         labels! {"hostname" => HOSTNAME.as_str(),
-        "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
+        "network" => *NETWORK.read(),
         "region" => &aws_region,
         "instance_id" => &aws_instance_id}
     ))
@@ -227,47 +225,35 @@ static HIGHEST_BLOCK: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static THEMELIO_NODE_UPTIME_SECONDS: Lazy<IntGauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
-    let aws_instance_id: String = AWS_INSTANCE_ID
-        .read()
-        .expect("Could not get a read lock on AWS_INSTANCE_ID")
-        .clone();
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
-    let aws_region: String = AWS_REGION
-        .read()
-        .expect("Could not get a read lock on AWS_REGION")
-        .clone();
+    let aws_region: String = AWS_REGION.read().clone();
 
     register_int_gauge!(opts!(
         "themelio_node_uptime_seconds",
         "Uptime (Themelio-Node, In Seconds)",
         labels! {"hostname" => HOSTNAME.as_str(),
-        "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
+        "network" => *NETWORK.read(),
         "region" => &aws_region,
         "instance_id" => &aws_instance_id}
     ))
-    .expect("Could not create THEMELIO_NODE_UPTIME_SECONDS IntGauge.")
+    .expect("can't register int gauge")
 });
 
 static SYSTEM_UPTIME_SECONDS: Lazy<IntGauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
-    let aws_instance_id: String = AWS_INSTANCE_ID
-        .read()
-        .expect("Could not get a read lock on AWS_INSTANCE_ID")
-        .clone();
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
-    let aws_region: String = AWS_REGION
-        .read()
-        .expect("Could not get a read lock on AWS_REGION")
-        .clone();
+    let aws_region: String = AWS_REGION.read().clone();
 
     register_int_gauge!(opts!(
         "themelio_node_system_uptime_seconds",
         "Uptime (System, In Seconds)",
         labels! {"hostname" => HOSTNAME.as_str(),
-        "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
+        "network" => *NETWORK.read(),
         "region" => &aws_region,
         "instance_id" => &aws_instance_id}
     ))
@@ -275,23 +261,17 @@ static SYSTEM_UPTIME_SECONDS: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static MEMORY_TOTAL_BYTES: Lazy<IntGauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
-    let aws_instance_id: String = AWS_INSTANCE_ID
-        .read()
-        .expect("Could not get a read lock on AWS_INSTANCE_ID")
-        .clone();
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
-    let aws_region: String = AWS_REGION
-        .read()
-        .expect("Could not get a read lock on AWS_REGION")
-        .clone();
+    let aws_region: String = AWS_REGION.read().clone();
 
     register_int_gauge!(opts!(
         "themelio_node_memory_total_bytes",
         "Total Memory (In Bytes)",
         labels! {"hostname" => HOSTNAME.as_str(),
-        "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
+        "network" => *NETWORK.read(),
         "region" => &aws_region,
         "instance_id" => &aws_instance_id}
     ))
@@ -299,23 +279,17 @@ static MEMORY_TOTAL_BYTES: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static MEMORY_FREE_BYTES: Lazy<IntGauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
-    let aws_instance_id: String = AWS_INSTANCE_ID
-        .read()
-        .expect("Could not get a read lock on AWS_INSTANCE_ID")
-        .clone();
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
-    let aws_region: String = AWS_REGION
-        .read()
-        .expect("Could not get a read lock on AWS_REGION")
-        .clone();
+    let aws_region: String = AWS_REGION.read().clone();
 
     register_int_gauge!(opts!(
         "themelio_node_memory_free_bytes",
         "Free Memory (In Bytes)",
         labels! {"hostname" => HOSTNAME.as_str(),
-        "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
+        "network" => *NETWORK.read(),
         "region" => &aws_region,
         "instance_id" => &aws_instance_id}
     ))
@@ -323,23 +297,17 @@ static MEMORY_FREE_BYTES: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static NETWORK_TRANSMITTED_BYTES: Lazy<IntGauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
-    let aws_instance_id: String = AWS_INSTANCE_ID
-        .read()
-        .expect("Could not get a read lock on AWS_INSTANCE_ID")
-        .clone();
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
-    let aws_region: String = AWS_REGION
-        .read()
-        .expect("Could not get a read lock on AWS_REGION")
-        .clone();
+    let aws_region: String = AWS_REGION.read().clone();
 
     register_int_gauge!(opts!(
         "themelio_node_network_transmitted_bytes",
         "Network Data Transmitted (In Bytes)",
         labels! {"hostname" => HOSTNAME.as_str(),
-        "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
+        "network" => *NETWORK.read(),
         "region" => &aws_region,
         "instance_id" => &aws_instance_id}
     ))
@@ -347,23 +315,17 @@ static NETWORK_TRANSMITTED_BYTES: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static NETWORK_RECEIVED_BYTES: Lazy<IntGauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
-    let aws_instance_id: String = AWS_INSTANCE_ID
-        .read()
-        .expect("Could not get a read lock on AWS_INSTANCE_ID")
-        .clone();
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
-    let aws_region: String = AWS_REGION
-        .read()
-        .expect("Could not get a read lock on AWS_REGION")
-        .clone();
+    let aws_region: String = AWS_REGION.read().clone();
 
     register_int_gauge!(opts!(
         "themelio_node_network_received_bytes",
         "Network Data Received (In Bytes)",
         labels! {"hostname" => HOSTNAME.as_str(),
-        "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
+        "network" => *NETWORK.read(),
         "region" => &aws_region,
         "instance_id" => &aws_instance_id}
     ))
@@ -371,23 +333,17 @@ static NETWORK_RECEIVED_BYTES: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static ROOT_FILESYSTEM_TOTAL_BYTES: Lazy<IntGauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
-    let aws_instance_id: String = AWS_INSTANCE_ID
-        .read()
-        .expect("Could not get a read lock on AWS_INSTANCE_ID")
-        .clone();
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
-    let aws_region: String = AWS_REGION
-        .read()
-        .expect("Could not get a read lock on AWS_REGION")
-        .clone();
+    let aws_region: String = AWS_REGION.read().clone();
 
     register_int_gauge!(opts!(
         "themelio_node_root_filesystem_total_bytes",
         "Root Filesystem Total Space (In Bytes)",
         labels! {"hostname" => HOSTNAME.as_str(),
-        "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
+        "network" => *NETWORK.read(),
         "region" => &aws_region,
         "instance_id" => &aws_instance_id}
     ))
@@ -395,23 +351,17 @@ static ROOT_FILESYSTEM_TOTAL_BYTES: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static ROOT_FILESYSTEM_FREE_BYTES: Lazy<IntGauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
-    let aws_instance_id: String = AWS_INSTANCE_ID
-        .read()
-        .expect("Could not get a read lock on AWS_INSTANCE_ID")
-        .clone();
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
-    let aws_region: String = AWS_REGION
-        .read()
-        .expect("Could not get a read lock on AWS_REGION")
-        .clone();
+    let aws_region: String = AWS_REGION.read().clone();
 
     register_int_gauge!(opts!(
         "themelio_node_root_filesystem_free_bytes",
         "Root Filesystem Free Space (In Bytes)",
         labels! {"hostname" => HOSTNAME.as_str(),
-        "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
+        "network" => *NETWORK.read(),
         "region" => &aws_region,
         "instance_id" => &aws_instance_id}
     ))
@@ -419,23 +369,17 @@ static ROOT_FILESYSTEM_FREE_BYTES: Lazy<IntGauge> = Lazy::new(|| {
 });
 
 static CPU_LOAD_USER: Lazy<Gauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
-    let aws_instance_id: String = AWS_INSTANCE_ID
-        .read()
-        .expect("Could not get a read lock on AWS_INSTANCE_ID")
-        .clone();
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
-    let aws_region: String = AWS_REGION
-        .read()
-        .expect("Could not get a read lock on AWS_REGION")
-        .clone();
+    let aws_region: String = AWS_REGION.read().clone();
 
     register_gauge!(opts!(
         "themelio_node_cpu_load_user_percentage",
         "User CPU Load (Percentage)",
         labels! {"hostname" => HOSTNAME.as_str(),
-        "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
+        "network" => *NETWORK.read(),
         "region" => &aws_region,
         "instance_id" => &aws_instance_id}
     ))
@@ -443,23 +387,17 @@ static CPU_LOAD_USER: Lazy<Gauge> = Lazy::new(|| {
 });
 
 static CPU_LOAD_SYSTEM: Lazy<Gauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
-    let aws_instance_id: String = AWS_INSTANCE_ID
-        .read()
-        .expect("Could not get a read lock on AWS_INSTANCE_ID")
-        .clone();
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
-    let aws_region: String = AWS_REGION
-        .read()
-        .expect("Could not get a read lock on AWS_REGION")
-        .clone();
+    let aws_region: String = AWS_REGION.read().clone();
 
     register_gauge!(opts!(
         "themelio_node_cpu_load_system_percentage",
         "System CPU Load (Percentage)",
         labels! {"hostname" => HOSTNAME.as_str(),
-        "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
+        "network" => *NETWORK.read(),
         "region" => &aws_region,
         "instance_id" => &aws_instance_id}
     ))
@@ -467,23 +405,17 @@ static CPU_LOAD_SYSTEM: Lazy<Gauge> = Lazy::new(|| {
 });
 
 static CPU_LOAD_IDLE: Lazy<Gauge> = Lazy::new(|| {
-    std::thread::spawn(|| crate::RUNTIME.block_on(run_aws_information()));
+    std::thread::spawn(|| smol::future::block_on(run_aws_information().compat()));
 
-    let aws_instance_id: String = AWS_INSTANCE_ID
-        .read()
-        .expect("Could not get a read lock on AWS_INSTANCE_ID")
-        .clone();
+    let aws_instance_id: String = AWS_INSTANCE_ID.read().clone();
 
-    let aws_region: String = AWS_REGION
-        .read()
-        .expect("Could not get a read lock on AWS_REGION")
-        .clone();
+    let aws_region: String = AWS_REGION.read().clone();
 
     register_gauge!(opts!(
         "themelio_node_cpu_load_idle_percentage",
         "Idle CPU Load (Percentage)",
         labels! {"hostname" => HOSTNAME.as_str(),
-        "network" => *NETWORK.read().expect("Could not get a read lock on NETWORK"),
+        "network" => *NETWORK.read(),
         "region" => &aws_region,
         "instance_id" => &aws_instance_id}
     ))
@@ -504,12 +436,7 @@ fn metrics() -> Result<String, rweb::http::Error> {
         Ok(output) => output,
         Err(error) => {
             log::error!(
-                "hostname={} public_ip={} network={} region={} instance_id={} Metrics could not be made into a string from UTF8: {}",
-                crate::prometheus::HOSTNAME.as_str(),
-                crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-                crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-                AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-                AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
+                "Metrics could not be made into a string from UTF8: {}",
                 error
             );
 
@@ -521,7 +448,7 @@ fn metrics() -> Result<String, rweb::http::Error> {
 }
 
 fn set_highest_block() {
-    let storage: &NodeStorage = GLOBAL_STORAGE
+    let storage: &Storage = GLOBAL_STORAGE
         .get()
         .expect("Could not get a lock on GLOBAL_STORAGE");
 
@@ -564,15 +491,7 @@ fn set_system_metrics() {
         Ok(uptime) => {
             SYSTEM_UPTIME_SECONDS.set(uptime.as_secs() as i64);
         }
-        Err(error) => log::debug!(
-            "hostname={} public_ip={} network={} region={} instance_id={} There was an error retrieving system uptime: {}",
-            crate::prometheus::HOSTNAME.as_str(),
-            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-            crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-            AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-            AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
-            error
-        ),
+        Err(error) => log::debug!("There was an error retrieving system uptime: {}", error),
     }
 
     let default_network_interface: String = default_net::interface::get_default_interface_name()
@@ -588,12 +507,7 @@ fn set_system_metrics() {
             NETWORK_RECEIVED_BYTES.set(received_bytes as i64);
         }
         Err(error) => log::debug!(
-            "hostname={} public_ip={} network={} region={} instance_id={} There was an error retrieving network traffic information: {}",
-            crate::prometheus::HOSTNAME.as_str(),
-            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-            crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-            AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-            AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
+            "There was an error retrieving network traffic information: {}",
             error
         ),
     }
@@ -614,12 +528,7 @@ fn set_system_metrics() {
             });
         }
         Err(error) => log::debug!(
-            "hostname={} public_ip={} network={} region={} instance_id={} There was an error retrieving filesystem information: {}",
-            crate::prometheus::HOSTNAME.as_str(),
-            crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-            crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-            AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-            AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID"),
+            "There was an error retrieving filesystem information: {}",
             error
         ),
     }
@@ -643,15 +552,7 @@ pub async fn prometheus() {
     let three_seconds: time::Duration = time::Duration::from_secs(3);
     Timer::after(three_seconds).await;
 
-    log::debug!(
-        "hostname={} public_ip={} network={} region={} instance_id={} Prometheus metrics listening on http://127.0.0.1:8080",
-        crate::prometheus::HOSTNAME.as_str(),
-        crate::public_ip_address::PUBLIC_IP_ADDRESS.as_str(),
-        crate::prometheus::NETWORK.read().expect("Could not get a read lock on NETWORK."),
-        AWS_REGION.read().expect("Could not get a read lock on AWS_REGION"),
-        AWS_INSTANCE_ID.read().expect("Could not get a read lock on AWS_INSTANCE_ID")
-    );
-
+    log::debug!("Prometheus metrics listening on http://127.0.0.1:8080");
 
     REGISTRY
         .register(Box::new(HIGHEST_BLOCK.clone()))

@@ -8,10 +8,6 @@ services:
 #      - ADVERTISE_OFF=true
 #     If you would like to manually set the IP address to advertise, uncomment the following line and change the IP address to whatever you would like.
 #      - ADVERTISE_MANUAL=1.2.3.4
-    command:
-      --strategy at-once --url https://bldr.habitat.sh
-      --update-condition latest
-      --auto-update
 #    environment:
 #      RUST_LOG: debug
     ports:
@@ -19,7 +15,7 @@ services:
       - 8080:8080
     hostname: ${HOSTNAME}
     volumes:
-      - themelio-node-mainnet:/hab/svc/themelio-node/data
+      - themelio-node-testnet:/var/lib/themelio-node/
 
 volumes:
   themelio-node-mainnet:
