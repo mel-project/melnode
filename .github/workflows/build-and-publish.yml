@@ -94,7 +94,7 @@ jobs:
         run: 7zr e themelio-node.7z
 
       - name: Move Themelio-Node Binary
-        run: mv themelio-node docker/dev/
+        run: mv themelio-node docker/release/
 
       - name: Install Yq
         run: pip install yq
