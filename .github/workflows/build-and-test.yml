@@ -1,0 +1,140 @@
+name: BuildAndTest
+
+on:
+  pull_request:
+    branches:
+      - master
+      - testnet
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_HOME: "/usr/local/cargo/"
+  RUSTUP_HOME: "/usr/local/rustup"
+  SCCACHE_DIR: "/usr/local/sccache"
+  RUSTC_WRAPPER: "/usr/local/bin/sccache"
+
+jobs:
+  musl-build:
+
+    runs-on: self-hosted
+
+    container:
+      image: rust:latest
+      volumes:
+        - /var/lib/docker:/var/lib/docker
+        - /usr/local/cargo/git:/usr/local/cargo/git
+        - /usr/local/cargo/registry:/usr/local/cargo/registry
+        - /usr/local/sccache:/usr/local/sccache
+        - /usr/local/rustup:/usr/local/rustup
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Update Apt
+        run: apt update
+
+      - name: Install Requirements
+        run: apt -y install musl musl-tools p7zip
+
+      - uses: themeliolabs/actions-sccache@v1
+
+      - uses: themeliolabs/actions-mold@v1
+
+      - name: Add Default Toolchain
+        run: rustup default stable
+
+      - name: Add Musl Target Triple
+        run: rustup target add x86_64-unknown-linux-musl
+
+      - name: Run Musl Build
+        run: mold --run cargo build --target x86_64-unknown-linux-musl --features metrics --verbose
+
+      - name: Create Themelio-Node Archive
+        run: 7zr a themelio-node.7z target/x86_64-unknown-linux-musl/debug/themelio-node
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: themelio-node-dev
+          path: themelio-node.7z
+
+
+
+  build-docker-image-and-run-bats:
+    runs-on: self-hosted
+
+    container:
+      image: summerwind/actions-runner-dind:latest
+      volumes:
+        - /var/lib/docker:/var/lib/docker
+      options: --privileged --user root
+
+    needs:
+      - musl-build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Update Apt
+        run: apt update
+
+      - name: Install Requirements
+        run: apt -y install p7zip gettext packer
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: themelio-node-dev
+
+      - name: Extract Themelio-Node Archive
+        run: 7zr e themelio-node.7z
+
+      - name: Move Themelio-Node Binary
+        run: mv themelio-node docker/dev/
+
+      - name: Install Yq
+        run: pip install yq
+
+      - name: Create Version Environment Variable
+        run: echo "THEMELIO_NODE_VERSION=$(cat Cargo.toml | tomlq .package.version | tr -d '"')" >> $GITHUB_ENV
+
+      - name: Set Network
+        run: ./ci/set-network.sh
+
+      - name: Build Docker Image
+        env:
+          NETWORK_TO_BUILD: ${{ env.NETWORK_TO_BUILD }}
+        run: docker build --build-arg themelio_node_version=${THEMELIO_NODE_VERSION} -t "ghcr.io/themeliolabs/themelio-node-${NETWORK_TO_BUILD}:${THEMELIO_NODE_VERSION}" docker/dev/
+
+      - name: Run Docker Image
+        env:
+          NETWORK_TO_BUILD: ${{ env.NETWORK_TO_BUILD }}
+        run: docker run -p 11814:11814 -p 8080:8080 ghcr.io/themeliolabs/themelio-node-${NETWORK_TO_BUILD}:${THEMELIO_NODE_VERSION}
+
+  verify-packer:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Add Packer Apt Key
+        run: curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+
+      - name: Add Packer Repository Key
+        run: sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+
+      - name: Update Apt
+        run: sudo apt update
+
+      - name: Install Requirements
+        run: sudo apt -y install gettext packer ansible
+
+      - name: Set Network
+        run: ./ci/set-network.sh
+
+      - name: Verify Packer
+        env:
+          PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
+          PROMTAIL_PASSWORD: ${{ secrets.PROMTAIL_PASSWORD }}
+        run: ./ci/packer.sh

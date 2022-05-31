@@ -5,7 +5,10 @@ pkg_maintainer="Meade Kincke <meade@themelio.org>"
 pkg_version="$THEMELIO_NODE_VERSION"
 pkg_license=("MPL-2.0")
 pkg_full_path="${HAB_CACHE_SRC_PATH}/${binary_name}"
-pkg_build_deps=(themelio/rust)
+pkg_build_deps=(
+  core/sccache
+  themelio/rust
+)
 pkg_deps=(
   core/curl
   core/gcc-libs
@@ -19,6 +22,12 @@ pkg_exports=(
 pkg_exposes=(port metrics-port)
 pkg_svc_user="root"
 pkg_svc_group="$pkg_svc_user"
+
+do_setup_environment() {
+  set_buildtime_env SCCACHE_DIR "/src/sccache"
+  set_buildtime_env RUSTC_WRAPPER "$(pkg_path_for core/sccache)/bin/sccache"
+  set_buildtime_env CARGO_HOME "/src/cargo"
+}
 
 do_verify() {
   return 0
@@ -47,11 +56,11 @@ do_build() {
   cd "${pkg_full_path}"
 
   build_line "Starting Build."
-  cargo build --locked --features metrics --verbose
+  cargo build --locked --target=x86_64-unknown-linux-gnu --features metrics --verbose
 }
 
 do_install() {
-  local release="${pkg_full_path}/target/debug/${binary_name}"
+  local release="${pkg_full_path}/target/x86_64-unknown-linux-gnu/debug/${binary_name}"
   local target="${pkg_prefix}/target"
   local application_path="${pkg_prefix}/bin/"
 

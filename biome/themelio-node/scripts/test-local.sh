@@ -8,22 +8,36 @@ export BIOME_DIRECTORY="$(dirname "${PLAN_DIRECTORY}")"
 export ROOT_DIRECTORY="$(dirname "${BIOME_DIRECTORY}")"
 
 
-export THEMELIO_NODE_VERSION=$(cat "${ROOT_DIRECTORY}/Cargo.toml" | tomlq .package.version | tr -d '"')
-
-if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
-  echo "Building for mainnet."
-  envsubst '${THEMELIO_NODE_VERSION}' < "${PLAN_DIRECTORY}/plan-debug-mainnet.sh" > "${PLAN_DIRECTORY}/plan.sh"
-  cp -r "${PLAN_DIRECTORY}/hooks-mainnet" "${PLAN_DIRECTORY}/hooks"
-
-elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
-  echo "Building for testnet."
-  envsubst '${THEMELIO_NODE_VERSION}' < "${PLAN_DIRECTORY}/plan-debug-testnet.sh" > "${PLAN_DIRECTORY}/plan.sh"
-  cp -r "${PLAN_DIRECTORY}/hooks-testnet" "${PLAN_DIRECTORY}/hooks"
-
-else
-  echo "No network specified with NETWORK_TO_BUILD. Exiting."
-  exit 1
-fi
+#export THEMELIO_NODE_VERSION=$(cat "${ROOT_DIRECTORY}/Cargo.toml" | tomlq .package.version | tr -d '"')
+#
+#bio pkg install --binlink core/gettext
+#bio pkg install --binlink core/python
+#
+#
+#python -m pip install virtualenv
+#python -m virtualenv /tmp
+#
+#pip install jq
+#pip install yq
+#
+#
+#
+#export THEMELIO_NODE_VERSION=$(cat "${ROOT_DIRECTORY}/Cargo.toml" | tomlq .package.version | tr -d '"')
+#
+#if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
+#  echo "Building for mainnet."
+#  envsubst '${THEMELIO_NODE_VERSION}' < "${PLAN_DIRECTORY}/plan-debug-mainnet.sh" > "${PLAN_DIRECTORY}/plan.sh"
+#  cp -r "${PLAN_DIRECTORY}/hooks-mainnet" "${PLAN_DIRECTORY}/hooks"
+#
+#elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
+#  echo "Building for testnet."
+#  envsubst '${THEMELIO_NODE_VERSION}' < "${PLAN_DIRECTORY}/plan-debug-testnet.sh" > "${PLAN_DIRECTORY}/plan.sh"
+#  cp -r "${PLAN_DIRECTORY}/hooks-testnet" "${PLAN_DIRECTORY}/hooks"
+#
+#else
+#  echo "No network specified with NETWORK_TO_BUILD. Exiting."
+#  exit 1
+#fi
 
 bio pkg install --binlink themelio/bats
 bio pkg install --binlink core/curl

@@ -65,16 +65,16 @@ if [ "${NETWORK_TO_BUILD}" == "mainnet" ]; then
 
 
   echo "Exporting mainnet docker image"
-  sudo bio pkg export container "${hart_file}"
+  bio pkg export container "${hart_file}"
 
   source results/last_container_export.env
 
   for tag in ${tags//,/ }; do
     local_tag="ghcr.io/themeliolabs/themelio-node-mainnet:${tag}"
 
-    sudo docker tag "${name}:${tag}" "${local_tag}"
+    docker tag "${name}:${tag}" "${local_tag}"
 
-  	sudo docker push "${local_tag}"
+  	docker push "${local_tag}"
   done
 
 
@@ -112,16 +112,16 @@ elif [ "${NETWORK_TO_BUILD}" == "testnet" ]; then
 
 
   echo "Exporting testnet docker image"
-  sudo bio pkg export container "${hart_file}"
+  bio pkg export container "${hart_file}"
 
   source results/last_container_export.env
 
   for tag in ${tags//,/ }; do
     local_tag="ghcr.io/themeliolabs/themelio-node-testnet:${tag}"
 
-    sudo docker tag "${name}:${tag}" "${local_tag}"
+    docker tag "${name}:${tag}" "${local_tag}"
 
-    sudo docker push "${local_tag}"
+    docker push "${local_tag}"
   done
 
   for region in $(cat $SCRIPTS_DIRECTORY/packer/aws_regions); do

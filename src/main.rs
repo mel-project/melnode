@@ -108,3 +108,4 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
 
     Ok(())
 }
+
