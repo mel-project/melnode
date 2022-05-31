@@ -151,8 +151,11 @@ jobs:
       - name: Set Network
         run: ./ci/set-network.sh
 
-      - name: Verify Packer
+      - name: Build Packer
         env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
           PROMTAIL_USERNAME: ${{ secrets.PROMTAIL_USERNAME }}
           PROMTAIL_PASSWORD: ${{ secrets.PROMTAIL_PASSWORD }}
           PUBLISH: "true"
