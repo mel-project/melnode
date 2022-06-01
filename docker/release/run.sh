@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [ "${NETWORK}" == "mainnet" ]; then
   if [ -n "${ADVERTISE_OFF}" ]; then
