@@ -109,7 +109,7 @@ jobs:
       - name: Run Docker Image
         env:
           NETWORK_TO_BUILD: ${{ env.NETWORK_TO_BUILD }}
-        run: docker run -p 11814:11814 -p 8080:8080 -e NETWORK=testnet ghcr.io/themeliolabs/themelio-node-${NETWORK_TO_BUILD}:${THEMELIO_NODE_VERSION}
+        run: docker run -p 11814:11814 -p 8080:8080 -e NETWORK=${NETWORK_TO_BUILD} ghcr.io/themeliolabs/themelio-node-${NETWORK_TO_BUILD}:${THEMELIO_NODE_VERSION}
 
   verify-packer:
     runs-on: self-hosted
