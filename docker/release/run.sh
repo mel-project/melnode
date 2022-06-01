@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ "${NETWORK}" == "mainnet" ]; then
+if [ "${NETWORK}" = 'mainnet' ]; then
   if [ -n "${ADVERTISE_OFF}" ]; then
     themelio-node --database /var/lib/themelio-node/main --listen 0.0.0.0:11814
   elif [ -n "${ADVERTISE_MANUAL}" ]; then
@@ -10,7 +10,7 @@ if [ "${NETWORK}" == "mainnet" ]; then
     themelio-node --database /var/lib/themelio-node/main --listen 0.0.0.0:11814 --advertise "${PUBLIC_IP_ADDRESS}":11814
   fi
 
-elif [ "${NETWORK}" == "testnet" ]; then
+elif [ "${NETWORK}" = 'testnet' ]; then
   if [ -n "${ADVERTISE_OFF}" ]; then
     themelio-node --database /var/lib/themelio-node/main --testnet --bootstrap tm-1.themelio.org:11814
   elif [ -n "${ADVERTISE_MANUAL}" ]; then
