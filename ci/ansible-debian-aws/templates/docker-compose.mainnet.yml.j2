@@ -8,7 +8,7 @@ services:
       - 8080:8080
     hostname: ${HOSTNAME}
     environment:
-      - NETWORK="mainnet"
+      - NETWORK=mainnet
     volumes:
       - themelio-node-mainnet:/var/lib/themelio-node/
 
