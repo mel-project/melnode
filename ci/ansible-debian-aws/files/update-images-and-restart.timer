@@ -1,0 +1,8 @@
+[Unit]
+Description=Run The Themelio-Node Update Service Every 30 Seconds
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=30
+AccuracySec=1ms
+[Install]
+WantedBy=timers.target
