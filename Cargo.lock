@@ -48,9 +48,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.57"
+version = "1.0.58"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08f9b8508dccb7687a1d6c4ce66b2b0ecef467c94667de27d8d7fe1f8d2a9cdc"
+checksum = "bb07d2053ccdbe10e2af2995a2f116c1330396493dc1269f6a91d0ae82e19704"
 
 [[package]]
 name = "arbitrary"
@@ -321,6 +321,12 @@ checksum = "031043d04099746d8db04daf1fa424b2bc8bd69d92b25962dcde24da39ab64a2"
 dependencies = [
  "typenum",
 ]
+
+[[package]]
+name = "bitmaps"
+version = "3.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "703642b98a00b3b90513279a8ede3fcfa479c126c5fb46e78f3051522f021403"
 
 [[package]]
 name = "bitvec"
@@ -667,6 +673,18 @@ dependencies = [
  "cfg-if",
  "num_cpus",
  "rayon",
+]
+
+[[package]]
+name = "dashmap"
+version = "5.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3495912c9c1ccf2e18976439f4443f3fee0fd61f424ff99fde6a66b15ecb448f"
+dependencies = [
+ "cfg-if",
+ "hashbrown 0.12.1",
+ "lock_api",
+ "parking_lot_core 0.9.3",
 ]
 
 [[package]]
@@ -1216,12 +1234,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "hashbrown"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db0d4cf898abf0081f964436dc980e96670a0f36863e4b83aaacdb65c9d7ccc3"
+
+[[package]]
 name = "hashlink"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7249a3129cbc1ffccd74857f81464a323a152173cdb134e0fd81bc803b29facf"
 dependencies = [
- "hashbrown",
+ "hashbrown 0.11.2",
 ]
 
 [[package]]
@@ -1404,7 +1428,7 @@ version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "543682c9082b25e63d03b5acbd65ad111fd49dd93e70843e5175db4ff81d606b"
 dependencies = [
- "bitmaps",
+ "bitmaps 2.1.0",
  "rand_core 0.6.3",
  "rand_xoshiro",
  "serde",
@@ -1414,13 +1438,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "imbl"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2806b69cd9f4664844027b64465eacb444c67c1db9c778e341adff0c25cdb0d"
+dependencies = [
+ "bitmaps 3.2.0",
+ "imbl-sized-chunks",
+ "rand_core 0.6.3",
+ "rand_xoshiro",
+ "version_check",
+]
+
+[[package]]
+name = "imbl-sized-chunks"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6957ea0b2541c5ca561d3ef4538044af79f8a05a1eb3a3b148936aaceaa1076"
+dependencies = [
+ "bitmaps 3.2.0",
+]
+
+[[package]]
 name = "indexmap"
 version = "1.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6012d540c5baa3589337a98ce73408de9b5a25ec9fc2c6fd6be8f0d39e0ca5a"
 dependencies = [
  "autocfg",
- "hashbrown",
+ "hashbrown 0.11.2",
  "serde",
 ]
 
@@ -1537,11 +1583,11 @@ dependencies = [
 
 [[package]]
 name = "lru"
-version = "0.7.6"
+version = "0.7.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8015d95cb7b2ddd3c0d32ca38283ceb1eea09b4713ee380bceb942d85a244228"
+checksum = "c84e6fe5655adc6ce00787cf7dcaf8dc4f998a0565d23eafc207a8b08ca3349a"
 dependencies = [
- "hashbrown",
+ "hashbrown 0.11.2",
 ]
 
 [[package]]
@@ -1569,7 +1615,7 @@ dependencies = [
  "async-net",
  "async-recursion",
  "async-trait",
- "dashmap",
+ "dashmap 4.0.2",
  "derivative",
  "env_logger 0.8.4",
  "futures-util",
@@ -1749,7 +1795,7 @@ dependencies = [
  "backtrace",
  "bitvec",
  "blake3",
- "dashmap",
+ "dashmap 4.0.2",
  "env_logger 0.9.0",
  "ethnum",
  "genawaiter",
@@ -1766,21 +1812,21 @@ dependencies = [
 
 [[package]]
 name = "novasymph"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "488d7725dc83e45536ff83d724df52acfc123777d9532587b586bc78bdb1b3b6"
+checksum = "8a75a9f3b1a8290f6b8c141ef710cbf4a54c3f877da4c42d4cb6580bc28f6514"
 dependencies = [
  "anyhow",
  "async-oneshot 0.5.0",
  "async-trait",
  "binary-search",
  "bytes",
- "dashmap",
+ "dashmap 5.3.4",
  "derivative",
  "env_logger 0.9.0",
  "fastrand",
  "futures-util",
- "imbl",
+ "imbl 2.0.0",
  "log",
  "lru",
  "melnet",
@@ -1788,7 +1834,7 @@ dependencies = [
  "num-integer",
  "num-traits",
  "once_cell",
- "parking_lot 0.11.2",
+ "parking_lot 0.12.1",
  "serde",
  "slab",
  "smol",
@@ -2820,7 +2866,7 @@ version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "16d69225bde7a69b235da73377861095455d298f2b970996eec25ddbb42b3d1e"
 dependencies = [
- "bitmaps",
+ "bitmaps 2.1.0",
  "typenum",
 ]
 
@@ -2866,9 +2912,9 @@ dependencies = [
 
 [[package]]
 name = "smolscale"
-version = "0.3.24"
+version = "0.3.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6a472ab63426dc7a7715c8818c60a49d22ee9901f5091574da211b28e52bce5"
+checksum = "c470b2b77b5c8d9698c1cb5c13eb81a9816562ff90cec57cf11a11c88cc55c50"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -3122,7 +3168,7 @@ dependencies = [
  "async-trait",
  "boringdb",
  "clone-macro",
- "dashmap",
+ "dashmap 4.0.2",
  "default-net",
  "defmac",
  "dhat",
@@ -3132,7 +3178,7 @@ dependencies = [
  "futures-util",
  "gethostname",
  "hex",
- "imbl",
+ "imbl 1.0.1",
  "log",
  "lru",
  "lz4_flex",
@@ -3194,16 +3240,16 @@ dependencies = [
 
 [[package]]
 name = "themelio-stf"
-version = "0.10.7"
+version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a681a6453e23ff08d33b970b44e3d722678f47e6fb756296d368e68076b119e"
+checksum = "adb072c21546bbb7afcc3b3160cc221b84f651bce2f5c7a2cbc812681ea32660"
 dependencies = [
  "arbitrary",
  "assoc",
  "atomic_float",
  "blake3",
  "catvec",
- "dashmap",
+ "dashmap 4.0.2",
  "defmac",
  "derivative",
  "derive_more",
