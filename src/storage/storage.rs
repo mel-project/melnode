@@ -73,7 +73,7 @@ impl Storage {
         let _disk_sync = smolscale::spawn(clone!([highest, forest, metadata], async move {
             let mut highest_height = BlockHeight(0);
             loop {
-                smol::Timer::after(Duration::from_secs(1)).await;
+                smol::Timer::after(Duration::from_secs(30)).await;
                 if highest.read().inner_ref().height > highest_height {
                     let start = Instant::now();
                     let highest = highest.read().clone();
@@ -101,7 +101,7 @@ impl Storage {
             highest,
             database: Arc::new(bdb),
             forest: forest.into(),
-            old_cache: Arc::new(LruCache::new(100).into()),
+            old_cache: Arc::new(LruCache::new(1000).into()),
             metadata,
             _disk_sync,
         }

@@ -11,7 +11,7 @@ use futures_util::{StreamExt, TryStreamExt};
 use lru::LruCache;
 use novasmt::{CompressedProof, Database, InMemoryCas, Tree};
 use parking_lot::Mutex;
-use themelio_stf::{SmtMapping, StateError};
+use themelio_stf::SmtMapping;
 use themelio_structs::{AbbrBlock, Block, BlockHeight, ConsensusProof, NetID, Transaction, TxHash};
 
 use melnet::MelnetError;
@@ -142,7 +142,7 @@ async fn attempt_blksync(
                 Ok(result)
             }))
         })
-        .try_buffered(64)
+        .try_buffered(32)
         .boxed();
     let mut toret = 0;
     while let Some(res) = result_stream.try_next().await? {
