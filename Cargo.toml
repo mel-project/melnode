@@ -91,8 +91,8 @@ imbl = { version = "1.0.1", features = ["serde"] }
 log = "0.4.17"
 lru = "0.7.6"
 melnet = "0.2.26"
-meshanina = {path="../meshanina"}
-# meshanina = "0.3.19"
+#meshanina = {path="../meshanina"}
+meshanina = "0.3.20"
 novasmt = "0.2.19"
 novasymph = "0.3.0"
 # novasymph={path="../novasymph"}
