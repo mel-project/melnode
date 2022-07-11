@@ -21,8 +21,8 @@ lto = 'thin'
 codegen-units = 1 
 
 [patch.crates-io]
-melnet={path="../melnet"}  
-themelio-stf={path="../themelio-stf"}  
+# melnet={path="../melnet"}  
+# themelio-stf={path="../themelio-stf"}  
 
 [profile.release-dbg]
 inherits = "release"

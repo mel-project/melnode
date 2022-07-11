@@ -47,21 +47,20 @@ pub struct Args {
     pub index_coins: bool,
 }
 
-/// Staker configuration, YAML-serializable.
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde_as]
+/// Staker configuration, YAML-deserializable.
+#[derive(Clone, Debug, Deserialize)]
 pub struct StakerConfig {
     /// ed25519 secret key of the staker
-    #[serde_as(as = "DisplayFromStr")]
+    #[serde(with = "serde_with::rust::display_fromstr")]
     pub signing_secret: Ed25519SK,
     /// Listen address for the staker.
-    #[serde_as(as = "DisplayFromStr")]
+    #[serde(with = "serde_with::rust::display_fromstr")]
     pub listen: SocketAddr,
     /// Bootstrap address into the staker network.
-    #[serde_as(as = "DisplayFromStr")]
+    #[serde(with = "serde_with::rust::display_fromstr")]
     pub bootstrap: SocketAddr,
     /// Payout address
-    #[serde_as(as = "DisplayFromStr")]
+    #[serde(with = "serde_with::rust::display_fromstr")]
     pub payout_addr: Address,
     /// Target fee multiplier
     pub target_fee_multiplier: u128,
