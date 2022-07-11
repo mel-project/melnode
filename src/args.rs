@@ -3,6 +3,8 @@ use crate::storage::Storage;
 use std::{net::SocketAddr, path::PathBuf};
 
 use anyhow::Context;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use structopt::StructOpt;
 use tap::Tap;
 use themelio_stf::GenesisConfig;
@@ -10,6 +12,7 @@ use themelio_structs::{Address, BlockHeight};
 use tmelcrypt::Ed25519SK;
 
 #[derive(Debug, StructOpt)]
+/// Command-line arguments.
 pub struct Args {
     /// Listen address
     #[structopt(long, default_value = "0.0.0.0:11814")]
@@ -27,21 +30,9 @@ pub struct Args {
     #[structopt(long, default_value = "/var/themelio-node/")]
     database: String,
 
-    /// Specifies the secret key for staking.
+    /// Path to a YAML staker configuration
     #[structopt(long)]
-    staker_sk: Option<Ed25519SK>,
-
-    /// Bootstrap addresses for the staker network.
-    #[structopt(long)]
-    staker_bootstrap: Vec<SocketAddr>,
-
-    /// Listen address for the staker network.
-    #[structopt(long)]
-    staker_listen: Option<SocketAddr>,
-
-    /// Payout address for staker rewards.
-    #[structopt(long)]
-    staker_payout_addr: Option<Address>,
+    staker_cfg: Option<PathBuf>,
 
     /// If given, uses this JSON file to configure the network genesis rather than following the known testnet/mainnet genesis.
     #[structopt(long)]
@@ -51,20 +42,29 @@ pub struct Args {
     #[structopt(long)]
     testnet: bool,
 
-    // /// If set, prunes the database at start and, on average, every 24 hours.
-    // #[structopt(long)]
-    // prune: bool,
-    /// Fee multiplier to target. Default is 1000.
-    #[structopt(long, default_value = "1000")]
-    target_fee_multiplier: u128,
-
-    /// Reset last block to the given height.
-    #[structopt(long)]
-    emergency_reset_block: Option<BlockHeight>,
-
     /// Create an in-memory coin index.
     #[structopt(long)]
     pub index_coins: bool,
+}
+
+/// Staker configuration, YAML-serializable.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde_as]
+pub struct StakerConfig {
+    /// ed25519 secret key of the staker
+    #[serde_as(as = "DisplayFromStr")]
+    pub signing_secret: Ed25519SK,
+    /// Listen address for the staker.
+    #[serde_as(as = "DisplayFromStr")]
+    pub listen: SocketAddr,
+    /// Bootstrap address into the staker network.
+    #[serde_as(as = "DisplayFromStr")]
+    pub bootstrap: SocketAddr,
+    /// Payout address
+    #[serde_as(as = "DisplayFromStr")]
+    pub payout_addr: Address,
+    /// Target fee multiplier
+    pub target_fee_multiplier: u128,
 }
 
 impl Args {
@@ -111,10 +111,6 @@ impl Args {
 
         let storage = Storage::new(smt_db, meta_db, self.genesis_config().await?);
 
-        // Reset block. This is used to roll back history in emergencies
-        if let Some(_height) = self.emergency_reset_block {
-            todo!()
-        }
         log::debug!("node storage opened");
 
         Ok(storage)
@@ -144,24 +140,11 @@ impl Args {
     }
 
     /// Staker secret key
-    pub async fn staker_sk(
-        &self,
-    ) -> anyhow::Result<Option<(Ed25519SK, SocketAddr, Vec<SocketAddr>, u128, Address)>> {
-        if let Some(staker_sk) = self.staker_sk {
-            let staker_listen = self
-                .staker_listen
-                .context("staker_listen must be set if staker_sk is set")?;
-            let staker_bootstrap = self.staker_bootstrap.clone();
-            let staker_payout_addr = self
-                .staker_payout_addr
-                .context("staker_payout_addr must be set of staker_sk is set")?;
-            Ok(Some((
-                staker_sk,
-                staker_listen,
-                staker_bootstrap,
-                self.target_fee_multiplier,
-                staker_payout_addr,
-            )))
+    pub async fn staker_cfg(&self) -> anyhow::Result<Option<StakerConfig>> {
+        if let Some(path) = self.staker_cfg.as_ref() {
+            let s = std::fs::read_to_string(path)?;
+            let lele: StakerConfig = serde_yaml::from_str(&s)?;
+            Ok(Some(lele))
         } else {
             Ok(None)
         }

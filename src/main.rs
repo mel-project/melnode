@@ -67,22 +67,8 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
         storage.clone(),
         opt.index_coins,
     );
-    let _staker_prot = if let Some((
-        staker_sk,
-        staker_listen,
-        staker_bootstrap,
-        target_fee_multiplier,
-        staker_payout_addr,
-    )) = opt.staker_sk().await?
-    {
-        Some(StakerProtocol::new(
-            staker_listen,
-            staker_bootstrap,
-            storage.clone(),
-            staker_sk,
-            staker_payout_addr,
-            target_fee_multiplier,
-        )?)
+    let _staker_prot = if let Some(cfg) = opt.staker_cfg().await? {
+        Some(StakerProtocol::new(storage.clone(), cfg)?)
     } else {
         None
     };
@@ -108,4 +94,3 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
 
     Ok(())
 }
-

@@ -1,4 +1,7 @@
-use crate::storage::{MeshaCas, Storage};
+use crate::{
+    args::StakerConfig,
+    storage::{MeshaCas, Storage},
+};
 
 use std::{
     net::SocketAddr,
@@ -26,14 +29,7 @@ pub struct StakerProtocol {
 
 impl StakerProtocol {
     /// Creates a new instance of the staker protocol.
-    pub fn new(
-        addr: SocketAddr,
-        bootstrap: Vec<SocketAddr>,
-        storage: Storage,
-        my_sk: Ed25519SK,
-        payout_address: Address,
-        target_fee_multiplier: u128,
-    ) -> anyhow::Result<Self> {
+    pub fn new(storage: Storage, cfg: StakerConfig) -> anyhow::Result<Self> {
         let _network_task = smolscale::spawn(async move {
             loop {
                 let x = storage.highest_height();
@@ -56,12 +52,12 @@ impl StakerProtocol {
                     smol::Timer::after(Duration::from_secs(1)).await;
                     // we race the staker loop with epoch termination. epoch termination for now is just a sleep loop that waits until the last block in the epoch is confirmed.
                     let staker_fut = one_epoch_loop(
-                        addr,
-                        bootstrap.clone(),
+                        cfg.listen,
+                        vec![cfg.bootstrap],
                         storage.clone(),
-                        my_sk,
-                        payout_address,
-                        target_fee_multiplier,
+                        cfg.signing_secret,
+                        cfg.payout_addr,
+                        cfg.target_fee_multiplier,
                     );
                     let epoch_termination = async {
                         loop {
