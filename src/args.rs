@@ -27,8 +27,8 @@ pub struct Args {
     bootstrap: Vec<String>,
 
     /// Database path
-    #[structopt(long, default_value = "/var/themelio-node/")]
-    database: String,
+    #[structopt(long)]
+    database: Option<PathBuf>,
 
     /// Path to a YAML staker configuration
     #[structopt(long)]
@@ -93,7 +93,10 @@ impl Args {
     }
 
     pub async fn storage(&self) -> anyhow::Result<Storage> {
-        let database_base_path = PathBuf::from(self.database.to_string());
+        let database_default_path = dirs::home_dir()
+            .expect("no home dir?!")
+            .tap_mut(|p| p.push(".themelio-node/"));
+        let database_base_path = self.database.clone().unwrap_or(database_default_path);
         let metadata_path = database_base_path
             .clone()
             .tap_mut(|path| path.push("metadata.db"));
@@ -106,7 +109,7 @@ impl Args {
             boringdb::Database::open(&metadata_path).context("cannot open boringdb database")?;
         let smt_db =
             meshanina::Mapping::open(&smt_path).context("cannot open meshanina database")?;
-        log::debug!("database opened at {}", self.database);
+        log::debug!("database opened at {:?}", database_base_path);
 
         let storage = Storage::new(smt_db, meta_db, self.genesis_config().await?);
 

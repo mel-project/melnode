@@ -119,6 +119,7 @@ clone-macro = "0.1.0"
 lz4_flex = "0.8.2"
 serde_with = "1.14.0"
 serde_yaml = "0.8.25"
+dirs = "4.0.0"
 #lz4_flex = "0.9.3"
 
 # [target.'cfg(unix)'.dependencies]
