@@ -19,8 +19,9 @@ use tmelcrypt::Ed25519SK;
 static MAINNET_START_TIME: Lazy<SystemTime> =
     Lazy::new(|| std::time::UNIX_EPOCH + Duration::from_secs(1618365600)); // Apr 14 2021
 
-static TESTNET_START_TIME: Lazy<SystemTime> =
-    Lazy::new(|| std::time::UNIX_EPOCH + Duration::from_secs(1618365600)); // Apr 14 2021
+static TESTNET_START_TIME: Lazy<SystemTime> = Lazy::new(|| {
+    std::time::UNIX_EPOCH + Duration::from_secs(1618365600) + Duration::from_secs(86400 * 462)
+});
 
 /// This encapsulates the staker-specific peer-to-peer.
 pub struct StakerProtocol {
