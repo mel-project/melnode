@@ -65,7 +65,7 @@ Note that two things were needed to connect to the testnet:
 - Connecting to a testnet bootstrap node (this is the first server your full node talks to)
 - Specifying --testnet, to use testnet validation rules
 
-#### Configurations
+### Configurations
 
 You can change the configuration of an auditor node with the following flags:
 
@@ -77,10 +77,57 @@ You can change the configuration of an auditor node with the following flags:
 
 --listen <listen>                            Listen address
 
+--testnet                                    Use testnet validation rules
+
 --override-genesis <override-genesis>
-            If given, uses this TOML file to configure the network genesis rather than following the known
+            If given, uses this YAML file to configure the network genesis rather than following the known
             testnet/mainnet genesis
 ```
+
+### Local simnet support
+
+**Note**: there will soon be a tool to automatically generate these configurations.
+
+We can configure a simnet --- a "fake" network local to our computer --- by the combination of three options:
+
+- `--bootstrap 127.0.0.1:11814` to bootstrap only with ourselves instead of any remote node
+- `--override-genesis network-config.yaml`, where `custom-config.yaml` contains configuration for a _custom network_ of the following form:
+  ```yaml
+  network: custom02 # anything from custom02..custom08
+  # specifies the "initial stash" of money in the genesis block
+  init_coindata:
+    # what address gets the initial supply of money
+    covhash: t5xw3qvzvfezkb748d3zt929zkbt7szgt6jr3zfxxnewj1rtajpjx0
+    # how many units (in millionths)
+    value: 1000000
+    # denomination
+    denom: Mel
+    # additional data in the UTXO
+    additional_data: []
+  # specifies all the stakers with consensus power.
+  # we need to specify ourselves in order to produce any blocks; "themelio-crypttool generate-ed25519" (install via cargo) can generate a keypair for us
+  stakes:
+    deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef:
+      pubkey: 4ce983d241f1d40b0e5b65e0bd1a6877a35acaec5182f110810f1276103c829e
+      e_start: 0
+      e_post_end: 100000 # essentially never end the stake
+      syms_staked: 10000 # does not matter
+  ```
+- `--staker-cfg staker-config.yaml` must contain a _staker_ configuration like this:
+  ```yaml
+  # secret key; must correspond to "stakes.dead[...]beef.pubkey" in the network config
+  signing_secret: 5b4c8873cbdb089439d025e9fa817b1df1128231699131c245c0027be880d4d44ce983d241f1d40b0e5b65e0bd1a6877a35acaec5182f110810f1276103c829e
+  # address for staker-network communication, this can be arbitrary
+  listen: 127.0.0.1:20000
+  # must be same as "listen"
+  bootstrap: 127.0.0.1:20000
+  # where block rewards are sent
+  payout_addr: t5xw3qvzvfezkb748d3zt929zkbt7szgt6jr3zfxxnewj1rtajpjx0
+  # vote for this fee multiplier (higher values charge more fees)
+  target_fee_multiplier: 10000
+  ```
+
+A more detailed explanation of `--staker-cfg` requires explaining the staker and consensus system, as follows:
 
 ## Staker Full Node
 
@@ -93,10 +140,6 @@ WIP
 WIP
 
 ### Configuration
-
-WIP
-
-### Operating a Private Network
 
 WIP
 

@@ -75,11 +75,11 @@ impl Args {
     /// Derives the genesis configuration from the arguments
     pub async fn genesis_config(&self) -> anyhow::Result<GenesisConfig> {
         if let Some(path) = &self.override_genesis {
-            let genesis_json: Vec<u8> = smol::fs::read(&path)
+            let genesis_yaml: Vec<u8> = smol::fs::read(&path)
                 .await
                 .context("cannot read genesis config")?;
-            Ok(serde_json::from_slice(&genesis_json)
-                .context("genesis config not a valid TOML file")?)
+            Ok(serde_yaml::from_slice(&genesis_yaml)
+                .context("genesis config not a valid YAML file")?)
         } else if self.testnet {
             #[cfg(feature = "metrics")]
             {

@@ -3428,9 +3428,9 @@ dependencies = [
 
 [[package]]
 name = "themelio-stf"
-version = "0.11.2"
+version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adb072c21546bbb7afcc3b3160cc221b84f651bce2f5c7a2cbc812681ea32660"
+checksum = "98f0b27efcbb04fabfcd0d50b35f3857a5720b61af6ad73cd00c6b9de2a49921"
 dependencies = [
  "arbitrary",
  "assoc",
@@ -3460,6 +3460,7 @@ dependencies = [
  "scopeguard",
  "serde",
  "serde_repr",
+ "serde_with",
  "smallvec",
  "stdcode",
  "tap",
@@ -3470,9 +3471,9 @@ dependencies = [
 
 [[package]]
 name = "themelio-structs"
-version = "0.2.5"
+version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86cd48c00eadc69095ad7b9b1b36572e293b12376cacbee9f884a60fdbf2cf41"
+checksum = "28c1a8914aeb9278ab28263c466dbe14cd204c7a36a35212f4f197bdd199a587"
 dependencies = [
  "arbitrary",
  "derivative",
