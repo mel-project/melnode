@@ -83,7 +83,7 @@ impl Storage {
         let _disk_sync = smolscale::spawn(clone!([highest, forest, metadata], async move {
             let mut highest_height = BlockHeight(0);
             loop {
-                smol::Timer::after(Duration::from_secs(30)).await;
+                smol::Timer::after(Duration::from_secs(1)).await;
                 if highest.read().inner_ref().height > highest_height {
                     let start = Instant::now();
                     let highest = highest.read().clone();
