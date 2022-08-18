@@ -62,14 +62,27 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
     let bootstrap = opt.bootstrap().await?;
 
     if opt.self_test {
-        log::info!("*** SELF TEST STARTED! ***");
-        let mut state = storage.get_state(BlockHeight(1)).context("no block 1")?;
-        for bh in 2..=storage.highest_height().0 {
-            let bh = BlockHeight(bh);
-            let blk = storage.get_state(bh).context("no block")?.to_block();
-            state = state.apply_block(&blk)?;
-            log::info!("{} replayed correctly", bh);
-        }
+        let storage = storage.clone();
+        smolscale::spawn(async move {
+            loop {
+                log::info!("*** SELF TEST STARTED! ***");
+                let mut state = storage.get_state(BlockHeight(1)).expect("no block 1");
+                let last_height = storage.highest_height().0;
+                for bh in 2..=last_height {
+                    let bh = BlockHeight(bh);
+                    let blk = storage.get_state(bh).expect("no block").to_block();
+                    state = state.apply_block(&blk).expect("block application failed");
+                    smol::future::yield_now().await;
+                    log::debug!(
+                        "{}/{} replayed correctly ({:.2}%)",
+                        bh,
+                        last_height,
+                        bh.0 as f64 / last_height as f64 * 100.0
+                    );
+                }
+            }
+        })
+        .detach();
     }
 
     log::info!("bootstrapping with {:?}", bootstrap);
