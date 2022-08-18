@@ -20,9 +20,9 @@ debug = 0
 lto = 'thin'
 codegen-units = 1 
 
-[patch.crates-io]
-# melnet={path="../melnet"}  
-themelio-stf={path="../themelio-stf"}  
+# [patch.crates-io]
+# # melnet={path="../melnet"}  
+# themelio-stf={path="../themelio-stf"}  
 
 [profile.release-dbg]
 inherits = "release"
