@@ -13,9 +13,11 @@ use std::time::Duration;
 use crate::protocols::{NodeProtocol, StakerProtocol};
 use crate::storage::Storage;
 
+use anyhow::Context;
 use args::Args;
 
 use structopt::StructOpt;
+use themelio_structs::BlockHeight;
 
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
@@ -23,9 +25,11 @@ static ALLOC: dhat::Alloc = dhat::Alloc;
 
 fn main() -> anyhow::Result<()> {
     if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "themelio_node::=debug,warn");
+        std::env::set_var("RUST_LOG", "themelio_node=debug,warn");
     }
+
     let mut builder = env_logger::Builder::from_env("RUST_LOG");
+
     #[cfg(feature = "metrics")]
     {
         use std::io::Write;
@@ -56,6 +60,17 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
     let netid = genesis.network;
     let storage: Storage = opt.storage().await?;
     let bootstrap = opt.bootstrap().await?;
+
+    if opt.self_test {
+        log::info!("*** SELF TEST STARTED! ***");
+        let mut state = storage.get_state(BlockHeight(1)).context("no block 1")?;
+        for bh in 2..=storage.highest_height().0 {
+            let bh = BlockHeight(bh);
+            let blk = storage.get_state(bh).context("no block")?.to_block();
+            state = state.apply_block(&blk)?;
+            log::info!("{} replayed correctly", bh);
+        }
+    }
 
     log::info!("bootstrapping with {:?}", bootstrap);
 

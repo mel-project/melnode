@@ -58,6 +58,16 @@ impl Storage {
             .open_dict(&format!("meta_genesis{}", genesis_id))
             .unwrap();
         let forest = novasmt::Database::new(MeshaCas::new(mdb));
+
+        // // le ole reset
+        // let old_blob = metadata
+        //     .get(format!("block-{}", 1399998).as_bytes())
+        //     .unwrap()
+        //     .unwrap();
+        // metadata
+        //     .insert(b"last_confirmed_block".to_vec(), old_blob)
+        //     .unwrap();
+
         let highest = metadata
             .get(b"last_confirmed_block")
             .expect("db failed")

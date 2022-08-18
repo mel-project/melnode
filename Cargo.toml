@@ -22,7 +22,7 @@ codegen-units = 1
 
 [patch.crates-io]
 # melnet={path="../melnet"}  
-# themelio-stf={path="../themelio-stf"}  
+themelio-stf={path="../themelio-stf"}  
 
 [profile.release-dbg]
 inherits = "release"

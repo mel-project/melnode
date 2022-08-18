@@ -3,12 +3,11 @@ use crate::storage::Storage;
 use std::{net::SocketAddr, path::PathBuf};
 
 use anyhow::Context;
-use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
+use serde::Deserialize;
 use structopt::StructOpt;
 use tap::Tap;
 use themelio_stf::GenesisConfig;
-use themelio_structs::{Address, BlockHeight};
+use themelio_structs::Address;
 use tmelcrypt::Ed25519SK;
 
 #[derive(Debug, StructOpt)]
@@ -41,6 +40,10 @@ pub struct Args {
     /// If set to true, default to the testnet. Otherwise, mainnet validation rules are used.
     #[structopt(long)]
     testnet: bool,
+
+    /// If set to true, runs a self-test by replaying the history from genesis, ensuring that everything is correct
+    #[structopt(long)]
+    pub self_test: bool,
 
     /// Create an in-memory coin index.
     #[structopt(long)]
