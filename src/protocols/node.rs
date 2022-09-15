@@ -23,8 +23,8 @@ use melnet::MelnetError;
 use smol::net::TcpListener;
 use smol_timeout::TimeoutExt;
 use themelio_nodeprot::{
-    NodeClient, NodeResponder, NodeRpcClient, NodeRpcProtocol, NodeServer, StateSummary, Substate,
-    TransactionError,
+    NodeClient, NodeResponder, NodeRpcClient, NodeRpcProtocol, NodeRpcService, NodeServer,
+    StateSummary, Substate, TransactionError,
 };
 use tmelcrypt::HashVal;
 
@@ -51,58 +51,30 @@ impl NodeProtocol {
         bootstrap: Vec<SocketAddr>,
         storage: Storage,
         index: bool,
+        swarm: Swarm<TcpBackhaul, NodeRpcClient<Pipeline>>,
     ) -> Self {
-        // let network = melnet::NetState::new_with_name(netname(netid));
-        // for addr in bootstrap {
-        //     network.add_route(addr);
-        // }
-        // if let Some(advertise_addr) = advertise_addr {
-        //     network.add_route(advertise_addr);
-        // }
-
-        // TODO: replace `AuditorResponder` with `NodeRpcImpl`
-        //let responder = AuditorResponder::new(netid, storage.clone(), index);
-        //network.listen("node", NodeResponder::new(responder));
-
-        let swarm = Swarm::new(TcpBackhaul::new(), GossipClient, "spamswarm");
-        for addr in bootstrap {
-            swarm.add_route(addr.to_string().into(), false).await;
-        }
-        if let Some(advertise_addr) = advertise_addr {
-            swarm.add_route(advertise_addr, false);
-        }
+        // TODO:
+        // 1. figure out if swarm::start_listen is all we need to do here?
+        // 2. should we keep the old melnet as a separate network task?
         let _network_task = smolscale::spawn({
             async move {
+                let swarm = swarm.clone();
                 swarm
                     .start_listen(
                         listen_addr.to_string().into(),
-                        Some(addr.to_string().into()),
-                        GossipService(Forwarder {
-                            swarm: swarm.clone(),
-                            seen: Default::default(),
-                        }),
+                        advertise_addr.into(),
+                        NodeRpcService(NodeRpcImpl::new(
+                            swarm.clone(),
+                            netid,
+                            storage.clone(),
+                            index,
+                        )),
                     )
                     .await?;
-                let mut stdin = BufReader::new(smol::Unblock::new(std::io::stdin()));
-                let mut line = String::new();
-                loop {
-                    stdin.read_line(&mut line).await?;
-                    if let Some(f) = swarm.routes().await.get(0) {
-                        swarm
-                            .connect(f.clone())
-                            .await?
-                            .forward(format!(
-                                "{}: {}",
-                                SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
-                                line.trim()
-                            ))
-                            .await?;
-                    }
-                }
             }
         });
 
-        let _blksync_task = smolscale::spawn(blksync_loop(netid, network, storage));
+        let _blksync_task = smolscale::spawn(blksync_loop(netid, swarm.clone(), storage));
         Self {
             _network_task,
             _blksync_task,
@@ -110,16 +82,19 @@ impl NodeProtocol {
     }
 }
 
-async fn blksync_loop(netid: NetID, network: melnet::NetState, storage: Storage) {
+async fn blksync_loop(
+    netid: NetID,
+    swarm: Swarm<TcpBackhaul, NodeRpcClient<Pipeline>>,
+    storage: Storage,
+) {
     let tag = || format!("blksync@{:?}", storage.highest_state().header().height);
     loop {
         let gap_time: Duration = Duration::from_secs_f64(fastrand::f64() * 1.0);
-        let routes = network.routes();
-        let random_peer = routes.first().cloned();
+        let routes = swarm.routes().await;
+        let random_peer = routes.first();
         if let Some(peer) = random_peer {
             log::trace!("picking peer {} out of {} peers", peer, routes.len());
             let client = NodeClient::new(netid, peer);
-
             let res = attempt_blksync(peer, &client, &storage).await;
             match res {
                 Err(e) => {
@@ -397,7 +372,12 @@ pub struct NodeRpcImpl {
 }
 
 impl NodeRpcImpl {
-    fn new(network: NetID, storage: Storage, index: bool) -> Self {
+    fn new(
+        swarm: Swarm<TcpBackhaul, NodeRpcClient<Pipeline>>,
+        network: NetID,
+        storage: Storage,
+        index: bool,
+    ) -> Self {
         Self {
             network,
             storage: storage.clone(),
@@ -409,7 +389,7 @@ impl NodeRpcImpl {
             recent: LruCache::new(1000).into(),
             coin_smts: LruCache::new(100).into(),
             summary: LruCache::new(10).into(),
-            swarm: Swarm::new(TcpBackhaul::new(), NodeRpcClient, "themelio-node"),
+            swarm,
         }
     }
 
@@ -466,11 +446,11 @@ impl NodeRpcProtocol for NodeRpcImpl {
 
         // log::debug!("about to broadcast txhash {:?}", tx.hash_nosigs());
         let routes = self.swarm.routes().await;
+        let backhaul = TcpBackhaul::new();
         for neigh in routes.iter().take(16).cloned() {
             let tx = tx.clone();
             let network = self.network;
             // log::debug!("bcast {:?} => {:?}", tx.hash_nosigs(), neigh);
-            let backhaul = TcpBackhaul::new();
             smolscale::spawn(async move {
                 let conn = backhaul.connect(neigh).await.unwrap();
                 NodeRpcClient(conn)
