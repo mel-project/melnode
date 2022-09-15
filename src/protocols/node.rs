@@ -7,8 +7,13 @@ use std::{
 };
 
 use anyhow::Context;
+use async_trait::async_trait;
 use futures_util::{StreamExt, TryStreamExt};
 use lru::LruCache;
+use melnet2::{
+    wire::tcp::{Pipeline, TcpBackhaul},
+    Backhaul, Swarm,
+};
 use novasmt::{CompressedProof, Database, InMemoryCas, Tree};
 use parking_lot::Mutex;
 use themelio_stf::SmtMapping;
@@ -17,7 +22,10 @@ use themelio_structs::{AbbrBlock, Block, BlockHeight, ConsensusProof, NetID, Tra
 use melnet::MelnetError;
 use smol::net::TcpListener;
 use smol_timeout::TimeoutExt;
-use themelio_nodeprot::{NodeClient, NodeResponder, NodeServer, StateSummary, Substate};
+use themelio_nodeprot::{
+    NodeClient, NodeResponder, NodeRpcClient, NodeRpcProtocol, NodeServer, StateSummary, Substate,
+    TransactionError,
+};
 use tmelcrypt::HashVal;
 
 /// This encapsulates the node peer-to-peer for both auditors and stakers..
@@ -44,22 +52,56 @@ impl NodeProtocol {
         storage: Storage,
         index: bool,
     ) -> Self {
-        let network = melnet::NetState::new_with_name(netname(netid));
+        // let network = melnet::NetState::new_with_name(netname(netid));
+        // for addr in bootstrap {
+        //     network.add_route(addr);
+        // }
+        // if let Some(advertise_addr) = advertise_addr {
+        //     network.add_route(advertise_addr);
+        // }
+
+        // TODO: replace `AuditorResponder` with `NodeRpcImpl`
+        //let responder = AuditorResponder::new(netid, storage.clone(), index);
+        //network.listen("node", NodeResponder::new(responder));
+
+        let swarm = Swarm::new(TcpBackhaul::new(), GossipClient, "spamswarm");
         for addr in bootstrap {
-            network.add_route(addr);
+            swarm.add_route(addr.to_string().into(), false).await;
         }
         if let Some(advertise_addr) = advertise_addr {
-            network.add_route(advertise_addr);
+            swarm.add_route(advertise_addr, false);
         }
-        let responder = AuditorResponder::new(netid, storage.clone(), index);
-        network.listen("node", NodeResponder::new(responder));
         let _network_task = smolscale::spawn({
-            let network = network.clone();
             async move {
-                let listener = TcpListener::bind(listen_addr).await.unwrap();
-                network.run_server(listener).await;
+                swarm
+                    .start_listen(
+                        listen_addr.to_string().into(),
+                        Some(addr.to_string().into()),
+                        GossipService(Forwarder {
+                            swarm: swarm.clone(),
+                            seen: Default::default(),
+                        }),
+                    )
+                    .await?;
+                let mut stdin = BufReader::new(smol::Unblock::new(std::io::stdin()));
+                let mut line = String::new();
+                loop {
+                    stdin.read_line(&mut line).await?;
+                    if let Some(f) = swarm.routes().await.get(0) {
+                        swarm
+                            .connect(f.clone())
+                            .await?
+                            .forward(format!(
+                                "{}: {}",
+                                SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
+                                line.trim()
+                            ))
+                            .await?;
+                    }
+                }
             }
         });
+
         let _blksync_task = smolscale::spawn(blksync_loop(netid, network, storage));
         Self {
             _network_task,
@@ -339,5 +381,206 @@ impl AuditorResponder {
             self.coin_smts.lock().put(height, mm.mapping.clone());
             Ok(mm.mapping)
         }
+    }
+}
+
+// NOTE: this struct is responsible for obtaining any "state" needed for the implementation of the RPC business logic.
+pub struct NodeRpcImpl {
+    network: NetID,
+    storage: Storage,
+    indexer: Option<BlockIndexer>,
+    recent: Mutex<LruCache<TxHash, Instant>>,
+    summary: Mutex<LruCache<BlockHeight, StateSummary>>,
+    coin_smts: Mutex<LruCache<BlockHeight, Tree<InMemoryCas>>>,
+
+    swarm: Swarm<TcpBackhaul, NodeRpcClient<Pipeline>>,
+}
+
+impl NodeRpcImpl {
+    fn new(network: NetID, storage: Storage, index: bool) -> Self {
+        Self {
+            network,
+            storage: storage.clone(),
+            indexer: if index {
+                Some(BlockIndexer::new(storage))
+            } else {
+                None
+            },
+            recent: LruCache::new(1000).into(),
+            coin_smts: LruCache::new(100).into(),
+            summary: LruCache::new(10).into(),
+            swarm: Swarm::new(TcpBackhaul::new(), NodeRpcClient, "themelio-node"),
+        }
+    }
+
+    fn get_coin_tree(&self, height: BlockHeight) -> anyhow::Result<Tree<InMemoryCas>> {
+        let otree = self.coin_smts.lock().get(&height).cloned();
+        if let Some(v) = otree {
+            Ok(v)
+        } else {
+            let state = self
+                .storage
+                .get_state(height)
+                .context(format!("block {} not confirmed yet", height))?;
+            let mut mm = SmtMapping::new(
+                Database::new(InMemoryCas::default())
+                    .get_tree(Default::default())
+                    .unwrap(),
+            );
+            for (h, t) in state.inner_ref().transactions.iter() {
+                mm.insert(*h, t.clone());
+            }
+            self.coin_smts.lock().put(height, mm.mapping.clone());
+            Ok(mm.mapping)
+        }
+    }
+}
+
+#[async_trait]
+impl NodeRpcProtocol for NodeRpcImpl {
+    async fn send_tx(&self, tx: Transaction) -> Result<(), TransactionError> {
+        if let Some(val) = self.recent.lock().peek(&tx.hash_nosigs()) {
+            if val.elapsed().as_secs_f64() < 10.0 {
+                return Err(TransactionError::RecentlySeen);
+            }
+        }
+        self.recent.lock().put(tx.hash_nosigs(), Instant::now());
+        log::trace!("handling send_tx");
+        let start = Instant::now();
+
+        self.storage
+            .mempool_mut()
+            .apply_transaction(&tx)
+            .map_err(|e| {
+                if !e.to_string().contains("duplicate") {
+                    log::warn!("cannot apply tx: {:?}", e);
+                }
+            })
+            .or(Err(TransactionError::Storage));
+
+        log::debug!(
+            "txhash {}.. inserted ({:?} applying)",
+            &tx.hash_nosigs().to_string()[..10],
+            start.elapsed(),
+        );
+
+        // log::debug!("about to broadcast txhash {:?}", tx.hash_nosigs());
+        let routes = self.swarm.routes().await;
+        for neigh in routes.iter().take(16).cloned() {
+            let tx = tx.clone();
+            let network = self.network;
+            // log::debug!("bcast {:?} => {:?}", tx.hash_nosigs(), neigh);
+            let backhaul = TcpBackhaul::new();
+            smolscale::spawn(async move {
+                let conn = backhaul.connect(neigh).await.unwrap();
+                NodeRpcClient(conn)
+                    .send_tx(tx)
+                    .timeout(Duration::from_secs(10))
+                    .await
+            })
+            .detach();
+        }
+
+        Ok(())
+    }
+
+    async fn get_abbr_block(&self, height: BlockHeight) -> Option<(AbbrBlock, ConsensusProof)> {
+        log::trace!("handling get_abbr_block({})", height);
+        let state = self
+            .storage
+            .get_state(height)
+            .context(format!("block {} not confirmed yet", height))
+            .ok()?;
+        let proof = self
+            .storage
+            .get_consensus(height)
+            .context(format!("block {} not confirmed yet", height))
+            .ok()?;
+        Some((state.to_block().abbreviate(), proof))
+    }
+
+    async fn get_summary(&self) -> StateSummary {
+        log::trace!("handling get_summary()");
+        let highest = self.storage.highest_state();
+        let res = self
+            .summary
+            .lock()
+            .get(&highest.inner_ref().height)
+            .cloned();
+        if let Some(res) = res {
+            res
+        } else {
+            let proof = self
+                .storage
+                .get_consensus(highest.inner_ref().height)
+                .unwrap_or_default();
+            let summary = StateSummary {
+                netid: self.network,
+                height: highest.inner_ref().height,
+                header: highest.header(),
+                proof,
+            };
+            self.summary
+                .lock()
+                .push(highest.inner_ref().height, summary.clone());
+            summary
+        }
+    }
+
+    async fn get_block(&self, height: BlockHeight) -> Option<Block> {
+        log::trace!("handling get_state({})", height);
+        Some(
+            self.storage
+                .get_state(height)
+                .context("no such height")
+                .ok()?
+                .to_block(),
+        )
+    }
+
+    async fn get_smt_branch(
+        &self,
+        height: BlockHeight,
+        elem: Substate,
+        key: HashVal,
+    ) -> Option<(Vec<u8>, CompressedProof)> {
+        log::trace!("handling get_smt_branch({}, {:?})", height, elem);
+        let state = self
+            .storage
+            .get_state(height)
+            .context(format!("block {} not confirmed yet", height))
+            .ok()?;
+        let ctree = self.get_coin_tree(height).ok()?;
+        let (v, proof) = match elem {
+            Substate::Coins => state.inner_ref().coins.inner().get_with_proof(key.0),
+            Substate::History => state.inner_ref().history.mapping.get_with_proof(key.0),
+            Substate::Pools => state.inner_ref().pools.mapping.get_with_proof(key.0),
+            Substate::Stakes => state.inner_ref().stakes.mapping.get_with_proof(key.0),
+            Substate::Transactions => ctree.get_with_proof(key.0),
+        };
+        Some((v.to_vec(), proof.compress()))
+    }
+
+    async fn get_stakers_raw(&self, height: BlockHeight) -> Option<BTreeMap<HashVal, Vec<u8>>> {
+        let state = self
+            .storage
+            .get_state(height)
+            .context("no such height")
+            .ok()?;
+        let mut accum = BTreeMap::new();
+        for (k, v) in state.inner_ref().stakes.mapping.iter() {
+            accum.insert(HashVal(k), v.to_vec());
+        }
+        Some(accum)
+    }
+
+    async fn get_some_coins(
+        &self,
+        height: BlockHeight,
+        covhash: themelio_structs::Address,
+    ) -> Option<Vec<themelio_structs::CoinID>> {
+        self.indexer
+            .as_ref()
+            .and_then(|s| s.get(height).map(|idx| idx.lookup(covhash)))
     }
 }
