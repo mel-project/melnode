@@ -17,7 +17,9 @@ use melnet2::{
 use novasmt::{CompressedProof, Database, InMemoryCas, Tree};
 use parking_lot::Mutex;
 use themelio_stf::SmtMapping;
-use themelio_structs::{AbbrBlock, Block, BlockHeight, ConsensusProof, NetID, Transaction, TxHash};
+use themelio_structs::{
+    AbbrBlock, Address, Block, BlockHeight, ConsensusProof, NetID, Transaction, TxHash,
+};
 
 use melnet::MelnetError;
 use smol::net::TcpListener;
@@ -62,7 +64,7 @@ impl NodeProtocol {
                 swarm
                     .start_listen(
                         listen_addr.to_string().into(),
-                        advertise_addr.into(),
+                        advertise_addr.unwrap().to_string().into(),
                         NodeRpcService(NodeRpcImpl::new(
                             swarm.clone(),
                             netid,
@@ -70,7 +72,7 @@ impl NodeProtocol {
                             index,
                         )),
                     )
-                    .await?;
+                    .await;
             }
         });
 
@@ -91,11 +93,14 @@ async fn blksync_loop(
     loop {
         let gap_time: Duration = Duration::from_secs_f64(fastrand::f64() * 1.0);
         let routes = swarm.routes().await;
-        let random_peer = routes.first();
+        let random_peer = routes.first().cloned();
+        let backhaul = TcpBackhaul::new();
         if let Some(peer) = random_peer {
-            log::trace!("picking peer {} out of {} peers", peer, routes.len());
-            let client = NodeClient::new(netid, peer);
-            let res = attempt_blksync(peer, &client, &storage).await;
+            log::trace!("picking peer {} out of {} peers", &peer, routes.len());
+            let conn = backhaul.connect(peer.clone()).await.unwrap();
+            let client = NodeRpcClient(conn);
+            let addr: SocketAddr = peer.clone().to_string().parse().unwrap();
+            let res = attempt_blksync(addr, &client, &storage).await;
             match res {
                 Err(e) => {
                     log::warn!("{}: failed to blksync with {}: {:?}", tag(), peer, e);
@@ -114,7 +119,7 @@ async fn blksync_loop(
 /// Attempts a sync using the given given node client.
 async fn attempt_blksync(
     addr: SocketAddr,
-    client: &NodeClient,
+    client: &NodeRpcClient<Pipeline>,
     storage: &Storage,
 ) -> anyhow::Result<usize> {
     let their_highest = client
@@ -146,7 +151,8 @@ async fn attempt_blksync(
                     .get_full_block(height, &lookup_tx)
                     .timeout(Duration::from_secs(15))
                     .await
-                    .context("timeout")??;
+                    .context("timeout")
+                    .ok()?;
                 if result.0.header.height != height {
                     anyhow::bail!("WANTED BLK {}, got {}", height, result.0.header.height);
                 }

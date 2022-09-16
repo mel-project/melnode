@@ -92,11 +92,11 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
 
     // TODO: move this into a helper?
     let swarm = Swarm::new(TcpBackhaul::new(), NodeRpcClient, "themelio-node");
-    for addr in bootstrap {
+    for addr in bootstrap.iter() {
         swarm.add_route(addr.to_string().into(), false).await;
     }
     if let Some(advertise_addr) = opt.advertise_addr() {
-        swarm.add_route(advertise_addr, false);
+        swarm.add_route(advertise_addr.to_string().into(), false);
     }
     let _node_prot = NodeProtocol::new(
         netid,
