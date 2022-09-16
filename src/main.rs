@@ -90,7 +90,6 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
 
     log::info!("bootstrapping with {:?}", bootstrap);
 
-    // TODO: move this into a helper?
     let swarm = Swarm::new(TcpBackhaul::new(), NodeRpcClient, "themelio-node");
     for addr in bootstrap.iter() {
         swarm.add_route(addr.to_string().into(), false).await;
