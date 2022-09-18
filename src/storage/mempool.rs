@@ -67,7 +67,7 @@ impl Mempool {
     }
 
     /// Lookups a recent transaction.
-    pub fn lookup_recent_tx(&self, hash: TxHash) -> Option<Transaction> {
+    pub fn lookup_recent_tx(&self, _hash: TxHash) -> Option<Transaction> {
         None
         // self.seen
         //     .peek(&hash)

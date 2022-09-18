@@ -20,9 +20,9 @@ debug = 0
 lto = 'thin'
 codegen-units = 1 
 
-# [patch.crates-io]
+[patch.crates-io]
 # # melnet={path="../melnet"}  
-# themelio-stf={path="../themelio-stf"}  
+themelio-nodeprot={path="../themelio-nodeprot"}  
 
 [profile.release-dbg]
 inherits = "release"
@@ -65,7 +65,6 @@ optional = true
 
 [dependencies.themelio-nodeprot]
 version = "0.11.5"
-features = ["server"]
 
 [dependencies.async-compat]
 version = "0.2.1"
@@ -121,6 +120,7 @@ serde_with = "1.14.0"
 serde_yaml = "0.8.26"
 dirs = "4.0.0"
 jemallocator-global = "0.3.2"
+melnet2 = "0.1.0"
 #lz4_flex = "0.9.3"
 
 # [target.'cfg(unix)'.dependencies]

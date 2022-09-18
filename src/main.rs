@@ -13,7 +13,6 @@ use std::time::Duration;
 use crate::protocols::{NodeProtocol, StakerProtocol};
 use crate::storage::Storage;
 
-use anyhow::Context;
 use args::Args;
 
 use melnet2::wire::tcp::TcpBackhaul;
@@ -91,17 +90,16 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
     log::info!("bootstrapping with {:?}", bootstrap);
 
     let swarm = Swarm::new(TcpBackhaul::new(), NodeRpcClient, "themelio-node");
+
+    // we add the bootstrap routes as "sticky" routes that never expire
     for addr in bootstrap.iter() {
-        swarm.add_route(addr.to_string().into(), false).await;
+        swarm.add_route(addr.to_string().into(), true).await;
     }
-    if let Some(advertise_addr) = opt.advertise_addr() {
-        swarm.add_route(advertise_addr.to_string().into(), false);
-    }
+
     let _node_prot = NodeProtocol::new(
         netid,
         opt.listen_addr(),
         opt.advertise_addr(),
-        bootstrap,
         storage.clone(),
         opt.index_coins,
         swarm,
