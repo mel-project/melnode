@@ -99,6 +99,7 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
     let _node_prot = NodeProtocol::new(
         netid,
         opt.listen_addr(),
+        opt.legacy_listen_addr(),
         opt.advertise_addr(),
         storage.clone(),
         opt.index_coins,

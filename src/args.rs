@@ -17,6 +17,10 @@ pub struct Args {
     #[structopt(long, default_value = "0.0.0.0:11814")]
     listen: SocketAddr,
 
+    /// Optional listen address for nodes using the legacy melnet protocol.
+    #[structopt(long)]
+    legacy_listen: Option<SocketAddr>,
+
     /// Advertise address. Put your public IP address here.
     #[structopt(long)]
     advertise: Option<SocketAddr>,
@@ -142,6 +146,11 @@ impl Args {
     /// Listening address
     pub fn listen_addr(&self) -> SocketAddr {
         self.listen
+    }
+
+    /// Legacy listening address
+    pub fn legacy_listen_addr(&self) -> Option<SocketAddr> {
+        self.legacy_listen
     }
 
     /// Staker secret key

@@ -36,27 +36,44 @@ impl NodeProtocol {
     pub fn new(
         netid: NetID,
         listen_addr: SocketAddr,
+        legacy_listen_addr: Option<SocketAddr>,
         advertise_addr: Option<SocketAddr>,
         storage: Storage,
         index: bool,
         swarm: Swarm<TcpBackhaul, NodeRpcClient<Pipeline>>,
     ) -> Self {
+        let service = NodeRpcService(NodeRpcImpl::new(
+            swarm.clone(),
+            netid,
+            storage.clone(),
+            index,
+        ));
+
+        if legacy_listen_addr.is_some() {
+            let network = melnet::NetState::new_with_name(netname(netid));
+            // Do we need the bootstrap for this?
+            network.listen("node", service);
+        }
+
         // This is all we need to do since start_listen does not block.
         log::debug!("starting to listen at {}", listen_addr);
         smol::future::block_on(swarm.start_listen(
             listen_addr.to_string().into(),
             advertise_addr.map(|addr| addr.to_string().into()),
-            NodeRpcService(NodeRpcImpl::new(
-                swarm.clone(),
-                netid,
-                storage.clone(),
-                index,
-            )),
+            service,
         ))
         .expect("failed to start listening");
 
         let _blksync_task = smolscale::spawn(blksync_loop(netid, swarm, storage));
         Self { _blksync_task }
+    }
+}
+
+fn netname(netid: NetID) -> &str {
+    match netid {
+        NetID::Mainnet => "mainnet-node",
+        NetID::Testnet => "testnet-node",
+        _ => Box::leak(Box::new(format!("{:?}", network))),
     }
 }
 
