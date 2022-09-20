@@ -52,7 +52,15 @@ impl NodeProtocol {
         if legacy_listen_addr.is_some() {
             let network = melnet::NetState::new_with_name(netname(netid));
             // Do we need the bootstrap for this?
-            network.listen("node", service);
+            network.listen(
+                "node",
+                NodeRpcService(NodeRpcImpl::new(
+                    swarm.clone(),
+                    netid,
+                    storage.clone(),
+                    index,
+                )),
+            );
         }
 
         // This is all we need to do since start_listen does not block.
@@ -60,7 +68,12 @@ impl NodeProtocol {
         smol::future::block_on(swarm.start_listen(
             listen_addr.to_string().into(),
             advertise_addr.map(|addr| addr.to_string().into()),
-            service,
+            NodeRpcService(NodeRpcImpl::new(
+                swarm.clone(),
+                netid,
+                storage.clone(),
+                index,
+            )),
         ))
         .expect("failed to start listening");
 
@@ -69,11 +82,11 @@ impl NodeProtocol {
     }
 }
 
-fn netname(netid: NetID) -> &str {
+fn netname(netid: NetID) -> &'static str {
     match netid {
         NetID::Mainnet => "mainnet-node",
         NetID::Testnet => "testnet-node",
-        _ => Box::leak(Box::new(format!("{:?}", network))),
+        _ => Box::leak(Box::new(format!("{:?}", netid))),
     }
 }
 
