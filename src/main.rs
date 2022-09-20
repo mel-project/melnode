@@ -13,7 +13,6 @@ use std::time::Duration;
 use crate::protocols::{NodeProtocol, StakerProtocol};
 use crate::storage::Storage;
 
-use anyhow::Context;
 use args::Args;
 
 use structopt::StructOpt;

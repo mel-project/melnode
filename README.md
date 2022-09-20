@@ -101,7 +101,7 @@ We can configure a simnet --- a "fake" network local to our computer --- by the 
     # how many units (in millionths)
     value: 1000000
     # denomination
-    denom: Mel
+    denom: MEL
     # additional data in the UTXO
     additional_data: []
   # specifies all the stakers with consensus power.
