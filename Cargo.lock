@@ -1935,7 +1935,9 @@ dependencies = [
 
 [[package]]
 name = "meshanina"
-version = "0.3.20"
+version = "0.3.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65492254504dda579f1a84a5c42f431375b749c58521dc640e4e91757dbc854b"
 dependencies = [
  "arrayref",
  "blake3",
@@ -2124,6 +2126,8 @@ dependencies = [
 [[package]]
 name = "novasymph"
 version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a75a9f3b1a8290f6b8c141ef710cbf4a54c3f877da4c42d4cb6580bc28f6514"
 dependencies = [
  "anyhow",
  "async-oneshot 0.5.0",
