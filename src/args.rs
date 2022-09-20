@@ -82,7 +82,7 @@ impl Args {
                 .await
                 .context("cannot read genesis config")?;
             Ok(serde_yaml::from_slice(&genesis_yaml)
-                .context("genesis config not a valid YAML file")?)
+                .context("error while parsing genesis config")?)
         } else if self.testnet {
             #[cfg(feature = "metrics")]
             {
