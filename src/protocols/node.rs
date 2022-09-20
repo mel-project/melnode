@@ -33,7 +33,7 @@ pub struct NodeProtocol {
 
 impl NodeProtocol {
     /// Creates a new AuditorProtocol listening on the given address with the given AuditorState.
-    pub async fn new(
+    pub fn new(
         netid: NetID,
         listen_addr: SocketAddr,
         advertise_addr: Option<SocketAddr>,
@@ -42,21 +42,20 @@ impl NodeProtocol {
         swarm: Swarm<TcpBackhaul, NodeRpcClient<Pipeline>>,
     ) -> Self {
         // This is all we need to do since start_listen does not block.
-        swarm
-            .start_listen(
-                listen_addr.to_string().into(),
-                Some(advertise_addr.unwrap().to_string().into()),
-                NodeRpcService(NodeRpcImpl::new(
-                    swarm.clone(),
-                    netid,
-                    storage.clone(),
-                    index,
-                )),
-            )
-            .await
-            .expect("failed to start listening");
+        log::debug!("starting to listen at {}", listen_addr);
+        smol::future::block_on(swarm.start_listen(
+            listen_addr.to_string().into(),
+            advertise_addr.map(|addr| addr.to_string().into()),
+            NodeRpcService(NodeRpcImpl::new(
+                swarm.clone(),
+                netid,
+                storage.clone(),
+                index,
+            )),
+        ))
+        .expect("failed to start listening");
 
-        let _blksync_task = smolscale::spawn(blksync_loop(netid, swarm.clone(), storage));
+        let _blksync_task = smolscale::spawn(blksync_loop(netid, swarm, storage));
         Self { _blksync_task }
     }
 }
