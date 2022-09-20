@@ -102,8 +102,8 @@ We can configure a simnet --- a "fake" network local to our computer --- by the 
     value: 1000000
     # denomination
     denom: MEL
-    # additional data in the UTXO
-    additional_data: []
+    # additional data in the UTXO (as a hex string)
+    additional_data: ""
   # specifies all the stakers with consensus power.
   # we need to specify ourselves in order to produce any blocks; "themelio-crypttool generate-ed25519" (install via cargo) can generate a keypair for us
   stakes:
