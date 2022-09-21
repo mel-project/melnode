@@ -17,6 +17,7 @@ use melnet2::{
 use novasmt::{CompressedProof, Database, InMemoryCas, Tree};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
+use smol::net::TcpListener;
 use themelio_stf::SmtMapping;
 use themelio_structs::{AbbrBlock, Block, BlockHeight, ConsensusProof, NetID, Transaction, TxHash};
 
@@ -51,7 +52,6 @@ impl NodeProtocol {
 
         if legacy_listen_addr.is_some() {
             let network = melnet::NetState::new_with_name(netname(netid));
-            // Do we need the bootstrap for this?
             network.listen(
                 "node",
                 NodeRpcService(NodeRpcImpl::new(
@@ -61,6 +61,13 @@ impl NodeProtocol {
                     index,
                 )),
             );
+            let _network_task = smolscale::spawn({
+                let network = network.clone();
+                async move {
+                    let listener = TcpListener::bind(listen_addr).await.unwrap();
+                    network.run_server(listener).await;
+                }
+            });
         }
 
         // This is all we need to do since start_listen does not block.
