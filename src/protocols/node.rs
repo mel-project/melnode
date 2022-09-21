@@ -30,6 +30,7 @@ use tmelcrypt::HashVal;
 /// This encapsulates the node peer-to-peer for both auditors and stakers..
 pub struct NodeProtocol {
     _blksync_task: smol::Task<()>,
+    _legacy_task: Option<smol::Task<()>>,
 }
 
 impl NodeProtocol {
@@ -50,7 +51,7 @@ impl NodeProtocol {
             index,
         ));
 
-        if legacy_listen_addr.is_some() {
+        let _legacy_task = if let Some(legacy_listen_addr) = legacy_listen_addr {
             let network = melnet::NetState::new_with_name(netname(netid));
             network.listen(
                 "node",
@@ -61,14 +62,16 @@ impl NodeProtocol {
                     index,
                 )),
             );
-            let _network_task = smolscale::spawn({
+            Some(smolscale::spawn({
                 let network = network.clone();
                 async move {
-                    let listener = TcpListener::bind(listen_addr).await.unwrap();
+                    let listener = TcpListener::bind(legacy_listen_addr).await.unwrap();
                     network.run_server(listener).await;
                 }
-            });
-        }
+            }))
+        } else {
+            None
+        };
 
         // This is all we need to do since start_listen does not block.
         log::debug!("starting to listen at {}", listen_addr);
@@ -85,7 +88,10 @@ impl NodeProtocol {
         .expect("failed to start listening");
 
         let _blksync_task = smolscale::spawn(blksync_loop(netid, swarm, storage));
-        Self { _blksync_task }
+        Self {
+            _blksync_task,
+            _legacy_task,
+        }
     }
 }
 
