@@ -44,13 +44,6 @@ impl NodeProtocol {
         index: bool,
         swarm: Swarm<TcpBackhaul, NodeRpcClient<Pipeline>>,
     ) -> Self {
-        let service = NodeRpcService(NodeRpcImpl::new(
-            swarm.clone(),
-            netid,
-            storage.clone(),
-            index,
-        ));
-
         let _legacy_task = if let Some(legacy_listen_addr) = legacy_listen_addr {
             let network = melnet::NetState::new_with_name(netname(netid));
             network.listen(
