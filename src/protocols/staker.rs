@@ -13,7 +13,9 @@ use novasymph::BlockBuilder;
 use once_cell::sync::Lazy;
 use smol::prelude::*;
 use themelio_stf::SealedState;
-use themelio_structs::{Address, Block, BlockHeight, NetID, ProposerAction, Transaction, TxHash};
+use themelio_structs::{
+    Address, Block, BlockHeight, NetID, ProposerAction, Transaction, TxHash, STAKE_EPOCH,
+};
 use tmelcrypt::Ed25519SK;
 
 static MAINNET_START_TIME: Lazy<SystemTime> = Lazy::new(|| {
@@ -131,6 +133,9 @@ async fn one_epoch_loop(
                     height,
                     err
                 );
+            }
+            if height.0 + 1 % STAKE_EPOCH == 0 {
+                return Ok(());
             }
         }
     };
