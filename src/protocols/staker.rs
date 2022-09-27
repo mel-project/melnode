@@ -49,32 +49,33 @@ impl StakerProtocol {
                 }
             }
             loop {
-                let genesis_epoch = storage.highest_height().epoch();
+                let genesis_epoch = (storage.highest_height() + BlockHeight(1)).epoch();
                 for current_epoch in genesis_epoch.. {
                     log::info!("epoch transitioning into {}!", current_epoch);
 
-                    smol::Timer::after(Duration::from_secs(1)).await;
-                    // we race the staker loop with epoch termination. epoch termination for now is just a sleep loop that waits until the last block in the epoch is confirmed.
-                    let staker_fut = one_epoch_loop(
-                        cfg.listen,
-                        vec![cfg.bootstrap],
-                        storage.clone(),
-                        cfg.signing_secret,
-                        cfg.payout_addr,
-                        cfg.target_fee_multiplier,
-                    );
-                    let epoch_termination = async {
-                        loop {
-                            smol::Timer::after(Duration::from_secs(1)).await;
-                            if (storage.highest_height() + 1.into()).epoch() != current_epoch {
-                                break Ok(());
+                    smol::Timer::after(Duration::from_secs(5)).await;
+                    {
+                        // we race the staker loop with epoch termination. epoch termination for now is just a sleep loop that waits until the last block in the epoch is confirmed.
+                        let staker_fut = one_epoch_loop(
+                            cfg.listen,
+                            vec![cfg.bootstrap],
+                            storage.clone(),
+                            cfg.signing_secret,
+                            cfg.payout_addr,
+                            cfg.target_fee_multiplier,
+                        );
+                        let epoch_termination = async {
+                            loop {
+                                smol::Timer::after(Duration::from_secs(1)).await;
+                                if (storage.highest_height() + 1.into()).epoch() != current_epoch {
+                                    break Ok(());
+                                }
                             }
+                        };
+                        if let Err(err) = staker_fut.race(epoch_termination).await {
+                            log::warn!("staker rebooting: {:?}", err);
+                            break;
                         }
-                    };
-                    if let Err(err) = staker_fut.race(epoch_termination).await {
-                        log::warn!("staker rebooting: {:?}", err);
-
-                        break;
                     }
                 }
             }
@@ -133,9 +134,6 @@ async fn one_epoch_loop(
                     height,
                     err
                 );
-            }
-            if height.0 + 1 % STAKE_EPOCH == 0 {
-                return Ok(());
             }
         }
     };
