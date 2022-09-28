@@ -1,6 +1,6 @@
 [package]
 name = "themelio-node"
-version = "0.11.6"
+version = "0.12.0"
 repository ="https://github.com/themeliolabs/themelio-node"
 license = "MPL-2.0"
 description = "Reference implementation of Themelio"
@@ -90,11 +90,11 @@ imbl = { version = "1.0.1", features = ["serde"] }
 log = "0.4.17"
 lru = "0.7.8"
 melnet = "0.2.27"
-# meshanina = {path="../meshanina"}
-meshanina = "0.3.21"
+meshanina = {path="../meshanina"}
+# meshanina = "0.3.20"
 novasmt = "0.2.19"
 novasymph = "0.3.0"
-# novasymph={path="../novasymph"} 
+# novasymph={path="../novasymph"}
 once_cell = "1.13.0"
 parking_lot = "0.12.1"
 serde = "1.0.140"

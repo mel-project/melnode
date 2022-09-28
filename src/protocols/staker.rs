@@ -13,7 +13,9 @@ use novasymph::BlockBuilder;
 use once_cell::sync::Lazy;
 use smol::prelude::*;
 use themelio_stf::SealedState;
-use themelio_structs::{Address, Block, BlockHeight, NetID, ProposerAction, Transaction, TxHash};
+use themelio_structs::{
+    Address, Block, BlockHeight, NetID, ProposerAction, Transaction, TxHash, STAKE_EPOCH,
+};
 use tmelcrypt::Ed25519SK;
 
 static MAINNET_START_TIME: Lazy<SystemTime> = Lazy::new(|| {
@@ -47,32 +49,33 @@ impl StakerProtocol {
                 }
             }
             loop {
-                let genesis_epoch = storage.highest_height().epoch();
+                let genesis_epoch = (storage.highest_height() + BlockHeight(1)).epoch();
                 for current_epoch in genesis_epoch.. {
                     log::info!("epoch transitioning into {}!", current_epoch);
 
-                    smol::Timer::after(Duration::from_secs(1)).await;
-                    // we race the staker loop with epoch termination. epoch termination for now is just a sleep loop that waits until the last block in the epoch is confirmed.
-                    let staker_fut = one_epoch_loop(
-                        cfg.listen,
-                        vec![cfg.bootstrap],
-                        storage.clone(),
-                        cfg.signing_secret,
-                        cfg.payout_addr,
-                        cfg.target_fee_multiplier,
-                    );
-                    let epoch_termination = async {
-                        loop {
-                            smol::Timer::after(Duration::from_secs(1)).await;
-                            if (storage.highest_height() + 1.into()).epoch() != current_epoch {
-                                break Ok(());
+                    smol::Timer::after(Duration::from_secs(5)).await;
+                    {
+                        // we race the staker loop with epoch termination. epoch termination for now is just a sleep loop that waits until the last block in the epoch is confirmed.
+                        let staker_fut = one_epoch_loop(
+                            cfg.listen,
+                            vec![cfg.bootstrap],
+                            storage.clone(),
+                            cfg.signing_secret,
+                            cfg.payout_addr,
+                            cfg.target_fee_multiplier,
+                        );
+                        let epoch_termination = async {
+                            loop {
+                                smol::Timer::after(Duration::from_secs(1)).await;
+                                if (storage.highest_height() + 1.into()).epoch() != current_epoch {
+                                    break Ok(());
+                                }
                             }
+                        };
+                        if let Err(err) = staker_fut.race(epoch_termination).await {
+                            log::warn!("staker rebooting: {:?}", err);
+                            break;
                         }
-                    };
-                    if let Err(err) = staker_fut.race(epoch_termination).await {
-                        log::warn!("staker rebooting: {:?}", err);
-
-                        break;
                     }
                 }
             }
