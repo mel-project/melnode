@@ -105,7 +105,7 @@ impl Args {
             .tap_mut(|path| path.push("metadata.db"));
         let smt_path = database_base_path
             .clone()
-            .tap_mut(|path| path.push("smt.db"));
+            .tap_mut(|path| path.push("smt2.db"));
 
         std::fs::create_dir_all(&database_base_path)?;
         let meta_db =

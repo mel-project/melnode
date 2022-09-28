@@ -20,16 +20,11 @@ impl MeshaCas {
 impl ContentAddrStore for MeshaCas {
     fn get<'a>(&'a self, key: &[u8]) -> Option<std::borrow::Cow<'a, [u8]>> {
         Some(std::borrow::Cow::Owned(
-            self.inner
-                .get(ethnum::U256::from_le_bytes(tmelcrypt::hash_single(key).0))?
-                .to_vec(),
+            self.inner.get(tmelcrypt::hash_single(key).0)?.to_vec(),
         ))
     }
 
     fn insert(&self, key: &[u8], value: &[u8]) {
-        self.inner.insert(
-            ethnum::U256::from_le_bytes(tmelcrypt::hash_single(key).0),
-            value,
-        )
+        self.inner.insert(tmelcrypt::hash_single(key).0, value);
     }
 }
