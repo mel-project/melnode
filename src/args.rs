@@ -14,7 +14,7 @@ use tmelcrypt::Ed25519SK;
 /// Command-line arguments.
 pub struct Args {
     /// Listen address
-    #[structopt(long, default_value = "0.0.0.0:11814")]
+    #[structopt(long, default_value = "0.0.0.0:41814")]
     listen: SocketAddr,
 
     /// Optional listen address for nodes using the legacy melnet protocol.
@@ -26,7 +26,7 @@ pub struct Args {
     advertise: Option<SocketAddr>,
 
     /// Override bootstrap addresses. May be given as a DNS name.
-    #[structopt(long, default_value = "mainnet-bootstrap.themelio.org:11814")]
+    #[structopt(long, default_value = "mainnet-bootstrap.themelio.org:41814")]
     bootstrap: Vec<String>,
 
     /// Database path

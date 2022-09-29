@@ -182,7 +182,7 @@ async fn attempt_blksync(
                 Ok((block, cproof))
             }))
         })
-        .try_buffered(32)
+        .try_buffered(64)
         .boxed();
     let mut toret = 0;
     while let Some(res) = result_stream.try_next().await? {
