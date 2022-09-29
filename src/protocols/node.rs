@@ -109,11 +109,14 @@ async fn blksync_loop(
         let backhaul = TcpBackhaul::new();
         if let Some(peer) = random_peer {
             log::trace!("picking peer {} out of {} peers", &peer, routes.len());
-            let conn = backhaul.connect(peer.clone()).await.unwrap();
-            let client = NodeRpcClient(conn);
-            let addr: SocketAddr = peer.clone().to_string().parse().unwrap();
-            let res = attempt_blksync(addr, &client, &storage).await;
-            match res {
+            let fallible_part = async {
+                let conn = backhaul.connect(peer.clone()).await?;
+                let client = NodeRpcClient(conn);
+                let addr: SocketAddr = peer.clone().to_string().parse()?;
+                let res = attempt_blksync(addr, &client, &storage).await?;
+                anyhow::Ok(res)
+            };
+            match fallible_part.await {
                 Err(e) => {
                     log::warn!("{}: failed to blksync with {}: {:?}", tag(), peer, e);
                 }
