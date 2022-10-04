@@ -106,7 +106,7 @@ impl Args {
         let database_base_path = self.database.clone().unwrap_or(database_default_path);
         let metadata_path = database_base_path
             .clone()
-            .tap_mut(|path| path.push("metadata.db"));
+            .tap_mut(|path| path.push("metadata2.db"));
         let smt_path = database_base_path
             .clone()
             .tap_mut(|path| path.push("smt2.db"));
