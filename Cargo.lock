@@ -1831,9 +1831,9 @@ dependencies = [
 
 [[package]]
 name = "melnet2"
-version = "0.1.3"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b60abb6cb39d6c3775d48512494bfb51daccc70d46ca9fcb0655f1ea5d077b1a"
+checksum = "8c6242707036ab5ad85691b0f799cc41cda8ca64f295d5d357260459bf53460f"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2043,9 +2043,9 @@ dependencies = [
 
 [[package]]
 name = "nanorpc-derive"
-version = "0.1.0"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b113098313e2a95d74badceb3167d9b00d3957d4340ebe97fdde904d49320336"
+checksum = "1eb3c784f702cadee1941b0f693a321815f8f2335a4d8435eb5c987e6313825f"
 dependencies = [
  "quote",
  "syn",
@@ -3273,9 +3273,9 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "1.9.0"
+version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2fd0db749597d91ff862fd1d55ea87f7855a744a8425a64695b6fca237d1dad1"
+checksum = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0"
 
 [[package]]
 name = "smol"
@@ -3580,7 +3580,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "adff9ef8d54ec33f5ac4765a5a071437f28c721d9216dd57466ace946a4035d9"
 dependencies = [
  "once_cell",
- "themelio-nodeprot",
+ "themelio-nodeprot 0.11.5",
  "themelio-structs",
 ]
 
@@ -3634,7 +3634,7 @@ dependencies = [
  "systemstat",
  "tap",
  "themelio-bootstrap",
- "themelio-nodeprot",
+ "themelio-nodeprot 0.12.0",
  "themelio-stf",
  "themelio-structs",
  "tmelcrypt",
@@ -3643,6 +3643,37 @@ dependencies = [
 [[package]]
 name = "themelio-nodeprot"
 version = "0.11.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4dd16184a79ab22673845b2ee6fdb99d1af4a8ed2e1478102eedae6d91767add"
+dependencies = [
+ "anyhow",
+ "arrayref",
+ "async-recursion",
+ "async-trait",
+ "bytes",
+ "derivative",
+ "hex",
+ "log",
+ "lru",
+ "melnet",
+ "novasmt",
+ "once_cell",
+ "parking_lot 0.12.1",
+ "rustc-hash",
+ "serde",
+ "smol",
+ "smolscale",
+ "stdcode",
+ "themelio-structs",
+ "thiserror",
+ "tmelcrypt",
+]
+
+[[package]]
+name = "themelio-nodeprot"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b3adbd46945818efa507b2e47680cae8608d788a157df9b528adeb1c1d757cd"
 dependencies = [
  "anyhow",
  "arrayref",
@@ -3771,9 +3802,9 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.3.14"
+version = "0.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c3f9a28b618c3a6b9251b6908e9c99e04b9e5c02e6581ccbb67d59c34ef7f9b"
+checksum = "d634a985c4d4238ec39cacaed2e7ae552fbd3c476b552c1deac3021b7d7eaf0c"
 dependencies = [
  "libc",
  "num_threads",

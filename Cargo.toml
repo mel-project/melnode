@@ -22,7 +22,7 @@ codegen-units = 1
 
 [patch.crates-io]
 # # melnet={path="../melnet"}  
-themelio-nodeprot={path="../themelio-nodeprot"}  
+# themelio-nodeprot={path="../themelio-nodeprot"}  
 
 [profile.release-dbg]
 inherits = "release"
@@ -64,15 +64,15 @@ optional = true
 
 
 [dependencies.themelio-nodeprot]
-version = "0.11.5"
+version = "0.12"
 
 [dependencies.async-compat]
 version = "0.2.1"
-optional = true
+optional = true 
 
 
 [dependencies]
-anyhow = "1.0.58"
+anyhow = "1.0.58" 
 # base64 = "0.13.0"
 arc-swap = "1.5.0"
 

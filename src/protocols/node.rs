@@ -56,7 +56,7 @@ impl NodeProtocol {
                 )),
             );
             Some(smolscale::spawn({
-                let network = network.clone();
+                let network = network;
                 async move {
                     let listener = TcpListener::bind(legacy_listen_addr).await.unwrap();
                     network.run_server(listener).await;
@@ -277,10 +277,10 @@ impl NodeRpcProtocol for NodeRpcImpl {
             .apply_transaction(&tx)
             .map_err(|e| {
                 if !e.to_string().contains("duplicate") {
-                    log::warn!("cannot apply tx: {:?}", e);
+                    log::warn!("cannot apply tx: {:?}", e)
                 }
-            })
-            .or(Err(TransactionError::Storage))?;
+                TransactionError::Invalid(e.to_string())
+            })?;
 
         log::debug!(
             "txhash {}.. inserted ({:?} applying)",
