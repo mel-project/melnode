@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use futures_util::{StreamExt, TryStreamExt};
 use lru::LruCache;
 use melnet2::{
-    wire::tcp::{Pipeline, TcpBackhaul},
+    wire::tcp::{AutoconnectTransport, Pipeline, TcpBackhaul},
     Backhaul, Swarm,
 };
 use novasmt::{CompressedProof, Database, InMemoryCas, Tree};
@@ -42,7 +42,7 @@ impl NodeProtocol {
         advertise_addr: Option<SocketAddr>,
         storage: Storage,
         index: bool,
-        swarm: Swarm<TcpBackhaul, NodeRpcClient<Pipeline>>,
+        swarm: Swarm<TcpBackhaul, NodeRpcClient<AutoconnectTransport<Pipeline, std::io::Error>>>,
     ) -> Self {
         let _legacy_task = if let Some(legacy_listen_addr) = legacy_listen_addr {
             let network = melnet::NetState::new_with_name(netname(netid));
@@ -98,7 +98,7 @@ fn netname(netid: NetID) -> &'static str {
 
 async fn blksync_loop(
     _netid: NetID,
-    swarm: Swarm<TcpBackhaul, NodeRpcClient<Pipeline>>,
+    swarm: Swarm<TcpBackhaul, NodeRpcClient<AutoconnectTransport<Pipeline, std::io::Error>>>,
     storage: Storage,
 ) {
     let tag = || format!("blksync@{:?}", storage.highest_state().header().height);
@@ -111,7 +111,8 @@ async fn blksync_loop(
             log::trace!("picking peer {} out of {} peers", &peer, routes.len());
             let fallible_part = async {
                 let conn = backhaul.connect(peer.clone()).await?;
-                let client = NodeRpcClient(conn);
+                let client: NodeRpcClient<AutoconnectTransport<Pipeline, std::io::Error>> =
+                    NodeRpcClient(conn);
                 let addr: SocketAddr = peer.clone().to_string().parse()?;
                 let res = attempt_blksync(addr, &client, &storage).await?;
                 anyhow::Ok(res)
@@ -134,7 +135,7 @@ async fn blksync_loop(
 /// Attempts a sync using the given given node client.
 async fn attempt_blksync(
     addr: SocketAddr,
-    client: &NodeRpcClient<Pipeline>,
+    client: &NodeRpcClient<AutoconnectTransport<Pipeline, std::io::Error>>,
     storage: &Storage,
 ) -> anyhow::Result<usize> {
     let their_highest = client
@@ -208,13 +209,12 @@ pub struct NodeRpcImpl {
     recent: Mutex<LruCache<TxHash, Instant>>,
     summary: Mutex<LruCache<BlockHeight, StateSummary>>,
     coin_smts: Mutex<LruCache<BlockHeight, Tree<InMemoryCas>>>,
-
-    swarm: Swarm<TcpBackhaul, NodeRpcClient<Pipeline>>,
+    swarm: Swarm<TcpBackhaul, NodeRpcClient<AutoconnectTransport<Pipeline, std::io::Error>>>,
 }
 
 impl NodeRpcImpl {
     fn new(
-        swarm: Swarm<TcpBackhaul, NodeRpcClient<Pipeline>>,
+        swarm: Swarm<TcpBackhaul, NodeRpcClient<AutoconnectTransport<Pipeline, std::io::Error>>>,
         network: NetID,
         storage: Storage,
         index: bool,

@@ -4,7 +4,7 @@ use themelio_structs::NetID;
 #[derive(Debug, StructOpt)]
 pub struct Args {
     #[structopt(long)]
-    netid: NetID,
+    _netid: NetID,
 }
 
 fn main() {

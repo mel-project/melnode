@@ -95,10 +95,10 @@ novasymph = "0.3.1"
 once_cell = "1.15.0"
 parking_lot = "0.12.1"
 serde = "1.0.145"
-serde_json = { version = "1.0.85", features = ["arbitrary_precision"] }
+serde_json = { version = "1.0.86", features = ["arbitrary_precision"] }
 defmac = "0.2.1"
 smol = "1.2.5"
-smolscale = "0.3.41"
+smolscale = "0.3.42"
 smol-timeout = "0.6.0"
 stdcode = "0.1.10"
 structopt = "0.3.26"
@@ -117,7 +117,7 @@ serde_with = "1.14.0"
 serde_yaml = "0.8.26"
 dirs = "4.0.0"
 jemallocator-global = "0.3.2"
-melnet2 = "0.1.4"
+melnet2 = "0.1.8"
 #lz4_flex = "0.9.3"
 
 # [target.'cfg(unix)'.dependencies]
