@@ -13,18 +13,15 @@ use novasymph::BlockBuilder;
 use once_cell::sync::Lazy;
 use smol::prelude::*;
 use themelio_stf::SealedState;
-use themelio_structs::{
-    Address, Block, BlockHeight, NetID, ProposerAction, Transaction, TxHash,
-};
+use themelio_structs::{Address, Block, BlockHeight, NetID, ProposerAction, Transaction, TxHash};
 use tmelcrypt::Ed25519SK;
 
 static MAINNET_START_TIME: Lazy<SystemTime> = Lazy::new(|| {
     std::time::UNIX_EPOCH + Duration::from_secs(1618365600) + Duration::from_secs(30 * 7450)
 }); // Apr 14 2021
 
-static TESTNET_START_TIME: Lazy<SystemTime> = Lazy::new(|| {
-    std::time::UNIX_EPOCH + Duration::from_secs(1618365600) + Duration::from_secs(86400 * 462)
-});
+static TESTNET_START_TIME: Lazy<SystemTime> =
+    Lazy::new(|| std::time::UNIX_EPOCH + Duration::from_secs(1666023000));
 
 /// This encapsulates the staker-specific peer-to-peer.
 pub struct StakerProtocol {

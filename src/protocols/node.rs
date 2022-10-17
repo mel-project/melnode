@@ -10,10 +10,7 @@ use anyhow::Context;
 use async_trait::async_trait;
 use futures_util::{StreamExt, TryStreamExt};
 use lru::LruCache;
-use melnet2::{
-    wire::tcp::{Pipeline, TcpBackhaul},
-    Backhaul, Swarm,
-};
+use melnet2::{wire::tcp::TcpBackhaul, Backhaul, Swarm};
 use novasmt::{CompressedProof, Database, InMemoryCas, Tree};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
@@ -26,6 +23,8 @@ use themelio_nodeprot::{
     NodeRpcClient, NodeRpcProtocol, NodeRpcService, StateSummary, Substate, TransactionError,
 };
 use tmelcrypt::HashVal;
+
+type NrpcClient = NodeRpcClient<<TcpBackhaul as Backhaul>::RpcTransport>;
 
 /// This encapsulates the node peer-to-peer for both auditors and stakers..
 pub struct NodeProtocol {
@@ -42,7 +41,7 @@ impl NodeProtocol {
         advertise_addr: Option<SocketAddr>,
         storage: Storage,
         index: bool,
-        swarm: Swarm<TcpBackhaul, NodeRpcClient<Pipeline>>,
+        swarm: Swarm<TcpBackhaul, NrpcClient>,
     ) -> Self {
         let _legacy_task = if let Some(legacy_listen_addr) = legacy_listen_addr {
             let network = melnet::NetState::new_with_name(netname(netid));
@@ -96,11 +95,7 @@ fn netname(netid: NetID) -> &'static str {
     }
 }
 
-async fn blksync_loop(
-    _netid: NetID,
-    swarm: Swarm<TcpBackhaul, NodeRpcClient<Pipeline>>,
-    storage: Storage,
-) {
+async fn blksync_loop(_netid: NetID, swarm: Swarm<TcpBackhaul, NrpcClient>, storage: Storage) {
     let tag = || format!("blksync@{:?}", storage.highest_state().header().height);
     loop {
         let gap_time: Duration = Duration::from_secs_f64(fastrand::f64() * 1.0);
@@ -134,7 +129,7 @@ async fn blksync_loop(
 /// Attempts a sync using the given given node client.
 async fn attempt_blksync(
     addr: SocketAddr,
-    client: &NodeRpcClient<Pipeline>,
+    client: &NrpcClient,
     storage: &Storage,
 ) -> anyhow::Result<usize> {
     let their_highest = client
@@ -209,12 +204,14 @@ pub struct NodeRpcImpl {
     summary: Mutex<LruCache<BlockHeight, StateSummary>>,
     coin_smts: Mutex<LruCache<BlockHeight, Tree<InMemoryCas>>>,
 
-    swarm: Swarm<TcpBackhaul, NodeRpcClient<Pipeline>>,
+    abbr_block_cache: moka::sync::Cache<BlockHeight, (AbbrBlock, ConsensusProof)>,
+
+    swarm: Swarm<TcpBackhaul, NrpcClient>,
 }
 
 impl NodeRpcImpl {
     fn new(
-        swarm: Swarm<TcpBackhaul, NodeRpcClient<Pipeline>>,
+        swarm: Swarm<TcpBackhaul, NrpcClient>,
         network: NetID,
         storage: Storage,
         index: bool,
@@ -231,6 +228,8 @@ impl NodeRpcImpl {
             coin_smts: LruCache::new(100).into(),
             summary: LruCache::new(10).into(),
             swarm,
+
+            abbr_block_cache: moka::sync::Cache::new(100_000),
         }
     }
 
@@ -308,6 +307,9 @@ impl NodeRpcProtocol for NodeRpcImpl {
     }
 
     async fn get_abbr_block(&self, height: BlockHeight) -> Option<(AbbrBlock, ConsensusProof)> {
+        if let Some(c) = self.abbr_block_cache.get(&height) {
+            return Some(c);
+        }
         log::trace!("handling get_abbr_block({})", height);
         let state = self
             .storage
@@ -319,7 +321,9 @@ impl NodeRpcProtocol for NodeRpcImpl {
             .get_consensus(height)
             .context(format!("block {} not confirmed yet", height))
             .ok()?;
-        Some((state.to_block().abbreviate(), proof))
+        let summ = (state.to_block().abbreviate(), proof);
+        self.abbr_block_cache.insert(height, summ.clone());
+        Some(summ)
     }
 
     async fn get_summary(&self) -> StateSummary {

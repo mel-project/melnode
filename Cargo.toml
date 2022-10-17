@@ -118,6 +118,8 @@ serde_yaml = "0.8.26"
 dirs = "4.0.0"
 jemallocator-global = "0.3.2"
 melnet2 = "0.1.4"
+nanorpc = "0.1.8"
+moka = "0.9.4"
 #lz4_flex = "0.9.3"
 
 # [target.'cfg(unix)'.dependencies]
