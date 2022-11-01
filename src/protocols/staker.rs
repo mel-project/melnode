@@ -21,7 +21,7 @@ static MAINNET_START_TIME: Lazy<SystemTime> = Lazy::new(|| {
 }); // Apr 14 2021
 
 static TESTNET_START_TIME: Lazy<SystemTime> =
-    Lazy::new(|| std::time::UNIX_EPOCH + Duration::from_secs(1666023000));
+    Lazy::new(|| std::time::UNIX_EPOCH + Duration::from_secs(1665123000));
 
 /// This encapsulates the staker-specific peer-to-peer.
 pub struct StakerProtocol {
