@@ -684,6 +684,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossbeam-queue"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1cd42583b04998a5363558e5f9291ee5a5ff6b49944332103f251e7479a82aa7"
+dependencies = [
+ "cfg-if 1.0.0",
+ "crossbeam-utils",
+]
+
+[[package]]
 name = "crossbeam-utils"
 version = "0.8.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3628,6 +3638,7 @@ dependencies = [
  "async-trait",
  "boringdb",
  "clone-macro",
+ "crossbeam-queue",
  "dashmap 4.0.2",
  "default-net",
  "defmac",
@@ -3635,6 +3646,7 @@ dependencies = [
  "dirs",
  "env_logger 0.9.1",
  "ethnum",
+ "event-listener",
  "fastrand",
  "futures-util",
  "gethostname",

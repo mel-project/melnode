@@ -7,6 +7,7 @@ use std::{
 use std::time::Duration;
 
 use clone_macro::clone;
+use event_listener::Event;
 use lru::LruCache;
 use parking_lot::{Mutex, RwLock};
 use smol::Task;
@@ -28,6 +29,9 @@ pub struct Storage {
     highest: Arc<RwLock<SealedState<MeshaCas>>>,
     old_cache: Arc<Mutex<LruCache<BlockHeight, SealedState<MeshaCas>>>>,
     forest: Arc<novasmt::Database<MeshaCas>>,
+
+    /// A notifier for a new block happening.
+    new_block_notify: Arc<Event>,
 
     _disk_sync: Arc<Task<()>>,
 }
@@ -58,15 +62,6 @@ impl Storage {
             .open_dict(&format!("meta_genesis{}", genesis_id))
             .unwrap();
         let forest = novasmt::Database::new(MeshaCas::new(mdb));
-
-        // // le ole reset
-        // let old_blob = metadata
-        //     .get(format!("block-{}", 1399998).as_bytes())
-        //     .unwrap()
-        //     .unwrap();
-        // metadata
-        //     .insert(b"last_confirmed_block".to_vec(), old_blob)
-        //     .unwrap();
 
         let highest = metadata
             .get(b"last_confirmed_block")
@@ -114,6 +109,7 @@ impl Storage {
             old_cache: Arc::new(LruCache::new(1000).into()),
             metadata,
             _disk_sync,
+            new_block_notify: Default::default(),
         }
     }
 
@@ -221,6 +217,7 @@ impl Storage {
         *self.highest.write() = new_state;
         let next = self.highest_state().next_state();
         self.mempool_mut().rebase(next);
+        self.new_block_notify.notify(usize::MAX);
         Ok(())
     }
 
