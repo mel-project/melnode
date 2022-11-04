@@ -1,5 +1,5 @@
 mod args;
-mod blkidx;
+
 #[cfg(feature = "metrics")]
 mod prometheus;
 mod protocols;

@@ -1,4 +1,4 @@
-use crate::{blkidx::BlockIndexer, storage::Storage};
+use crate::storage::Storage;
 
 use std::{
     collections::BTreeMap,
@@ -199,7 +199,7 @@ async fn attempt_blksync(
 pub struct NodeRpcImpl {
     network: NetID,
     storage: Storage,
-    indexer: Option<BlockIndexer>,
+
     recent: Mutex<LruCache<TxHash, Instant>>,
     summary: Mutex<LruCache<BlockHeight, StateSummary>>,
     coin_smts: Mutex<LruCache<BlockHeight, Tree<InMemoryCas>>>,
@@ -214,16 +214,12 @@ impl NodeRpcImpl {
         swarm: Swarm<TcpBackhaul, NrpcClient>,
         network: NetID,
         storage: Storage,
-        index: bool,
+        _index: bool,
     ) -> Self {
         Self {
             network,
             storage: storage.clone(),
-            indexer: if index {
-                Some(BlockIndexer::new(storage))
-            } else {
-                None
-            },
+
             recent: LruCache::new(1000).into(),
             coin_smts: LruCache::new(100).into(),
             summary: LruCache::new(10).into(),
@@ -403,11 +399,9 @@ impl NodeRpcProtocol for NodeRpcImpl {
 
     async fn get_some_coins(
         &self,
-        height: BlockHeight,
-        covhash: themelio_structs::Address,
+        _height: BlockHeight,
+        _covhash: themelio_structs::Address,
     ) -> Option<Vec<themelio_structs::CoinID>> {
-        self.indexer
-            .as_ref()
-            .and_then(|s| s.get(height).map(|idx| idx.lookup(covhash)))
+        None
     }
 }

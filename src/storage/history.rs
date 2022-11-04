@@ -22,10 +22,16 @@ impl History {
     /// Creates a new History.
     pub fn new(base_path: PathBuf) -> anyhow::Result<Self> {
         std::fs::create_dir_all(&base_path)?;
+        let highest: u64 =
+            if let Ok(val) = std::fs::read(base_path.clone().tap_mut(|s| s.push("highest"))) {
+                String::from_utf8_lossy(&val).parse()?
+            } else {
+                0
+            };
         Ok(Self {
             base_path,
             dirty: Default::default(),
-            highest: 0.into(),
+            highest: highest.into(),
         })
     }
 
@@ -77,11 +83,18 @@ impl History {
         // TODO on systems like Linux, we can call one single syscall to sync literally everything to disk. That *might* be faster.
         while let Some(dirty) = self.dirty.pop() {
             log::debug!("syncing dirty history entry {dirty}");
-            let path = self
-                .base_path
-                .clone()
-                .tap_mut(|p| p.push(format!("{:0>9}.blk", dirty)));
-            std::fs::File::open(&path)?.sync_all()?;
+            #[cfg(not(unix))]
+            {
+                let path = self
+                    .base_path
+                    .clone()
+                    .tap_mut(|p| p.push(format!("{:0>9}.blk", dirty)));
+                std::fs::File::open(&path)?.sync_all()?;
+            }
+        }
+        #[cfg(unix)]
+        unsafe {
+            libc::sync();
         }
         let highest = self.base_path.clone().tap_mut(|p| p.push("highest-1"));
         let mut file = std::fs::File::create(&highest)?;

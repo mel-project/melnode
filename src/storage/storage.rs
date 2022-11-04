@@ -8,32 +8,28 @@ use std::time::Duration;
 
 use clone_macro::clone;
 use event_listener::Event;
-use lru::LruCache;
-use parking_lot::{Mutex, RwLock};
+
+use moka::sync::Cache;
+use parking_lot::RwLock;
 use smol::Task;
-use stdcode::StdcodeSerializeExt;
+
 use themelio_stf::{GenesisConfig, SealedState};
 use themelio_structs::{Block, BlockHeight, CoinValue, ConsensusProof};
-use tmelcrypt::HashVal;
 
-use super::{mempool::Mempool, MeshaCas};
+use super::{history::History, mempool::Mempool, MeshaCas};
 
 /// Storage encapsulates all storage used by a Themelio full node (auditor or staker).
 #[derive(Clone)]
 pub struct Storage {
-    genesis_id: HashVal,
+    history: Arc<History>,
 
     mempool: Arc<RwLock<Mempool>>,
-    metadata: boringdb::Dict,
-    database: Arc<boringdb::Database>,
     highest: Arc<RwLock<SealedState<MeshaCas>>>,
-    old_cache: Arc<Mutex<LruCache<BlockHeight, SealedState<MeshaCas>>>>,
+    old_cache: Arc<Cache<BlockHeight, SealedState<MeshaCas>>>,
     forest: Arc<novasmt::Database<MeshaCas>>,
 
     /// A notifier for a new block happening.
     new_block_notify: Arc<Event>,
-
-    _disk_sync: Arc<Task<()>>,
 }
 
 impl Storage {
@@ -47,68 +43,28 @@ impl Storage {
         self.mempool.write()
     }
 
-    /// Opens a miscellaneous metadata database, given the name.
-    pub fn open_dict(&self, name: &str) -> boringdb::Dict {
-        self.database
-            .open_dict(&format!("{}_{}", name, self.genesis_id))
-            .expect("boringdb failed to open dictionary")
-    }
-
     /// Opens a NodeStorage, given a meshanina and boringdb database.
-    pub fn new(mdb: meshanina::Mapping, bdb: boringdb::Database, genesis: GenesisConfig) -> Self {
+    pub fn new(mdb: meshanina::Mapping, history: History, genesis: GenesisConfig) -> Self {
         // Identify the genesis by the genesis ID
-        let genesis_id = tmelcrypt::hash_single(stdcode::serialize(&genesis).unwrap());
-        let metadata = bdb
-            .open_dict(&format!("meta_genesis{}", genesis_id))
-            .unwrap();
+        let history = Arc::new(history);
+
         let forest = novasmt::Database::new(MeshaCas::new(mdb));
 
-        let highest = metadata
-            .get(b"last_confirmed_block")
-            .expect("db failed")
-            .map(|b| {
-                log::warn!("ACTUALLY LOADING DB");
-                SealedState::from_block(&stdcode::deserialize(&b).unwrap(), &forest)
-            })
+        let highest = history
+            .get_block(history.highest())
+            .expect("cannot get highest")
+            .map(|s| SealedState::from_block(&s.0, &forest))
             .unwrap_or_else(|| genesis.realize(&forest).seal(None));
         log::info!("HIGHEST AT {}", highest.inner_ref().height);
 
         let mempool = Arc::new(Mempool::new(highest.next_state()).into());
         let highest = Arc::new(RwLock::new(highest));
-        let _disk_sync = smolscale::spawn(clone!([highest, forest, metadata], async move {
-            let mut highest_height = BlockHeight(0);
-            loop {
-                smol::Timer::after(Duration::from_secs(1)).await;
-                if highest.read().inner_ref().height > highest_height {
-                    let start = Instant::now();
-                    let highest = highest.read().clone();
-                    highest_height = highest.inner_ref().height;
-                    let forest = forest.clone();
-                    smol::unblock(move || forest.storage().flush()).await;
-                    metadata
-                        .insert(
-                            b"last_confirmed_block".to_vec(),
-                            highest.to_block().stdcode(),
-                        )
-                        .unwrap();
-                    let elapsed = start.elapsed();
-                    if elapsed.as_secs() > 5 {
-                        log::warn!("**** FLUSHED IN {:?} ****", elapsed);
-                    }
-                }
-            }
-        }))
-        .into();
         Self {
-            genesis_id,
-
             mempool,
             highest,
-            database: Arc::new(bdb),
             forest: forest.into(),
-            old_cache: Arc::new(LruCache::new(1000).into()),
-            metadata,
-            _disk_sync,
+            old_cache: Arc::new(Cache::new(1000)),
+            history,
             new_block_notify: Default::default(),
         }
     }
@@ -129,28 +85,39 @@ impl Storage {
         if height == highest.inner_ref().height {
             return Some(highest);
         }
-        let old = self.old_cache.lock().get(&height).cloned();
+        let old = self.old_cache.get(&height);
         if let Some(old) = old {
             Some(old)
         } else {
-            let old_blob = self
-                .metadata
-                .get(format!("block-{}", height).as_bytes())
-                .unwrap()?;
-            let old_state =
-                SealedState::from_block(&stdcode::deserialize(&old_blob).unwrap(), &self.forest);
-            self.old_cache.lock().put(height, old_state.clone());
+            let (old_block, _) = self
+                .history
+                .get_block(height)
+                .expect("failed to get older block")?;
+            let old_state = SealedState::from_block(&old_block, &self.forest);
+            self.old_cache.insert(height, old_state.clone());
             Some(old_state)
         }
     }
 
     /// Obtain a historical ConsensusProof.
     pub fn get_consensus(&self, height: BlockHeight) -> Option<ConsensusProof> {
-        let height = self
-            .metadata
-            .get(format!("cproof-{}", height).as_bytes())
-            .unwrap()?;
-        stdcode::deserialize(&height).ok()
+        Some(
+            self.history
+                .get_block(height)
+                .expect("cannot get older block")?
+                .1,
+        )
+    }
+
+    /// Synchronizes everything to disk.
+    pub async fn flush(&self) {
+        let forest = self.forest.clone();
+        let history = self.history.clone();
+        smol::unblock(move || {
+            history.flush().unwrap();
+            forest.storage().flush();
+        })
+        .await;
     }
 
     /// Consumes a block, applying it to the current state.
@@ -191,26 +158,14 @@ impl Storage {
 
         let start = Instant::now();
         let new_state = highest_state.apply_block(&blk)?;
-        let blkbytes = new_state.to_block().stdcode();
         let apply_time = start.elapsed();
         let start = Instant::now();
-        let blklen = blkbytes.len();
-        self.metadata.insert(
-            format!("block-{}", new_state.inner_ref().height)
-                .as_bytes()
-                .to_vec(),
-            blkbytes,
-        )?;
-        self.metadata.insert(
-            format!("cproof-{}", new_state.inner_ref().height)
-                .as_bytes()
-                .to_vec(),
-            stdcode::serialize(&cproof)?,
-        )?;
+        self.history
+            .insert_block(&new_state.to_block(), &cproof)
+            .unwrap();
         log::debug!(
-            "applied block {} of length {} in {:.2}ms (insert {:.2}ms)",
+            "applied block {} in {:.2}ms (insert {:.2}ms)",
             new_state.inner_ref().height,
-            blklen,
             apply_time.as_secs_f64() * 1000.0,
             start.elapsed().as_secs_f64() * 1000.0
         );
@@ -218,6 +173,10 @@ impl Storage {
         let next = self.highest_state().next_state();
         self.mempool_mut().rebase(next);
         self.new_block_notify.notify(usize::MAX);
+
+        if fastrand::usize(0..3000) == 0 {
+            self.flush().await;
+        }
         Ok(())
     }
 

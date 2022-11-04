@@ -1,4 +1,4 @@
-use crate::storage::Storage;
+use crate::storage::{History, Storage};
 
 use std::{net::SocketAddr, path::PathBuf};
 
@@ -100,25 +100,27 @@ impl Args {
     }
 
     pub async fn storage(&self) -> anyhow::Result<Storage> {
-        let database_default_path = dirs::home_dir()
-            .expect("no home dir?!")
-            .tap_mut(|p| p.push(".themelio-node/"));
+        let genesis = self.genesis_config().await?;
+        let genesis_id = tmelcrypt::hash_single(stdcode::serialize(&genesis).unwrap());
+        let database_default_path = dirs::home_dir().expect("no home dir?!").tap_mut(|p| {
+            p.push(".themelio-node/");
+            p.push(format!("{}/", hex::encode(&genesis_id.0)))
+        });
         let database_base_path = self.database.clone().unwrap_or(database_default_path);
-        let metadata_path = database_base_path
+        let history_path = database_base_path
             .clone()
-            .tap_mut(|path| path.push("metadata2.db"));
+            .tap_mut(|path| path.push("history"));
         let smt_path = database_base_path
             .clone()
-            .tap_mut(|path| path.push("smt2.db"));
+            .tap_mut(|path| path.push("smt.db"));
 
         std::fs::create_dir_all(&database_base_path)?;
-        let meta_db =
-            boringdb::Database::open(&metadata_path).context("cannot open boringdb database")?;
+        let history = History::new(history_path).context("cannot open history")?;
         let smt_db =
             meshanina::Mapping::open(&smt_path).context("cannot open meshanina database")?;
         log::debug!("database opened at {:?}", database_base_path);
 
-        let storage = Storage::new(smt_db, meta_db, self.genesis_config().await?);
+        let storage = Storage::new(smt_db, history, self.genesis_config().await?);
 
         log::debug!("node storage opened");
 
