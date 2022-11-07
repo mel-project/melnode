@@ -4,8 +4,10 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
+use anyhow::Context;
 use crossbeam_queue::SegQueue;
 
+use parking_lot::Mutex;
 use tap::Tap;
 use themelio_structs::{Block, BlockHeight, ConsensusProof};
 
@@ -16,6 +18,8 @@ pub struct History {
     base_path: PathBuf,
     dirty: SegQueue<u64>,
     highest: AtomicU64,
+
+    flush_lock: Mutex<()>,
 }
 
 impl History {
@@ -32,6 +36,8 @@ impl History {
             base_path,
             dirty: Default::default(),
             highest: highest.into(),
+
+            flush_lock: Default::default(),
         })
     }
 
@@ -79,6 +85,8 @@ impl History {
 
     /// Flushes all information to disk. After this call, all contents are durable on disk. Importantly, the on-disk record of the highest block is **only** updated in this method.
     pub fn flush(&self) -> anyhow::Result<()> {
+        let _guard = self.flush_lock.lock();
+
         let real_highest = self.highest.load(Ordering::SeqCst);
         // TODO on systems like Linux, we can call one single syscall to sync literally everything to disk. That *might* be faster.
         while let Some(dirty) = self.dirty.pop() {
@@ -97,11 +105,11 @@ impl History {
             libc::sync();
         }
         let highest = self.base_path.clone().tap_mut(|p| p.push("highest-1"));
-        let mut file = std::fs::File::create(&highest)?;
+        let mut file = std::fs::File::create(&highest).context("cannot create temp highest")?;
         file.write_all(real_highest.to_string().as_bytes())?;
         file.sync_all()?;
         let highest_actual = self.base_path.clone().tap_mut(|p| p.push("highest"));
-        std::fs::rename(&highest, &highest_actual)?;
+        std::fs::rename(&highest, &highest_actual).context("cannot execute rename")?;
         std::fs::File::open(&highest_actual)?.sync_all()?;
         Ok(())
     }

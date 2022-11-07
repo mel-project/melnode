@@ -3364,6 +3364,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "streamlette"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e9b2a538d79a17c3eb6a76307bc4f888b7609f7b77607d217c7fdc3b3b7859d"
+dependencies = [
+ "anyhow",
+ "arrayref",
+ "async-io",
+ "async-trait",
+ "bytes",
+ "dashmap 5.4.0",
+ "env_logger 0.9.1",
+ "fastrand",
+ "futures-lite",
+ "hex",
+ "honggfuzz",
+ "itertools",
+ "log",
+ "serde",
+ "smol",
+ "stdcode",
+ "tap",
+ "tmelcrypt",
+]
+
+[[package]]
 name = "strsim"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3557,7 +3583,9 @@ dependencies = [
  "anyhow",
  "arc-swap",
  "async-compat",
+ "async-oneshot 0.5.0",
  "async-trait",
+ "bytes",
  "clone-macro",
  "crossbeam-queue",
  "dashmap 4.0.2",
@@ -3599,6 +3627,7 @@ dependencies = [
  "smol-timeout",
  "smolscale",
  "stdcode",
+ "streamlette",
  "structopt",
  "systemstat",
  "tap",
@@ -3606,6 +3635,7 @@ dependencies = [
  "themelio-nodeprot 0.12.1",
  "themelio-stf",
  "themelio-structs",
+ "thiserror",
  "tmelcrypt",
 ]
 
@@ -3673,9 +3703,9 @@ dependencies = [
 
 [[package]]
 name = "themelio-stf"
-version = "0.11.12"
+version = "0.11.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e256f766cd5e327498c629f2d604db5564b03d6e32e5553c88e7a0a8bd124fb5"
+checksum = "6f93b4a3f23f2413e66a926d7701a1805413578ef362e6d2bb2fe33d1d8c9bc7"
 dependencies = [
  "arbitrary",
  "assoc",

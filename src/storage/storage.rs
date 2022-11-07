@@ -79,11 +79,25 @@ impl Storage {
         self.highest.read().inner_ref().height
     }
 
+    /// Waits until a certain height is available, then returns it.
+    pub async fn get_state_or_wait(&self, height: BlockHeight) -> SealedState<MeshaCas> {
+        loop {
+            let evt = self.new_block_notify.listen();
+            if let Some(val) = self.get_state(height) {
+                return val;
+            }
+            evt.await;
+        }
+    }
+
     /// Obtain a historical SealedState.
     pub fn get_state(&self, height: BlockHeight) -> Option<SealedState<MeshaCas>> {
         let highest = self.highest_state();
         if height == highest.inner_ref().height {
             return Some(highest);
+        }
+        if height > highest.inner_ref().height {
+            return None;
         }
         let old = self.old_cache.get(&height);
         if let Some(old) = old {

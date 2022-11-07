@@ -105,11 +105,10 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
         opt.index_coins,
         swarm,
     );
-    let _staker_prot = if let Some(cfg) = opt.staker_cfg().await? {
-        Some(StakerProtocol::new(storage.clone(), cfg)?)
-    } else {
-        None
-    };
+    let _staker_prot = opt
+        .staker_cfg()
+        .await?
+        .map(|cfg| StakerProtocol::new(storage.clone(), cfg));
 
     #[cfg(feature = "metrics")]
     {

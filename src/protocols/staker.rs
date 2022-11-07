@@ -3,18 +3,37 @@ use crate::{
     storage::{MeshaCas, Storage},
 };
 
+use anyhow::Context;
+use async_trait::async_trait;
+use bytes::Bytes;
+
+use dashmap::DashMap;
+use melnet2::{wire::tcp::TcpBackhaul, Swarm};
+use moka::sync::Cache;
+use nanorpc::{nanorpc_derive, DynRpcTransport};
+use novasymph::BlockBuilder;
+use once_cell::sync::Lazy;
+use parking_lot::RwLock;
+use smol::{
+    channel::{Receiver, Sender},
+    prelude::*,
+};
+use smol_timeout::TimeoutExt;
+use std::collections::BTreeMap;
 use std::{
+    collections::HashMap,
     net::SocketAddr,
     sync::Arc,
     time::{Duration, SystemTime},
 };
-
-use novasymph::BlockBuilder;
-use once_cell::sync::Lazy;
-use smol::prelude::*;
+use stdcode::StdcodeSerializeExt;
+use streamlette::{DeciderConfig, DiffMessage};
+use tap::Tap;
 use themelio_stf::SealedState;
-use themelio_structs::{Address, Block, BlockHeight, NetID, ProposerAction, Transaction, TxHash};
-use tmelcrypt::Ed25519SK;
+use themelio_structs::{
+    Address, Block, BlockHeight, ConsensusProof, NetID, ProposerAction, Transaction, TxHash,
+};
+use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
 static MAINNET_START_TIME: Lazy<SystemTime> = Lazy::new(|| {
     std::time::UNIX_EPOCH + Duration::from_secs(1618365600) + Duration::from_secs(30 * 7450)
@@ -28,166 +47,308 @@ pub struct StakerProtocol {
     _network_task: smol::Task<()>,
 }
 
+/*
+A background task continually creates Deciders based off of StakerInners.
+
+In the sync_core, we respond to incoming requests through a channel that a StakerNetProtocol shim feeds into.
+ */
+
 impl StakerProtocol {
     /// Creates a new instance of the staker protocol.
-    pub fn new(storage: Storage, cfg: StakerConfig) -> anyhow::Result<Self> {
-        let _network_task = smolscale::spawn(async move {
-            loop {
-                let x = storage.highest_height();
-                smol::Timer::after(Duration::from_secs(10)).await;
-                let y = storage.highest_height();
-                log::info!(
-                    "delta-height = {}; must be less than 5 to start staker",
-                    y - x
+    pub fn new(storage: Storage, cfg: StakerConfig) -> Self {
+        Self {
+            _network_task: smolscale::spawn(network_task(storage, cfg)),
+        }
+    }
+}
+
+type DiffReq = (
+    HashMap<HashVal, HashVal>,
+    async_oneshot::Sender<Vec<DiffMessage>>,
+);
+
+async fn network_task(storage: Storage, cfg: StakerConfig) {
+    loop {
+        if let Err(err) = network_task_inner(storage.clone(), cfg.clone()).await {
+            log::warn!("staker failed: {:?}", err)
+        }
+    }
+}
+
+async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Result<()> {
+    // A channel for sending requests for diffs
+    let (send_diff_req, recv_diff_req) = smol::channel::bounded::<DiffReq>(100);
+    // The melnet2 swarm for the staker
+    let swarm: Swarm<TcpBackhaul, StakerNetClient<DynRpcTransport>> = Swarm::new(
+        TcpBackhaul::new(),
+        |conn| StakerNetClient(DynRpcTransport::new(conn)),
+        "themelio-staker-2",
+    );
+    // a "consensus proof gatherer" (see description)
+    let sig_gather: Arc<ConsensusProofGatherer> = Arc::new(Cache::new(10));
+    swarm
+        .start_listen(
+            cfg.listen.to_string().into(),
+            Some(cfg.listen.to_string().into()),
+            StakerNetService(StakerNetProtocolImpl {
+                send_diff_req,
+                storage: storage.clone(),
+                sig_gather: sig_gather.clone(),
+            }),
+        )
+        .await?;
+    loop {
+        let base_state = storage.highest_state();
+        let next_height: BlockHeight = base_state.inner_ref().height + BlockHeight(1);
+        let skip_round = async {
+            storage.get_state_or_wait(next_height).await;
+            smol::Timer::after(Duration::from_secs(1)).await;
+            log::warn!("skipping consensus for {next_height} since we already got it");
+            anyhow::Ok(())
+        };
+        let decide_round = async {
+            let proposed_state = storage.mempool().to_state();
+            if proposed_state.height != next_height {
+                log::warn!("mempool not at the right height, trying again");
+                storage.mempool_mut().rebase(base_state.next_state());
+            } else {
+                let action = ProposerAction {
+                    fee_multiplier_delta: if base_state.inner_ref().fee_multiplier
+                        > cfg.target_fee_multiplier
+                    {
+                        -100
+                    } else {
+                        100
+                    },
+                    reward_dest: cfg.payout_addr,
+                };
+                // create the config
+                let proposed_state = proposed_state.seal(Some(action));
+                let config = StakerInner {
+                    base_state: base_state.clone(),
+                    my_proposal: proposed_state.to_block(),
+                    // TODO: THIS MUST BE REPLACED WITH A PROPER MAJORITY BEACON FOR MANIPULATION RESISTANCE
+                    nonce: base_state.inner_ref().height.0 as _,
+                    my_sk: cfg.signing_secret,
+
+                    recv_diff_req: recv_diff_req.clone(),
+                    swarm: swarm.clone(),
+                };
+                let decider = streamlette::Decider::new(config);
+                let decision = decider.tick_to_end().await;
+                log::debug!("DECIDED on a block with {} bytes", decision.len());
+                let decision: Block = stdcode::deserialize(&decision)
+                    .expect("decision reached on an INVALID block?!?!?!?!?!?!");
+
+                // now we must assemble the consensus proof separately.
+                // everybody has already decided on the block, we're just sharing signatures of it.
+
+                // we start by inserting our own decision into the map.
+                sig_gather.insert(
+                    decision.header.height,
+                    imbl::HashMap::new().tap_mut(|map| {
+                        map.insert(
+                            cfg.signing_secret.to_public(),
+                            cfg.signing_secret.sign(&decision.header.hash()).into(),
+                        );
+                    }),
                 );
 
-                if y - x < 5.into() {
-                    break;
-                }
-            }
-            loop {
-                let genesis_epoch = (storage.highest_height() + BlockHeight(1)).epoch();
-                for current_epoch in genesis_epoch.. {
-                    log::info!("epoch transitioning into {}!", current_epoch);
-
-                    smol::Timer::after(Duration::from_secs(5)).await;
+                // then, until we finally have enough signatures, we spam our neighbors incessantly.
+                let vote_weights = base_state
+                    .inner_ref()
+                    .stake_docs_for_height(next_height)
+                    .fold(HashMap::new(), |mut map, doc| {
+                        *map.entry(doc.pubkey).or_default() += doc.syms_staked.0;
+                        map
+                    });
+                let vote_threshold = vote_weights.values().sum::<u128>() * 2 / 3;
+                let get_proof = || {
+                    let map = sig_gather.get(&decision.header.height).unwrap_or_default();
+                    if map
+                        .keys()
+                        .map(|pk| vote_weights.get(pk).copied().unwrap_or_default())
+                        .sum::<u128>()
+                        > vote_threshold
                     {
-                        // we race the staker loop with epoch termination. epoch termination for now is just a sleep loop that waits until the last block in the epoch is confirmed.
-                        let staker_fut = one_epoch_loop(
-                            cfg.listen,
-                            vec![cfg.bootstrap],
-                            storage.clone(),
-                            cfg.signing_secret,
-                            cfg.payout_addr,
-                            cfg.target_fee_multiplier,
-                        );
-                        let epoch_termination = async {
-                            loop {
-                                smol::Timer::after(Duration::from_secs(1)).await;
-                                if (storage.highest_height() + 1.into()).epoch() != current_epoch {
-                                    break Ok(());
-                                }
-                            }
+                        Some(map)
+                    } else {
+                        None
+                    }
+                };
+                loop {
+                    if let Some(result) = get_proof() {
+                        let cproof: ConsensusProof =
+                            result.into_iter().map(|(k, v)| (k, v.to_vec())).collect();
+                        storage
+                            .apply_block(decision.clone(), cproof)
+                            .await
+                            .expect("could not apply just-decided block to storage");
+                        storage.flush().await;
+
+                        break;
+                    }
+                    let random_neigh = swarm.routes().await.first().cloned();
+                    if let Some(neigh) = random_neigh {
+                        log::debug!("syncing with {} for consensus proof", neigh);
+                        let fallible = async {
+                            let connection = swarm.connect(neigh.clone()).await?;
+                            let result = connection.get_sigs(next_height).await?;
+                            anyhow::Ok(result)
                         };
-                        if let Err(err) = staker_fut.race(epoch_termination).await {
-                            log::warn!("staker rebooting: {:?}", err);
-                            break;
+                        match fallible.await {
+                            Err(err) => log::warn!("cannot sync with {neigh}: {:?}", err),
+                            Ok(map) => {
+                                let mut existing = sig_gather.get(&next_height).unwrap_or_default();
+                                for (k, v) in map {
+                                    existing.insert(k, v);
+                                }
+                                sig_gather.insert(next_height, existing);
+                            }
                         }
                     }
                 }
             }
-        });
-        Ok(Self { _network_task })
-    }
-}
-
-async fn one_epoch_loop(
-    addr: SocketAddr,
-    bootstrap: Vec<SocketAddr>,
-    storage: Storage,
-    my_sk: Ed25519SK,
-    payout_covhash: Address,
-    target_fee_multiplier: u128,
-) -> anyhow::Result<()> {
-    let genesis = storage.highest_state();
-    let start_time = match genesis.inner_ref().network {
-        NetID::Mainnet => *MAINNET_START_TIME,
-        NetID::Testnet => *TESTNET_START_TIME,
-        _ => SystemTime::now() - Duration::from_secs(storage.highest_height().0 * 30),
-    };
-    let config = novasymph::EpochConfig {
-        listen: addr,
-        bootstrap,
-        genesis,
-        start_time,
-        interval: Duration::from_secs(30),
-        signing_sk: my_sk,
-        builder: StorageBlockBuilder {
-            storage: storage.clone(),
-            payout_covhash,
-            target_fee_multiplier,
-        }
-        .into(),
-        get_confirmed: {
-            let storage = storage.clone();
-            Box::new(move |height: BlockHeight| {
-                storage
-                    .get_state(height)?
-                    .confirm(storage.get_consensus(height)?, None)
-            })
-        },
-    };
-    let protocol = Arc::new(novasymph::EpochProtocol::new(config));
-    let main_loop = async {
-        loop {
-            let confirmed = protocol.next_confirmed().await;
-            let height = confirmed.inner().inner_ref().height;
-            if let Err(err) = storage
-                .apply_block(confirmed.inner().to_block(), confirmed.cproof().clone())
-                .await
-            {
-                log::warn!(
-                    "could not apply confirmed block {} from novasymph: {:?}",
-                    height,
-                    err
-                );
-            }
-        }
-    };
-    let reset_loop = async {
-        loop {
-            let latest_known = storage.highest_state();
-            let protocol = protocol.clone();
-            smol::unblock(move || protocol.reset_genesis(latest_known)).await;
-            smol::Timer::after(Duration::from_secs(5)).await;
-        }
-    };
-    main_loop.race(reset_loop).await
-}
-
-struct StorageBlockBuilder {
-    storage: Storage,
-    payout_covhash: Address,
-    target_fee_multiplier: u128,
-}
-
-impl BlockBuilder<MeshaCas> for StorageBlockBuilder {
-    fn build_block(&self, tip: SealedState<MeshaCas>) -> Block {
-        let proposer_action = ProposerAction {
-            fee_multiplier_delta: if tip.header().fee_multiplier > self.target_fee_multiplier {
-                i8::MIN
-            } else {
-                i8::MAX
-            },
-            reward_dest: self.payout_covhash,
+            anyhow::Ok(())
         };
-        let mempool_state = self
-            .storage
-            .mempool()
-            .to_state()
-            .seal(Some(proposer_action));
-        if mempool_state.header().previous != tip.header().hash() {
-            log::warn!(
-                "mempool {} doesn't extend from tip {}; building quasiempty block",
-                mempool_state.header().height,
-                tip.header().height
-            );
+        skip_round.or(decide_round).await?;
+    }
+}
 
-            let next = tip.next_state().seal(Some(proposer_action));
-            next.to_block()
+struct StakerInner {
+    base_state: SealedState<MeshaCas>,
+    my_proposal: Block,
+    nonce: u128,
+    my_sk: Ed25519SK,
+
+    recv_diff_req: Receiver<DiffReq>,
+    swarm: Swarm<TcpBackhaul, StakerNetClient<DynRpcTransport>>,
+}
+
+#[async_trait]
+impl DeciderConfig for StakerInner {
+    fn generate_proposal(&self) -> Bytes {
+        self.my_proposal.stdcode().into()
+    }
+
+    fn verify_proposal(&self, prop: &[u8]) -> bool {
+        if let Ok(blk) = stdcode::deserialize::<Block>(prop) {
+            self.base_state.apply_block(&blk).is_ok()
         } else {
-            self.storage
-                .mempool_mut()
-                .rebase(mempool_state.next_state());
-            mempool_state.to_block()
+            false
         }
     }
 
-    fn hint_next_build(&self, tip: SealedState<MeshaCas>) {
-        self.storage.mempool_mut().rebase(tip.next_state());
+    async fn sync_core(&self, core: &mut streamlette::Core) {
+        let core = RwLock::new(core);
+        let main_loop = async {
+            loop {
+                let routes = self.swarm.routes().await;
+                log::trace!("syncing core with {:?}", routes);
+                for route in routes {
+                    let our_summary = core.read().summary();
+                    let fallible = async {
+                        let conn = self
+                            .swarm
+                            .connect(route.clone())
+                            .timeout(Duration::from_secs(1))
+                            .await
+                            .context("timed out connecting")??;
+                        let diff: Vec<DiffMessage> = conn
+                            .get_diff(self.nonce, our_summary.clone())
+                            .timeout(Duration::from_secs(5))
+                            .await
+                            .context("timed out receiving diff")??;
+                        anyhow::Ok(diff)
+                    };
+                    match fallible.await {
+                        Ok(diff) => {
+                            // apply the diffs
+                            for diff in diff {
+                                if let Err(err) = core.write().apply_one_diff(diff.clone()) {
+                                    log::warn!("invalid diff from {route} ({:?}): {:?}", err, diff);
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            log::warn!("could not sync with {route}: {:?}", err)
+                        }
+                    }
+                }
+                smol::Timer::after(Duration::from_millis(100)).await;
+            }
+        };
+        let respond_loop = async {
+            loop {
+                if let Ok((their_summary, mut send_resp)) = self.recv_diff_req.recv().await {
+                    let diff = core.read().get_diff(&their_summary);
+                    let _ = send_resp.send(diff);
+                } else {
+                    smol::future::pending::<()>().await;
+                }
+            }
+        };
+        main_loop.race(respond_loop).await
     }
 
-    fn get_cached_transaction(&self, txhash: TxHash) -> Option<Transaction> {
-        self.storage.mempool().lookup_recent_tx(txhash)
+    fn vote_weights(&self) -> BTreeMap<tmelcrypt::Ed25519PK, u64> {
+        let height: BlockHeight = self.base_state.inner_ref().height + BlockHeight(1);
+        self.base_state
+            .inner_ref()
+            .stakes
+            .val_iter()
+            .fold(BTreeMap::new(), |mut map, val| {
+                if height.epoch() >= val.e_start && height.epoch() < val.e_post_end {
+                    *map.entry(val.pubkey).or_default() += val.syms_staked.0 as u64;
+                }
+                map
+            })
+    }
+
+    fn seed(&self) -> u128 {
+        self.nonce
+    }
+
+    fn my_secret(&self) -> Ed25519SK {
+        self.my_sk
     }
 }
+
+#[nanorpc_derive]
+#[async_trait]
+pub trait StakerNetProtocol {
+    /// Obtains a diff from the node, given a summary of the client's state.
+    async fn get_diff(&self, nonce: u128, summary: HashMap<HashVal, HashVal>) -> Vec<DiffMessage>;
+    /// Obtains all known signatures for the given confirmed height. Used to assemble [ConsensusProof]s after streamlette finishes deciding.
+    async fn get_sigs(&self, height: BlockHeight) -> HashMap<Ed25519PK, Bytes>;
+}
+
+struct StakerNetProtocolImpl {
+    send_diff_req: Sender<DiffReq>,
+    storage: Storage,
+    sig_gather: Arc<ConsensusProofGatherer>,
+}
+
+#[async_trait]
+impl StakerNetProtocol for StakerNetProtocolImpl {
+    async fn get_diff(&self, nonce: u128, summary: HashMap<HashVal, HashVal>) -> Vec<DiffMessage> {
+        let (send_resp, recv_resp) = async_oneshot::oneshot();
+        let _ = self.send_diff_req.try_send((summary, send_resp));
+        let resp = if let Ok(val) = recv_resp.await {
+            val
+        } else {
+            return vec![];
+        };
+        resp
+    }
+
+    async fn get_sigs(&self, height: BlockHeight) -> HashMap<Ed25519PK, Bytes> {
+        self.sig_gather
+            .get(&height)
+            .unwrap_or_default()
+            .into_iter()
+            .collect() // convert from immutable to std
+    }
+}
+
+type ConsensusProofGatherer = Cache<BlockHeight, imbl::HashMap<Ed25519PK, Bytes>>;
