@@ -104,7 +104,7 @@ impl Args {
         let genesis_id = tmelcrypt::hash_single(stdcode::serialize(&genesis).unwrap());
         let database_default_path = dirs::home_dir().expect("no home dir?!").tap_mut(|p| {
             p.push(".themelio-node/");
-            p.push(format!("{}/", hex::encode(&genesis_id.0)))
+            p.push(format!("{}/", hex::encode(genesis_id.0)))
         });
         let database_base_path = self.database.clone().unwrap_or(database_default_path);
         let history_path = database_base_path

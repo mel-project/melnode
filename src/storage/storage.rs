@@ -3,15 +3,10 @@ use std::{
     sync::Arc,
     time::Instant,
 };
-
-use std::time::Duration;
-
-use clone_macro::clone;
 use event_listener::Event;
 
 use moka::sync::Cache;
 use parking_lot::RwLock;
-use smol::Task;
 
 use themelio_stf::{GenesisConfig, SealedState};
 use themelio_structs::{Block, BlockHeight, CoinValue, ConsensusProof};

@@ -7,11 +7,10 @@ use anyhow::Context;
 use async_trait::async_trait;
 use bytes::Bytes;
 
-use dashmap::DashMap;
 use melnet2::{wire::tcp::TcpBackhaul, Swarm};
 use moka::sync::Cache;
 use nanorpc::{nanorpc_derive, DynRpcTransport};
-use novasymph::BlockBuilder;
+
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use smol::{
@@ -22,7 +21,6 @@ use smol_timeout::TimeoutExt;
 use std::collections::BTreeMap;
 use std::{
     collections::HashMap,
-    net::SocketAddr,
     sync::Arc,
     time::{Duration, SystemTime},
 };
@@ -30,9 +28,7 @@ use stdcode::StdcodeSerializeExt;
 use streamlette::{DeciderConfig, DiffMessage};
 use tap::Tap;
 use themelio_stf::SealedState;
-use themelio_structs::{
-    Address, Block, BlockHeight, ConsensusProof, NetID, ProposerAction, Transaction, TxHash,
-};
+use themelio_structs::{Block, BlockHeight, ConsensusProof, ProposerAction};
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
 static MAINNET_START_TIME: Lazy<SystemTime> = Lazy::new(|| {
@@ -42,18 +38,14 @@ static MAINNET_START_TIME: Lazy<SystemTime> = Lazy::new(|| {
 static TESTNET_START_TIME: Lazy<SystemTime> =
     Lazy::new(|| std::time::UNIX_EPOCH + Duration::from_secs(1665123000));
 
-/// This encapsulates the staker-specific peer-to-peer.
-pub struct StakerProtocol {
+/// An actor that represents the background process that runs staker logic.
+///
+/// Talks to other stakers over the staker P2P network, decides on blocks using the Streamlette consensus algorithm, and stuffs decided blocks into [Storage].
+pub struct Staker {
     _network_task: smol::Task<()>,
 }
 
-/*
-A background task continually creates Deciders based off of StakerInners.
-
-In the sync_core, we respond to incoming requests through a channel that a StakerNetProtocol shim feeds into.
- */
-
-impl StakerProtocol {
+impl Staker {
     /// Creates a new instance of the staker protocol.
     pub fn new(storage: Storage, cfg: StakerConfig) -> Self {
         Self {
@@ -92,7 +84,6 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
             Some(cfg.listen.to_string().into()),
             StakerNetService(StakerNetProtocolImpl {
                 send_diff_req,
-                storage: storage.clone(),
                 sig_gather: sig_gather.clone(),
             }),
         )
@@ -325,21 +316,20 @@ pub trait StakerNetProtocol {
 
 struct StakerNetProtocolImpl {
     send_diff_req: Sender<DiffReq>,
-    storage: Storage,
     sig_gather: Arc<ConsensusProofGatherer>,
 }
 
 #[async_trait]
 impl StakerNetProtocol for StakerNetProtocolImpl {
-    async fn get_diff(&self, nonce: u128, summary: HashMap<HashVal, HashVal>) -> Vec<DiffMessage> {
+    async fn get_diff(&self, _nonce: u128, summary: HashMap<HashVal, HashVal>) -> Vec<DiffMessage> {
         let (send_resp, recv_resp) = async_oneshot::oneshot();
         let _ = self.send_diff_req.try_send((summary, send_resp));
-        let resp = if let Ok(val) = recv_resp.await {
+
+        if let Ok(val) = recv_resp.await {
             val
         } else {
-            return vec![];
-        };
-        resp
+            vec![]
+        }
     }
 
     async fn get_sigs(&self, height: BlockHeight) -> HashMap<Ed25519PK, Bytes> {

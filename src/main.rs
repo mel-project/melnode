@@ -1,8 +1,9 @@
 mod args;
 
+mod node;
 #[cfg(feature = "metrics")]
 mod prometheus;
-mod protocols;
+mod staker;
 mod storage;
 
 #[cfg(feature = "metrics")]
@@ -10,8 +11,7 @@ use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
 #[cfg(feature = "metrics")]
 use std::time::Duration;
 
-use crate::protocols::{NodeProtocol, StakerProtocol};
-use crate::storage::Storage;
+use crate::{node::Node, staker::Staker, storage::Storage};
 
 use args::Args;
 
@@ -96,7 +96,7 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
         swarm.add_route(addr.to_string().into(), true).await;
     }
 
-    let _node_prot = NodeProtocol::new(
+    let _node_prot = Node::new(
         netid,
         opt.listen_addr(),
         opt.legacy_listen_addr(),
@@ -108,7 +108,7 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
     let _staker_prot = opt
         .staker_cfg()
         .await?
-        .map(|cfg| StakerProtocol::new(storage.clone(), cfg));
+        .map(|cfg| Staker::new(storage.clone(), cfg));
 
     #[cfg(feature = "metrics")]
     {

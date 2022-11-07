@@ -26,14 +26,14 @@ use tmelcrypt::HashVal;
 
 type NrpcClient = NodeRpcClient<<TcpBackhaul as Backhaul>::RpcTransport>;
 
-/// This encapsulates the node peer-to-peer for both auditors and stakers..
-pub struct NodeProtocol {
+/// An actor implementing the node P2P protocol, common for both auditors and stakers..
+pub struct Node {
     _blksync_task: smol::Task<()>,
     _legacy_task: Option<smol::Task<()>>,
 }
 
-impl NodeProtocol {
-    /// Creates a new AuditorProtocol listening on the given address with the given AuditorState.
+impl Node {
+    /// Creates a new Node.
     pub fn new(
         netid: NetID,
         listen_addr: SocketAddr,
@@ -219,7 +219,7 @@ impl NodeRpcImpl {
     ) -> Self {
         Self {
             network,
-            storage: storage.clone(),
+            storage,
 
             recent: LruCache::new(1000).into(),
             coin_smts: LruCache::new(100).into(),
