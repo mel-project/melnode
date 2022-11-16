@@ -8,5 +8,5 @@ pub struct Args {
 }
 
 fn main() {
-    let opts = Args::from_args();
+    let _opts = Args::from_args();
 }

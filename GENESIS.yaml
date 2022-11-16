@@ -1,0 +1,21 @@
+network: custom02 # anything from custom02..custom08
+# specifies the "initial stash" of money in the genesis block
+init_coindata:
+  # what address gets the initial supply of money
+  covhash: t5xw3qvzvfezkb748d3zt929zkbt7szgt6jr3zfxxnewj1rtajpjx0
+  # how many units (in millionths)
+  value: 1000000
+  # denomination
+  denom: MEL
+  # additional data in the UTXO
+  additional_data: ""
+# specifies all the stakers with consensus power.
+# we need to specify ourselves in order to produce any blocks; "themelio-crypttool generate-ed25519" (install via cargo) can generate a keypair for us
+stakes:
+  deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef:
+    pubkey: 4ce983d241f1d40b0e5b65e0bd1a6877a35acaec5182f110810f1276103c829e
+    e_start: 0
+    e_post_end: 100000 # essentially never end the stake
+    syms_staked: 10000 # does not matter
+# Initial fee pool
+init_fee_pool: 10000

@@ -15,7 +15,10 @@ use crate::storage::Storage;
 
 use args::Args;
 
+use melnet2::wire::tcp::TcpBackhaul;
+use melnet2::Swarm;
 use structopt::StructOpt;
+use themelio_nodeprot::NodeRpcClient;
 use themelio_structs::BlockHeight;
 
 #[cfg(feature = "dhat-heap")]
@@ -86,13 +89,21 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
 
     log::info!("bootstrapping with {:?}", bootstrap);
 
+    let swarm = Swarm::new(TcpBackhaul::new(), NodeRpcClient, "themelio-node");
+
+    // we add the bootstrap routes as "sticky" routes that never expire
+    for addr in bootstrap.iter() {
+        swarm.add_route(addr.to_string().into(), true).await;
+    }
+
     let _node_prot = NodeProtocol::new(
         netid,
         opt.listen_addr(),
+        opt.legacy_listen_addr(),
         opt.advertise_addr(),
-        bootstrap,
         storage.clone(),
         opt.index_coins,
+        swarm,
     );
     let _staker_prot = if let Some(cfg) = opt.staker_cfg().await? {
         Some(StakerProtocol::new(storage.clone(), cfg)?)

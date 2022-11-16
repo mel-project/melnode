@@ -1,0 +1,10 @@
+# secret key; must correspond to "stakes.dead[...]beef.pubkey" in the network config
+signing_secret: 5b4c8873cbdb089439d025e9fa817b1df1128231699131c245c0027be880d4d44ce983d241f1d40b0e5b65e0bd1a6877a35acaec5182f110810f1276103c829e
+# address for staker-network communication, this can be arbitrary
+listen: 127.0.0.1:20000
+# must be same as "listen"
+bootstrap: 127.0.0.1:20000
+# where block rewards are sent
+payout_addr: t5xw3qvzvfezkb748d3zt929zkbt7szgt6jr3zfxxnewj1rtajpjx0
+# vote for this fee multiplier (higher values charge more fees)
+target_fee_multiplier: 10000

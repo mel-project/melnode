@@ -14,15 +14,19 @@ use tmelcrypt::Ed25519SK;
 /// Command-line arguments.
 pub struct Args {
     /// Listen address
-    #[structopt(long, default_value = "0.0.0.0:11814")]
+    #[structopt(long, default_value = "0.0.0.0:41814")]
     listen: SocketAddr,
+
+    /// Optional listen address for nodes using the legacy melnet protocol.
+    #[structopt(long)]
+    legacy_listen: Option<SocketAddr>,
 
     /// Advertise address. Put your public IP address here.
     #[structopt(long)]
     advertise: Option<SocketAddr>,
 
     /// Override bootstrap addresses. May be given as a DNS name.
-    #[structopt(long, default_value = "mainnet-bootstrap.themelio.org:11814")]
+    #[structopt(long, default_value = "mainnet-bootstrap.themelio.org:41814")]
     bootstrap: Vec<String>,
 
     /// Database path
@@ -102,10 +106,10 @@ impl Args {
         let database_base_path = self.database.clone().unwrap_or(database_default_path);
         let metadata_path = database_base_path
             .clone()
-            .tap_mut(|path| path.push("metadata.db"));
+            .tap_mut(|path| path.push("metadata2.db"));
         let smt_path = database_base_path
             .clone()
-            .tap_mut(|path| path.push("smt.db"));
+            .tap_mut(|path| path.push("smt2.db"));
 
         std::fs::create_dir_all(&database_base_path)?;
         let meta_db =
@@ -142,6 +146,11 @@ impl Args {
     /// Listening address
     pub fn listen_addr(&self) -> SocketAddr {
         self.listen
+    }
+
+    /// Legacy listening address
+    pub fn legacy_listen_addr(&self) -> Option<SocketAddr> {
+        self.legacy_listen
     }
 
     /// Staker secret key

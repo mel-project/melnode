@@ -92,6 +92,7 @@ We can configure a simnet --- a "fake" network local to our computer --- by the 
 
 - `--bootstrap 127.0.0.1:11814` to bootstrap only with ourselves instead of any remote node
 - `--override-genesis network-config.yaml`, where `custom-config.yaml` contains configuration for a _custom network_ of the following form:
+
   ```yaml
   network: custom02 # anything from custom02..custom08
   # specifies the "initial stash" of money in the genesis block
@@ -102,8 +103,8 @@ We can configure a simnet --- a "fake" network local to our computer --- by the 
     value: 1000000
     # denomination
     denom: MEL
-    # additional data in the UTXO
-    additional_data: []
+    # additional data in the UTXO, as a hex string
+    additional_data: ""
   # specifies all the stakers with consensus power.
   # we need to specify ourselves in order to produce any blocks; "themelio-crypttool generate-ed25519" (install via cargo) can generate a keypair for us
   stakes:
@@ -115,7 +116,9 @@ We can configure a simnet --- a "fake" network local to our computer --- by the 
   # Initial fee pool
   init_fee_pool: 10000
   ```
+
 - `--staker-cfg staker-config.yaml` must contain a _staker_ configuration like this:
+
   ```yaml
   # secret key; must correspond to "stakes.dead[...]beef.pubkey" in the network config
   signing_secret: 5b4c8873cbdb089439d025e9fa817b1df1128231699131c245c0027be880d4d44ce983d241f1d40b0e5b65e0bd1a6877a35acaec5182f110810f1276103c829e
