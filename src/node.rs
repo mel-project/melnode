@@ -375,10 +375,12 @@ impl NodeRpcProtocol for NodeRpcImpl {
         let coins_smt = state.raw_coins_smt();
         let history_smt = state.raw_history_smt();
         let stakes_smt = state.raw_stakes_smt();
+        let pools_smt = state.raw_pools_smt();
 
         let (v, proof) = match elem {
             Substate::Coins => coins_smt.get_with_proof(key.0),
-            Substate::History | Substate::Pools => history_smt.get_with_proof(key.0),
+            Substate::History => history_smt.get_with_proof(key.0),
+            Substate::Pools => pools_smt.get_with_proof(key.0),
             Substate::Stakes => stakes_smt.get_with_proof(key.0),
             Substate::Transactions => ctree.get_with_proof(key.0),
         };
