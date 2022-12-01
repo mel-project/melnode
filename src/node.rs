@@ -244,8 +244,10 @@ impl NodeRpcImpl {
                     .get_tree(Default::default())
                     .unwrap(),
             );
-            for (h, t) in state.inner_ref().transactions.iter() {
-                mm.insert(*h, t.clone());
+
+            let transactions = state.to_block().transactions;
+            for tx in transactions.iter() {
+                mm.insert(tx.hash_nosigs(), tx.clone());
             }
             self.coin_smts.lock().put(height, mm.mapping.clone());
             Ok(mm.mapping)
@@ -326,27 +328,22 @@ impl NodeRpcProtocol for NodeRpcImpl {
     async fn get_summary(&self) -> StateSummary {
         log::trace!("handling get_summary()");
         let highest = self.storage.highest_state();
-        let res = self
-            .summary
-            .lock()
-            .get(&highest.inner_ref().height)
-            .cloned();
+        let header = highest.header();
+        let res = self.summary.lock().get(&header.height).cloned();
         if let Some(res) = res {
             res
         } else {
             let proof = self
                 .storage
-                .get_consensus(highest.inner_ref().height)
+                .get_consensus(header.height)
                 .unwrap_or_default();
             let summary = StateSummary {
                 netid: self.network,
-                height: highest.inner_ref().height,
-                header: highest.header(),
+                height: header.height,
+                header,
                 proof,
             };
-            self.summary
-                .lock()
-                .push(highest.inner_ref().height, summary.clone());
+            self.summary.lock().push(header.height, summary.clone());
             summary
         }
     }
@@ -375,11 +372,14 @@ impl NodeRpcProtocol for NodeRpcImpl {
             .context(format!("block {} not confirmed yet", height))
             .ok()?;
         let ctree = self.get_coin_tree(height).ok()?;
+        let coins_smt = state.raw_coins_smt();
+        let history_smt = state.raw_history_smt();
+        let stakes_smt = state.raw_stakes_smt();
+
         let (v, proof) = match elem {
-            Substate::Coins => state.inner_ref().coins.inner().get_with_proof(key.0),
-            Substate::History => state.inner_ref().history.mapping.get_with_proof(key.0),
-            Substate::Pools => state.inner_ref().pools.mapping.get_with_proof(key.0),
-            Substate::Stakes => state.inner_ref().stakes.mapping.get_with_proof(key.0),
+            Substate::Coins => coins_smt.get_with_proof(key.0),
+            Substate::History | Substate::Pools => history_smt.get_with_proof(key.0),
+            Substate::Stakes => stakes_smt.get_with_proof(key.0),
             Substate::Transactions => ctree.get_with_proof(key.0),
         };
         Some((v.to_vec(), proof.compress()))
@@ -392,7 +392,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
             .context("no such height")
             .ok()?;
         let mut accum = BTreeMap::new();
-        for (k, v) in state.inner_ref().stakes.mapping.iter() {
+        for (k, v) in state.raw_stakes_smt().iter() {
             accum.insert(HashVal(k), v.to_vec());
         }
         Some(accum)

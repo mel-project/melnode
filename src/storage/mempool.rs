@@ -48,17 +48,21 @@ impl Mempool {
 
     /// Forcibly replaces the internal state of the mempool with the given state.
     pub fn rebase(&mut self, state: State<MeshaCas>) {
-        if state.height > self.provisional_state.height {
+        // seal a clone of these states to get info out of them
+        let sealed_input_state = state.clone().seal(None);
+        let sealed_provisional_state = self.provisional_state.clone().seal(None);
+
+        if sealed_input_state.header().height > sealed_provisional_state.header().height {
             log::trace!(
                 "rebasing mempool {} => {}",
-                self.provisional_state.height,
-                state.height
+                sealed_provisional_state.header().height,
+                sealed_input_state.header().height
             );
-            if !self.provisional_state.transactions.is_empty() {
-                let count = self.provisional_state.transactions.len();
-                log::warn!("*** THROWING AWAY {} MEMPOOL TXX ***", count);
+            if !sealed_provisional_state.is_empty() {
+                let transactions = sealed_provisional_state.to_block().transactions;
+                log::warn!("*** THROWING AWAY {} MEMPOOL TXX ***", transactions.len());
             }
-            assert!(state.transactions.is_empty());
+            assert!(sealed_input_state.is_empty());
             self.provisional_state = state.clone();
             self.last_rebase = state;
             self.txx_in_state.clear();
