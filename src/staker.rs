@@ -88,7 +88,10 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
             }),
         )
         .await?;
+    // TODO better time calcs
+    let mut timer = smol::Timer::interval(Duration::from_secs(30));
     loop {
+        timer.next().await;
         let base_state = storage.highest_state();
         let next_height: BlockHeight = base_state.inner_ref().height + BlockHeight(1);
         let skip_round = async {
