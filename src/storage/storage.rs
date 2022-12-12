@@ -180,7 +180,7 @@ impl Storage {
             start.elapsed().as_secs_f64() * 1000.0
         );
         *self.highest.write() = new_state;
-        let next = self.highest_state().next_unsealed();
+        let next = self.highest_state();
         self.mempool_mut().rebase(next);
         self.new_block_notify.notify(usize::MAX);
 

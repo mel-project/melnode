@@ -162,7 +162,7 @@ async fn attempt_blksync(
                     .get_full_block(height, &lookup_tx)
                     .timeout(Duration::from_secs(15))
                     .await
-                    .context("timeout")??
+                    .context("timeout while getting block")??
                 {
                     Some(v) => v,
                     _ => anyhow::bail!("mysteriously missing block {}", height),

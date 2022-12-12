@@ -105,7 +105,7 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
             let sealed_proposed_state = proposed_state.clone().seal(None);
             if sealed_proposed_state.header().height != next_height {
                 log::warn!("mempool not at the right height, trying again");
-                storage.mempool_mut().rebase(base_state.next_unsealed());
+                storage.mempool_mut().rebase(base_state);
             } else {
                 let action = ProposerAction {
                     fee_multiplier_delta: if base_state.header().fee_multiplier

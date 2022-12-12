@@ -3,7 +3,7 @@ use crate::storage::MeshaCas;
 use std::collections::HashSet;
 
 use melvm::covenant_weight_from_bytes;
-use themelio_stf::{StateError, UnsealedState};
+use themelio_stf::{SealedState, StateError, UnsealedState};
 use themelio_structs::{Transaction, TxHash};
 
 const WEIGHT_LIMIT: u128 = 10_000_000;
@@ -48,24 +48,23 @@ impl Mempool {
     }
 
     /// Forcibly replaces the internal state of the mempool with the given state.
-    pub fn rebase(&mut self, state: UnsealedState<MeshaCas>) {
-        // seal a clone of these states to get info out of them
-        let sealed_input_state = state.clone().seal(None);
+    pub fn rebase(&mut self, state: SealedState<MeshaCas>) {
         let sealed_provisional_state = self.provisional_state.clone().seal(None);
 
-        if sealed_input_state.header().height > sealed_provisional_state.header().height {
+        if state.header().height > sealed_provisional_state.header().height {
             log::trace!(
                 "rebasing mempool {} => {}",
                 sealed_provisional_state.header().height,
-                sealed_input_state.header().height
+                state.header().height
             );
             if !sealed_provisional_state.is_empty() {
                 let transactions = sealed_provisional_state.to_block().transactions;
                 log::warn!("*** THROWING AWAY {} MEMPOOL TXX ***", transactions.len());
             }
-            assert!(sealed_input_state.is_empty());
-            self.provisional_state = state.clone();
-            self.last_rebase = state;
+            assert!(state.is_empty());
+            let next_state = state.next_unsealed();
+            self.provisional_state = next_state.clone();
+            self.last_rebase = next_state;
             self.txx_in_state.clear();
             self.next_weight = 0;
         }
