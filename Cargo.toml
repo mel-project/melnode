@@ -100,8 +100,10 @@ stdcode = "0.1.10"
 structopt = "0.3.26"
 tap = "1.0.1"
 # tracing = "0.1.34"
-# themelio-stf = "0.11.13"
-themelio-stf = { path = "../themelio-stf" }
+# themelio-stf = { path = "../themelio-stf" }
+themelio-stf = { git = "https://github.com/themeliolabs/themelio-stf", branch = "applytx-refactors" }
+melvm = { git = "https://github.com/themeliolabs/themelio-stf", branch = "applytx-refactors" }
+
 tmelcrypt = "0.2.4"
 # themelio-bootstrap = "0.6.1"
 themelio-bootstrap = { path = "../themelio-bootstrap" }

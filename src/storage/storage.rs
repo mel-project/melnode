@@ -52,7 +52,7 @@ impl Storage {
             .unwrap_or_else(|| genesis.realize(&forest).seal(None));
         log::info!("HIGHEST AT {}", highest.header().height);
 
-        let mempool = Arc::new(Mempool::new(highest.next_state()).into());
+        let mempool = Arc::new(Mempool::new(highest.next_unsealed()).into());
         let highest = Arc::new(RwLock::new(highest));
         Self {
             mempool,
@@ -180,7 +180,7 @@ impl Storage {
             start.elapsed().as_secs_f64() * 1000.0
         );
         *self.highest.write() = new_state;
-        let next = self.highest_state().next_state();
+        let next = self.highest_state().next_unsealed();
         self.mempool_mut().rebase(next);
         self.new_block_notify.notify(usize::MAX);
 
