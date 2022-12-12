@@ -115,6 +115,8 @@ We can configure a simnet --- a "fake" network local to our computer --- by the 
       syms_staked: 10000 # does not matter
   # Initial fee pool
   init_fee_pool: 10000
+  # Initial fee multiplier
+  init_fee_multplier: 1
   ```
 
 - `--staker-cfg staker-config.yaml` must contain a _staker_ configuration like this:

@@ -28,7 +28,7 @@ use stdcode::StdcodeSerializeExt;
 use streamlette::{DeciderConfig, DiffMessage};
 use tap::Tap;
 use themelio_stf::SealedState;
-use themelio_structs::{Block, BlockHeight, ConsensusProof, ProposerAction};
+use themelio_structs::{Block, BlockHeight, ConsensusProof, ProposerAction, StakeDoc};
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
 static MAINNET_START_TIME: Lazy<SystemTime> = Lazy::new(|| {
@@ -93,7 +93,7 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
     loop {
         timer.next().await;
         let base_state = storage.highest_state();
-        let next_height: BlockHeight = base_state.inner_ref().height + BlockHeight(1);
+        let next_height: BlockHeight = base_state.header().height + BlockHeight(1);
         let skip_round = async {
             storage.get_state_or_wait(next_height).await;
             smol::Timer::after(Duration::from_secs(1)).await;
@@ -102,12 +102,13 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
         };
         let decide_round = async {
             let proposed_state = storage.mempool().to_state();
-            if proposed_state.height != next_height {
+            let sealed_proposed_state = proposed_state.clone().seal(None);
+            if sealed_proposed_state.header().height != next_height {
                 log::warn!("mempool not at the right height, trying again");
-                storage.mempool_mut().rebase(base_state.next_state());
+                storage.mempool_mut().rebase(base_state.next_unsealed());
             } else {
                 let action = ProposerAction {
-                    fee_multiplier_delta: if base_state.inner_ref().fee_multiplier
+                    fee_multiplier_delta: if base_state.header().fee_multiplier
                         > cfg.target_fee_multiplier
                     {
                         -100
@@ -122,7 +123,7 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
                     base_state: base_state.clone(),
                     my_proposal: proposed_state.to_block(),
                     // TODO: THIS MUST BE REPLACED WITH A PROPER MAJORITY BEACON FOR MANIPULATION RESISTANCE
-                    nonce: base_state.inner_ref().height.0 as _,
+                    nonce: base_state.header().height.0 as _,
                     my_sk: cfg.signing_secret,
 
                     recv_diff_req: recv_diff_req.clone(),
@@ -149,13 +150,13 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
                 );
 
                 // then, until we finally have enough signatures, we spam our neighbors incessantly.
-                let vote_weights = base_state
-                    .inner_ref()
-                    .stake_docs_for_height(next_height)
-                    .fold(HashMap::new(), |mut map, doc| {
+                let vote_weights = base_state.stake_docs_for_height(next_height).fold(
+                    HashMap::new(),
+                    |mut map, doc| {
                         *map.entry(doc.pubkey).or_default() += doc.syms_staked.0;
                         map
-                    });
+                    },
+                );
                 let vote_threshold = vote_weights.values().sum::<u128>() * 2 / 3;
                 let get_proof = || {
                     let map = sig_gather.get(&decision.header.height).unwrap_or_default();
@@ -173,7 +174,7 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
                 loop {
                     if let Some(result) = get_proof() {
                         let cproof: ConsensusProof =
-                            result.into_iter().map(|(k, v)| (k, v.to_vec())).collect();
+                            result.into_iter().map(|(k, v)| (k, v)).collect();
                         storage
                             .apply_block(decision.clone(), cproof)
                             .await
@@ -286,14 +287,14 @@ impl DeciderConfig for StakerInner {
     }
 
     fn vote_weights(&self) -> BTreeMap<tmelcrypt::Ed25519PK, u64> {
-        let height: BlockHeight = self.base_state.inner_ref().height + BlockHeight(1);
+        let height: BlockHeight = self.base_state.header().height + BlockHeight(1);
         self.base_state
-            .inner_ref()
-            .stakes
-            .val_iter()
+            .raw_stakes_smt()
+            .iter()
             .fold(BTreeMap::new(), |mut map, val| {
-                if height.epoch() >= val.e_start && height.epoch() < val.e_post_end {
-                    *map.entry(val.pubkey).or_default() += val.syms_staked.0 as u64;
+                let stake_doc: StakeDoc = stdcode::deserialize(&val.1).unwrap();
+                if height.epoch() >= stake_doc.e_start && height.epoch() < stake_doc.e_post_end {
+                    *map.entry(stake_doc.pubkey).or_default() += stake_doc.syms_staked.0 as u64;
                 }
                 map
             })

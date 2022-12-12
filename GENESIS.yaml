@@ -19,3 +19,5 @@ stakes:
     syms_staked: 10000 # does not matter
 # Initial fee pool
 init_fee_pool: 10000
+# Initial fee multiplier
+init_fee_multiplier: 1

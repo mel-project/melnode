@@ -2,22 +2,23 @@ use crate::storage::MeshaCas;
 
 use std::collections::HashSet;
 
-use themelio_stf::{melvm::covenant_weight_from_bytes, State, StateError};
+use melvm::covenant_weight_from_bytes;
+use themelio_stf::{StateError, UnsealedState};
 use themelio_structs::{Transaction, TxHash};
 
 const WEIGHT_LIMIT: u128 = 10_000_000;
 
 /// Mempool encapsulates a "mempool" --- a provisional state that is used to form new blocks by stakers, or provisionally validate transactions by auditors.
 pub struct Mempool {
-    provisional_state: State<MeshaCas>,
-    last_rebase: State<MeshaCas>,
+    provisional_state: UnsealedState<MeshaCas>,
+    last_rebase: UnsealedState<MeshaCas>,
     txx_in_state: HashSet<TxHash>,
     next_weight: u128, // seen: LruCache<TxHash, ()>,
 }
 
 impl Mempool {
     /// Create sa new mempool based on a provisional state.
-    pub fn new(state: State<MeshaCas>) -> Self {
+    pub fn new(state: UnsealedState<MeshaCas>) -> Self {
         Self {
             provisional_state: state.clone(),
             last_rebase: state,
@@ -27,7 +28,7 @@ impl Mempool {
         }
     }
     /// Creates a State based on the present state of the mempool.
-    pub fn to_state(&self) -> State<MeshaCas> {
+    pub fn to_state(&self) -> UnsealedState<MeshaCas> {
         self.provisional_state.clone()
     }
 
@@ -47,18 +48,22 @@ impl Mempool {
     }
 
     /// Forcibly replaces the internal state of the mempool with the given state.
-    pub fn rebase(&mut self, state: State<MeshaCas>) {
-        if state.height > self.provisional_state.height {
+    pub fn rebase(&mut self, state: UnsealedState<MeshaCas>) {
+        // seal a clone of these states to get info out of them
+        let sealed_input_state = state.clone().seal(None);
+        let sealed_provisional_state = self.provisional_state.clone().seal(None);
+
+        if sealed_input_state.header().height > sealed_provisional_state.header().height {
             log::trace!(
                 "rebasing mempool {} => {}",
-                self.provisional_state.height,
-                state.height
+                sealed_provisional_state.header().height,
+                sealed_input_state.header().height
             );
-            if !self.provisional_state.transactions.is_empty() {
-                let count = self.provisional_state.transactions.len();
-                log::warn!("*** THROWING AWAY {} MEMPOOL TXX ***", count);
+            if !sealed_provisional_state.is_empty() {
+                let transactions = sealed_provisional_state.to_block().transactions;
+                log::warn!("*** THROWING AWAY {} MEMPOOL TXX ***", transactions.len());
             }
-            assert!(state.transactions.is_empty());
+            assert!(sealed_input_state.is_empty());
             self.provisional_state = state.clone();
             self.last_rebase = state;
             self.txx_in_state.clear();

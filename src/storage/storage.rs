@@ -1,15 +1,15 @@
+use event_listener::Event;
 use std::{
     ops::{Deref, DerefMut},
     sync::Arc,
     time::Instant,
 };
-use event_listener::Event;
 
 use moka::sync::Cache;
 use parking_lot::RwLock;
 
 use themelio_stf::{GenesisConfig, SealedState};
-use themelio_structs::{Block, BlockHeight, CoinValue, ConsensusProof};
+use themelio_structs::{Block, BlockHeight, CoinValue, ConsensusProof, StakeDoc};
 
 use super::{history::History, mempool::Mempool, MeshaCas};
 
@@ -50,9 +50,9 @@ impl Storage {
             .expect("cannot get highest")
             .map(|s| SealedState::from_block(&s.0, &forest))
             .unwrap_or_else(|| genesis.realize(&forest).seal(None));
-        log::info!("HIGHEST AT {}", highest.inner_ref().height);
+        log::info!("HIGHEST AT {}", highest.header().height);
 
-        let mempool = Arc::new(Mempool::new(highest.next_state()).into());
+        let mempool = Arc::new(Mempool::new(highest.next_unsealed()).into());
         let highest = Arc::new(RwLock::new(highest));
         Self {
             mempool,
@@ -71,7 +71,7 @@ impl Storage {
 
     /// Obtain the highest height.
     pub fn highest_height(&self) -> BlockHeight {
-        self.highest.read().inner_ref().height
+        self.highest.read().header().height
     }
 
     /// Waits until a certain height is available, then returns it.
@@ -88,10 +88,10 @@ impl Storage {
     /// Obtain a historical SealedState.
     pub fn get_state(&self, height: BlockHeight) -> Option<SealedState<MeshaCas>> {
         let highest = self.highest_state();
-        if height == highest.inner_ref().height {
+        if height == highest.header().height {
             return Some(highest);
         }
-        if height > highest.inner_ref().height {
+        if height > highest.header().height {
             return None;
         }
         let old = self.old_cache.get(&height);
@@ -133,18 +133,19 @@ impl Storage {
     pub async fn apply_block(&self, blk: Block, cproof: ConsensusProof) -> anyhow::Result<()> {
         let highest_state = self.highest_state();
         let header = blk.header;
-        if header.height != highest_state.inner_ref().height + 1.into() {
+        if header.height != highest_state.header().height + 1.into() {
             anyhow::bail!(
                 "cannot apply block {} to height {}",
                 header.height,
-                highest_state.inner_ref().height
+                highest_state.header().height
             );
         }
 
         // Check the consensus proof
         let mut total_votes = CoinValue(0);
         let mut present_votes = CoinValue(0);
-        for stake_doc in highest_state.inner_ref().stakes.val_iter() {
+        for stake_doc_bytes in highest_state.raw_stakes_smt().iter() {
+            let stake_doc: StakeDoc = stdcode::deserialize(&stake_doc_bytes.1)?;
             if blk.header.height.epoch() >= stake_doc.e_start
                 && blk.header.height.epoch() < stake_doc.e_post_end
             {
@@ -174,12 +175,12 @@ impl Storage {
             .unwrap();
         log::debug!(
             "applied block {} in {:.2}ms (insert {:.2}ms)",
-            new_state.inner_ref().height,
+            new_state.header().height,
             apply_time.as_secs_f64() * 1000.0,
             start.elapsed().as_secs_f64() * 1000.0
         );
         *self.highest.write() = new_state;
-        let next = self.highest_state().next_state();
+        let next = self.highest_state().next_unsealed();
         self.mempool_mut().rebase(next);
         self.new_block_notify.notify(usize::MAX);
 
