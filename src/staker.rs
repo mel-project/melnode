@@ -89,7 +89,7 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
         )
         .await?;
     // TODO better time calcs
-    let mut timer = smol::Timer::interval(Duratio::from_secs(30));
+    let mut timer = smol::Timer::interval(Duration::from_secs(30));
     loop {
         timer.next().await;
         let base_state = storage.highest_state();
