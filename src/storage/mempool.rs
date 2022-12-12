@@ -49,33 +49,26 @@ impl Mempool {
 
     /// Forcibly replaces the internal state of the mempool with the given state.
     pub fn rebase(&mut self, state: SealedState<MeshaCas>) {
-        let sealed_provisional_state = self.provisional_state.clone().seal(None);
-
-        if state.header().height > sealed_provisional_state.header().height {
-            log::trace!(
-                "rebasing mempool {} => {}",
-                sealed_provisional_state.header().height,
-                state.header().height
-            );
-            if !sealed_provisional_state.is_empty() {
-                let transactions = sealed_provisional_state.to_block().transactions;
-                log::warn!("*** THROWING AWAY {} MEMPOOL TXX ***", transactions.len());
-            }
-            assert!(state.is_empty());
-            let next_state = state.next_unsealed();
-            self.provisional_state = next_state.clone();
-            self.last_rebase = next_state;
-            self.txx_in_state.clear();
-            self.next_weight = 0;
+        let current_sealed = self.provisional_state.clone().seal(None);
+        log::debug!(
+            "forcibly rebasing mempool {} => {}",
+            current_sealed.header().height,
+            state.header().height
+        );
+        if !current_sealed.is_empty() {
+            let transactions = current_sealed.to_block().transactions;
+            log::warn!("*** THROWING AWAY {} MEMPOOL TXX ***", transactions.len());
         }
+        assert!(state.is_empty());
+        let next_state = state.next_unsealed();
+        self.provisional_state = next_state.clone();
+        self.last_rebase = next_state;
+        self.txx_in_state.clear();
+        self.next_weight = 0;
     }
 
     /// Lookups a recent transaction.
     pub fn lookup_recent_tx(&self, _hash: TxHash) -> Option<Transaction> {
         None
-        // self.seen
-        //     .peek(&hash)
-        //     .cloned()
-        //     .or_else(|| self.provisional_state.transactions.get(&hash).cloned())
     }
 }
