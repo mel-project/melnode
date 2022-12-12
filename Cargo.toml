@@ -66,8 +66,8 @@ optional = true
 
 
 [dependencies]
-# themelio-nodeprot= "0.12.0"
-themelio-nodeprot={path="../themelio-nodeprot"}
+themelio-nodeprot = { git = "https://github.com/themeliolabs/themelio-nodeprot", branch = "use-themelio-structs-0.3-beta" }
+
 anyhow = "1.0.65"
 # base64 = "0.13.0"
 arc-swap = "1.5.1"
@@ -106,9 +106,8 @@ melvm = { git = "https://github.com/themeliolabs/themelio-stf", branch = "applyt
 
 tmelcrypt = "0.2.4"
 # themelio-bootstrap = "0.6.1"
-themelio-bootstrap = { path = "../themelio-bootstrap" }
+themelio-bootstrap = { git = "https://github.com/themeliolabs/themelio-bootstrap", branch = "use-themelio-structs-0.3-beta" }
 # tracing-subscriber = "0.3.11"
-# themelio-structs = "0.2.10"
 themelio-structs= "0.3.0-beta.4"
 dhat = { version = "0.3.1", optional = true }
 async-trait = "0.1.57"
