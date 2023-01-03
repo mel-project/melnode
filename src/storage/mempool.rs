@@ -59,7 +59,7 @@ impl Mempool {
             let transactions = current_sealed.to_block().transactions;
             log::warn!("*** THROWING AWAY {} MEMPOOL TXX ***", transactions.len());
         }
-        assert!(state.is_empty());
+
         let next_state = state.next_unsealed();
         self.provisional_state = next_state.clone();
         self.last_rebase = next_state;
