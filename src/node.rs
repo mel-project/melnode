@@ -113,6 +113,10 @@ async fn blksync_loop(_netid: NetID, swarm: Swarm<TcpBackhaul, NrpcClient>, stor
             match fallible_part.await {
                 Err(e) => {
                     log::warn!("failed to blksync with {}: {:?}", peer, e);
+                    log::warn!(
+                        "last state: {:?}",
+                        storage.highest_state().await.unwrap().header()
+                    );
                 }
                 Ok(blklen) => {
                     if blklen > 0 {

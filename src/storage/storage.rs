@@ -17,7 +17,9 @@ use moka::sync::Cache;
 use parking_lot::RwLock;
 
 use themelio_stf::{GenesisConfig, SealedState};
-use themelio_structs::{Block, BlockHeight, CoinValue, ConsensusProof, StakeDoc, TxHash, TxKind};
+use themelio_structs::{
+    Block, BlockHeight, CoinValue, ConsensusProof, NetID, StakeDoc, TxHash, TxKind,
+};
 
 use super::{mempool::Mempool, MeshaCas};
 
@@ -133,6 +135,7 @@ impl Storage {
                 let t: TxHash = row.0.parse()?;
                 let sd: StakeDoc = stdcode::deserialize(&row.2)?;
                 if sd.e_post_end >= height.epoch() && row.1 <= height.0 {
+                    log::debug!("adding stake {:?}", sd);
                     stakes.add_stake(t, sd);
                 }
             }
@@ -258,7 +261,9 @@ impl Storage {
                     if txn.kind == TxKind::Stake {
                         if let Ok(doc) = stdcode::deserialize::<StakeDoc>(&txn.data) {
                             // TODO BUG BUG this poorly replicates the validation logic. Make a method SealedState::new_stakes()
+                            if blk.header.height.0 >= 500000 || blk.header.network != NetID::Mainnet {
                             conn.execute("insert into stakes (txhash, height, stake_doc) values ($1, $2, $3)", params![txn.hash_nosigs().to_string(), blk.header.height.0, doc.stdcode()])?;
+                            }
                         }
                     }
                 }
