@@ -145,7 +145,7 @@ async fn attempt_blksync(
     let height_stream = futures_util::stream::iter((my_highest.0..=their_highest.0).skip(1))
         .map(BlockHeight)
         .take(
-            std::env::var("THEMELIO_BLKSYNC_BATCH")
+            std::env::var("MELNODE_BLKSYNC_BATCH")
                 .ok()
                 .and_then(|d| d.parse().ok())
                 .unwrap_or(1000),

@@ -101,9 +101,8 @@ impl Storage {
         let send_pool = self.send_pool.clone();
         smol::unblock(move || {
             let conn = scopeguard::guard(conn, |conn| send_pool.try_send(conn).unwrap());
-            let val: Option<u64> = conn
-                .query_row("select max(height) from history", params![], |r| r.get(0))
-                .optional()?;
+            let val: Option<u64> =
+                conn.query_row("select max(height) from history", params![], |r| r.get(0))?;
             Ok(val.map(|u| BlockHeight(u)))
         })
         .await
@@ -118,10 +117,15 @@ impl Storage {
     async fn get_stakeset(&self, height: BlockHeight) -> anyhow::Result<StakeSet> {
         let conn = self.recv_pool.recv().await?;
         let send_pool = self.send_pool.clone();
+        let genesis = self.genesis.clone();
         smol::unblock(move || {
             let conn = scopeguard::guard(conn, |conn| send_pool.try_send(conn).unwrap());
             let mut stmt = conn.prepare("select txhash, height, stake_doc from stakes")?;
             let mut stakes = StakeSet::new(vec![].into_iter());
+            // TODO this is dumb!
+            for (txhash, stake) in genesis.stakes {
+                stakes.add_stake(txhash, stake);
+            }
             for row in
                 stmt.query_map(params![], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
             {
