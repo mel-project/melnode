@@ -396,7 +396,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
         Some((v.to_vec(), proof.compress()))
     }
 
-    async fn get_stakers_raw(&self, height: BlockHeight) -> Option<BTreeMap<HashVal, Vec<u8>>> {
+    async fn get_stakers_raw(&self, _height: BlockHeight) -> Option<BTreeMap<HashVal, Vec<u8>>> {
         todo!("no longer relevant")
     }
 

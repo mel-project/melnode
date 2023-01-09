@@ -1,5 +1,5 @@
 use anyhow::Context;
-use crossbeam_queue::SegQueue;
+
 use event_listener::Event;
 use rusqlite::{params, OptionalExtension};
 use smol::channel::{Receiver, Sender};
@@ -19,7 +19,7 @@ use parking_lot::RwLock;
 use themelio_stf::{GenesisConfig, SealedState};
 use themelio_structs::{Block, BlockHeight, CoinValue, ConsensusProof, StakeDoc, TxHash, TxKind};
 
-use super::{history::History, mempool::Mempool, MeshaCas};
+use super::{mempool::Mempool, MeshaCas};
 
 /// Storage encapsulates all storage used by a Themelio full node (auditor or staker).
 #[derive(Clone)]
@@ -103,13 +103,13 @@ impl Storage {
             let conn = scopeguard::guard(conn, |conn| send_pool.try_send(conn).unwrap());
             let val: Option<u64> =
                 conn.query_row("select max(height) from history", params![], |r| r.get(0))?;
-            Ok(val.map(|u| BlockHeight(u)))
+            Ok(val.map(BlockHeight))
         })
         .await
     }
 
     /// Waits until a certain height is available, then returns it.
-    pub async fn get_state_or_wait(&self, height: BlockHeight) -> SealedState<MeshaCas> {
+    pub async fn get_state_or_wait(&self, _height: BlockHeight) -> SealedState<MeshaCas> {
         todo!()
     }
 
@@ -246,7 +246,7 @@ impl Storage {
         {
             let conn = self.recv_pool.recv().await?;
             let send_pool = self.send_pool.clone();
-            let forest = self.forest.clone();
+            let _forest = self.forest.clone();
             smol::unblock(move || {
                 let mut conn = scopeguard::guard(conn, |conn| send_pool.try_send(conn).unwrap());
                 let conn = conn.transaction()?;

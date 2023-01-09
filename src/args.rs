@@ -1,4 +1,4 @@
-use crate::storage::{History, Storage};
+use crate::storage::Storage;
 
 use std::{net::SocketAddr, path::PathBuf};
 
@@ -102,10 +102,10 @@ impl Args {
             p.push(format!("{}/", hex::encode(genesis_id.0)))
         });
         let database_base_path = self.database.clone().unwrap_or(database_default_path);
-        let history_path = database_base_path
+        let _history_path = database_base_path
             .clone()
             .tap_mut(|path| path.push("history"));
-        let smt_path = database_base_path
+        let _smt_path = database_base_path
             .clone()
             .tap_mut(|path| path.push("smt.db"));
 
