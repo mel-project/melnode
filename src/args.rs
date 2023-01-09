@@ -88,11 +88,6 @@ impl Args {
             Ok(serde_yaml::from_slice(&genesis_yaml)
                 .context("error while parsing genesis config")?)
         } else if self.testnet {
-            #[cfg(feature = "metrics")]
-            {
-                *crate::prometheus::NETWORK.write() = "testnet";
-            }
-
             Ok(GenesisConfig::std_testnet())
         } else {
             Ok(GenesisConfig::std_mainnet())
@@ -115,12 +110,7 @@ impl Args {
             .tap_mut(|path| path.push("smt.db"));
 
         std::fs::create_dir_all(&database_base_path)?;
-        let history = History::new(history_path).context("cannot open history")?;
-        let smt_db =
-            meshanina::Mapping::open(&smt_path).context("cannot open meshanina database")?;
-        log::debug!("database opened at {:?}", database_base_path);
-
-        let storage = Storage::new(smt_db, history, self.genesis_config().await?);
+        let storage = Storage::open(database_base_path, genesis).await?;
 
         log::debug!("node storage opened");
 

@@ -96,7 +96,6 @@ fn netname(netid: NetID) -> &'static str {
 }
 
 async fn blksync_loop(_netid: NetID, swarm: Swarm<TcpBackhaul, NrpcClient>, storage: Storage) {
-    let tag = || format!("blksync@{:?}", storage.highest_state().header().height);
     loop {
         let gap_time: Duration = Duration::from_secs_f64(fastrand::f64() * 1.0);
         let routes = swarm.routes().await;
@@ -113,11 +112,11 @@ async fn blksync_loop(_netid: NetID, swarm: Swarm<TcpBackhaul, NrpcClient>, stor
             };
             match fallible_part.await {
                 Err(e) => {
-                    log::warn!("{}: failed to blksync with {}: {:?}", tag(), peer, e);
+                    log::warn!("failed to blksync with {}: {:?}", peer, e);
                 }
                 Ok(blklen) => {
                     if blklen > 0 {
-                        log::debug!("synced to height {}", storage.highest_height());
+                        log::debug!("synced to height {:?}", storage.highest_height().await);
                     }
                 }
             }
@@ -139,7 +138,7 @@ async fn attempt_blksync(
         .context("timed out getting summary")?
         .context("cannot get their highest block")?
         .height;
-    let my_highest = storage.highest_height();
+    let my_highest = storage.highest_height().await?.unwrap_or_default();
     if their_highest <= my_highest {
         return Ok(0);
     }
@@ -230,7 +229,7 @@ impl NodeRpcImpl {
         }
     }
 
-    fn get_coin_tree(&self, height: BlockHeight) -> anyhow::Result<Tree<InMemoryCas>> {
+    async fn get_coin_tree(&self, height: BlockHeight) -> anyhow::Result<Tree<InMemoryCas>> {
         let otree = self.coin_smts.lock().get(&height).cloned();
         if let Some(v) = otree {
             Ok(v)
@@ -238,6 +237,7 @@ impl NodeRpcImpl {
             let state = self
                 .storage
                 .get_state(height)
+                .await?
                 .context(format!("block {} not confirmed yet", height))?;
             let mut mm = SmtMapping::new(
                 Database::new(InMemoryCas::default())
@@ -313,11 +313,15 @@ impl NodeRpcProtocol for NodeRpcImpl {
         let state = self
             .storage
             .get_state(height)
+            .await
+            .unwrap()
             .context(format!("block {} not confirmed yet", height))
             .ok()?;
         let proof = self
             .storage
             .get_consensus(height)
+            .await
+            .unwrap()
             .context(format!("block {} not confirmed yet", height))
             .ok()?;
         let summ = (state.to_block().abbreviate(), proof);
@@ -327,7 +331,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
 
     async fn get_summary(&self) -> StateSummary {
         log::trace!("handling get_summary()");
-        let highest = self.storage.highest_state();
+        let highest = self.storage.highest_state().await.unwrap();
         let header = highest.header();
         let res = self.summary.lock().get(&header.height).cloned();
         if let Some(res) = res {
@@ -336,6 +340,8 @@ impl NodeRpcProtocol for NodeRpcImpl {
             let proof = self
                 .storage
                 .get_consensus(header.height)
+                .await
+                .unwrap()
                 .unwrap_or_default();
             let summary = StateSummary {
                 netid: self.network,
@@ -353,6 +359,8 @@ impl NodeRpcProtocol for NodeRpcImpl {
         Some(
             self.storage
                 .get_state(height)
+                .await
+                .unwrap()
                 .context("no such height")
                 .ok()?
                 .to_block(),
@@ -369,35 +377,27 @@ impl NodeRpcProtocol for NodeRpcImpl {
         let state = self
             .storage
             .get_state(height)
+            .await
+            .unwrap()
             .context(format!("block {} not confirmed yet", height))
             .ok()?;
-        let ctree = self.get_coin_tree(height).ok()?;
+        let ctree = self.get_coin_tree(height).await.ok()?;
         let coins_smt = state.raw_coins_smt();
         let history_smt = state.raw_history_smt();
-        let stakes_smt = state.raw_stakes_smt();
         let pools_smt = state.raw_pools_smt();
 
         let (v, proof) = match elem {
             Substate::Coins => coins_smt.get_with_proof(key.0),
             Substate::History => history_smt.get_with_proof(key.0),
             Substate::Pools => pools_smt.get_with_proof(key.0),
-            Substate::Stakes => stakes_smt.get_with_proof(key.0),
+            Substate::Stakes => todo!("no longer relevant"),
             Substate::Transactions => ctree.get_with_proof(key.0),
         };
         Some((v.to_vec(), proof.compress()))
     }
 
     async fn get_stakers_raw(&self, height: BlockHeight) -> Option<BTreeMap<HashVal, Vec<u8>>> {
-        let state = self
-            .storage
-            .get_state(height)
-            .context("no such height")
-            .ok()?;
-        let mut accum = BTreeMap::new();
-        for (k, v) in state.raw_stakes_smt().iter() {
-            accum.insert(HashVal(k), v.to_vec());
-        }
-        Some(accum)
+        todo!("no longer relevant")
     }
 
     async fn get_some_coins(

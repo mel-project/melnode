@@ -1,18 +1,13 @@
 mod args;
 
 mod node;
-#[cfg(feature = "metrics")]
-mod prometheus;
+
 mod staker;
 mod storage;
 
-#[cfg(feature = "metrics")]
-use crate::prometheus::{AWS_INSTANCE_ID, AWS_REGION};
-#[cfg(feature = "metrics")]
-use std::time::Duration;
-
 use crate::{node::Node, staker::Staker, storage::Storage};
 
+use anyhow::Context;
 use args::Args;
 
 use melnet2::wire::tcp::TcpBackhaul;
@@ -32,17 +27,6 @@ fn main() -> anyhow::Result<()> {
 
     let mut builder = env_logger::Builder::from_env("RUST_LOG");
 
-    #[cfg(feature = "metrics")]
-    {
-        use std::io::Write;
-        builder.format(|f, r| {
-            writeln!(f, "hostname={} public_ip={} network={} region={} instance_id={} level={} message={:?}", crate::prometheus::HOSTNAME.as_str(), crate::prometheus::PUBLIC_IP_ADDRESS.as_str(), crate::prometheus::NETWORK.read(),
-            AWS_REGION.read(),
-               AWS_INSTANCE_ID.read(),
-            r.level(),
-            r.args())
-        });
-    }
     builder.init();
     let opts = Args::from_args();
 
@@ -65,14 +49,17 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
 
     if opt.self_test {
         let storage = storage.clone();
-        smolscale::spawn(async move {
+        smolscale::spawn::<anyhow::Result<()>>(async move {
             loop {
                 log::info!("*** SELF TEST STARTED! ***");
-                let mut state = storage.get_state(BlockHeight(1)).expect("no block 1");
-                let last_height = storage.highest_height().0;
+                let mut state = storage
+                    .get_state(BlockHeight(1))
+                    .await?
+                    .context("no block 1")?;
+                let last_height = storage.highest_height().await?.unwrap_or_default().0;
                 for bh in 2..=last_height {
                     let bh = BlockHeight(bh);
-                    let blk = storage.get_state(bh).expect("no block").to_block();
+                    let blk = storage.get_state(bh).await?.context("no block")?.to_block();
                     state = state.apply_block(&blk).expect("block application failed");
                     smol::future::yield_now().await;
                     log::debug!(
@@ -110,21 +97,11 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
         .await?
         .map(|cfg| Staker::new(storage.clone(), cfg));
 
-    #[cfg(feature = "metrics")]
-    {
-        use async_compat::CompatExt;
-        crate::prometheus::GLOBAL_STORAGE
-            .set(storage)
-            .ok()
-            .expect("Could not write to GLOBAL_STORAGE");
-        smolscale::spawn(crate::prometheus::prometheus().compat()).detach();
-    }
-
-    #[cfg(feature = "dhat-heap")]
-    for i in 0..300 {
-        smol::Timer::after(Duration::from_secs(1)).await;
-        dbg!(i);
-    }
+    // #[cfg(feature = "dhat-heap")]
+    // for i in 0..300 {
+    //     smol::Timer::after(Duration::from_secs(1)).await;
+    //     dbg!(i);
+    // }
 
     #[cfg(not(feature = "dhat-heap"))]
     let _: u64 = smol::future::pending().await;
