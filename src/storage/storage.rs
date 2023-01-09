@@ -136,11 +136,9 @@ impl Storage {
                 let row: (String, u64, Vec<u8>) = row?;
                 let t: TxHash = row.0.parse()?;
                 let sd: StakeDoc = stdcode::deserialize(&row.2)?;
-                if sd.e_post_end >= height.epoch() && row.1 <= height.0 {
-                    log::debug!("adding stake {:?}", sd);
-                    stakes.add_stake(t, sd);
-                }
+                stakes.add_stake(t, sd);
             }
+            stakes.unlock_old(height.epoch());
             Ok(stakes)
         })
         .await
@@ -166,7 +164,9 @@ impl Storage {
                 .optional()?;
             if let Some(block_blob) = block_blob {
                 let block: Block = stdcode::deserialize(&block_blob)?;
-                Ok(Some(SealedState::from_block(&block, &stakes, &forest)))
+                let state = SealedState::from_block(&block, &stakes, &forest);
+                assert_eq!(state.header(), block.header);
+                Ok(Some(state))
             } else {
                 Ok(None)
             }
@@ -271,8 +271,9 @@ impl Storage {
             .await?
         }
         log::debug!(
-            "applied block {} in {:.2}ms (insert {:.2}ms)",
+            "applied block {} / {} in {:.2}ms (insert {:.2}ms)",
             new_state.header().height,
+            new_state.header().hash(),
             apply_time.as_secs_f64() * 1000.0,
             start.elapsed().as_secs_f64() * 1000.0
         );
