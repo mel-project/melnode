@@ -9,7 +9,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [profile.dev]
 panic = "abort"
-opt-level = 0 
+opt-level = 1 
 overflow-checks = true
 
 [profile.release]

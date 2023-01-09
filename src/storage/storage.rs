@@ -113,8 +113,14 @@ impl Storage {
     }
 
     /// Waits until a certain height is available, then returns it.
-    pub async fn get_state_or_wait(&self, _height: BlockHeight) -> SealedState<MeshaCas> {
-        todo!()
+    pub async fn get_state_or_wait(&self, height: BlockHeight) -> SealedState<MeshaCas> {
+        loop {
+            let notify = self.new_block_notify.listen();
+            match self.get_state(height).await {
+                Ok(Some(val)) => return val,
+                _ => notify.await,
+            }
+        }
     }
 
     /// Reconstruct the stakeset at a given height.
