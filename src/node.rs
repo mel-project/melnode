@@ -195,7 +195,6 @@ async fn attempt_blksync(
             .context("could not apply a resolved block")?;
         toret += 1;
     }
-    storage.flush().await;
     Ok(toret)
 }
 

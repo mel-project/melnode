@@ -128,7 +128,7 @@ streamlette = "0.1.0"
 thiserror = "1.0.37"
 bytes = "1.2.1"
 async-oneshot = "0.5.0"
-rusqlite = "0.28.0"
+rusqlite = {version="0.28.0", features=["bundled"]}
 scopeguard = "1.1.0"
 #lz4_flex = "0.9.3"
 

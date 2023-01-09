@@ -68,7 +68,9 @@ impl Storage {
         let (send_pool, recv_pool) = smol::channel::unbounded();
         for _ in 0..16 {
             let conn = rusqlite::Connection::open(&sqlite_path)?;
-            send_pool.send(conn).await;
+            conn.query_row("pragma journal_mode=WAL", params![], |_| Ok(()))?;
+            conn.execute("pragma synchronous=normal", params![])?;
+            send_pool.send(conn).await.unwrap();
         }
 
         let forest = novasmt::Database::new(MeshaCas::new(meshanina::Mapping::open(&mesha_path)?));
@@ -197,11 +199,6 @@ impl Storage {
         .await
     }
 
-    /// Synchronizes everything to disk.
-    pub async fn flush(&self) {
-        // NOOP
-    }
-
     /// Consumes a block, applying it to the current state.
     pub async fn apply_block(&self, blk: Block, cproof: ConsensusProof) -> anyhow::Result<()> {
         let highest_state = self.highest_state().await?;
@@ -244,6 +241,7 @@ impl Storage {
         let apply_time = start.elapsed();
         let start = Instant::now();
 
+        // we flush the merkle stuff first, because the sqlite points to merkle
         self.forest.storage().flush();
         // now transactionally save to sqlite
         {
@@ -282,9 +280,6 @@ impl Storage {
         self.mempool_mut().rebase(next);
         self.new_block_notify.notify(usize::MAX);
 
-        if fastrand::usize(0..3000) == 0 {
-            self.flush().await;
-        }
         Ok(())
     }
 

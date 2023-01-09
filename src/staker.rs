@@ -170,7 +170,6 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
                             .apply_block(decision.clone(), cproof)
                             .await
                             .expect("could not apply just-decided block to storage");
-                        storage.flush().await;
 
                         break;
                     }
