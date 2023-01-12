@@ -313,10 +313,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
 
 [[package]]
-name = "binary-search"
-version = "0.1.2"
+name = "base64"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bea0ab2808834a04d4ae0d831f476217fdbee35cb620bf6b2e5807a4e9435776"
+checksum = "a4a4ddaa51a5bc52a6948f74c06d20aaaddb71924eab79b8c97a8c556e942d6a"
 
 [[package]]
 name = "bincode"
@@ -843,7 +843,7 @@ dependencies = [
  "hashbrown",
  "lock_api",
  "once_cell",
- "parking_lot_core 0.9.5",
+ "parking_lot_core 0.9.6",
 ]
 
 [[package]]
@@ -1418,7 +1418,7 @@ version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3e372db8e5c0d213e0cd0b9be18be2aca3d44cf2fe30a9d46a65581cd454584"
 dependencies = [
- "base64",
+ "base64 0.13.1",
  "bitflags",
  "bytes",
  "headers-core",
@@ -1951,7 +1951,7 @@ dependencies = [
 [[package]]
 name = "melvm"
 version = "0.1.0"
-source = "git+https://github.com/themeliolabs/themelio-stf?branch=applytx-refactors#03b0dcf5b0cb381f4a90be62f20b7360a7825fc7"
+source = "git+https://github.com/themeliolabs/themelio-stf?branch=applytx-refactors#8429fe5dbda908a6531e2356dda1eeb0c2bd4998"
 dependencies = [
  "bytes",
  "catvec",
@@ -2231,45 +2231,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "novasymph"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc36bd909990017dd0eadffd5a7c7ab7ec8b1682c5db474f0cdbd3b18ac9013a"
-dependencies = [
- "anyhow",
- "async-oneshot",
- "async-trait",
- "binary-search",
- "bytes",
- "dashmap 5.4.0",
- "derivative",
- "env_logger 0.9.3",
- "fastrand",
- "futures-util",
- "imbl 2.0.0",
- "log",
- "lru",
- "melnet",
- "novasmt 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
- "num-integer",
- "num-traits",
- "once_cell",
- "parking_lot 0.12.1",
- "serde",
- "slab",
- "smol",
- "smol-timeout",
- "smolscale",
- "stacker",
- "stdcode",
- "tap",
- "themelio-stf 0.11.13 (registry+https://github.com/rust-lang/crates.io-index)",
- "themelio-structs 0.2.12",
- "thiserror",
- "tmelcrypt",
-]
-
-[[package]]
 name = "nu-ansi-term"
 version = "0.46.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2388,9 +2349,9 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.30.1"
+version = "0.30.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d864c91689fdc196779b98dba0aceac6118594c2df6ee5d943eb6a8df4d107a"
+checksum = "2b8c786513eb403643f2a88c244c2aaa270ef2153f55094587d0c48a3cf22a83"
 dependencies = [
  "memchr",
 ]
@@ -2437,7 +2398,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3742b2c103b9f06bc9fff0a37ff4912935851bee6d36f3c02bcc755bcfec228f"
 dependencies = [
  "lock_api",
- "parking_lot_core 0.9.5",
+ "parking_lot_core 0.9.6",
 ]
 
 [[package]]
@@ -2456,9 +2417,9 @@ dependencies = [
 
 [[package]]
 name = "parking_lot_core"
-version = "0.9.5"
+version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ff9f3fef3968a3ec5945535ed654cb38ff72d7495a25619e2247fb15a2ed9ba"
+checksum = "ba1ef8814b5c993410bb3adfad7a5ed269563e4a2f90c41f5d85be7fb47133bf"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
@@ -2734,15 +2695,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "106dd99e98437432fed6519dedecfade6a06a73bb7b2a1e019fdd2bee5778d94"
 
 [[package]]
-name = "psm"
-version = "0.1.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5787f7cda34e3033a72192c018bc5883100330f362ef279a8cbccfce8bb4e874"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "public-ip"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2913,9 +2865,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.7.0"
+version = "1.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e076559ef8e241f2ae3479e36f97bd5741c0330689e217ad51ce2c76808b868a"
+checksum = "48aaa5748ba571fb95cd2c85c09f629215d3a6ece942baa100950af03a34f733"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -2958,7 +2910,7 @@ version = "0.11.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68cc60575865c7831548863cc02356512e3f1dc2f3f82cb837d7fc4cc8f3c97c"
 dependencies = [
- "base64",
+ "base64 0.13.1",
  "bytes",
  "encoding_rs",
  "futures-core",
@@ -2976,7 +2928,7 @@ dependencies = [
  "percent-encoding",
  "pin-project-lite 0.2.9",
  "rustls",
- "rustls-pemfile 1.0.1",
+ "rustls-pemfile 1.0.2",
  "serde",
  "serde_json",
  "serde_urlencoded",
@@ -3049,9 +3001,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.20.7"
+version = "0.20.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "539a2bfe908f471bfa933876bd1eb6a19cf2176d375f82ef7f99530a40e48c2c"
+checksum = "fff78fc74d175294f4e83b28343315ffcfb114b156f0185e9741cb5570f50e2f"
 dependencies = [
  "log",
  "ring",
@@ -3065,16 +3017,16 @@ version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5eebeaeb360c87bfb72e84abdb3447159c0eaececf1bef2aecd65a8be949d1c9"
 dependencies = [
- "base64",
+ "base64 0.13.1",
 ]
 
 [[package]]
 name = "rustls-pemfile"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0864aeff53f8c05aa08d86e5ef839d3dfcf07aeba2db32f12db0ef716e87bd55"
+checksum = "d194b56d58803a43635bdc398cd17e383d6f71f9182b9a192c127ca42494a59b"
 dependencies = [
- "base64",
+ "base64 0.21.0",
 ]
 
 [[package]]
@@ -3511,19 +3463,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "stacker"
-version = "0.1.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c886bd4480155fd3ef527d45e9ac8dd7118a898a46530b7b94c3e21866259fce"
-dependencies = [
- "cc",
- "cfg-if 1.0.0",
- "libc",
- "psm",
- "winapi",
-]
-
-[[package]]
 name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3791,7 +3730,6 @@ dependencies = [
  "moka",
  "nanorpc",
  "novasmt 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
- "novasymph",
  "once_cell",
  "parking_lot 0.12.1",
  "prometheus",
@@ -3814,7 +3752,7 @@ dependencies = [
  "tap",
  "themelio-bootstrap",
  "themelio-nodeprot 0.12.2 (git+https://github.com/themeliolabs/themelio-nodeprot?branch=use-themelio-structs-0.3-beta)",
- "themelio-stf 0.11.13 (git+https://github.com/themeliolabs/themelio-stf?branch=applytx-refactors)",
+ "themelio-stf",
  "themelio-structs 0.3.0-beta.6",
  "thiserror",
  "tip911-stakeset",
@@ -3889,50 +3827,7 @@ dependencies = [
 [[package]]
 name = "themelio-stf"
 version = "0.11.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f93b4a3f23f2413e66a926d7701a1805413578ef362e6d2bb2fe33d1d8c9bc7"
-dependencies = [
- "arbitrary",
- "assoc",
- "atomic_float",
- "blake3",
- "catvec",
- "dashmap 4.0.2",
- "defmac",
- "derivative",
- "derive_more",
- "env_logger 0.9.3",
- "ethnum",
- "fastrand",
- "genawaiter",
- "hex",
- "honggfuzz",
- "jemallocator",
- "log",
- "melpow",
- "novasmt 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
- "num",
- "num_enum",
- "once_cell",
- "parking_lot 0.11.2",
- "rayon",
- "rustc-hash",
- "scopeguard",
- "serde",
- "serde_repr",
- "serde_with",
- "smallvec",
- "stdcode",
- "tap",
- "themelio-structs 0.2.12",
- "thiserror",
- "tmelcrypt",
-]
-
-[[package]]
-name = "themelio-stf"
-version = "0.11.13"
-source = "git+https://github.com/themeliolabs/themelio-stf?branch=applytx-refactors#03b0dcf5b0cb381f4a90be62f20b7360a7825fc7"
+source = "git+https://github.com/themeliolabs/themelio-stf?branch=applytx-refactors#8429fe5dbda908a6531e2356dda1eeb0c2bd4998"
 dependencies = [
  "arbitrary",
  "assoc",
@@ -4087,7 +3982,7 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 [[package]]
 name = "tip911-stakeset"
 version = "0.1.0"
-source = "git+https://github.com/themeliolabs/themelio-stf?branch=applytx-refactors#03b0dcf5b0cb381f4a90be62f20b7360a7825fc7"
+source = "git+https://github.com/themeliolabs/themelio-stf?branch=applytx-refactors#8429fe5dbda908a6531e2356dda1eeb0c2bd4998"
 dependencies = [
  "imbl 2.0.0",
  "novasmt 0.2.19 (git+https://github.com/themeliolabs/novasmt?branch=tip-911)",
@@ -4345,7 +4240,7 @@ version = "0.17.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e27992fd6a8c29ee7eef28fc78349aa244134e10ad447ce3b9f0ac0ed0fa4ce0"
 dependencies = [
- "base64",
+ "base64 0.13.1",
  "byteorder",
  "bytes",
  "http",
@@ -4721,19 +4616,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a3e1820f08b8513f676f7ab6c1f99ff312fb97b553d30ff4dd86f9f15728aa7"
 dependencies = [
  "windows_aarch64_gnullvm",
- "windows_aarch64_msvc 0.42.0",
- "windows_i686_gnu 0.42.0",
- "windows_i686_msvc 0.42.0",
- "windows_x86_64_gnu 0.42.0",
+ "windows_aarch64_msvc 0.42.1",
+ "windows_i686_gnu 0.42.1",
+ "windows_i686_msvc 0.42.1",
+ "windows_x86_64_gnu 0.42.1",
  "windows_x86_64_gnullvm",
- "windows_x86_64_msvc 0.42.0",
+ "windows_x86_64_msvc 0.42.1",
 ]
 
 [[package]]
 name = "windows_aarch64_gnullvm"
-version = "0.42.0"
+version = "0.42.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41d2aa71f6f0cbe00ae5167d90ef3cfe66527d6f613ca78ac8024c3ccab9a19e"
+checksum = "8c9864e83243fdec7fc9c5444389dcbbfd258f745e7853198f365e3c4968a608"
 
 [[package]]
 name = "windows_aarch64_msvc"
@@ -4749,9 +4644,9 @@ checksum = "ec7711666096bd4096ffa835238905bb33fb87267910e154b18b44eaabb340f2"
 
 [[package]]
 name = "windows_aarch64_msvc"
-version = "0.42.0"
+version = "0.42.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd0f252f5a35cac83d6311b2e795981f5ee6e67eb1f9a7f64eb4500fbc4dcdb4"
+checksum = "4c8b1b673ffc16c47a9ff48570a9d85e25d265735c503681332589af6253c6c7"
 
 [[package]]
 name = "windows_i686_gnu"
@@ -4767,9 +4662,9 @@ checksum = "763fc57100a5f7042e3057e7e8d9bdd7860d330070251a73d003563a3bb49e1b"
 
 [[package]]
 name = "windows_i686_gnu"
-version = "0.42.0"
+version = "0.42.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fbeae19f6716841636c28d695375df17562ca208b2b7d0dc47635a50ae6c5de7"
+checksum = "de3887528ad530ba7bdbb1faa8275ec7a1155a45ffa57c37993960277145d640"
 
 [[package]]
 name = "windows_i686_msvc"
@@ -4785,9 +4680,9 @@ checksum = "7bc7cbfe58828921e10a9f446fcaaf649204dcfe6c1ddd712c5eebae6bda1106"
 
 [[package]]
 name = "windows_i686_msvc"
-version = "0.42.0"
+version = "0.42.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84c12f65daa39dd2babe6e442988fc329d6243fdce47d7d2d155b8d874862246"
+checksum = "bf4d1122317eddd6ff351aa852118a2418ad4214e6613a50e0191f7004372605"
 
 [[package]]
 name = "windows_x86_64_gnu"
@@ -4803,15 +4698,15 @@ checksum = "6868c165637d653ae1e8dc4d82c25d4f97dd6605eaa8d784b5c6e0ab2a252b65"
 
 [[package]]
 name = "windows_x86_64_gnu"
-version = "0.42.0"
+version = "0.42.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf7b1b21b5362cbc318f686150e5bcea75ecedc74dd157d874d754a2ca44b0ed"
+checksum = "c1040f221285e17ebccbc2591ffdc2d44ee1f9186324dd3e84e99ac68d699c45"
 
 [[package]]
 name = "windows_x86_64_gnullvm"
-version = "0.42.0"
+version = "0.42.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09d525d2ba30eeb3297665bd434a54297e4170c7f1a44cad4ef58095b4cd2028"
+checksum = "628bfdf232daa22b0d64fdb62b09fcc36bb01f05a3939e20ab73aaf9470d0463"
 
 [[package]]
 name = "windows_x86_64_msvc"
@@ -4827,9 +4722,9 @@ checksum = "5e4d40883ae9cae962787ca76ba76390ffa29214667a111db9e0a1ad8377e809"
 
 [[package]]
 name = "windows_x86_64_msvc"
-version = "0.42.0"
+version = "0.42.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f40009d85759725a34da6d89a94e63d7bdc50a862acf0dbc7c8e488f1edcb6f5"
+checksum = "447660ad36a13288b1db4d4248e857b510e8c3a225c822ba4fb748c0aafecffd"
 
 [[package]]
 name = "winreg"
