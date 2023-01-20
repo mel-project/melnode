@@ -151,6 +151,7 @@ async fn attempt_blksync(
     if their_highest <= my_highest {
         return Ok(0);
     }
+
     let height_stream = futures_util::stream::iter((my_highest.0..=their_highest.0).skip(1))
         .map(BlockHeight)
         .take(
@@ -159,48 +160,70 @@ async fn attempt_blksync(
                 .and_then(|d| d.parse().ok())
                 .unwrap_or(1000),
         );
-    let lookup_tx = |tx| storage.mempool().lookup_recent_tx(tx);
+
     let mut result_stream = height_stream
         .map(Ok::<_, anyhow::Error>)
         .try_filter_map(|height| async move {
             Ok(Some(async move {
                 let start = Instant::now();
 
-                let (block, cproof): (Block, ConsensusProof) = match client
-                    .get_full_block(height, &lookup_tx)
-                    .timeout(Duration::from_secs(15))
+                // get the compressed blocks
+                let compressed_blocks = client
+                    .get_lz4_blocks(height, 10_000_000)
                     .await
-                    .context("timeout while getting block")??
-                {
-                    Some(v) => v,
-                    _ => anyhow::bail!("mysteriously missing block {}", height),
-                };
+                    .context("failed to get compressed blocks")?;
 
-                if block.header.height != height {
-                    anyhow::bail!("WANTED BLK {}, got {}", height, block.header.height);
-                }
-                log::trace!(
-                    "fully resolved block {} from peer {} in {:.2}ms",
-                    block.header.height,
-                    addr,
-                    start.elapsed().as_secs_f64() * 1000.0
-                );
-                Ok((block, cproof))
+                let (blocks, cproofs): (Vec<Block>, Vec<ConsensusProof>) = match compressed_blocks {
+                    Some(compressed) => {
+                        // decode base64 first
+                        let compressed_base64 = base64::engine::general_purpose::STANDARD_NO_PAD
+                            .decode(compressed.as_bytes())?;
+
+                        // decompress
+                        let decompressed = lz4_flex::decompress_size_prepended(&compressed_base64)?;
+                        let (blocks, cproofs) = stdcode::deserialize::<(
+                            Vec<Block>,
+                            Vec<ConsensusProof>,
+                        )>(&decompressed)?;
+
+                        // validate before returning
+                        for block in blocks.iter() {
+                            if block.header.height != height {
+                                anyhow::bail!("WANTED BLK {}, got {}", height, block.header.height);
+                            }
+
+                            log::trace!(
+                                "fully resolved block {} from peer {} in {:.2}ms",
+                                block.header.height,
+                                addr,
+                                start.elapsed().as_secs_f64() * 1000.0
+                            );
+                        }
+
+                        (blocks, cproofs)
+                    }
+                    _ => anyhow::bail!("missing block {height}"),
+                };
+                // return the tuple
+                Ok((blocks, cproofs))
             }))
         })
         .try_buffered(64)
         .boxed();
-    let mut toret = 0;
-    while let Some(res) = result_stream.try_next().await? {
-        let (block, proof): (Block, ConsensusProof) = res;
 
-        storage
-            .apply_block(block, proof)
-            .await
-            .context("could not apply a resolved block")?;
-        toret += 1;
+    // apply the blocks
+    let mut num_blocks_applied = 0;
+    while let Some(res) = result_stream.try_next().await? {
+        let (blocks, cproofs): (Vec<Block>, Vec<ConsensusProof>) = res;
+        for (block, cproof) in blocks.iter().zip(cproofs) {
+            storage
+                .apply_block(block.clone(), cproof)
+                .await
+                .context("could not apply a resolved block")?;
+            num_blocks_applied += 1;
+        }
     }
-    Ok(toret)
+    Ok(num_blocks_applied)
 }
 
 // NOTE: this struct is responsible for obtaining any "state" needed for the implementation of the RPC business logic.
@@ -379,8 +402,8 @@ impl NodeRpcProtocol for NodeRpcImpl {
         let size_limit = size_limit.min(10_000_000);
         // TODO limit the *compressed* size. But this is fine because compression makes stuff smoller
         let mut total_count = 0;
-        let mut accum = vec![];
-        let mut proof_accum = vec![];
+        let mut accum: Vec<Block> = vec![];
+        let mut proof_accum: Vec<ConsensusProof> = vec![];
         for height in height.0.. {
             let height = BlockHeight(height);
             if let Some(block) = self.get_block(height).await {
