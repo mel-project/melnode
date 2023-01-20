@@ -8,6 +8,7 @@ use std::{
 
 use anyhow::Context;
 use async_trait::async_trait;
+use base64::Engine;
 use futures_util::{StreamExt, TryStreamExt};
 use lru::LruCache;
 use melnet2::{wire::tcp::TcpBackhaul, Backhaul, Swarm};
@@ -15,12 +16,16 @@ use novasmt::{CompressedProof, Database, InMemoryCas, Tree};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use smol::net::TcpListener;
+use stdcode::StdcodeSerializeExt;
 use themelio_stf::SmtMapping;
-use themelio_structs::{AbbrBlock, Block, BlockHeight, ConsensusProof, NetID, Transaction, TxHash};
+use themelio_structs::{
+    AbbrBlock, Address, Block, BlockHeight, ConsensusProof, NetID, Transaction, TxHash,
+};
 
 use smol_timeout::TimeoutExt;
 use themelio_nodeprot::{
-    NodeRpcClient, NodeRpcProtocol, NodeRpcService, StateSummary, Substate, TransactionError,
+    CoinChange, NodeRpcClient, NodeRpcProtocol, NodeRpcService, StateSummary, Substate,
+    TransactionError,
 };
 use tmelcrypt::HashVal;
 
@@ -370,6 +375,33 @@ impl NodeRpcProtocol for NodeRpcImpl {
         )
     }
 
+    async fn get_lz4_blocks(&self, height: BlockHeight, size_limit: usize) -> Option<String> {
+        let size_limit = size_limit.min(10_000_000);
+        // TODO limit the *compressed* size. But this is fine because compression makes stuff smoller
+        let mut total_count = 0;
+        let mut accum = vec![];
+        for height in height.0.. {
+            let height = BlockHeight(height);
+            if let Some(block) = self.get_block(height).await {
+                accum.push(block.clone());
+                total_count += block.stdcode().len();
+                if total_count > size_limit {
+                    if accum.len() > 1 {
+                        accum.pop();
+                    }
+                    break;
+                }
+            } else {
+                if accum.is_empty() {
+                    return None;
+                }
+                break;
+            }
+        }
+        let compressed = lz4_flex::compress_prepend_size(&accum.stdcode());
+        Some(base64::engine::general_purpose::STANDARD_NO_PAD.encode(&compressed))
+    }
+
     async fn get_smt_branch(
         &self,
         height: BlockHeight,
@@ -409,5 +441,9 @@ impl NodeRpcProtocol for NodeRpcImpl {
         _covhash: themelio_structs::Address,
     ) -> Option<Vec<themelio_structs::CoinID>> {
         None
+    }
+
+    async fn get_coin_changes(&self, height: BlockHeight, address: Address) -> Vec<CoinChange> {
+        todo!("fill in after the internal coin indexing moves to use the one from melscan")
     }
 }
