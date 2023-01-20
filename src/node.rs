@@ -380,16 +380,22 @@ impl NodeRpcProtocol for NodeRpcImpl {
         // TODO limit the *compressed* size. But this is fine because compression makes stuff smoller
         let mut total_count = 0;
         let mut accum = vec![];
+        let mut proof_accum = vec![];
         for height in height.0.. {
             let height = BlockHeight(height);
             if let Some(block) = self.get_block(height).await {
-                accum.push(block.clone());
-                total_count += block.stdcode().len();
-                if total_count > size_limit {
-                    if accum.len() > 1 {
-                        accum.pop();
+                if let Some(proof) = self.get_abbr_block(height).await.map(|s| s.1) {
+                    total_count += block.stdcode().len();
+                    total_count += proof.stdcode().len();
+                    accum.push(block);
+                    proof_accum.push(proof);
+
+                    if total_count > size_limit {
+                        if accum.len() > 1 {
+                            accum.pop();
+                        }
+                        break;
                     }
-                    break;
                 }
             } else {
                 if accum.is_empty() {
@@ -398,8 +404,8 @@ impl NodeRpcProtocol for NodeRpcImpl {
                 break;
             }
         }
-        let compressed = lz4_flex::compress_prepend_size(&accum.stdcode());
-        Some(base64::engine::general_purpose::STANDARD_NO_PAD.encode(&compressed))
+        let compressed = lz4_flex::compress_prepend_size(&(accum, proof_accum).stdcode());
+        Some(base64::engine::general_purpose::STANDARD_NO_PAD.encode(compressed))
     }
 
     async fn get_smt_branch(
