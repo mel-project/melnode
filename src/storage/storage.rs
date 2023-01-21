@@ -28,7 +28,7 @@ use super::{mempool::Mempool, MeshaCas};
 pub struct Storage {
     send_pool: Sender<rusqlite::Connection>,
     recv_pool: Receiver<rusqlite::Connection>,
-    old_cache: Arc<Cache<BlockHeight, SealedState<MeshaCas>>>,
+    old_cache: Arc<Cache<BlockHeight, Block>>,
     forest: Arc<novasmt::Database<MeshaCas>>,
 
     genesis: GenesisConfig,
@@ -150,18 +150,13 @@ impl Storage {
         .await
     }
 
-    /// Obtain a historical SealedState.
-    pub async fn get_state(
-        &self,
-        height: BlockHeight,
-    ) -> anyhow::Result<Option<SealedState<MeshaCas>>> {
+    /// Obtain just one particular Block.
+    pub async fn get_block(&self, height: BlockHeight) -> anyhow::Result<Option<Block>> {
         if let Some(val) = self.old_cache.get(&height) {
             return Ok(Some(val));
         }
-        let stakes = self.get_stakeset(height).await?;
         let conn = self.recv_pool.recv().await?;
         let send_pool = self.send_pool.clone();
-        let forest = self.forest.clone();
         let res = smol::unblock(move || {
             let conn = scopeguard::guard(conn, |conn| send_pool.try_send(conn).unwrap());
             let block_blob: Option<Vec<u8>> = conn
@@ -173,9 +168,7 @@ impl Storage {
                 .optional()?;
             if let Some(block_blob) = block_blob {
                 let block: Block = stdcode::deserialize(&block_blob)?;
-                let state = SealedState::from_block(&block, &stakes, &forest);
-                assert_eq!(state.header(), block.header);
-                Ok(Some(state))
+                Ok(Some(block))
             } else {
                 Ok(None)
             }
@@ -185,6 +178,23 @@ impl Storage {
             self.old_cache.insert(height, res.clone());
         }
         res
+    }
+
+    /// Obtain a historical SealedState.
+    pub async fn get_state(
+        &self,
+        height: BlockHeight,
+    ) -> anyhow::Result<Option<SealedState<MeshaCas>>> {
+        let block: Block = if let Some(blob) = self.get_block(height).await? {
+            blob
+        } else {
+            return Ok(None);
+        };
+        Ok(Some(SealedState::from_block(
+            &block,
+            &self.get_stakeset(height).await?,
+            &self.forest,
+        )))
     }
 
     /// Obtain a historical ConsensusProof.

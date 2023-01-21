@@ -1,20 +1,20 @@
 use crate::storage::Storage;
 
-use std::{
-    collections::BTreeMap,
-    net::SocketAddr,
-    time::{Duration, Instant},
-};
-
 use anyhow::Context;
 use async_trait::async_trait;
 use base64::Engine;
+use futures_util::{StreamExt, TryStreamExt};
 use lru::LruCache;
 use melnet2::{wire::tcp::TcpBackhaul, Backhaul, Swarm};
 use novasmt::{CompressedProof, Database, InMemoryCas, Tree};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use smol::net::TcpListener;
+use std::{
+    collections::BTreeMap,
+    net::SocketAddr,
+    time::{Duration, Instant},
+};
 use stdcode::StdcodeSerializeExt;
 use themelio_stf::SmtMapping;
 use themelio_structs::{
@@ -138,6 +138,9 @@ async fn attempt_blksync(
     client: &NrpcClient,
     storage: &Storage,
 ) -> anyhow::Result<usize> {
+    if std::env::var("MELNODE_OLD_BLKSYNC").is_ok() {
+        return attempt_blksync_legacy(addr, client, storage).await;
+    }
     log::debug!("starting blksync");
     let their_highest = client
         .get_summary()
@@ -161,7 +164,7 @@ async fn attempt_blksync(
 
         log::debug!("gonna get compressed blocks...");
         let compressed_blocks = client
-            .get_lz4_blocks(height, 500_000)
+            .get_lz4_blocks(height, 50_000)
             .timeout(Duration::from_secs(30))
             .await
             .context("timeout while getting compressed blocks")?
@@ -209,6 +212,75 @@ async fn attempt_blksync(
     }
 
     Ok(num_blocks_applied)
+}
+
+/// Attempts a sync using the given given node client, in a legacy fashion.
+async fn attempt_blksync_legacy(
+    addr: SocketAddr,
+    client: &NrpcClient,
+    storage: &Storage,
+) -> anyhow::Result<usize> {
+    let their_highest = client
+        .get_summary()
+        .timeout(Duration::from_secs(5))
+        .await
+        .context("timed out getting summary")?
+        .context("cannot get their highest block")?
+        .height;
+    let my_highest = storage.highest_height().await?.unwrap_or_default();
+    if their_highest <= my_highest {
+        return Ok(0);
+    }
+    let height_stream = futures_util::stream::iter((my_highest.0..=their_highest.0).skip(1))
+        .map(BlockHeight)
+        .take(
+            std::env::var("THEMELIO_BLKSYNC_BATCH")
+                .ok()
+                .and_then(|d| d.parse().ok())
+                .unwrap_or(1000),
+        );
+    let lookup_tx = |tx| storage.mempool().lookup_recent_tx(tx);
+    let mut result_stream = height_stream
+        .map(Ok::<_, anyhow::Error>)
+        .try_filter_map(|height| async move {
+            Ok(Some(async move {
+                let start = Instant::now();
+
+                let (block, cproof): (Block, ConsensusProof) = match client
+                    .get_full_block(height, &lookup_tx)
+                    .timeout(Duration::from_secs(15))
+                    .await
+                    .context("timeout")??
+                {
+                    Some(v) => v,
+                    _ => anyhow::bail!("mysteriously missing block {}", height),
+                };
+
+                if block.header.height != height {
+                    anyhow::bail!("WANTED BLK {}, got {}", height, block.header.height);
+                }
+                log::trace!(
+                    "fully resolved block {} from peer {} in {:.2}ms",
+                    block.header.height,
+                    addr,
+                    start.elapsed().as_secs_f64() * 1000.0
+                );
+                Ok((block, cproof))
+            }))
+        })
+        .try_buffered(64)
+        .boxed();
+    let mut toret = 0;
+    while let Some(res) = result_stream.try_next().await? {
+        let (block, proof): (Block, ConsensusProof) = res;
+
+        storage
+            .apply_block(block, proof)
+            .await
+            .context("could not apply a resolved block")?;
+        toret += 1;
+    }
+    Ok(toret)
 }
 
 // This struct is responsible for obtaining any "state" needed for the implementation of the RPC business logic.
@@ -326,13 +398,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
             return Some(c);
         }
         log::trace!("handling get_abbr_block({})", height);
-        let state = self
-            .storage
-            .get_state(height)
-            .await
-            .unwrap()
-            .context(format!("block {} not confirmed yet", height))
-            .ok()?;
+        let block = self.storage.get_block(height).await.unwrap()?;
         let proof = self
             .storage
             .get_consensus(height)
@@ -340,7 +406,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
             .unwrap()
             .context(format!("block {} not confirmed yet", height))
             .ok()?;
-        let summ = (state.to_block().abbreviate(), proof);
+        let summ = (block.abbreviate(), proof);
         self.abbr_block_cache.insert(height, summ.clone());
         Some(summ)
     }
@@ -372,15 +438,10 @@ impl NodeRpcProtocol for NodeRpcImpl {
 
     async fn get_block(&self, height: BlockHeight) -> Option<Block> {
         log::trace!("handling get_state({})", height);
-        Some(
-            self.storage
-                .get_state(height)
-                .await
-                .unwrap()
-                .context("no such height")
-                .ok()?
-                .to_block(),
-        )
+        self.storage
+            .get_block(height)
+            .await
+            .expect("could not read block")
     }
 
     async fn get_lz4_blocks(&self, height: BlockHeight, size_limit: usize) -> Option<String> {
@@ -393,7 +454,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
         let mut height = height;
         while total_count <= size_limit {
             if let Some(block) = self.get_block(height).await {
-                match self.get_abbr_block(height).await.map(|s| s.1) {
+                match self.storage.get_consensus(height).await.unwrap() {
                     Some(proof) => {
                         total_count += block.stdcode().len();
                         total_count += proof.stdcode().len();
