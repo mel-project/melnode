@@ -381,30 +381,39 @@ impl NodeRpcProtocol for NodeRpcImpl {
 
     async fn get_lz4_blocks(&self, height: BlockHeight, size_limit: usize) -> Option<String> {
         let size_limit = size_limit.min(10_000_000);
-        // TODO limit the *compressed* size. But this is fine because compression makes stuff smoller
-        let mut curr_size = 0;
-        let mut accum: Vec<Block> = vec![];
-        let mut proof_accum: Vec<ConsensusProof> = vec![];
+        // TODO: limit the *compressed* size. But this is fine because compression makes stuff smoller
+        let mut total_count = 0;
+        let mut accum = vec![];
+        let mut proof_accum = vec![];
 
         let mut height = height;
-        while curr_size <= size_limit {
+        while total_count <= size_limit {
             if let Some(block) = self.get_block(height).await {
-                if let Some(proof) = self.get_abbr_block(height).await.map(|s| s.1) {
-                    curr_size += block.stdcode().len();
-                    curr_size += proof.stdcode().len();
-                    accum.push(block);
-                    proof_accum.push(proof);
+                match self.get_abbr_block(height).await.map(|s| s.1) {
+                    Some(proof) => {
+                        total_count += block.stdcode().len();
+                        total_count += proof.stdcode().len();
 
-                    if curr_size > size_limit {
-                        if accum.len() > 1 {
-                            accum.pop();
+                        accum.push(block);
+                        proof_accum.push(proof);
+
+                        if total_count > size_limit {
+                            log::info!("BATCH IS DONE");
+                            if accum.len() > 1 {
+                                accum.pop();
+                            }
                         }
+
+                        // only increment here
+                        height += BlockHeight(1);
+                    }
+                    _ => {
+                        log::warn!("no proof stored for height {}", height);
                     }
                 }
-
-                height += BlockHeight(1);
             } else {
                 if accum.is_empty() {
+                    log::warn!("no stored block for height: {:?}", height);
                     return None;
                 }
             }
