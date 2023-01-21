@@ -9,7 +9,6 @@ use std::{
 use anyhow::Context;
 use async_trait::async_trait;
 use base64::Engine;
-use futures_util::{StreamExt, TryStreamExt};
 use lru::LruCache;
 use melnet2::{wire::tcp::TcpBackhaul, Backhaul, Swarm};
 use novasmt::{CompressedProof, Database, InMemoryCas, Tree};
@@ -105,11 +104,10 @@ async fn blksync_loop(_netid: NetID, swarm: Swarm<TcpBackhaul, NrpcClient>, stor
         let gap_time: Duration = Duration::from_secs_f64(fastrand::f64() * 1.0);
         let routes = swarm.routes().await;
         let random_peer = routes.first().cloned();
-        let backhaul = TcpBackhaul::new();
         if let Some(peer) = random_peer {
             log::trace!("picking peer {} out of {} peers", &peer, routes.len());
             let fallible_part = async {
-                let conn = backhaul.connect(peer.clone()).await?;
+                let conn = TcpBackhaul::new().connect(peer.clone()).await?;
                 let client = NodeRpcClient(conn);
                 let addr: SocketAddr = peer.clone().to_string().parse()?;
                 let res = attempt_blksync(addr, &client, &storage).await?;
@@ -152,16 +150,18 @@ async fn attempt_blksync(
         return Ok(0);
     }
 
-    // TODO: skip 1??
     let mut num_blocks_applied: usize = 0;
-    for height in my_highest.0 + 1..=their_highest.0 {
-        let height = BlockHeight(height);
+    let my_highest: u64 = my_highest.0 + 1;
 
+    let mut height = BlockHeight(my_highest);
+    while height <= their_highest {
         let start = Instant::now();
-        // get the compressed blocks
+
         let compressed_blocks = client
-            .get_lz4_blocks(height, 10_000_000)
+            .get_lz4_blocks(height, 100_000)
+            .timeout(Duration::from_secs(60))
             .await
+            .context("timeout while getting compressed blocks")?
             .context("failed to get compressed blocks")?;
 
         let (blocks, cproofs): (Vec<Block>, Vec<ConsensusProof>) = match compressed_blocks {
@@ -178,12 +178,13 @@ async fn attempt_blksync(
             _ => anyhow::bail!("missing block {height}"),
         };
 
+        let mut last_applied_height = height;
         for (block, cproof) in blocks.iter().zip(cproofs) {
             // validate before applying
-            if block.header.height != height {
-                anyhow::bail!("WANTED BLK {}, got {}", height, block.header.height);
+            if block.header.height != last_applied_height {
+                anyhow::bail!("wanted block {}, but got {}", height, block.header.height);
             }
-            log::trace!(
+            log::debug!(
                 "fully resolved block {} from peer {} in {:.2}ms",
                 block.header.height,
                 addr,
@@ -195,13 +196,18 @@ async fn attempt_blksync(
                 .await
                 .context("could not apply a resolved block")?;
             num_blocks_applied += 1;
+
+            last_applied_height += BlockHeight(1);
+            log::debug!("applied block {height}");
         }
+
+        height += BlockHeight(blocks.len() as u64);
     }
 
     Ok(num_blocks_applied)
 }
 
-// NOTE: this struct is responsible for obtaining any "state" needed for the implementation of the RPC business logic.
+// This struct is responsible for obtaining any "state" needed for the implementation of the RPC business logic.
 pub struct NodeRpcImpl {
     network: NetID,
     storage: Storage,
@@ -376,32 +382,34 @@ impl NodeRpcProtocol for NodeRpcImpl {
     async fn get_lz4_blocks(&self, height: BlockHeight, size_limit: usize) -> Option<String> {
         let size_limit = size_limit.min(10_000_000);
         // TODO limit the *compressed* size. But this is fine because compression makes stuff smoller
-        let mut total_count = 0;
+        let mut curr_size = 0;
         let mut accum: Vec<Block> = vec![];
         let mut proof_accum: Vec<ConsensusProof> = vec![];
-        for height in height.0.. {
-            let height = BlockHeight(height);
+
+        let mut height = height;
+        while curr_size <= size_limit {
             if let Some(block) = self.get_block(height).await {
                 if let Some(proof) = self.get_abbr_block(height).await.map(|s| s.1) {
-                    total_count += block.stdcode().len();
-                    total_count += proof.stdcode().len();
+                    curr_size += block.stdcode().len();
+                    curr_size += proof.stdcode().len();
                     accum.push(block);
                     proof_accum.push(proof);
 
-                    if total_count > size_limit {
+                    if curr_size > size_limit {
                         if accum.len() > 1 {
                             accum.pop();
                         }
-                        break;
                     }
                 }
+
+                height += BlockHeight(1);
             } else {
                 if accum.is_empty() {
                     return None;
                 }
-                break;
             }
         }
+
         let compressed = lz4_flex::compress_prepend_size(&(accum, proof_accum).stdcode());
         Some(base64::engine::general_purpose::STANDARD_NO_PAD.encode(compressed))
     }
@@ -447,6 +455,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
         None
     }
 
+    #[allow(unused)]
     async fn get_coin_changes(&self, height: BlockHeight, address: Address) -> Vec<CoinChange> {
         todo!("fill in after the internal coin indexing moves to use the one from melscan")
     }

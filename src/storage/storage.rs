@@ -28,7 +28,7 @@ use super::{mempool::Mempool, MeshaCas};
 pub struct Storage {
     send_pool: Sender<rusqlite::Connection>,
     recv_pool: Receiver<rusqlite::Connection>,
-    old_cache: Arc<Cache<BlockHeight, SealedState<MeshaCas>>>,
+    _old_cache: Arc<Cache<BlockHeight, SealedState<MeshaCas>>>,
     forest: Arc<novasmt::Database<MeshaCas>>,
 
     genesis: GenesisConfig,
