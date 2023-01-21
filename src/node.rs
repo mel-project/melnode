@@ -362,7 +362,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
     }
 
     async fn get_block(&self, height: BlockHeight) -> Option<Block> {
-        log::debug!("handling get_state({})", height);
+        log::trace!("handling get_state({})", height);
         Some(
             self.storage
                 .get_state(height)
