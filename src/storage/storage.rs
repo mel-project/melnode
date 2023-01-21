@@ -261,6 +261,12 @@ impl Storage {
                     "insert into history (height, header, block) values ($1, $2, $3)",
                     params![blk.header.height.0, blk.header.stdcode(), blk.stdcode()],
                 )?;
+
+                conn.execute(
+                    "insert into consensus_proofs (height, proof) values ($1, $2)",
+                    params![blk.header.height.0, stdcode::serialize(&cproof).unwrap()],
+                )?;
+
                 for txn in blk.transactions {
                     if txn.kind == TxKind::Stake {
                         if let Ok(doc) = stdcode::deserialize::<StakeDoc>(&txn.data) {
