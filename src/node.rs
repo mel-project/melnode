@@ -152,70 +152,44 @@ async fn attempt_blksync(
         return Ok(0);
     }
 
-    let height_stream = futures_util::stream::iter((my_highest.0..=their_highest.0).skip(1))
-        .map(BlockHeight)
-        .take(
-            std::env::var("MELNODE_BLKSYNC_BATCH")
-                .ok()
-                .and_then(|d| d.parse().ok())
-                .unwrap_or(1000),
-        );
+    // TODO: skip 1??
+    let mut num_blocks_applied: usize = 0;
+    for height in my_highest.0 + 1..=their_highest.0 {
+        let height = BlockHeight(height);
 
-    let mut result_stream = height_stream
-        .map(Ok::<_, anyhow::Error>)
-        .try_filter_map(|height| async move {
-            Ok(Some(async move {
-                let start = Instant::now();
+        let start = Instant::now();
+        // get the compressed blocks
+        let compressed_blocks = client
+            .get_lz4_blocks(height, 10_000_000)
+            .await
+            .context("failed to get compressed blocks")?;
 
-                // get the compressed blocks
-                let compressed_blocks = client
-                    .get_lz4_blocks(height, 10_000_000)
-                    .await
-                    .context("failed to get compressed blocks")?;
+        let (blocks, cproofs): (Vec<Block>, Vec<ConsensusProof>) = match compressed_blocks {
+            Some(compressed) => {
+                // decode base64 first
+                let compressed_base64 = base64::engine::general_purpose::STANDARD_NO_PAD
+                    .decode(compressed.as_bytes())?;
 
-                let (blocks, cproofs): (Vec<Block>, Vec<ConsensusProof>) = match compressed_blocks {
-                    Some(compressed) => {
-                        // decode base64 first
-                        let compressed_base64 = base64::engine::general_purpose::STANDARD_NO_PAD
-                            .decode(compressed.as_bytes())?;
+                // decompress
+                let decompressed = lz4_flex::decompress_size_prepended(&compressed_base64)?;
 
-                        // decompress
-                        let decompressed = lz4_flex::decompress_size_prepended(&compressed_base64)?;
-                        let (blocks, cproofs) = stdcode::deserialize::<(
-                            Vec<Block>,
-                            Vec<ConsensusProof>,
-                        )>(&decompressed)?;
+                stdcode::deserialize::<(Vec<Block>, Vec<ConsensusProof>)>(&decompressed)?
+            }
+            _ => anyhow::bail!("missing block {height}"),
+        };
 
-                        // validate before returning
-                        for block in blocks.iter() {
-                            if block.header.height != height {
-                                anyhow::bail!("WANTED BLK {}, got {}", height, block.header.height);
-                            }
-
-                            log::trace!(
-                                "fully resolved block {} from peer {} in {:.2}ms",
-                                block.header.height,
-                                addr,
-                                start.elapsed().as_secs_f64() * 1000.0
-                            );
-                        }
-
-                        (blocks, cproofs)
-                    }
-                    _ => anyhow::bail!("missing block {height}"),
-                };
-                // return the tuple
-                Ok((blocks, cproofs))
-            }))
-        })
-        .try_buffered(64)
-        .boxed();
-
-    // apply the blocks
-    let mut num_blocks_applied = 0;
-    while let Some(res) = result_stream.try_next().await? {
-        let (blocks, cproofs): (Vec<Block>, Vec<ConsensusProof>) = res;
         for (block, cproof) in blocks.iter().zip(cproofs) {
+            // validate before applying
+            if block.header.height != height {
+                anyhow::bail!("WANTED BLK {}, got {}", height, block.header.height);
+            }
+            log::trace!(
+                "fully resolved block {} from peer {} in {:.2}ms",
+                block.header.height,
+                addr,
+                start.elapsed().as_secs_f64() * 1000.0
+            );
+
             storage
                 .apply_block(block.clone(), cproof)
                 .await
@@ -223,6 +197,7 @@ async fn attempt_blksync(
             num_blocks_applied += 1;
         }
     }
+
     Ok(num_blocks_applied)
 }
 
