@@ -317,7 +317,6 @@ impl NodeRpcProtocol for NodeRpcImpl {
         if let Some(c) = self.abbr_block_cache.get(&height) {
             return Some(c);
         }
-        log::trace!("handling get_abbr_block({})", height);
         let state = self
             .storage
             .get_state(height)
@@ -363,7 +362,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
     }
 
     async fn get_block(&self, height: BlockHeight) -> Option<Block> {
-        log::trace!("handling get_state({})", height);
+        log::debug!("handling get_state({})", height);
         Some(
             self.storage
                 .get_state(height)
@@ -381,29 +380,41 @@ impl NodeRpcProtocol for NodeRpcImpl {
         let mut total_count = 0;
         let mut accum = vec![];
         let mut proof_accum = vec![];
-        for height in height.0.. {
-            let height = BlockHeight(height);
-            if let Some(block) = self.get_block(height).await {
-                if let Some(proof) = self.get_abbr_block(height).await.map(|s| s.1) {
-                    total_count += block.stdcode().len();
-                    total_count += proof.stdcode().len();
-                    accum.push(block);
-                    proof_accum.push(proof);
 
-                    if total_count > size_limit {
-                        if accum.len() > 1 {
-                            accum.pop();
+        let mut height = height;
+        while total_count <= size_limit {
+            if let Some(block) = self.get_block(height).await {
+                match self.get_abbr_block(height).await.map(|s| s.1) {
+                    Some(proof) => {
+                        total_count += block.stdcode().len();
+                        total_count += proof.stdcode().len();
+
+                        accum.push(block);
+                        proof_accum.push(proof);
+
+                        if total_count > size_limit {
+                            log::info!("BATCH IS DONE");
+                            if accum.len() > 1 {
+                                accum.pop();
+                            }
                         }
-                        break;
+
+                        // only increment here
+                        height += BlockHeight(1);
+                    }
+                    _ => {
+                        log::warn!("no proof saved for height {}", height);
+                        // TODO: throw an error?
                     }
                 }
             } else {
                 if accum.is_empty() {
+                    log::info!("no block for height: {:?}", height);
                     return None;
                 }
-                break;
             }
         }
+
         let compressed = lz4_flex::compress_prepend_size(&(accum, proof_accum).stdcode());
         Some(base64::engine::general_purpose::STANDARD_NO_PAD.encode(compressed))
     }
