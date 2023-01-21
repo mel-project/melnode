@@ -138,6 +138,7 @@ async fn attempt_blksync(
     client: &NrpcClient,
     storage: &Storage,
 ) -> anyhow::Result<usize> {
+    log::debug!("starting blksync");
     let their_highest = client
         .get_summary()
         .timeout(Duration::from_secs(5))
@@ -145,6 +146,7 @@ async fn attempt_blksync(
         .context("timed out getting summary")?
         .context("cannot get their highest block")?
         .height;
+    log::debug!("their_highest = {their_highest}");
     let my_highest = storage.highest_height().await?.unwrap_or_default();
     if their_highest <= my_highest {
         return Ok(0);
@@ -157,12 +159,14 @@ async fn attempt_blksync(
     while height <= their_highest {
         let start = Instant::now();
 
+        log::debug!("gonna get compressed blocks...");
         let compressed_blocks = client
-            .get_lz4_blocks(height, 100_000)
+            .get_lz4_blocks(height, 1_000_000)
             .timeout(Duration::from_secs(60))
             .await
             .context("timeout while getting compressed blocks")?
             .context("failed to get compressed blocks")?;
+        log::debug!("got compressed blocks!");
 
         let (blocks, cproofs): (Vec<Block>, Vec<ConsensusProof>) = match compressed_blocks {
             Some(compressed) => {
@@ -411,11 +415,9 @@ impl NodeRpcProtocol for NodeRpcImpl {
                         log::warn!("no proof stored for height {}", height);
                     }
                 }
-            } else {
-                if accum.is_empty() {
-                    log::warn!("no stored block for height: {:?}", height);
-                    return None;
-                }
+            } else if accum.is_empty() {
+                log::warn!("no stored block for height: {:?}", height);
+                return None;
             }
         }
 

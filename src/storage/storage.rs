@@ -28,7 +28,7 @@ use super::{mempool::Mempool, MeshaCas};
 pub struct Storage {
     send_pool: Sender<rusqlite::Connection>,
     recv_pool: Receiver<rusqlite::Connection>,
-    _old_cache: Arc<Cache<BlockHeight, SealedState<MeshaCas>>>,
+    old_cache: Arc<Cache<BlockHeight, SealedState<MeshaCas>>>,
     forest: Arc<novasmt::Database<MeshaCas>>,
 
     genesis: GenesisConfig,
@@ -78,7 +78,7 @@ impl Storage {
         Ok(Self {
             send_pool,
             recv_pool,
-            old_cache: Arc::new(Cache::new(10_000)),
+            old_cache: Arc::new(Cache::new(100_000)),
             forest: Arc::new(forest),
 
             genesis,
@@ -155,11 +155,14 @@ impl Storage {
         &self,
         height: BlockHeight,
     ) -> anyhow::Result<Option<SealedState<MeshaCas>>> {
+        if let Some(val) = self.old_cache.get(&height) {
+            return Ok(Some(val));
+        }
         let stakes = self.get_stakeset(height).await?;
         let conn = self.recv_pool.recv().await?;
         let send_pool = self.send_pool.clone();
         let forest = self.forest.clone();
-        smol::unblock(move || {
+        let res = smol::unblock(move || {
             let conn = scopeguard::guard(conn, |conn| send_pool.try_send(conn).unwrap());
             let block_blob: Option<Vec<u8>> = conn
                 .query_row(
@@ -177,7 +180,11 @@ impl Storage {
                 Ok(None)
             }
         })
-        .await
+        .await;
+        if let Ok(Some(res)) = &res {
+            self.old_cache.insert(height, res.clone());
+        }
+        res
     }
 
     /// Obtain a historical ConsensusProof.
