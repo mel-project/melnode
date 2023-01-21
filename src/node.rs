@@ -158,8 +158,8 @@ async fn attempt_blksync(
         let start = Instant::now();
 
         let compressed_blocks = client
-            .get_lz4_blocks(height, 100_000)
-            .timeout(Duration::from_secs(60))
+            .get_lz4_blocks(height, 500_000)
+            .timeout(Duration::from_secs(30))
             .await
             .context("timeout while getting compressed blocks")?
             .context("failed to get compressed blocks")?;
@@ -411,11 +411,9 @@ impl NodeRpcProtocol for NodeRpcImpl {
                         log::warn!("no proof stored for height {}", height);
                     }
                 }
-            } else {
-                if accum.is_empty() {
-                    log::warn!("no stored block for height: {:?}", height);
-                    return None;
-                }
+            } else if accum.is_empty() {
+                log::warn!("no stored block for height: {:?}", height);
+                return None;
             }
         }
 
