@@ -164,7 +164,7 @@ async fn attempt_blksync(
 
         log::debug!("gonna get compressed blocks...");
         let compressed_blocks = client
-            .get_lz4_blocks(height, 200_000)
+            .get_lz4_blocks(height, 50_000)
             .timeout(Duration::from_secs(30))
             .await
             .context("timeout while getting compressed blocks")?
