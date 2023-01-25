@@ -107,8 +107,7 @@ async fn blksync_loop(_netid: NetID, swarm: Swarm<TcpBackhaul, NrpcClient>, stor
         if let Some(peer) = random_peer {
             log::trace!("picking peer {} out of {} peers", &peer, routes.len());
             let fallible_part = async {
-                let conn = TcpBackhaul::new().connect(peer.clone()).await?;
-                let client = NodeRpcClient(conn);
+                let client = swarm.connect(peer.clone()).await?;
                 let addr: SocketAddr = peer.clone().to_string().parse()?;
                 let res = attempt_blksync(addr, &client, &storage).await?;
                 anyhow::Ok(res)
