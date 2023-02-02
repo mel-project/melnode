@@ -14,6 +14,7 @@ use smol::net::TcpListener;
 use std::{
     collections::BTreeMap,
     net::SocketAddr,
+    path::{Path, PathBuf},
     time::{Duration, Instant},
 };
 use stdcode::StdcodeSerializeExt;
@@ -45,8 +46,9 @@ impl Node {
         legacy_listen_addr: Option<SocketAddr>,
         advertise_addr: Option<SocketAddr>,
         storage: Storage,
-        index: bool,
+        index_path: Option<PathBuf>,
         swarm: Swarm<TcpBackhaul, NrpcClient>,
+        indexer_client: Option<ValClient>,
     ) -> Self {
         let _legacy_task = if let Some(legacy_listen_addr) = legacy_listen_addr {
             let network = melnet::NetState::new_with_name(netname(netid));
@@ -56,7 +58,8 @@ impl Node {
                     swarm.clone(),
                     netid,
                     storage.clone(),
-                    index,
+                    index_path.clone(),
+                    indexer_client.clone(),
                 )),
             );
             Some(smolscale::spawn({
@@ -79,7 +82,8 @@ impl Node {
                 swarm.clone(),
                 netid,
                 storage.clone(),
-                index,
+                index_path,
+                indexer_client,
             )),
         ))
         .expect("failed to start listening");
@@ -304,12 +308,13 @@ impl NodeRpcImpl {
         swarm: Swarm<TcpBackhaul, NrpcClient>,
         network: NetID,
         storage: Storage,
-        index: bool,
+        index_path: Option<PathBuf>,
+        client: Option<ValClient>,
     ) -> Self {
-        let client = ValClient::new(); //todo
-        let indexer: Option<Indexer> = match index {
-            false => None,
-            true => Some(Indexer::new(indexer_path, client)),
+        let indexer: Option<Indexer> = if index_path.is_some() && client.is_some() {
+            Indexer::new(index_path.unwrap(), client.unwrap()).ok()
+        } else {
+            None
         };
 
         Self {
@@ -530,7 +535,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
     }
 
     async fn get_some_coins(&self, height: BlockHeight, covhash: Address) -> Option<Vec<CoinID>> {
-        if let Some(indexer) = self.indexer {
+        if let Some(indexer) = &self.indexer {
             let coins: Vec<CoinID> = indexer
                 .query_coins()
                 .covhash(covhash)
@@ -552,7 +557,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
         height: BlockHeight,
         covhash: Address,
     ) -> Option<Vec<CoinChange>> {
-        if let Some(indexer) = self.indexer {
+        if let Some(indexer) = &self.indexer {
             // get coins 1 block below the given height
             let before_coins: Vec<CoinInfo> = indexer
                 .query_coins()

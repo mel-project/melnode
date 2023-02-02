@@ -5,6 +5,8 @@ mod node;
 mod staker;
 mod storage;
 
+use std::net::SocketAddr;
+
 use crate::{node::Node, staker::Staker, storage::Storage};
 
 use anyhow::Context;
@@ -13,7 +15,7 @@ use args::Args;
 use melnet2::wire::tcp::TcpBackhaul;
 use melnet2::Swarm;
 use structopt::StructOpt;
-use themelio_nodeprot::NodeRpcClient;
+use themelio_nodeprot::{NodeRpcClient, ValClient};
 use themelio_structs::BlockHeight;
 
 #[cfg(feature = "dhat-heap")]
@@ -83,14 +85,30 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
         swarm.add_route(addr.to_string().into(), true).await;
     }
 
+    let client: Option<ValClient> = match opt.index_path {
+        Some(_) => {
+            // create a valclient pointing to ourselves (used by the coin indexer if needed).
+            let indexer_addr: SocketAddr = "localhost:420420".parse().unwrap();
+            match ValClient::connect_melnet2_tcp(netid, indexer_addr).await {
+                Ok(client) => Some(client),
+                Err(e) => {
+                    log::warn!("error while getting ValClient for coin indexer: {:?}", e);
+                    None
+                }
+            }
+        }
+        None => None,
+    };
+
     let _node_prot = Node::new(
         netid,
         opt.listen_addr(),
         opt.legacy_listen_addr(),
         opt.advertise_addr(),
         storage.clone(),
-        opt.index_coins,
+        opt.index_path.clone(),
         swarm,
+        client,
     );
     let _staker_prot = opt
         .staker_cfg()
