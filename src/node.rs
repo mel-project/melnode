@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use base64::Engine;
 use futures_util::{StreamExt, TryStreamExt};
 use lru::LruCache;
+use melblkidx::{CoinInfo, Indexer};
 use melnet2::{wire::tcp::TcpBackhaul, Backhaul, Swarm};
 use novasmt::{CompressedProof, Database, InMemoryCas, Tree};
 use once_cell::sync::Lazy;
@@ -18,13 +19,13 @@ use std::{
 use stdcode::StdcodeSerializeExt;
 use themelio_stf::SmtMapping;
 use themelio_structs::{
-    AbbrBlock, Address, Block, BlockHeight, ConsensusProof, NetID, Transaction, TxHash,
+    AbbrBlock, Address, Block, BlockHeight, CoinID, ConsensusProof, NetID, Transaction, TxHash,
 };
 
 use smol_timeout::TimeoutExt;
 use themelio_nodeprot::{
     CoinChange, NodeRpcClient, NodeRpcProtocol, NodeRpcService, StateSummary, Substate,
-    TransactionError,
+    TransactionError, ValClient,
 };
 use tmelcrypt::HashVal;
 
@@ -294,6 +295,8 @@ pub struct NodeRpcImpl {
     abbr_block_cache: moka::sync::Cache<BlockHeight, (AbbrBlock, ConsensusProof)>,
 
     swarm: Swarm<TcpBackhaul, NrpcClient>,
+
+    indexer: Option<Indexer>,
 }
 
 impl NodeRpcImpl {
@@ -301,8 +304,14 @@ impl NodeRpcImpl {
         swarm: Swarm<TcpBackhaul, NrpcClient>,
         network: NetID,
         storage: Storage,
-        _index: bool,
+        index: bool,
     ) -> Self {
+        let client = ValClient::new(); //todo
+        let indexer: Option<Indexer> = match index {
+            false => None,
+            true => Some(Indexer::new(indexer_path, client)),
+        };
+
         Self {
             network,
             storage,
@@ -313,6 +322,8 @@ impl NodeRpcImpl {
             swarm,
 
             abbr_block_cache: moka::sync::Cache::new(100_000),
+
+            indexer,
         }
     }
 
@@ -518,16 +529,65 @@ impl NodeRpcProtocol for NodeRpcImpl {
         todo!("no longer relevant")
     }
 
-    async fn get_some_coins(
-        &self,
-        _height: BlockHeight,
-        _covhash: themelio_structs::Address,
-    ) -> Option<Vec<themelio_structs::CoinID>> {
-        None
+    async fn get_some_coins(&self, height: BlockHeight, covhash: Address) -> Option<Vec<CoinID>> {
+        if let Some(indexer) = self.indexer {
+            let coins: Vec<CoinID> = indexer
+                .query_coins()
+                .covhash(covhash)
+                .create_height_range(0..=height.0)
+                .iter()
+                .map(|c| CoinID {
+                    txhash: c.create_txhash,
+                    index: c.create_index,
+                })
+                .collect();
+            Some(coins)
+        } else {
+            None
+        }
     }
 
-    #[allow(unused)]
-    async fn get_coin_changes(&self, height: BlockHeight, address: Address) -> Vec<CoinChange> {
-        todo!("fill in after the internal coin indexing moves to use the one from melscan")
+    async fn get_coin_changes(
+        &self,
+        height: BlockHeight,
+        covhash: Address,
+    ) -> Option<Vec<CoinChange>> {
+        if let Some(indexer) = self.indexer {
+            // get coins 1 block below the given height
+            let before_coins: Vec<CoinInfo> = indexer
+                .query_coins()
+                .covhash(covhash)
+                .unspent()
+                .create_height_range(0..height.0)
+                .iter()
+                .collect();
+
+            // get coins at the given height
+            let after_coins: Vec<CoinInfo> = indexer
+                .query_coins()
+                .covhash(covhash)
+                .unspent()
+                .create_height_range(0..=height.0)
+                .iter()
+                .collect();
+
+            // which coins got added in after_coins?
+            let added: Vec<CoinChange> = after_coins
+                .iter()
+                .filter(|after| !before_coins.contains(after))
+                .map(|coin| CoinChange::Add(CoinID::new(coin.create_txhash, coin.create_index)))
+                .collect();
+
+            // which coins got deleted in before coins?
+            let deleted: Vec<CoinChange> = before_coins
+                .iter()
+                .filter(|before| !after_coins.contains(before))
+                .map(|coin| CoinChange::Delete(CoinID::new(coin.create_txhash, coin.create_index)))
+                .collect();
+
+            Some([added, deleted].concat())
+        } else {
+            None
+        }
     }
 }
