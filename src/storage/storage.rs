@@ -37,6 +37,9 @@ pub struct Storage {
 
     /// A notifier for a new block happening.
     new_block_notify: Arc<Event>,
+
+    /// SQLite path
+    sqlite_path: PathBuf,
 }
 
 impl Storage {
@@ -48,6 +51,10 @@ impl Storage {
     /// Gets a mutable reference to the mempool.
     pub fn mempool_mut(&self) -> impl DerefMut<Target = Mempool> + '_ {
         self.mempool.write()
+    }
+
+    pub fn get_indexer_path(&self) -> PathBuf {
+        self.sqlite_path.clone()
     }
 
     /// Opens a NodeStorage, given a meshanina and boringdb database.
@@ -85,6 +92,7 @@ impl Storage {
 
             new_block_notify: Arc::new(Event::new()),
             mempool,
+            sqlite_path,
         })
     }
 

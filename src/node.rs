@@ -51,12 +51,16 @@ impl Node {
             let network = melnet::NetState::new_with_name(netname(netid));
             network.listen(
                 "node",
-                NodeRpcService(NodeRpcImpl::new(
-                    swarm.clone(),
-                    netid,
-                    storage.clone(),
-                    index_coins,
-                )),
+                NodeRpcService(
+                    NodeRpcImpl::new(
+                        swarm.clone(),
+                        listen_addr,
+                        netid,
+                        storage.clone(),
+                        index_coins,
+                    )
+                    .await,
+                ),
             );
             Some(smolscale::spawn({
                 let network = network;
@@ -71,16 +75,22 @@ impl Node {
 
         // This is all we need to do since start_listen does not block.
         log::debug!("starting to listen at {}", listen_addr);
-        smol::future::block_on(swarm.start_listen(
-            listen_addr.to_string().into(),
-            advertise_addr.map(|addr| addr.to_string().into()),
-            NodeRpcService(NodeRpcImpl::new(
-                swarm.clone(),
-                netid,
-                storage.clone(),
-                index_coins,
-            )),
-        ))
+        smol::future::block_on(
+            swarm.start_listen(
+                listen_addr.to_string().into(),
+                advertise_addr.map(|addr| addr.to_string().into()),
+                NodeRpcService(
+                    NodeRpcImpl::new(
+                        swarm.clone(),
+                        listen_addr,
+                        netid,
+                        storage.clone(),
+                        index_coins,
+                    )
+                    .await,
+                ),
+            ),
+        )
         .expect("failed to start listening");
 
         let _blksync_task = smolscale::spawn(blksync_loop(netid, swarm, storage));
@@ -299,12 +309,24 @@ pub struct NodeRpcImpl {
 }
 
 impl NodeRpcImpl {
-    fn new(
+    async fn new(
         swarm: Swarm<TcpBackhaul, NodeRpcClient>,
+        listen_addr: SocketAddr,
         network: NetID,
         storage: Storage,
         index_coins: bool,
     ) -> Self {
+        let indexer = if index_coins {
+            // TODO: connect_lazy shouldn't return a Result, since backhaul.connect_lazy is "infallible"?
+            let transport: NodeRpcClient = swarm
+                .connect_lazy(listen_addr.to_string().into())
+                .await
+                .unwrap();
+            let client = ValClient::new(network, transport);
+            Indexer::new(storage.get_indexer_path(), client).ok()
+        } else {
+            None
+        };
         Self {
             network,
             storage,
@@ -313,7 +335,7 @@ impl NodeRpcImpl {
             summary: LruCache::new(10).into(),
             swarm,
             abbr_block_cache: moka::sync::Cache::new(100_000),
-            indexer: None,
+            indexer,
         }
     }
 
