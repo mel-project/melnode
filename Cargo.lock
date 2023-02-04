@@ -247,9 +247,9 @@ checksum = "7a40729d2133846d9ed0ea60a8b9541bccddab49cd30f0715a1da672fe9a2524"
 
 [[package]]
 name = "async-trait"
-version = "0.1.61"
+version = "0.1.64"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "705339e0e4a9690e2908d2b3d049d85682cf19fbd5782494498fbf7003a6a282"
+checksum = "1cd7fce9ba8c3c042128ce72d8b2ddbf3a05747efb67ea0313c635e10bda47a2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -436,9 +436,9 @@ checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 
 [[package]]
 name = "bytes"
-version = "1.3.0"
+version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfb24e866b15a1af2a1b663f10c6b6b8f397a84aadb828f12e5b289ec23a3a3c"
+checksum = "89b2fd2a0dcf38d7971e2194b6b6eebab45ae01067456a7fd93d5547a61b70be"
 dependencies = [
  "serde",
 ]
@@ -1180,9 +1180,9 @@ dependencies = [
 
 [[package]]
 name = "futures-channel"
-version = "0.3.25"
+version = "0.3.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "52ba265a92256105f45b719605a571ffe2d1f0fea3807304b522c1d778f79eed"
+checksum = "2e5317663a9089767a1ec00a487df42e0ca174b61b4483213ac24448e4664df5"
 dependencies = [
  "futures-core",
  "futures-sink",
@@ -1190,9 +1190,9 @@ dependencies = [
 
 [[package]]
 name = "futures-core"
-version = "0.3.25"
+version = "0.3.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04909a7a7e4633ae6c4a9ab280aeb86da1236243a77b694a49eacd659a4bd3ac"
+checksum = "ec90ff4d0fe1f57d600049061dc6bb68ed03c7d2fbd697274c41805dcb3f8608"
 
 [[package]]
 name = "futures-executor"
@@ -1218,9 +1218,9 @@ dependencies = [
 
 [[package]]
 name = "futures-io"
-version = "0.3.25"
+version = "0.3.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00f5fb52a06bdcadeb54e8d3671f8888a39697dcb0b81b23b55174030427f4eb"
+checksum = "bfb8371b6fb2aeb2d280374607aeabfc99d95c72edfe51692e42d3d7f0d08531"
 
 [[package]]
 name = "futures-lite"
@@ -1239,9 +1239,9 @@ dependencies = [
 
 [[package]]
 name = "futures-macro"
-version = "0.3.25"
+version = "0.3.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bdfb8ce053d86b91919aad980c220b1fb8401a9394410e1c289ed7e66b61835d"
+checksum = "95a73af87da33b5acf53acfebdc339fe592ecf5357ac7c0a7734ab9d8c876a70"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1259,21 +1259,21 @@ dependencies = [
 
 [[package]]
 name = "futures-sink"
-version = "0.3.25"
+version = "0.3.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39c15cf1a4aa79df40f1bb462fb39676d0ad9e366c2a33b590d7c66f4f81fcf9"
+checksum = "f310820bb3e8cfd46c80db4d7fb8353e15dfff853a127158425f31e0be6c8364"
 
 [[package]]
 name = "futures-task"
-version = "0.3.25"
+version = "0.3.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ffb393ac5d9a6eaa9d3fdf37ae2776656b706e200c8e16b1bdb227f5198e6ea"
+checksum = "dcf79a1bf610b10f42aea489289c5a2c478a786509693b80cd39c44ccd936366"
 
 [[package]]
 name = "futures-util"
-version = "0.3.25"
+version = "0.3.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "197676987abd2f9cadff84926f410af1c183608d36641465df73ae8211dc65d6"
+checksum = "9c1d6de3acfef38d2be4b1f543f553131788603495be83da675e180c8d6b7bd1"
 dependencies = [
  "futures-channel",
  "futures-core",
@@ -1870,6 +1870,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3e378b66a060d48947b590737b30a1be76706c8dd7b8ba0f2fe3989c68a853f"
 
 [[package]]
+name = "melblkidx"
+version = "0.6.0"
+source = "git+https://github.com/themeliolabs/melblkidx?branch=master#1202adf5f4552a900efb4810bea2a22e959a3330"
+dependencies = [
+ "anyhow",
+ "concurrent-queue 1.2.4",
+ "genawaiter",
+ "hex",
+ "itertools",
+ "log",
+ "once_cell",
+ "parking_lot 0.12.1",
+ "rusqlite",
+ "serde_json",
+ "smol",
+ "smolscale",
+ "stdcode",
+ "tap",
+ "themelio-bootstrap",
+ "themelio-nodeprot 0.12.2 (git+https://github.com/themeliolabs/themelio-nodeprot?branch=use-themelio-structs-0.3-beta)",
+ "themelio-structs 0.3.0-beta.6",
+ "tmelcrypt",
+]
+
+[[package]]
 name = "melnet"
 version = "0.2.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1904,6 +1929,34 @@ name = "melnet2"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2ac1bd1c8ce9eac636c5624f41b8baf6448ee70012e8c41acce769f7feb7675d"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "concurrent-queue 1.2.4",
+ "dashmap 5.4.0",
+ "fastrand",
+ "futures-util",
+ "itertools",
+ "log",
+ "lz4_flex",
+ "moka",
+ "nanorpc",
+ "pin-project",
+ "reusable-box-future",
+ "serde",
+ "serde_json",
+ "smol",
+ "smol-timeout",
+ "smol_str",
+ "smolscale",
+ "thiserror",
+]
+
+[[package]]
+name = "melnet2"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "583a44bd07e145289f92b7f37d63c0ab65ff07b3ce25a8da0662a8362ff3c6b6"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2897,11 +2950,11 @@ checksum = "e3a8614ee435691de62bcffcf4a66d91b3594bf1428a5722e79103249a095690"
 
 [[package]]
 name = "reqwest"
-version = "0.11.13"
+version = "0.11.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68cc60575865c7831548863cc02356512e3f1dc2f3f82cb837d7fc4cc8f3c97c"
+checksum = "21eed90ec8570952d53b772ecf8f206aa1ec9a3d76b2521c56c42973f2d91ee9"
 dependencies = [
- "base64 0.13.1",
+ "base64 0.21.0",
  "bytes",
  "encoding_rs",
  "futures-core",
@@ -3715,8 +3768,9 @@ dependencies = [
  "log",
  "lru",
  "lz4_flex",
+ "melblkidx",
  "melnet",
- "melnet2",
+ "melnet2 0.2.1",
  "melvm",
  "meshanina",
  "moka",
@@ -3767,7 +3821,7 @@ dependencies = [
  "log",
  "lru",
  "melnet",
- "melnet2",
+ "melnet2 0.1.9",
  "nanorpc",
  "novasmt 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "once_cell",
@@ -3799,7 +3853,7 @@ dependencies = [
  "log",
  "lru",
  "melnet",
- "melnet2",
+ "melnet2 0.1.9",
  "nanorpc",
  "novasmt 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "once_cell",

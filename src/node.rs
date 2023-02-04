@@ -30,8 +30,6 @@ use themelio_nodeprot::{
 };
 use tmelcrypt::HashVal;
 
-type NrpcClient = NodeRpcClient<<TcpBackhaul as Backhaul>::RpcTransport>;
-
 /// An actor implementing the node P2P protocol, common for both auditors and stakers..
 pub struct Node {
     _blksync_task: smol::Task<()>,
@@ -47,7 +45,7 @@ impl Node {
         advertise_addr: Option<SocketAddr>,
         storage: Storage,
         index_coins: bool,
-        swarm: Swarm<TcpBackhaul, NrpcClient>,
+        swarm: Swarm<TcpBackhaul, NodeRpcClient>,
     ) -> Self {
         let _legacy_task = if let Some(legacy_listen_addr) = legacy_listen_addr {
             let network = melnet::NetState::new_with_name(netname(netid));
@@ -101,7 +99,7 @@ fn netname(netid: NetID) -> &'static str {
     }
 }
 
-async fn blksync_loop(_netid: NetID, swarm: Swarm<TcpBackhaul, NrpcClient>, storage: Storage) {
+async fn blksync_loop(_netid: NetID, swarm: Swarm<TcpBackhaul, NodeRpcClient>, storage: Storage) {
     loop {
         let gap_time: Duration = Duration::from_secs_f64(fastrand::f64() * 1.0);
         let routes = swarm.routes().await;
@@ -136,7 +134,7 @@ async fn blksync_loop(_netid: NetID, swarm: Swarm<TcpBackhaul, NrpcClient>, stor
 /// Attempts a sync using the given given node client.
 async fn attempt_blksync(
     addr: SocketAddr,
-    client: &NrpcClient,
+    client: &NodeRpcClient,
     storage: &Storage,
 ) -> anyhow::Result<usize> {
     if std::env::var("MELNODE_OLD_BLKSYNC").is_ok() {
@@ -218,7 +216,7 @@ async fn attempt_blksync(
 /// Attempts a sync using the given given node client, in a legacy fashion.
 async fn attempt_blksync_legacy(
     addr: SocketAddr,
-    client: &NrpcClient,
+    client: &NodeRpcClient,
     storage: &Storage,
 ) -> anyhow::Result<usize> {
     let their_highest = client
@@ -295,14 +293,14 @@ pub struct NodeRpcImpl {
 
     abbr_block_cache: moka::sync::Cache<BlockHeight, (AbbrBlock, ConsensusProof)>,
 
-    swarm: Swarm<TcpBackhaul, NrpcClient>,
+    swarm: Swarm<TcpBackhaul, NodeRpcClient>,
 
     indexer: Option<Indexer>,
 }
 
 impl NodeRpcImpl {
     fn new(
-        swarm: Swarm<TcpBackhaul, NrpcClient>,
+        swarm: Swarm<TcpBackhaul, NodeRpcClient>,
         network: NetID,
         storage: Storage,
         index_coins: bool,
