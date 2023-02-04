@@ -40,15 +40,14 @@ pub struct Node {
 
 impl Node {
     /// Creates a new Node.
-    pub fn new(
+    pub async fn new(
         netid: NetID,
         listen_addr: SocketAddr,
         legacy_listen_addr: Option<SocketAddr>,
         advertise_addr: Option<SocketAddr>,
         storage: Storage,
-        index_path: Option<PathBuf>,
+        index_coins: bool,
         swarm: Swarm<TcpBackhaul, NrpcClient>,
-        indexer_client: Option<ValClient>,
     ) -> Self {
         let _legacy_task = if let Some(legacy_listen_addr) = legacy_listen_addr {
             let network = melnet::NetState::new_with_name(netname(netid));
@@ -58,8 +57,7 @@ impl Node {
                     swarm.clone(),
                     netid,
                     storage.clone(),
-                    index_path.clone(),
-                    indexer_client.clone(),
+                    index_coins,
                 )),
             );
             Some(smolscale::spawn({
@@ -82,8 +80,7 @@ impl Node {
                 swarm.clone(),
                 netid,
                 storage.clone(),
-                index_path,
-                indexer_client,
+                index_coins,
             )),
         ))
         .expect("failed to start listening");
@@ -308,27 +305,17 @@ impl NodeRpcImpl {
         swarm: Swarm<TcpBackhaul, NrpcClient>,
         network: NetID,
         storage: Storage,
-        index_path: Option<PathBuf>,
-        client: Option<ValClient>,
+        index_coins: bool,
     ) -> Self {
-        let indexer: Option<Indexer> = if index_path.is_some() && client.is_some() {
-            Indexer::new(index_path.unwrap(), client.unwrap()).ok()
-        } else {
-            None
-        };
-
         Self {
             network,
             storage,
-
             recent: LruCache::new(1000).into(),
             coin_smts: LruCache::new(100).into(),
             summary: LruCache::new(10).into(),
             swarm,
-
             abbr_block_cache: moka::sync::Cache::new(100_000),
-
-            indexer,
+            indexer: None,
         }
     }
 

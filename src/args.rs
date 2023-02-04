@@ -51,7 +51,7 @@ pub struct Args {
 
     /// Create an in-memory coin index.
     #[structopt(long)]
-    pub index_path: Option<PathBuf>,
+    pub index_coins: bool,
 }
 
 /// Staker configuration, YAML-deserializable.
