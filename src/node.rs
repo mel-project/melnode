@@ -14,7 +14,6 @@ use smol::net::TcpListener;
 use std::{
     collections::BTreeMap,
     net::SocketAddr,
-    path::{Path, PathBuf},
     time::{Duration, Instant},
 };
 use stdcode::StdcodeSerializeExt;
@@ -296,15 +295,11 @@ async fn attempt_blksync_legacy(
 pub struct NodeRpcImpl {
     network: NetID,
     storage: Storage,
-
     recent: Mutex<LruCache<TxHash, Instant>>,
     summary: Mutex<LruCache<BlockHeight, StateSummary>>,
     coin_smts: Mutex<LruCache<BlockHeight, Tree<InMemoryCas>>>,
-
     abbr_block_cache: moka::sync::Cache<BlockHeight, (AbbrBlock, ConsensusProof)>,
-
     swarm: Swarm<TcpBackhaul, NodeRpcClient>,
-
     indexer: Option<Indexer>,
 }
 
@@ -323,6 +318,13 @@ impl NodeRpcImpl {
                 .await
                 .unwrap();
             let client = ValClient::new(network, transport);
+            if network == NetID::Mainnet || network == NetID::Testnet {
+                client.trust(themelio_bootstrap::checkpoint_height(network).unwrap());
+            } else {
+                log::warn!("** BLINDLY TRUSTING FULL NODE due to custom network **");
+                client.insecure_latest_snapshot().await.unwrap();
+            }
+
             Indexer::new(storage.get_indexer_path(), client).ok()
         } else {
             None

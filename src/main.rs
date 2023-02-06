@@ -104,6 +104,7 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
                         bh.0 as f64 / last_height as f64 * 100.0
                     );
 
+                    // indexer test
                     let proposer_addr = blk.proposer_action.unwrap().reward_dest;
                     let coin_changes = snapshot
                         .get_raw()
