@@ -539,9 +539,18 @@ impl NodeRpcProtocol for NodeRpcImpl {
         Some((v.to_vec(), proof.compress()))
     }
 
-    async fn get_stakers_raw(&self, _height: BlockHeight) -> Option<BTreeMap<HashVal, Vec<u8>>> {
-        todo!("no longer relevant")
-    }
+    async fn get_stakers_raw(&self, height: BlockHeight) -> Option<BTreeMap<HashVal, Vec<u8>>> {
+        let state = self
+            .storage
+            .get_state(height)
+            .await
+            .unwrap()
+            .context(format!("block {} not confirmed yet", height))
+            .ok()?;
+
+        let raw_stakers: BTreeMap<HashVal, Vec<u8>> = state.raw_stakes().iter().collect();
+        Some(raw_stakers)
+   }
 
     async fn get_some_coins(&self, height: BlockHeight, covhash: Address) -> Option<Vec<CoinID>> {
         if let Some(indexer) = &self.indexer {
