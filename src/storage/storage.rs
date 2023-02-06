@@ -72,6 +72,15 @@ impl Storage {
             "create table if not exists misc (key primary key not null, value not null)",
             params![],
         )?;
+
+        // initialize the stakes
+        for (txhash, stake) in genesis.stakes.iter() {
+            conn.execute(
+                "insert into stakes values ($1, $2, $3) on conflict do nothing",
+                params![txhash.to_string(), 0, stake.stdcode()],
+            )?;
+        }
+
         let (send_pool, recv_pool) = smol::channel::unbounded();
         for _ in 0..16 {
             let conn = rusqlite::Connection::open(&sqlite_path)?;
