@@ -548,9 +548,17 @@ impl NodeRpcProtocol for NodeRpcImpl {
             .context(format!("block {} not confirmed yet", height))
             .ok()?;
 
-        let raw_stakers: BTreeMap<HashVal, Vec<u8>> = state.raw_stakes().iter().collect();
-        Some(raw_stakers)
-   }
+        let raw_stakers = state.raw_stakes();
+        let mut staker_map = BTreeMap::new();
+
+        raw_stakers
+            .iter()
+            .for_each(|tuple| {
+                staker_map.insert(tuple.0.0, tuple.1.stdcode());
+            });
+
+        Some(staker_map)
+    }
 
     async fn get_some_coins(&self, height: BlockHeight, covhash: Address) -> Option<Vec<CoinID>> {
         if let Some(indexer) = &self.indexer {
