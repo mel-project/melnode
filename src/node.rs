@@ -540,22 +540,14 @@ impl NodeRpcProtocol for NodeRpcImpl {
     }
 
     async fn get_stakers_raw(&self, height: BlockHeight) -> Option<BTreeMap<HashVal, Vec<u8>>> {
-        let state = self
-            .storage
-            .get_state(height)
-            .await
-            .unwrap()
-            .context(format!("block {} not confirmed yet", height))
-            .ok()?;
+        let state = self.storage.get_state(height).await.unwrap()?;
 
         let raw_stakers = state.raw_stakes();
         let mut staker_map = BTreeMap::new();
 
-        raw_stakers
-            .iter()
-            .for_each(|tuple| {
-                staker_map.insert(tuple.0.0, tuple.1.stdcode());
-            });
+        raw_stakers.iter().for_each(|tuple| {
+            staker_map.insert(tuple.0 .0, tuple.1.stdcode());
+        });
 
         Some(staker_map)
     }
