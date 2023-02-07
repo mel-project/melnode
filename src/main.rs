@@ -16,7 +16,7 @@ use melnet2::wire::tcp::TcpBackhaul;
 use melnet2::Swarm;
 use structopt::StructOpt;
 use themelio_nodeprot::{NodeRpcClient, ValClient};
-use themelio_structs::BlockHeight;
+use themelio_structs::{Address, BlockHeight};
 
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
@@ -107,13 +107,16 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
                     );
 
                     // indexer test
-                    let proposer_addr = blk.proposer_action.unwrap().reward_dest;
+                    let richguy_addr: Address =
+                        "t1m9v0fhkbr7q1sfg59prke1sbpt0gm2qgrb166mp8n8m59962gdm0"
+                            .parse()
+                            .unwrap();
                     let coin_changes = snapshot
                         .get_raw()
-                        .get_coin_changes(snapshot.current_header().height, proposer_addr)
+                        .get_coin_changes(snapshot.current_header().height, richguy_addr)
                         .await
                         .unwrap();
-                    println!("coin changes size: {}", coin_changes.unwrap().len());
+                    println!("coin changes: {:?}", coin_changes);
                 }
             }
         })
