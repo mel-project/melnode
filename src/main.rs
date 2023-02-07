@@ -83,6 +83,8 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
             .await
             .unwrap();
         let valclient = ValClient::new(netid, rpc_client);
+        // valclient.trust(themelio_bootstrap::checkpoint_height(netid).unwrap());
+        // let snapshot = valclient.snapshot().await.unwrap();
         let snapshot = valclient.insecure_latest_snapshot().await.unwrap();
         smolscale::spawn::<anyhow::Result<()>>(async move {
             loop {

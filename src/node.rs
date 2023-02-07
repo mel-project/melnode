@@ -27,7 +27,7 @@ use themelio_nodeprot::{
     CoinChange, NodeRpcClient, NodeRpcProtocol, NodeRpcService, StateSummary, Substate,
     TransactionError, ValClient,
 };
-use tmelcrypt::HashVal;
+use tmelcrypt::{HashVal, Hashable};
 
 /// An actor implementing the node P2P protocol, common for both auditors and stakers..
 pub struct Node {
@@ -540,16 +540,16 @@ impl NodeRpcProtocol for NodeRpcImpl {
     }
 
     async fn get_stakers_raw(&self, height: BlockHeight) -> Option<BTreeMap<HashVal, Vec<u8>>> {
+        log::warn!("GETTING STAKERS FOR {height}");
         let state = self.storage.get_state(height).await.unwrap()?;
-
-        let raw_stakers = state.raw_stakes();
-        let mut staker_map = BTreeMap::new();
-
-        raw_stakers.iter().for_each(|tuple| {
-            staker_map.insert(tuple.0 .0, tuple.1.stdcode());
-        });
-
-        Some(staker_map)
+        // Note, the returned HashVal is >> HASHED AGAIN << because this is supposed to be compatible with the old SmtMapping encoding, where the key to the `stakes` SMT is the *hash of the transaction hash* due to a quirk.
+        Some(
+            state
+                .raw_stakes()
+                .iter()
+                .map(|(k, v)| (k.0.hash(), v.stdcode()))
+                .collect(),
+        )
     }
 
     async fn get_some_coins(&self, height: BlockHeight, covhash: Address) -> Option<Vec<CoinID>> {
