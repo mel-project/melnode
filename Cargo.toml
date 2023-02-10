@@ -20,8 +20,8 @@ debug = 0
 lto = 'thin'
 codegen-units = 1 
 
-[patch.crates-io]
-# themelio-stf={path="../themelio-stf"}
+#[patch.crates-io]
+#themelio-stf={path="../themelio-stf"}
 # # melnet={path="../melnet"}  
 # themelio-nodeprot={path="../themelio-nodeprot"} 
 
@@ -102,7 +102,8 @@ stdcode = "0.1.14"
 structopt = "0.3.26"
 tap = "1.0.1"
 # tracing = "0.1.34"
-# themelio-stf = { path = "../themelio-stf" }
+#themelio-stf = { path = "../themelio-stf" }
+#tip911-stakeset = { path = "../themelio-stf/lib/tip911-stakeset" }
 tip911-stakeset = { git = "https://github.com/themeliolabs/themelio-stf", branch = "applytx-refactors" }
 themelio-stf = { git = "https://github.com/themeliolabs/themelio-stf", branch = "applytx-refactors" }
 melvm = { git = "https://github.com/themeliolabs/themelio-stf", branch = "applytx-refactors" }
