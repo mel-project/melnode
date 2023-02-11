@@ -25,7 +25,7 @@ use themelio_structs::{
 use smol_timeout::TimeoutExt;
 use themelio_nodeprot::{
     CoinChange, NodeRpcClient, NodeRpcProtocol, NodeRpcService, StateSummary, Substate,
-    TransactionError, ValClient,
+    TransactionError, TrustedHeight, ValClient,
 };
 use tmelcrypt::{HashVal, Hashable};
 
@@ -300,7 +300,7 @@ pub struct NodeRpcImpl {
     coin_smts: Mutex<LruCache<BlockHeight, Tree<InMemoryCas>>>,
     abbr_block_cache: moka::sync::Cache<BlockHeight, (AbbrBlock, ConsensusProof)>,
     swarm: Swarm<TcpBackhaul, NodeRpcClient>,
-    indexer: Option<Indexer>,
+    indexer: Option<(Indexer, ValClient)>,
 }
 
 impl NodeRpcImpl {
@@ -318,14 +318,12 @@ impl NodeRpcImpl {
                 .await
                 .unwrap();
             let client = ValClient::new(network, transport);
-            if network == NetID::Mainnet || network == NetID::Testnet {
-                client.trust(themelio_bootstrap::checkpoint_height(network).unwrap());
-            } else {
-                log::warn!("** BLINDLY TRUSTING FULL NODE due to custom network **");
-                client.insecure_latest_snapshot().await.unwrap();
-            }
 
-            Indexer::new(storage.get_indexer_path(), client).ok()
+            Some((
+                Indexer::new(storage.get_indexer_path(), client.clone())
+                    .expect("indexer failed to be created"),
+                client,
+            ))
         } else {
             None
         };
@@ -553,7 +551,17 @@ impl NodeRpcProtocol for NodeRpcImpl {
     }
 
     async fn get_some_coins(&self, height: BlockHeight, covhash: Address) -> Option<Vec<CoinID>> {
-        if let Some(indexer) = &self.indexer {
+        let trusted_height = self
+            .storage
+            .get_state(BlockHeight(1))
+            .await
+            .expect("storage failed")?;
+
+        if let Some((indexer, client)) = &self.indexer {
+            client.trust(TrustedHeight {
+                height: BlockHeight(1),
+                header_hash: trusted_height.header().hash(),
+            });
             let coins: Vec<CoinID> = indexer
                 .query_coins()
                 .covhash(covhash)
