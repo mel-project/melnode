@@ -10,6 +10,7 @@ use melnet2::{wire::tcp::TcpBackhaul, Backhaul, Swarm};
 use novasmt::{CompressedProof, Database, InMemoryCas, Tree};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
+use serde_json::value::Index;
 use smol::net::TcpListener;
 use std::{
     collections::BTreeMap,
@@ -363,6 +364,21 @@ impl NodeRpcImpl {
             Ok(mm.mapping)
         }
     }
+
+    async fn get_indexer(&self) -> Option<&Indexer> {
+        let trusted_height = self
+            .storage
+            .get_state(BlockHeight(1))
+            .await
+            .expect("storage failed")?;
+        self.indexer.as_ref().map(move |(indexer, client)| {
+            client.trust(TrustedHeight {
+                height: BlockHeight(1),
+                header_hash: trusted_height.header().hash(),
+            });
+            indexer
+        })
+    }
 }
 
 /// Global TCP backhaul for node connections
@@ -551,17 +567,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
     }
 
     async fn get_some_coins(&self, height: BlockHeight, covhash: Address) -> Option<Vec<CoinID>> {
-        let trusted_height = self
-            .storage
-            .get_state(BlockHeight(1))
-            .await
-            .expect("storage failed")?;
-
-        if let Some((indexer, client)) = &self.indexer {
-            client.trust(TrustedHeight {
-                height: BlockHeight(1),
-                header_hash: trusted_height.header().hash(),
-            });
+        if let Some(indexer) = self.get_indexer().await {
             let coins: Vec<CoinID> = indexer
                 .query_coins()
                 .covhash(covhash)
@@ -583,7 +589,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
         height: BlockHeight,
         covhash: Address,
     ) -> Option<Vec<CoinChange>> {
-        if let Some(indexer) = &self.indexer {
+        if let Some(indexer) = self.get_indexer().await {
             // get coins 1 block below the given height
             let before_coins: Vec<CoinInfo> = indexer
                 .query_coins()
