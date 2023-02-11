@@ -313,9 +313,11 @@ impl NodeRpcImpl {
         index_coins: bool,
     ) -> Self {
         let indexer = if index_coins {
+            let mut localhost_listen_addr = listen_addr;
+            localhost_listen_addr.set_ip("127.0.0.1".parse().unwrap());
             // TODO: connect_lazy shouldn't return a Result, since backhaul.connect_lazy is "infallible"?
             let transport: NodeRpcClient = swarm
-                .connect_lazy(listen_addr.to_string().into())
+                .connect_lazy(localhost_listen_addr.to_string().into())
                 .await
                 .unwrap();
             let client = ValClient::new(network, transport);
@@ -376,6 +378,8 @@ impl NodeRpcImpl {
                 height: BlockHeight(1),
                 header_hash: trusted_height.header().hash(),
             });
+            eprintln!("TRUSSSSSSST!!!!!!!");
+            log::debug!("INDEXER OBTAINED");
             indexer
         })
     }

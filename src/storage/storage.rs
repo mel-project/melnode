@@ -54,7 +54,8 @@ impl Storage {
     }
 
     pub fn get_indexer_path(&self) -> PathBuf {
-        self.sqlite_path.clone()
+        let path = self.sqlite_path.clone();
+        format!("{}.coinindex.db", path.to_string_lossy()).into()
     }
 
     /// Opens a NodeStorage, given a meshanina and boringdb database.
