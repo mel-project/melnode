@@ -15,8 +15,8 @@ use args::Args;
 use melnet2::wire::tcp::TcpBackhaul;
 use melnet2::Swarm;
 use structopt::StructOpt;
-use themelio_nodeprot::{NodeRpcClient, ValClient};
-use themelio_structs::{Address, BlockHeight};
+use themelio_nodeprot::{CoinChange, NodeRpcClient, ValClient};
+use themelio_structs::{Address, BlockHeight, CoinID};
 
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
@@ -107,26 +107,29 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
                     );
 
                     // indexer test
-                    if let Some(tx_0) = blk.transactions.iter().next() {
-                        let recipient = tx_0.outputs[0].covhash;
+                    if opt.index_coins {
+                        if let Some(tx_0) = blk.transactions.iter().next() {
+                            let recipient = tx_0.outputs[0].covhash;
+                            let coin_changes = snapshot
+                                .get_raw()
+                                .get_coin_changes(snapshot.current_header().height, recipient)
+                                .await
+                                .unwrap()
+                                .unwrap();
 
-                        let coin_changes = snapshot
-                            .get_raw()
-                            .get_coin_changes(snapshot.current_header().height, recipient)
-                            .await
-                            .unwrap();
+                            assert!(coin_changes.contains(&CoinChange::Add(CoinID::new(tx_0.hash_nosigs(), 0))));
+                        } else if let Some(proposer_action) = blk.proposer_action {
+                            let reward_dest = proposer_action.reward_dest;
+                            let coin_changes = snapshot
+                                .get_raw()
+                                .get_coin_changes(snapshot.current_header().height, reward_dest)
+                                .await
+                                .unwrap()
+                                .unwrap();
 
-                        println!("first tx first output addr changes: {:?}", coin_changes);
-                    } else if let Some(proposer_action) = blk.proposer_action {
-                        let reward_dest = proposer_action.reward_dest;
-
-                        let coin_changes = snapshot
-                            .get_raw()
-                            .get_coin_changes(snapshot.current_header().height, reward_dest)
-                            .await
-                            .unwrap();
-
-                        println!("reward addr changes: {:?}", coin_changes);
+                            // todo: this assert if failing because indexer is often behind
+                            // assert!(coin_changes.contains(&CoinChange::Add(CoinID::proposer_reward(bh))));
+                        }
                     }
                 }
             }
