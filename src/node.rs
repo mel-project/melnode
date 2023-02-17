@@ -26,7 +26,7 @@ use themelio_structs::{
 use smol_timeout::TimeoutExt;
 use themelio_nodeprot::{
     CoinChange, NodeRpcClient, NodeRpcProtocol, NodeRpcService, StateSummary, Substate,
-    TransactionError, TrustedHeight, ValClient,
+    TransactionError, TrustedHeight, ValClient, CoinSpendStatus,
 };
 use tmelcrypt::{HashVal, Hashable};
 
@@ -584,6 +584,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
                 .collect();
             Some(coins)
         } else {
+            log::warn!("no coin indexer configured for current node");
             None
         }
     }
@@ -628,6 +629,25 @@ impl NodeRpcProtocol for NodeRpcImpl {
 
             Some([added, deleted].concat())
         } else {
+            log::warn!("no coin indexer configured for current node");
+            None
+        }
+    }
+
+    async fn get_coin_spend(&self, coin: CoinID) -> Option<CoinSpendStatus> {
+        if let Some(indexer) = self.get_indexer().await {
+            let coin_info: Vec<CoinInfo> = indexer
+                .query_coins()
+                .create_txhash(coin.txhash)
+                .create_index(coin.index)
+                .iter()
+                .collect();
+
+            coin_info.first().map(|coin| {
+                CoinSpendStatus::Spent((coin.create_txhash, coin.create_height))
+            })
+        } else {
+            log::warn!("no coin indexer configured for current node");
             None
         }
     }
