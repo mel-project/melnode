@@ -642,9 +642,10 @@ impl NodeRpcProtocol for NodeRpcImpl {
                 .create_index(coin.index)
                 .iter()
                 .collect();
+            let spend_info = coin_info.first()?.spend_info;
 
-            coin_info.first().map(|coin| {
-                CoinSpendStatus::Spent((coin.create_txhash, coin.create_height))
+            spend_info.map(|info| {
+                CoinSpendStatus::Spent((info.spend_txhash, info.spend_height))
             })
         } else {
             log::warn!("no coin indexer configured for current node");
