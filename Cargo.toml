@@ -1,5 +1,5 @@
 [package]
-name = "themelio-node"
+name = "melnode"
 version = "0.13.2"
 repository ="https://github.com/themeliolabs/themelio-node"
 license = "MPL-2.0"

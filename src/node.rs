@@ -6,12 +6,11 @@ use base64::Engine;
 use futures_util::{StreamExt, TryStreamExt};
 use lru::LruCache;
 use melblkidx::{CoinInfo, Indexer};
-use melnet2::{wire::tcp::TcpBackhaul, Backhaul, Swarm};
+use melnet2::{wire::http::HttpBackhaul, Backhaul, Swarm};
 use novasmt::{CompressedProof, Database, InMemoryCas, Tree};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
-use serde_json::value::Index;
-use smol::net::TcpListener;
+
 use std::{
     collections::BTreeMap,
     net::SocketAddr,
@@ -20,18 +19,16 @@ use std::{
 use stdcode::StdcodeSerializeExt;
 use themelio_stf::SmtMapping;
 use themelio_structs::{
-    AbbrBlock, Address, Block, BlockHeight, CoinID, ConsensusProof, NetID, Transaction, TxHash,
+    AbbrBlock, Address, Block, BlockHeight, Checkpoint, CoinID, ConsensusProof, NetID, Transaction,
+    TxHash,
 };
 
 use melprot::{
     Client, CoinChange, CoinSpendStatus, NodeRpcClient, NodeRpcProtocol, NodeRpcService,
     StateSummary, Substate, TransactionError,
 };
+
 use smol_timeout::TimeoutExt;
-use themelio_nodeprot::{
-    CoinChange, NodeRpcClient, NodeRpcProtocol, NodeRpcService, StateSummary, Substate,
-    TransactionError, TrustedHeight, ValClient, CoinSpendStatus,
-};
 use tmelcrypt::{HashVal, Hashable};
 
 /// An actor implementing the node P2P protocol, common for both auditors and stakers..
@@ -83,7 +80,7 @@ fn netname(netid: NetID) -> &'static str {
     }
 }
 
-async fn blksync_loop(_netid: NetID, swarm: Swarm<TcpBackhaul, NodeRpcClient>, storage: Storage) {
+async fn blksync_loop(_netid: NetID, swarm: Swarm<HttpBackhaul, NodeRpcClient>, storage: Storage) {
     loop {
         let gap_time: Duration = Duration::from_secs_f64(fastrand::f64() * 1.0);
         let routes = swarm.routes().await;
