@@ -21,7 +21,7 @@ static ALLOC: dhat::Alloc = dhat::Alloc;
 
 fn main() -> anyhow::Result<()> {
     if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "themelio_node=debug,warn");
+        std::env::set_var("RUST_LOG", "melnode=debug,warn");
     }
 
     let mut builder = env_logger::Builder::from_env("RUST_LOG");
@@ -39,7 +39,7 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
     #[cfg(feature = "dhat-heap")]
     let _profiler = dhat::Profiler::new_heap();
 
-    log::info!("themelio-core v{} initializing...", VERSION);
+    log::info!("melnode v{} initializing...", VERSION);
 
     let genesis = opt.genesis_config().await?;
     let netid = genesis.network;
@@ -79,10 +79,10 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
             .connect(opt.listen_addr().to_string().into())
             .await
             .unwrap();
-        let Client = Client::new(netid, rpc_client);
+        let client = Client::new(netid, rpc_client);
         // Client.trust(themelio_bootstrap::checkpoint_height(netid).unwrap());
         // let snapshot = Client.snapshot().await.unwrap();
-        let snapshot = Client.insecure_latest_snapshot().await.unwrap();
+        let snapshot = client.insecure_latest_snapshot().await.unwrap();
         smolscale::spawn::<anyhow::Result<()>>(async move {
             loop {
                 log::info!("*** SELF TEST STARTED! ***");

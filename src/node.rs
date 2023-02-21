@@ -344,7 +344,7 @@ impl NodeRpcImpl {
             .get_state(BlockHeight(1))
             .await
             .expect("storage failed")?;
-        self.indexer.as_ref().map(move |(indexer, client)| {
+        let toret = self.indexer.as_ref().map(move |(indexer, client)| {
             client.trust(Checkpoint {
                 height: BlockHeight(1),
                 header_hash: trusted_height.header().hash(),
@@ -352,7 +352,20 @@ impl NodeRpcImpl {
             eprintln!("TRUSSSSSSST!!!!!!!");
             log::debug!("INDEXER OBTAINED");
             indexer
-        })
+        });
+        if let Some(indexer) = toret {
+            let height = self
+                .storage
+                .highest_height()
+                .await
+                .unwrap()
+                .unwrap_or_default();
+            while indexer.max_height() < height {
+                log::warn!("waiting for {height} to be available at the indexer...");
+                smol::Timer::after(Duration::from_secs(1)).await;
+            }
+        }
+        toret
     }
 }
 
@@ -565,6 +578,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
         height: BlockHeight,
         covhash: Address,
     ) -> Option<Vec<CoinChange>> {
+        self.storage.get_block(height).await.unwrap()?;
         if let Some(indexer) = self.get_indexer().await {
             // get coins 1 block below the given height
             let before_coins: Vec<CoinInfo> = indexer
