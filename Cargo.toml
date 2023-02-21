@@ -23,7 +23,7 @@ codegen-units = 1
 #[patch.crates-io]
 #themelio-stf={path="../themelio-stf"}
 # # melnet={path="../melnet"}  
-# themelio-nodeprot={path="../themelio-nodeprot"} 
+# melprot={path="../melprot"} 
 
 [profile.release-dbg]
 inherits = "release"
@@ -67,8 +67,8 @@ optional = true
 
 
 [dependencies]
-themelio-nodeprot = { git = "https://github.com/themeliolabs/themelio-nodeprot", branch = "use-themelio-structs-0.3-beta" }
-# themelio-nodeprot = { git = "https://github.com/themeliolabs/themelio-nodeprot", branch = "master" }
+melprot = { git = "https://github.com/themeliolabs/themelio-nodeprot", branch = "use-themelio-structs-0.3-beta" }
+# melprot = { git = "https://github.com/themeliolabs/melprot", branch = "master" }
 
 anyhow = "1.0.68"
 # base64 = "0.13.0"
@@ -84,7 +84,7 @@ hex = "0.4.3"
 imbl = { version = "1.0.1", features = ["serde"] }
 log = "0.4.17"
 lru = "0.7.8"
-melnet = "0.2.27"
+
 # meshanina = {path="../meshanina"}
 meshanina = "0.4.2"
 novasmt = "0.2.19"
@@ -121,7 +121,7 @@ serde_with = "1.14.0"
 serde_yaml = "0.8.26"
 dirs = "4.0.0"
 jemallocator-global = "0.3.2"
-melnet2 = "0.2"
+melnet2 = "0.3"
 nanorpc = "0.1.12"
 moka = "0.9.6"
 event-listener = "2.5.3"

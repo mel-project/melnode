@@ -495,7 +495,7 @@ dependencies = [
  "arbitrary",
  "arrayvec",
  "defmac",
- "env_logger 0.9.3",
+ "env_logger",
  "fastrand",
  "honggfuzz",
  "log",
@@ -1047,19 +1047,6 @@ dependencies = [
 
 [[package]]
 name = "env_logger"
-version = "0.8.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a19187fea3ac7e84da7dacf48de0c45d63c6a76f9490dae389aead16c243fce3"
-dependencies = [
- "atty",
- "humantime",
- "log",
- "regex",
- "termcolor",
-]
-
-[[package]]
-name = "env_logger"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a12e6657c4c97ebab115a42dcee77225f7f482cdd841cf7088c657a42e9e00e7"
@@ -1511,6 +1498,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "http-body"
+version = "1.0.0-rc.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "951dfc2e32ac02d67c90c0d65bd27009a635dc9b381a2cc7d284ab01e3a0150d"
+dependencies = [
+ "bytes",
+ "http",
+]
+
+[[package]]
+name = "http-body-util"
+version = "0.1.0-rc.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92445bc9cc14bfa0a3ce56817dc3b5bcc227a168781a356b702410789cec0d10"
+dependencies = [
+ "bytes",
+ "futures-util",
+ "http",
+ "http-body 1.0.0-rc.2",
+ "pin-project-lite 0.2.9",
+]
+
+[[package]]
 name = "httparse"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1540,7 +1550,7 @@ dependencies = [
  "futures-util",
  "h2",
  "http",
- "http-body",
+ "http-body 0.4.5",
  "httparse",
  "httpdate",
  "itoa",
@@ -1553,13 +1563,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "hyper"
+version = "1.0.0-rc.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "289cfdbf735dea222b0ec6a10224b4d9552c7662bb451d4589cbfda3d407d1a3"
+dependencies = [
+ "bytes",
+ "futures-channel",
+ "futures-core",
+ "futures-util",
+ "http",
+ "http-body 1.0.0-rc.2",
+ "httparse",
+ "httpdate",
+ "itoa",
+ "pin-project-lite 0.2.9",
+ "tokio",
+ "tracing",
+ "want",
+]
+
+[[package]]
 name = "hyper-rustls"
 version = "0.23.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1788965e61b367cd03a62950836d5cd41560c3577d90e40e0819373194d1661c"
 dependencies = [
  "http",
- "hyper",
+ "hyper 0.14.24",
  "rustls",
  "tokio",
  "tokio-rustls",
@@ -1573,7 +1604,7 @@ checksum = "6eea26c5d0b6ab9d72219f65000af310f042a740926f7b2fa3553e774036e2e7"
 dependencies = [
  "derive_builder",
  "dns-lookup",
- "hyper",
+ "hyper 0.14.24",
  "tokio",
  "tower-service",
  "tracing",
@@ -1872,7 +1903,7 @@ checksum = "2532096657941c2fea9c289d370a250971c689d4f143798ff67113ec042024a5"
 [[package]]
 name = "melblkidx"
 version = "0.6.0"
-source = "git+https://github.com/themeliolabs/melblkidx?branch=master#c34f0dc6496ea0fb087d743e47ffcfb4b4f1ea64"
+source = "git+https://github.com/themeliolabs/melblkidx?branch=master#a14aca1785eea1fbbe4fafc2923519256b058fa0"
 dependencies = [
  "anyhow",
  "concurrent-queue 1.2.4",
@@ -1880,6 +1911,7 @@ dependencies = [
  "hex",
  "itertools",
  "log",
+ "melprot",
  "once_cell",
  "parking_lot 0.12.1",
  "rusqlite",
@@ -1889,46 +1921,15 @@ dependencies = [
  "stdcode",
  "tap",
  "themelio-bootstrap",
- "themelio-nodeprot",
  "themelio-structs",
  "tmelcrypt",
 ]
 
 [[package]]
-name = "melnet"
-version = "0.2.27"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d98033648a18b1bb40d271a1b328d5f78f5a94e815c310b140ae94d35b88315"
-dependencies = [
- "anyhow",
- "async-net",
- "async-recursion",
- "async-trait",
- "concurrent-queue 1.2.4",
- "dashmap 4.0.2",
- "derivative",
- "env_logger 0.8.4",
- "fastrand",
- "futures-util",
- "lazy_static",
- "log",
- "once_cell",
- "parking_lot 0.11.2",
- "rand",
- "serde",
- "smol",
- "smol-timeout",
- "smolscale",
- "stdcode",
- "tap",
- "thiserror",
-]
-
-[[package]]
 name = "melnet2"
-version = "0.1.9"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ac1bd1c8ce9eac636c5624f41b8baf6448ee70012e8c41acce769f7feb7675d"
+checksum = "bd0987ceb823ad44c566fa8ba677f6ca5075b8d6cfe5df3eca61082bcfecb557"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1941,34 +1942,7 @@ dependencies = [
  "lz4_flex",
  "moka",
  "nanorpc",
- "pin-project",
- "reusable-box-future",
- "serde",
- "serde_json",
- "smol",
- "smol-timeout",
- "smol_str",
- "smolscale",
- "thiserror",
-]
-
-[[package]]
-name = "melnet2"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "583a44bd07e145289f92b7f37d63c0ab65ff07b3ce25a8da0662a8362ff3c6b6"
-dependencies = [
- "anyhow",
- "async-trait",
- "concurrent-queue 1.2.4",
- "dashmap 5.4.0",
- "fastrand",
- "futures-util",
- "itertools",
- "log",
- "lz4_flex",
- "moka",
- "nanorpc",
+ "nanorpc-http",
  "pin-project",
  "reusable-box-future",
  "serde",
@@ -1989,6 +1963,38 @@ dependencies = [
  "blake3",
  "rustc-hash",
  "smallvec",
+ "tmelcrypt",
+]
+
+[[package]]
+name = "melprot"
+version = "0.12.2"
+source = "git+https://github.com/themeliolabs/themelio-nodeprot?branch=use-themelio-structs-0.3-beta#7e3ef733843d6ef762e8fafe0ae380d63150ded2"
+dependencies = [
+ "anyhow",
+ "arrayref",
+ "async-recursion",
+ "async-trait",
+ "bytes",
+ "derivative",
+ "futures-util",
+ "hex",
+ "log",
+ "lru",
+ "melnet2",
+ "nanorpc",
+ "novasmt 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
+ "once_cell",
+ "parking_lot 0.12.1",
+ "rustc-hash",
+ "serde",
+ "serde_json",
+ "smol",
+ "smol_str",
+ "smolscale",
+ "stdcode",
+ "themelio-structs",
+ "thiserror",
  "tmelcrypt",
 ]
 
@@ -2206,6 +2212,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "nanorpc-http"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69744d3300cd0b22a0bf64ef12694bbe1136c408802d46c33bd69bba728cc363"
+dependencies = [
+ "anyhow",
+ "async-compat",
+ "async-trait",
+ "bytes",
+ "concurrent-queue 2.1.0",
+ "http-body-util",
+ "hyper 1.0.0-rc.2",
+ "nanorpc",
+ "serde_json",
+ "smol",
+]
+
+[[package]]
 name = "nibble_vec"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2244,7 +2268,7 @@ dependencies = [
  "bitvec",
  "blake3",
  "dashmap 4.0.2",
- "env_logger 0.9.3",
+ "env_logger",
  "ethnum",
  "genawaiter",
  "hex",
@@ -2269,7 +2293,7 @@ dependencies = [
  "blake3",
  "bytes",
  "dashmap 4.0.2",
- "env_logger 0.9.3",
+ "env_logger",
  "ethnum",
  "genawaiter",
  "hex",
@@ -2756,7 +2780,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "http",
- "hyper",
+ "hyper 0.14.24",
  "hyper-system-resolver",
  "pin-project-lite 0.2.9",
  "thiserror",
@@ -2969,8 +2993,8 @@ dependencies = [
  "futures-util",
  "h2",
  "http",
- "http-body",
- "hyper",
+ "http-body 0.4.5",
+ "hyper 0.14.24",
  "hyper-rustls",
  "ipnet",
  "js-sys",
@@ -3390,9 +3414,9 @@ dependencies = [
 
 [[package]]
 name = "slab"
-version = "0.4.7"
+version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4614a76b2a8be0058caa9dbbaf66d988527d86d003c11a94fbd335d7661edcef"
+checksum = "6528351c9bc8ab22353f9d776db39a20288e8d6c37ef8cfe3317cf875eecfc2d"
 dependencies = [
  "autocfg",
 ]
@@ -3545,7 +3569,7 @@ dependencies = [
  "async-trait",
  "bytes",
  "dashmap 5.4.0",
- "env_logger 0.9.3",
+ "env_logger",
  "fastrand",
  "futures-lite",
  "hex",
@@ -3738,10 +3762,9 @@ dependencies = [
 [[package]]
 name = "themelio-bootstrap"
 version = "0.7.2"
-source = "git+https://github.com/themeliolabs/themelio-bootstrap?branch=use-themelio-structs-0.3-beta#da516608fa596052d97ca25371dd2388cafc3874"
+source = "git+https://github.com/themeliolabs/themelio-bootstrap?branch=use-themelio-structs-0.3-beta#266d52c2fbf4af34e6b157fd4c53fd230bebd2d0"
 dependencies = [
  "once_cell",
- "themelio-nodeprot",
  "themelio-structs",
 ]
 
@@ -3763,7 +3786,7 @@ dependencies = [
  "defmac",
  "dhat",
  "dirs",
- "env_logger 0.9.3",
+ "env_logger",
  "ethnum",
  "event-listener",
  "fastrand",
@@ -3777,8 +3800,8 @@ dependencies = [
  "lru",
  "lz4_flex",
  "melblkidx",
- "melnet",
- "melnet2 0.2.1",
+ "melnet2",
+ "melprot",
  "melvm",
  "meshanina",
  "moka",
@@ -3805,44 +3828,10 @@ dependencies = [
  "systemstat",
  "tap",
  "themelio-bootstrap",
- "themelio-nodeprot",
  "themelio-stf",
  "themelio-structs",
  "thiserror",
  "tip911-stakeset",
- "tmelcrypt",
-]
-
-[[package]]
-name = "themelio-nodeprot"
-version = "0.12.2"
-source = "git+https://github.com/themeliolabs/themelio-nodeprot?branch=use-themelio-structs-0.3-beta#7555b00c1b52863db9825b129759175535e6ddcb"
-dependencies = [
- "anyhow",
- "arrayref",
- "async-recursion",
- "async-trait",
- "bytes",
- "derivative",
- "futures-util",
- "hex",
- "log",
- "lru",
- "melnet",
- "melnet2 0.1.9",
- "nanorpc",
- "novasmt 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
- "once_cell",
- "parking_lot 0.12.1",
- "rustc-hash",
- "serde",
- "serde_json",
- "smol",
- "smol_str",
- "smolscale",
- "stdcode",
- "themelio-structs",
- "thiserror",
  "tmelcrypt",
 ]
 
@@ -3861,7 +3850,7 @@ dependencies = [
  "defmac",
  "derivative",
  "derive_more",
- "env_logger 0.9.3",
+ "env_logger",
  "ethnum",
  "fastrand",
  "genawaiter",
@@ -3894,9 +3883,9 @@ dependencies = [
 
 [[package]]
 name = "themelio-structs"
-version = "0.3.0-beta.6"
+version = "0.3.0-beta.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6751d56062f8936147be77bb1849d498f8f787dc762a659d5476542762b7e35"
+checksum = "38797c3e9043f8e23190de567dfdd512573283cb8a6ec9e0d98f9e792a072f5a"
 dependencies = [
  "bytes",
  "derivative",
@@ -4054,9 +4043,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-stream"
-version = "0.1.11"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d660770404473ccd7bc9f8b28494a811bc18542b915c0855c51e8f419d5223ce"
+checksum = "8fb52b74f05dbf495a8fba459fdc331812b96aa086d9eb78101fa0d4569c3313"
 dependencies = [
  "futures-core",
  "pin-project-lite 0.2.9",
@@ -4425,7 +4414,7 @@ dependencies = [
  "futures-util",
  "headers",
  "http",
- "hyper",
+ "hyper 0.14.24",
  "log",
  "mime",
  "mime_guess",

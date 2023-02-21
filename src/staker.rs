@@ -7,7 +7,7 @@ use anyhow::Context;
 use async_trait::async_trait;
 use bytes::Bytes;
 
-use melnet2::{wire::tcp::TcpBackhaul, Swarm};
+use melnet2::{wire::http::HttpBackhaul, Swarm};
 use moka::sync::Cache;
 use nanorpc::{nanorpc_derive, DynRpcTransport};
 
@@ -71,8 +71,8 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
     // A channel for sending requests for diffs
     let (send_diff_req, recv_diff_req) = smol::channel::bounded::<DiffReq>(100);
     // The melnet2 swarm for the staker
-    let swarm: Swarm<TcpBackhaul, StakerNetClient<DynRpcTransport>> = Swarm::new(
-        TcpBackhaul::new(),
+    let swarm: Swarm<HttpBackhaul, StakerNetClient<DynRpcTransport>> = Swarm::new(
+        HttpBackhaul::new(),
         |conn| StakerNetClient(DynRpcTransport::new(conn)),
         "themelio-staker-2",
     );
@@ -207,7 +207,7 @@ struct StakerInner {
     my_sk: Ed25519SK,
 
     recv_diff_req: Receiver<DiffReq>,
-    swarm: Swarm<TcpBackhaul, StakerNetClient<DynRpcTransport>>,
+    swarm: Swarm<HttpBackhaul, StakerNetClient<DynRpcTransport>>,
 }
 
 #[async_trait]

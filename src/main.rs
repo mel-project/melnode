@@ -5,18 +5,15 @@ mod node;
 mod staker;
 mod storage;
 
-use std::net::SocketAddr;
-
 use crate::{node::Node, staker::Staker, storage::Storage};
 
 use anyhow::Context;
 use args::Args;
 
-use melnet2::wire::tcp::TcpBackhaul;
-use melnet2::Swarm;
+use melnet2::{wire::http::HttpBackhaul, Swarm};
+use melprot::{Client, CoinChange, NodeRpcClient};
 use structopt::StructOpt;
-use themelio_nodeprot::{CoinChange, NodeRpcClient, ValClient};
-use themelio_structs::{Address, BlockHeight, CoinID};
+use themelio_structs::{BlockHeight, CoinID};
 
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
@@ -51,8 +48,8 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
 
     log::info!("bootstrapping with {:?}", bootstrap);
 
-    let swarm: Swarm<TcpBackhaul, NodeRpcClient> =
-        Swarm::new(TcpBackhaul::new(), NodeRpcClient, "themelio-node");
+    let swarm: Swarm<HttpBackhaul, NodeRpcClient> =
+        Swarm::new(HttpBackhaul::new(), NodeRpcClient, "themelio-node");
 
     // we add the bootstrap routes as "sticky" routes that never expire
     for addr in bootstrap.iter() {
@@ -82,10 +79,10 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
             .connect(opt.listen_addr().to_string().into())
             .await
             .unwrap();
-        let valclient = ValClient::new(netid, rpc_client);
-        // valclient.trust(themelio_bootstrap::checkpoint_height(netid).unwrap());
-        // let snapshot = valclient.snapshot().await.unwrap();
-        let snapshot = valclient.insecure_latest_snapshot().await.unwrap();
+        let Client = Client::new(netid, rpc_client);
+        // Client.trust(themelio_bootstrap::checkpoint_height(netid).unwrap());
+        // let snapshot = Client.snapshot().await.unwrap();
+        let snapshot = Client.insecure_latest_snapshot().await.unwrap();
         smolscale::spawn::<anyhow::Result<()>>(async move {
             loop {
                 log::info!("*** SELF TEST STARTED! ***");
@@ -117,7 +114,8 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
                                 .unwrap()
                                 .unwrap();
 
-                            assert!(coin_changes.contains(&CoinChange::Add(CoinID::new(tx_0.hash_nosigs(), 0))));
+                            assert!(coin_changes
+                                .contains(&CoinChange::Add(CoinID::new(tx_0.hash_nosigs(), 0))));
                         } else if let Some(proposer_action) = blk.proposer_action {
                             let reward_dest = proposer_action.reward_dest;
                             let coin_changes = snapshot

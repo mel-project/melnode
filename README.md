@@ -178,7 +178,7 @@ The license of the project is the Mozilla Public License, version 2.
 
 There are the following primary types in themelio-node:
 
-- `NodeProtocol` is the **core node actor**. It implements the core auditor/full node logic: gossiping with other through the `melnet`-based auditor P2P network (via the `themelio-nodeprot` crate) to synchronize the latest blockchain state.
+- `NodeProtocol` is the **core node actor**. It implements the core auditor/full node logic: gossiping with other through the `melnet`-based auditor P2P network (via the `melprot` crate) to synchronize the latest blockchain state.
   - Pushes new blocks to `Storage`
   - Pushes new transactions to `Mempool`; they are only gossipped further if `Mempool` accepts them
   - Pulls data from `Storage` to gossip to other nodes

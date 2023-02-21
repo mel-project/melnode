@@ -6,12 +6,11 @@ use base64::Engine;
 use futures_util::{StreamExt, TryStreamExt};
 use lru::LruCache;
 use melblkidx::{CoinInfo, Indexer};
-use melnet2::{wire::tcp::TcpBackhaul, Backhaul, Swarm};
+use melnet2::{wire::http::HttpBackhaul, Backhaul, Swarm};
 use novasmt::{CompressedProof, Database, InMemoryCas, Tree};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
-use serde_json::value::Index;
-use smol::net::TcpListener;
+
 use std::{
     collections::BTreeMap,
     net::SocketAddr,
@@ -20,20 +19,20 @@ use std::{
 use stdcode::StdcodeSerializeExt;
 use themelio_stf::SmtMapping;
 use themelio_structs::{
-    AbbrBlock, Address, Block, BlockHeight, CoinID, ConsensusProof, NetID, Transaction, TxHash,
+    AbbrBlock, Address, Block, BlockHeight, Checkpoint, CoinID, ConsensusProof, NetID, Transaction,
+    TxHash,
 };
 
-use smol_timeout::TimeoutExt;
-use themelio_nodeprot::{
-    CoinChange, NodeRpcClient, NodeRpcProtocol, NodeRpcService, StateSummary, Substate,
-    TransactionError, TrustedHeight, ValClient, CoinSpendStatus,
+use melprot::{
+    Client, CoinChange, CoinSpendStatus, NodeRpcClient, NodeRpcProtocol, NodeRpcService,
+    StateSummary, Substate, TransactionError,
 };
+use smol_timeout::TimeoutExt;
 use tmelcrypt::{HashVal, Hashable};
 
 /// An actor implementing the node P2P protocol, common for both auditors and stakers..
 pub struct Node {
     _blksync_task: smol::Task<()>,
-    _legacy_task: Option<smol::Task<()>>,
 }
 
 impl Node {
@@ -45,34 +44,8 @@ impl Node {
         advertise_addr: Option<SocketAddr>,
         storage: Storage,
         index_coins: bool,
-        swarm: Swarm<TcpBackhaul, NodeRpcClient>,
+        swarm: Swarm<HttpBackhaul, NodeRpcClient>,
     ) -> Self {
-        let _legacy_task = if let Some(legacy_listen_addr) = legacy_listen_addr {
-            let network = melnet::NetState::new_with_name(netname(netid));
-            network.listen(
-                "node",
-                NodeRpcService(
-                    NodeRpcImpl::new(
-                        swarm.clone(),
-                        listen_addr,
-                        netid,
-                        storage.clone(),
-                        index_coins,
-                    )
-                    .await,
-                ),
-            );
-            Some(smolscale::spawn({
-                let network = network;
-                async move {
-                    let listener = TcpListener::bind(legacy_listen_addr).await.unwrap();
-                    network.run_server(listener).await;
-                }
-            }))
-        } else {
-            None
-        };
-
         // This is all we need to do since start_listen does not block.
         log::debug!("starting to listen at {}", listen_addr);
         smol::future::block_on(
@@ -94,10 +67,7 @@ impl Node {
         .expect("failed to start listening");
 
         let _blksync_task = smolscale::spawn(blksync_loop(netid, swarm, storage));
-        Self {
-            _blksync_task,
-            _legacy_task,
-        }
+        Self { _blksync_task }
     }
 }
 
@@ -109,7 +79,7 @@ fn netname(netid: NetID) -> &'static str {
     }
 }
 
-async fn blksync_loop(_netid: NetID, swarm: Swarm<TcpBackhaul, NodeRpcClient>, storage: Storage) {
+async fn blksync_loop(_netid: NetID, swarm: Swarm<HttpBackhaul, NodeRpcClient>, storage: Storage) {
     loop {
         let gap_time: Duration = Duration::from_secs_f64(fastrand::f64() * 1.0);
         let routes = swarm.routes().await;
@@ -300,13 +270,13 @@ pub struct NodeRpcImpl {
     summary: Mutex<LruCache<BlockHeight, StateSummary>>,
     coin_smts: Mutex<LruCache<BlockHeight, Tree<InMemoryCas>>>,
     abbr_block_cache: moka::sync::Cache<BlockHeight, (AbbrBlock, ConsensusProof)>,
-    swarm: Swarm<TcpBackhaul, NodeRpcClient>,
-    indexer: Option<(Indexer, ValClient)>,
+    swarm: Swarm<HttpBackhaul, NodeRpcClient>,
+    indexer: Option<(Indexer, Client)>,
 }
 
 impl NodeRpcImpl {
     async fn new(
-        swarm: Swarm<TcpBackhaul, NodeRpcClient>,
+        swarm: Swarm<HttpBackhaul, NodeRpcClient>,
         listen_addr: SocketAddr,
         network: NetID,
         storage: Storage,
@@ -320,7 +290,7 @@ impl NodeRpcImpl {
                 .connect_lazy(localhost_listen_addr.to_string().into())
                 .await
                 .unwrap();
-            let client = ValClient::new(network, transport);
+            let client = Client::new(network, transport);
 
             Some((
                 Indexer::new(storage.get_indexer_path(), client.clone())
@@ -374,7 +344,7 @@ impl NodeRpcImpl {
             .await
             .expect("storage failed")?;
         self.indexer.as_ref().map(move |(indexer, client)| {
-            client.trust(TrustedHeight {
+            client.trust(Checkpoint {
                 height: BlockHeight(1),
                 header_hash: trusted_height.header().hash(),
             });
@@ -386,7 +356,7 @@ impl NodeRpcImpl {
 }
 
 /// Global TCP backhaul for node connections
-static TCP_BACKHAUL: Lazy<TcpBackhaul> = Lazy::new(TcpBackhaul::new);
+static TCP_BACKHAUL: Lazy<HttpBackhaul> = Lazy::new(HttpBackhaul::new);
 
 #[async_trait]
 impl NodeRpcProtocol for NodeRpcImpl {
@@ -624,7 +594,12 @@ impl NodeRpcProtocol for NodeRpcImpl {
             let deleted: Vec<CoinChange> = before_coins
                 .iter()
                 .filter(|before| !after_coins.contains(before))
-                .map(|coin| CoinChange::Delete(CoinID::new(coin.create_txhash, coin.create_index)))
+                .map(|coin| {
+                    CoinChange::Delete(
+                        CoinID::new(coin.create_txhash, coin.create_index),
+                        coin.spend_info.unwrap().spend_txhash,
+                    )
+                })
                 .collect();
 
             Some([added, deleted].concat())
@@ -643,9 +618,9 @@ impl NodeRpcProtocol for NodeRpcImpl {
                 .iter()
                 .collect();
 
-            coin_info.first().map(|coin| {
-                CoinSpendStatus::Spent((coin.create_txhash, coin.create_height))
-            })
+            coin_info
+                .first()
+                .map(|coin| CoinSpendStatus::Spent((coin.create_txhash, coin.create_height)))
         } else {
             log::warn!("no coin indexer configured for current node");
             None
