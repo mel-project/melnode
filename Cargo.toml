@@ -3,7 +3,7 @@ name = "melnode"
 version = "0.13.2"
 repository ="https://github.com/themeliolabs/themelio-node"
 license = "MPL-2.0"
-description = "Reference implementation of Themelio"
+description = "Reference implementation of Mel"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -50,20 +50,6 @@ features = ["json", "rustls-tls"]
 default-features = false
 optional = true
 
-
-
-[dependencies.rweb]
-version = "0.15.0"
-features = ["tls"]
-optional = true
-
-[dependencies.systemstat]
-version = "0.1.12"
-optional = true
-
-[dependencies.async-compat]
-version = "0.2.1"
-optional = true
 
 
 [dependencies]
@@ -139,7 +125,3 @@ melblkidx = { git = "https://github.com/themeliolabs/melblkidx", branch = "maste
 
 # [target.'cfg(unix)'.dependencies]
 # mimalloc = "0.1.28"
-
-[features]
-metrics = ["prometheus", "gethostname", "public-ip", "reqwest", "rweb", "systemstat", "async-compat", "default-net"]
-dhat-heap = ["dhat"]

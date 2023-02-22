@@ -1,5 +1,5 @@
 [Unit]
-Description=Pull Latest Themelio-Node Image And Restart The Service
+Description=Pull Latest Mel-Node Image And Restart The Service
 [Service]
 User=admin
 Environment="NETWORK=mainnet"

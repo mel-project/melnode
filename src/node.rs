@@ -1,3 +1,5 @@
+mod indexer;
+
 use crate::storage::Storage;
 
 use anyhow::Context;
@@ -19,17 +21,18 @@ use std::{
 use stdcode::StdcodeSerializeExt;
 use themelio_stf::SmtMapping;
 use themelio_structs::{
-    AbbrBlock, Address, Block, BlockHeight, Checkpoint, CoinID, ConsensusProof, NetID, Transaction,
-    TxHash,
+    AbbrBlock, Address, Block, BlockHeight, CoinID, ConsensusProof, NetID, Transaction, TxHash,
 };
 
 use melprot::{
-    Client, CoinChange, CoinSpendStatus, NodeRpcClient, NodeRpcProtocol, NodeRpcService,
-    StateSummary, Substate, TransactionError,
+    CoinChange, CoinSpendStatus, NodeRpcClient, NodeRpcProtocol, NodeRpcService, StateSummary,
+    Substate, TransactionError,
 };
 
 use smol_timeout::TimeoutExt;
 use tmelcrypt::{HashVal, Hashable};
+
+use self::indexer::WrappedIndexer;
 
 /// An actor implementing the node P2P protocol, common for both auditors and stakers..
 pub struct Node {
@@ -38,45 +41,36 @@ pub struct Node {
 
 impl Node {
     /// Creates a new Node.
-    pub async fn new(
+    pub async fn start(
         netid: NetID,
         listen_addr: SocketAddr,
-        legacy_listen_addr: Option<SocketAddr>,
+
         advertise_addr: Option<SocketAddr>,
         storage: Storage,
         index_coins: bool,
         swarm: Swarm<HttpBackhaul, NodeRpcClient>,
-    ) -> Self {
+    ) -> anyhow::Result<Self> {
         // This is all we need to do since start_listen does not block.
         log::debug!("starting to listen at {}", listen_addr);
-        smol::future::block_on(
-            swarm.start_listen(
+        swarm
+            .start_listen(
                 listen_addr.to_string().into(),
                 advertise_addr.map(|addr| addr.to_string().into()),
                 NodeRpcService(
-                    NodeRpcImpl::new(
+                    NodeRpcImpl::start(
                         swarm.clone(),
                         listen_addr,
                         netid,
                         storage.clone(),
                         index_coins,
                     )
-                    .await,
+                    .await?,
                 ),
-            ),
-        )
-        .expect("failed to start listening");
+            )
+            .await?;
 
         let _blksync_task = smolscale::spawn(blksync_loop(netid, swarm, storage));
-        Self { _blksync_task }
-    }
-}
-
-fn netname(netid: NetID) -> &'static str {
-    match netid {
-        NetID::Mainnet => "mainnet-node",
-        NetID::Testnet => "testnet-node",
-        _ => Box::leak(Box::new(format!("{:?}", netid))),
+        Ok(Self { _blksync_task })
     }
 }
 
@@ -144,7 +138,7 @@ async fn attempt_blksync(
 
         log::debug!("gonna get compressed blocks...");
         let compressed_blocks = client
-            .get_lz4_blocks(height, 50_000)
+            .get_lz4_blocks(height, 500_000)
             .timeout(Duration::from_secs(30))
             .await
             .context("timeout while getting compressed blocks")?
@@ -166,17 +160,18 @@ async fn attempt_blksync(
         };
 
         let mut last_applied_height = height;
+        log::info!(
+            "fully resolved blocks {}..{} from peer {} in {:.2}ms",
+            blocks.first().map(|b| b.header.height).unwrap_or_default(),
+            blocks.last().map(|b| b.header.height).unwrap_or_default(),
+            addr,
+            start.elapsed().as_secs_f64() * 1000.0
+        );
         for (block, cproof) in blocks.iter().zip(cproofs) {
             // validate before applying
             if block.header.height != last_applied_height {
                 anyhow::bail!("wanted block {}, but got {}", height, block.header.height);
             }
-            log::debug!(
-                "fully resolved block {} from peer {} in {:.2}ms",
-                block.header.height,
-                addr,
-                start.elapsed().as_secs_f64() * 1000.0
-            );
 
             storage
                 .apply_block(block.clone(), cproof)
@@ -185,7 +180,6 @@ async fn attempt_blksync(
             num_blocks_applied += 1;
 
             last_applied_height += BlockHeight(1);
-            log::debug!("applied block {last_applied_height}");
         }
 
         height += BlockHeight(blocks.len() as u64);
@@ -272,36 +266,23 @@ pub struct NodeRpcImpl {
     coin_smts: Mutex<LruCache<BlockHeight, Tree<InMemoryCas>>>,
     abbr_block_cache: moka::sync::Cache<BlockHeight, (AbbrBlock, ConsensusProof)>,
     swarm: Swarm<HttpBackhaul, NodeRpcClient>,
-    indexer: Option<(Indexer, Client)>,
+    indexer: Option<WrappedIndexer>,
 }
 
 impl NodeRpcImpl {
-    async fn new(
+    async fn start(
         swarm: Swarm<HttpBackhaul, NodeRpcClient>,
         listen_addr: SocketAddr,
         network: NetID,
         storage: Storage,
         index_coins: bool,
-    ) -> Self {
+    ) -> anyhow::Result<Self> {
         let indexer = if index_coins {
-            let mut localhost_listen_addr = listen_addr;
-            localhost_listen_addr.set_ip("127.0.0.1".parse().unwrap());
-            // TODO: connect_lazy shouldn't return a Result, since backhaul.connect_lazy is "infallible"?
-            let transport: NodeRpcClient = swarm
-                .connect_lazy(localhost_listen_addr.to_string().into())
-                .await
-                .unwrap();
-            let client = Client::new(network, transport);
-
-            Some((
-                Indexer::new(storage.get_indexer_path(), client.clone())
-                    .expect("indexer failed to be created"),
-                client,
-            ))
+            Some(WrappedIndexer::start(network, storage.clone(), listen_addr).await?)
         } else {
             None
         };
-        Self {
+        Ok(Self {
             network,
             storage,
             recent: LruCache::new(1000).into(),
@@ -310,7 +291,7 @@ impl NodeRpcImpl {
             swarm,
             abbr_block_cache: moka::sync::Cache::new(100_000),
             indexer,
-        }
+        })
     }
 
     async fn get_coin_tree(&self, height: BlockHeight) -> anyhow::Result<Tree<InMemoryCas>> {
@@ -339,21 +320,8 @@ impl NodeRpcImpl {
     }
 
     async fn get_indexer(&self) -> Option<&Indexer> {
-        let trusted_height = self
-            .storage
-            .get_state(BlockHeight(1))
-            .await
-            .expect("storage failed")?;
-        let toret = self.indexer.as_ref().map(move |(indexer, client)| {
-            client.trust(Checkpoint {
-                height: BlockHeight(1),
-                header_hash: trusted_height.header().hash(),
-            });
-            eprintln!("TRUSSSSSSST!!!!!!!");
-            log::debug!("INDEXER OBTAINED");
-            indexer
-        });
-        if let Some(indexer) = toret {
+        if let Some(indexer) = self.indexer.as_ref() {
+            let indexer = indexer.inner();
             let height = self
                 .storage
                 .highest_height()
@@ -364,8 +332,10 @@ impl NodeRpcImpl {
                 log::warn!("waiting for {height} to be available at the indexer...");
                 smol::Timer::after(Duration::from_secs(1)).await;
             }
+            Some(indexer)
+        } else {
+            None
         }
-        toret
     }
 }
 

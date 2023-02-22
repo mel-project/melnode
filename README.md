@@ -1,9 +1,9 @@
-# themelio-node: Themelio's reference implementation
+# melnode: Mel's reference implementation
 
 [![](https://img.shields.io/crates/v/themelio-node)](https://crates.io/crates/themelio-node)
 ![](https://img.shields.io/crates/l/themelio-node)
 
-[Themelio](https://themelio.org) is a new public blockchain focused on security, performance, and long-term stability. `themelio-node` is Themelio's reference implementation in Rust.
+[Mel](https://themelio.org) is a new public blockchain focused on security, performance, and long-term stability. `themelio-node` is Mel's reference implementation in Rust.
 
 ## Installation
 
@@ -38,11 +38,11 @@ Full nodes replicate every consensus-confirmed block, validating its contents an
 There are two kinds of full nodes:
 
 - Auditor nodes comprise the vast majority of full nodes. They replicate and verify blocks but do not vote in consensus.
-- Staker nodes, the ultimate guardians of Themelio security, have Sym locked up and participate in consensus. They are analogous to miners in proof-of-work blockchains like Bitcoin.
+- Staker nodes, the ultimate guardians of Mel security, have Sym locked up and participate in consensus. They are analogous to miners in proof-of-work blockchains like Bitcoin.
 
 ## Auditor Full Node
 
-### On the Themelio Mainnet:
+### On the Mel Mainnet:
 
 To run an auditor on the “mainnet” (which at the moment is far from stable, but does have a persistent history), just run:
 
@@ -52,7 +52,7 @@ $ themelio-node
 
 `themelio-node` will then beginning synchronizing all the blocks in the blockchain. This will take quite a while (a day or so) and store a bunch of data in in `~/.themelio-node/`.
 
-### On the Themelio Testnet:
+### On the Mel Testnet:
 
 To run the auditor on the non-persistent testnet, where most covenant development and testing will happen during the betanet period, run instead
 
@@ -138,11 +138,11 @@ A more detailed explanation of `--staker-cfg` requires explaining the staker and
 
 ## Staker Full Node
 
-### On the Themelio Mainnet:
+### On the Mel Mainnet:
 
 WIP
 
-### On the Themelio Testnet:
+### On the Mel Testnet:
 
 WIP
 
@@ -152,9 +152,9 @@ WIP
 
 ## Contributing
 
-Thank you for considering contributing to the Themelio source code! We welcome all contributions from absolutely anyone on the internet.
+Thank you for considering contributing to the Mel source code! We welcome all contributions from absolutely anyone on the internet.
 
-For minor changes, simply fork, fix, and submit a pull request. If you want to propose a larger change, be sure to get in touch with our dev team on [Discord]() to make sure your change aligns with Themelio's overarching philosophy. This will likely save you a significant amount of time and effort, as well as speed up the review process of your change.
+For minor changes, simply fork, fix, and submit a pull request. If you want to propose a larger change, be sure to get in touch with our dev team on [Discord]() to make sure your change aligns with Mel's overarching philosophy. This will likely save you a significant amount of time and effort, as well as speed up the review process of your change.
 
 Finally, make sure your code adheres to the following guidelines:
 
@@ -193,6 +193,6 @@ There are the following primary types in themelio-node:
 
 ## Metrics
 
-Themelio Labs runs a worldwide network of Themelio full nodes --- `themelio-node` can also be compiled to report metrics for this network.
+Mel Labs runs a worldwide network of Mel full nodes --- `themelio-node` can also be compiled to report metrics for this network.
 
 Read [here](Metrics.md).

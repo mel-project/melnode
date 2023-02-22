@@ -2,6 +2,7 @@ mod args;
 
 mod node;
 
+mod autoretry;
 mod staker;
 mod storage;
 
@@ -56,16 +57,15 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
         swarm.add_route(addr.to_string().into(), true).await;
     }
 
-    let _node_prot = Node::new(
+    let _node_prot = Node::start(
         netid,
         opt.listen_addr(),
-        opt.legacy_listen_addr(),
         opt.advertise_addr(),
         storage.clone(),
         opt.index_coins,
         swarm.clone(),
     )
-    .await;
+    .await?;
 
     let _staker_prot = opt
         .staker_cfg()

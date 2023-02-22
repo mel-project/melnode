@@ -23,7 +23,7 @@ use themelio_structs::{
 
 use super::{mempool::Mempool, MeshaCas};
 
-/// Storage encapsulates all storage used by a Themelio full node (auditor or staker).
+/// Storage encapsulates all storage used by a Mel full node (auditor or staker).
 #[derive(Clone)]
 pub struct Storage {
     send_pool: Sender<rusqlite::Connection>,
@@ -83,7 +83,7 @@ impl Storage {
         }
 
         let (send_pool, recv_pool) = smol::channel::unbounded();
-        for _ in 0..16 {
+        for _ in 0..64 {
             let conn = rusqlite::Connection::open(&sqlite_path)?;
             conn.query_row("pragma journal_mode=WAL", params![], |_| Ok(()))?;
             conn.execute("pragma synchronous=normal", params![])?;
@@ -279,11 +279,11 @@ impl Storage {
 
         let start = Instant::now();
         let new_state = highest_state.apply_block(&blk)?;
+        // we flush the merkle stuff first, because the sqlite points to merkle
+        self.forest.storage().flush();
         let apply_time = start.elapsed();
         let start = Instant::now();
 
-        // we flush the merkle stuff first, because the sqlite points to merkle
-        self.forest.storage().flush();
         // now transactionally save to sqlite
         {
             let conn = self.recv_pool.recv().await?;

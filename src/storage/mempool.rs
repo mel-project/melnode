@@ -50,7 +50,7 @@ impl Mempool {
     /// Forcibly replaces the internal state of the mempool with the given state.
     pub fn rebase(&mut self, state: SealedState<MeshaCas>) {
         let current_sealed = self.provisional_state.clone().seal(None);
-        log::debug!(
+        log::trace!(
             "forcibly rebasing mempool {} => {}",
             current_sealed.header().height,
             state.header().height
