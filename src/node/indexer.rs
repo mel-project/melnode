@@ -6,7 +6,7 @@ use melprot::Client;
 
 use themelio_structs::{Checkpoint, NetID};
 
-use crate::{autoretry::autoretry, storage::Storage};
+use crate::storage::Storage;
 
 pub struct WrappedIndexer {
     indexer: Indexer,
@@ -40,7 +40,7 @@ impl WrappedIndexer {
 
 async fn indexer_loop(storage: Storage, client: Client) {
     loop {
-        let trusted_height = autoretry(|| storage.highest_state()).await;
+        let trusted_height = storage.highest_state().await;
         client.trust(Checkpoint {
             height: trusted_height.header().height,
             header_hash: trusted_height.header().hash(),

@@ -90,10 +90,7 @@ async fn blksync_loop(_netid: NetID, swarm: Swarm<HttpBackhaul, NodeRpcClient>, 
             match fallible_part.await {
                 Err(e) => {
                     log::warn!("failed to blksync with {}: {:?}", peer, e);
-                    log::warn!(
-                        "last state: {:?}",
-                        storage.highest_state().await.unwrap().header()
-                    );
+                    log::warn!("last state: {:?}", storage.highest_state().await.header());
                 }
                 Ok(blklen) => {
                     if blklen > 0 {
@@ -124,7 +121,7 @@ async fn attempt_blksync(
         .context("cannot get their highest block")?
         .height;
     log::debug!("their_highest = {their_highest}");
-    let my_highest = storage.highest_height().await?.unwrap_or_default();
+    let my_highest = storage.highest_height().await;
     if their_highest <= my_highest {
         return Ok(0);
     }
@@ -201,7 +198,7 @@ async fn attempt_blksync_legacy(
         .context("timed out getting summary")?
         .context("cannot get their highest block")?
         .height;
-    let my_highest = storage.highest_height().await?.unwrap_or_default();
+    let my_highest = storage.highest_height().await;
     if their_highest <= my_highest {
         return Ok(0);
     }
@@ -302,7 +299,7 @@ impl NodeRpcImpl {
             let state = self
                 .storage
                 .get_state(height)
-                .await?
+                .await
                 .context(format!("block {} not confirmed yet", height))?;
             let mut mm = SmtMapping::new(
                 Database::new(InMemoryCas::default())
@@ -322,12 +319,7 @@ impl NodeRpcImpl {
     async fn get_indexer(&self) -> Option<&Indexer> {
         if let Some(indexer) = self.indexer.as_ref() {
             let indexer = indexer.inner();
-            let height = self
-                .storage
-                .highest_height()
-                .await
-                .unwrap()
-                .unwrap_or_default();
+            let height = self.storage.highest_height().await;
             while indexer.max_height() < height {
                 log::warn!("waiting for {height} to be available at the indexer...");
                 smol::Timer::after(Duration::from_secs(1)).await;
@@ -394,14 +386,8 @@ impl NodeRpcProtocol for NodeRpcImpl {
             return Some(c);
         }
         log::trace!("handling get_abbr_block({})", height);
-        let block = self.storage.get_block(height).await.unwrap()?;
-        let proof = self
-            .storage
-            .get_consensus(height)
-            .await
-            .unwrap()
-            .context(format!("block {} not confirmed yet", height))
-            .ok()?;
+        let block = self.storage.get_block(height).await?;
+        let proof = self.storage.get_consensus(height).await?;
         let summ = (block.abbreviate(), proof);
         self.abbr_block_cache.insert(height, summ.clone());
         Some(summ)
@@ -409,7 +395,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
 
     async fn get_summary(&self) -> StateSummary {
         log::trace!("handling get_summary()");
-        let highest = self.storage.highest_state().await.unwrap();
+        let highest = self.storage.highest_state().await;
         let header = highest.header();
         let res = self.summary.lock().get(&header.height).cloned();
         if let Some(res) = res {
@@ -419,8 +405,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
                 .storage
                 .get_consensus(header.height)
                 .await
-                .unwrap()
-                .unwrap_or_default();
+                .expect("no consensus proof for highest height");
             let summary = StateSummary {
                 netid: self.network,
                 height: header.height,
@@ -434,10 +419,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
 
     async fn get_block(&self, height: BlockHeight) -> Option<Block> {
         log::trace!("handling get_state({})", height);
-        self.storage
-            .get_block(height)
-            .await
-            .expect("could not read block")
+        self.storage.get_block(height).await
     }
 
     async fn get_lz4_blocks(&self, height: BlockHeight, size_limit: usize) -> Option<String> {
@@ -450,7 +432,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
         let mut height = height;
         while total_count <= size_limit {
             if let Some(block) = self.get_block(height).await {
-                match self.storage.get_consensus(height).await.unwrap() {
+                match self.storage.get_consensus(height).await {
                     Some(proof) => {
                         total_count += block.stdcode().len();
                         total_count += proof.stdcode().len();
@@ -489,13 +471,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
         key: HashVal,
     ) -> Option<(Vec<u8>, CompressedProof)> {
         log::trace!("handling get_smt_branch({}, {:?})", height, elem);
-        let state = self
-            .storage
-            .get_state(height)
-            .await
-            .unwrap()
-            .context(format!("block {} not confirmed yet", height))
-            .ok()?;
+        let state = self.storage.get_state(height).await?;
         let ctree = self.get_coin_tree(height).await.ok()?;
         let coins_smt = state.raw_coins_smt();
         let history_smt = state.raw_history_smt();
@@ -513,7 +489,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
 
     async fn get_stakers_raw(&self, height: BlockHeight) -> Option<BTreeMap<HashVal, Vec<u8>>> {
         log::warn!("GETTING STAKERS FOR {height}");
-        let state = self.storage.get_state(height).await.unwrap()?;
+        let state = self.storage.get_state(height).await?;
         // Note, the returned HashVal is >> HASHED AGAIN << because this is supposed to be compatible with the old SmtMapping encoding, where the key to the `stakes` SMT is the *hash of the transaction hash* due to a quirk.
         Some(
             state
@@ -548,7 +524,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
         height: BlockHeight,
         covhash: Address,
     ) -> Option<Vec<CoinChange>> {
-        self.storage.get_block(height).await.unwrap()?;
+        self.storage.get_block(height).await?;
         if let Some(indexer) = self.get_indexer().await {
             // get coins 1 block below the given height
             let before_coins: Vec<CoinInfo> = indexer

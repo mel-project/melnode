@@ -21,6 +21,8 @@ use themelio_structs::{
     Block, BlockHeight, CoinValue, ConsensusProof, NetID, StakeDoc, TxHash, TxKind,
 };
 
+use crate::autoretry::autoretry;
+
 use super::{mempool::Mempool, MeshaCas};
 
 /// Storage encapsulates all storage used by a Mel full node (auditor or staker).
@@ -107,27 +109,31 @@ impl Storage {
     }
 
     /// Obtain the highest state.
-    pub async fn highest_state(&self) -> anyhow::Result<SealedState<MeshaCas>> {
+    pub async fn highest_state(&self) -> SealedState<MeshaCas> {
         // TODO this may be a bit stale
-        let height = self.highest_height().await?;
-        if let Some(height) = height {
-            Ok(self.get_state(height).await?.context("no highest")?)
+        let height = self.highest_height().await;
+        if height.0 > 0 {
+            self.get_state(height).await.expect("highest not available")
         } else {
-            Ok(self.genesis.clone().realize(self.forest()).seal(None))
+            self.genesis.clone().realize(self.forest()).seal(None)
         }
     }
 
     /// Obtain the highest height.
-    pub async fn highest_height(&self) -> anyhow::Result<Option<BlockHeight>> {
-        let conn = self.recv_pool.recv().await?;
-        let send_pool = self.send_pool.clone();
-        smol::unblock(move || {
-            let conn = scopeguard::guard(conn, |conn| send_pool.try_send(conn).unwrap());
-            let val: Option<u64> =
-                conn.query_row("select max(height) from history", params![], |r| r.get(0))?;
-            Ok(val.map(BlockHeight))
+    pub async fn highest_height(&self) -> BlockHeight {
+        autoretry(|| async {
+            let conn = self.recv_pool.recv().await?;
+            let send_pool = self.send_pool.clone();
+            smol::unblock(move || {
+                let conn = scopeguard::guard(conn, |conn| send_pool.try_send(conn).unwrap());
+                let val: Option<u64> =
+                    conn.query_row("select max(height) from history", params![], |r| r.get(0))?;
+                anyhow::Ok(val.map(BlockHeight))
+            })
+            .await
         })
         .await
+        .unwrap_or_default()
     }
 
     /// Waits until a certain height is available, then returns it.
@@ -135,114 +141,113 @@ impl Storage {
         loop {
             let notify = self.new_block_notify.listen();
             match self.get_state(height).await {
-                Ok(Some(val)) => return val,
+                Some(val) => return val,
                 _ => notify.await,
             }
         }
     }
 
     /// Reconstruct the stakeset at a given height.
-    async fn get_stakeset(&self, height: BlockHeight) -> anyhow::Result<StakeSet> {
-        let conn = self.recv_pool.recv().await?;
-        let send_pool = self.send_pool.clone();
-        let genesis = self.genesis.clone();
-        smol::unblock(move || {
-            let conn = scopeguard::guard(conn, |conn| send_pool.try_send(conn).unwrap());
-            let mut stmt = conn.prepare("select txhash, height, stake_doc from stakes")?;
-            let mut stakes = StakeSet::new(vec![].into_iter());
-            // TODO this is dumb!
-            for (txhash, stake) in genesis.stakes {
-                stakes.add_stake(txhash, stake);
-            }
-            for row in
-                stmt.query_map(params![], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
-            {
-                let row: (String, u64, Vec<u8>) = row?;
-                let t: TxHash = row.0.parse()?;
-                let sd: StakeDoc = stdcode::deserialize(&row.2)?;
-                stakes.add_stake(t, sd);
-            }
-            stakes.unlock_old(height.epoch());
-            Ok(stakes)
+    async fn get_stakeset(&self, height: BlockHeight) -> StakeSet {
+        autoretry(|| async {
+            let conn = self.recv_pool.recv().await?;
+            let send_pool = self.send_pool.clone();
+            let genesis = self.genesis.clone();
+            smol::unblock(move || {
+                let conn = scopeguard::guard(conn, |conn| send_pool.try_send(conn).unwrap());
+                let mut stmt = conn.prepare("select txhash, height, stake_doc from stakes")?;
+                let mut stakes = StakeSet::new(vec![].into_iter());
+                // TODO this is dumb!
+                for (txhash, stake) in genesis.stakes {
+                    stakes.add_stake(txhash, stake);
+                }
+                for row in
+                    stmt.query_map(params![], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
+                {
+                    let row: (String, u64, Vec<u8>) = row?;
+                    let t: TxHash = row.0.parse()?;
+                    let sd: StakeDoc = stdcode::deserialize(&row.2)?;
+                    stakes.add_stake(t, sd);
+                }
+                stakes.unlock_old(height.epoch());
+                anyhow::Ok(stakes)
+            })
+            .await
         })
         .await
     }
 
     /// Obtain just one particular Block.
-    pub async fn get_block(&self, height: BlockHeight) -> anyhow::Result<Option<Block>> {
-        if let Some(val) = self.old_cache.get(&height) {
-            return Ok(Some(val));
-        }
-        let conn = self.recv_pool.recv().await?;
-        let send_pool = self.send_pool.clone();
-        let res = smol::unblock(move || {
-            let conn = scopeguard::guard(conn, |conn| send_pool.try_send(conn).unwrap());
-            let block_blob: Option<Vec<u8>> = conn
-                .query_row(
-                    "select block from history where height = $1",
-                    params![height.0],
-                    |row| row.get(0),
-                )
-                .optional()?;
-            if let Some(block_blob) = block_blob {
-                let block: Block = stdcode::deserialize(&block_blob)?;
-                Ok(Some(block))
-            } else {
-                Ok(None)
+    pub async fn get_block(&self, height: BlockHeight) -> Option<Block> {
+        autoretry(|| async {
+            if let Some(val) = self.old_cache.get(&height) {
+                return anyhow::Ok(Some(val));
             }
+            let conn = self.recv_pool.recv().await?;
+            let send_pool = self.send_pool.clone();
+            let res = smol::unblock(move || {
+                let conn = scopeguard::guard(conn, |conn| send_pool.try_send(conn).unwrap());
+                let block_blob: Option<Vec<u8>> = conn
+                    .query_row(
+                        "select block from history where height = $1",
+                        params![height.0],
+                        |row| row.get(0),
+                    )
+                    .optional()?;
+                if let Some(block_blob) = block_blob {
+                    let block: Block = stdcode::deserialize(&block_blob)?;
+                    Ok(Some(block))
+                } else {
+                    Ok(None)
+                }
+            })
+            .await;
+            if let Ok(Some(res)) = &res {
+                self.old_cache.insert(height, res.clone());
+            }
+            res
         })
-        .await;
-        if let Ok(Some(res)) = &res {
-            self.old_cache.insert(height, res.clone());
-        }
-        res
+        .await
     }
 
     /// Obtain a historical SealedState.
-    pub async fn get_state(
-        &self,
-        height: BlockHeight,
-    ) -> anyhow::Result<Option<SealedState<MeshaCas>>> {
-        let block: Block = if let Some(blob) = self.get_block(height).await? {
-            blob
-        } else {
-            return Ok(None);
-        };
-        Ok(Some(SealedState::from_block(
+    pub async fn get_state(&self, height: BlockHeight) -> Option<SealedState<MeshaCas>> {
+        let block: Block = self.get_block(height).await?;
+        Some(SealedState::from_block(
             &block,
-            &self.get_stakeset(height).await?,
+            &self.get_stakeset(height).await,
             &self.forest,
-        )))
+        ))
     }
 
     /// Obtain a historical ConsensusProof.
-    pub async fn get_consensus(
-        &self,
-        height: BlockHeight,
-    ) -> anyhow::Result<Option<ConsensusProof>> {
-        let conn = self.recv_pool.recv().await?;
-        let send_pool = self.send_pool.clone();
-        smol::unblock(move || {
-            let conn = scopeguard::guard(conn, |conn| send_pool.try_send(conn).unwrap());
-            let vec: Option<Vec<u8>> = conn
-                .query_row(
-                    "select proof from consensus_proofs where height = $1",
-                    params![height.0],
-                    |r| r.get(0),
-                )
-                .optional()?;
-            if let Some(vec) = vec {
-                Ok(Some(stdcode::deserialize(&vec)?))
-            } else {
-                Ok(None)
-            }
+    pub async fn get_consensus(&self, height: BlockHeight) -> Option<ConsensusProof> {
+        autoretry(|| async {
+            let conn = self.recv_pool.recv().await?;
+            let send_pool = self.send_pool.clone();
+            smol::unblock(move || {
+                let conn = scopeguard::guard(conn, |conn| send_pool.try_send(conn).unwrap());
+                let vec: Option<Vec<u8>> = conn
+                    .query_row(
+                        "select proof from consensus_proofs where height = $1",
+                        params![height.0],
+                        |r| r.get(0),
+                    )
+                    .optional()?;
+                if let Some(vec) = vec {
+                    anyhow::Ok(Some(stdcode::deserialize(&vec)?))
+                } else {
+                    Ok(None)
+                }
+            })
+            .await
         })
         .await
     }
 
     /// Consumes a block, applying it to the current state.
     pub async fn apply_block(&self, blk: Block, cproof: ConsensusProof) -> anyhow::Result<()> {
-        let highest_state = self.highest_state().await?;
+        let highest_state = self.highest_state().await;
         let header = blk.header;
         if header.height != highest_state.header().height + 1.into() {
             anyhow::bail!(
@@ -324,7 +329,7 @@ impl Storage {
             apply_time.as_secs_f64() * 1000.0,
             start.elapsed().as_secs_f64() * 1000.0
         );
-        let next = self.highest_state().await?;
+        let next = self.highest_state().await;
         self.mempool_mut().rebase(next);
         self.new_block_notify.notify(usize::MAX);
 

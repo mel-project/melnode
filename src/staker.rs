@@ -92,7 +92,7 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
     let mut timer = smol::Timer::interval(Duration::from_secs(30));
     loop {
         timer.next().await;
-        let base_state = storage.highest_state().await?;
+        let base_state = storage.highest_state().await;
         let next_height: BlockHeight = base_state.header().height + BlockHeight(1);
         let skip_round = async {
             storage.get_state_or_wait(next_height).await;

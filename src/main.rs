@@ -88,12 +88,12 @@ pub async fn main_async(opt: Args) -> anyhow::Result<()> {
                 log::info!("*** SELF TEST STARTED! ***");
                 let mut state = storage
                     .get_state(BlockHeight(1))
-                    .await?
+                    .await
                     .context("no block 1")?;
-                let last_height = storage.highest_height().await?.unwrap_or_default().0;
+                let last_height = storage.highest_height().await.0;
                 for bh in 2..=last_height {
                     let bh = BlockHeight(bh);
-                    let blk = storage.get_state(bh).await?.context("no block")?.to_block();
+                    let blk = storage.get_state(bh).await.context("no block")?.to_block();
                     state = state.apply_block(&blk).expect("block application failed");
                     smol::future::yield_now().await;
                     log::debug!(
