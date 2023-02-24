@@ -10,6 +10,7 @@ use std::{
 use stdcode::StdcodeSerializeExt;
 use tap::Tap;
 use tip911_stakeset::StakeSet;
+use tmelcrypt::HashVal;
 
 use moka::sync::Cache;
 use parking_lot::RwLock;
@@ -156,15 +157,16 @@ impl Storage {
             let genesis = self.genesis.clone();
             smol::unblock(move || {
                 let conn = scopeguard::guard(conn, |conn| send_pool.try_send(conn).unwrap());
-                let mut stmt = conn.prepare("select txhash, height, stake_doc from stakes")?;
+                let mut stmt = conn
+                    .prepare("select txhash, height, stake_doc from stakes where height <= $1")?;
                 let mut stakes = StakeSet::new(vec![].into_iter());
                 // TODO this is dumb!
                 for (txhash, stake) in genesis.stakes {
                     stakes.add_stake(txhash, stake);
                 }
-                for row in
-                    stmt.query_map(params![], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
-                {
+                for row in stmt.query_map(params![height.0], |row| {
+                    Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+                })? {
                     let row: (String, u64, Vec<u8>) = row?;
                     let t: TxHash = row.0.parse()?;
                     let sd: StakeDoc = stdcode::deserialize(&row.2)?;
@@ -214,11 +216,12 @@ impl Storage {
     /// Obtain a historical SealedState.
     pub async fn get_state(&self, height: BlockHeight) -> Option<SealedState<MeshaCas>> {
         let block: Block = self.get_block(height).await?;
-        Some(SealedState::from_block(
-            &block,
-            &self.get_stakeset(height).await,
-            &self.forest,
-        ))
+        let stakeset = self.get_stakeset(height).await;
+        assert_eq!(
+            HashVal(stakeset.pre_tip911().root_hash()),
+            block.header.stakes_hash
+        );
+        Some(SealedState::from_block(&block, &stakeset, &self.forest))
     }
 
     /// Obtain a historical ConsensusProof.
