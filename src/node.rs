@@ -372,37 +372,42 @@ impl NodeRpcProtocol for NodeRpcImpl {
         height: BlockHeight,
         covhash: Address,
     ) -> Option<Vec<CoinChange>> {
+        log::debug!("get_coin_changes({height}, {covhash})");
         self.storage.get_block(height).await?;
         let indexer = self.get_indexer().await?;
         // get coins 1 block below the given height
-        let before_coins: Vec<CoinInfo> = indexer
+        let deleted_coins: Vec<CoinInfo> = indexer
             .query_coins()
             .covhash(covhash)
-            .unspent()
-            .create_height_range(0..height.0)
+            .spend_height_range(height.0..=height.0)
             .iter()
             .collect();
 
         // get coins at the given height
-        let after_coins: Vec<CoinInfo> = indexer
+        let added_coins: Vec<CoinInfo> = indexer
             .query_coins()
             .covhash(covhash)
-            .unspent()
-            .create_height_range(0..=height.0)
+            .create_height_range(height.0..=height.0)
             .iter()
             .collect();
 
+        if !added_coins.is_empty() || !deleted_coins.is_empty() {
+            log::debug!(
+                "{} added, {} deleted",
+                added_coins.len(),
+                deleted_coins.len()
+            );
+        }
+
         // which coins got added in after_coins?
-        let added: Vec<CoinChange> = after_coins
+        let added: Vec<CoinChange> = added_coins
             .iter()
-            .filter(|after| !before_coins.contains(after))
             .map(|coin| CoinChange::Add(CoinID::new(coin.create_txhash, coin.create_index)))
             .collect();
 
         // which coins got deleted in before coins?
-        let deleted: Vec<CoinChange> = before_coins
+        let deleted: Vec<CoinChange> = deleted_coins
             .iter()
-            .filter(|before| !after_coins.contains(before))
             .map(|coin| {
                 CoinChange::Delete(
                     CoinID::new(coin.create_txhash, coin.create_index),

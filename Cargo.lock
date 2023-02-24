@@ -1801,8 +1801,8 @@ checksum = "2532096657941c2fea9c289d370a250971c689d4f143798ff67113ec042024a5"
 
 [[package]]
 name = "melblkidx"
-version = "0.6.0"
-source = "git+https://github.com/themeliolabs/melblkidx?branch=master#e4795bd18527a98e9fbfa9921cbacba667e24031"
+version = "0.6.1"
+source = "git+https://github.com/themeliolabs/melblkidx?branch=master#a2b5f727e4452bd5f2efa418e66ac822be86065a"
 dependencies = [
  "anyhow",
  "concurrent-queue 1.2.4",
@@ -1932,7 +1932,7 @@ dependencies = [
 [[package]]
 name = "melprot"
 version = "0.12.2"
-source = "git+https://github.com/themeliolabs/themelio-nodeprot?branch=use-themelio-structs-0.3-beta#8c4b4b2447f63d43b95f879a367b0cf9d467fca3"
+source = "git+https://github.com/themeliolabs/themelio-nodeprot?branch=use-themelio-structs-0.3-beta#74bfe1ed57e4faaf1f7ea6c4294a1808fbba370c"
 dependencies = [
  "anyhow",
  "arrayref",
@@ -3468,9 +3468,9 @@ checksum = "734676eb262c623cec13c3155096e08d1f8f29adce39ba17948b18dad1e54142"
 
 [[package]]
 name = "syn"
-version = "1.0.108"
+version = "1.0.109"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d56e159d99e6c2b93995d171050271edb50ecc5288fbc7cc17de8fdce4e58c14"
+checksum = "72b64191b275b66ffe2469e8af2c1cfe3bafa67b529ead792a6d0160888b4237"
 dependencies = [
  "proc-macro2",
  "quote",

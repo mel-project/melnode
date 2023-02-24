@@ -101,24 +101,28 @@ pub async fn main_async(opt: MainArgs) -> anyhow::Result<()> {
                             let recipient = tx_0.outputs[0].covhash;
                             let coin_changes = snapshot
                                 .get_raw()
-                                .get_coin_changes(snapshot.current_header().height, recipient)
+                                .get_coin_changes(bh, recipient)
                                 .await
                                 .unwrap()
                                 .unwrap();
+
+                            log::debug!("testing transaction recipient {recipient}");
 
                             assert!(coin_changes
                                 .contains(&CoinChange::Add(CoinID::new(tx_0.hash_nosigs(), 0))));
-                        } else if let Some(proposer_action) = blk.proposer_action {
+                        }
+                        if let Some(proposer_action) = blk.proposer_action {
                             let reward_dest = proposer_action.reward_dest;
                             let coin_changes = snapshot
                                 .get_raw()
-                                .get_coin_changes(snapshot.current_header().height, reward_dest)
+                                .get_coin_changes(bh, reward_dest)
                                 .await
                                 .unwrap()
                                 .unwrap();
 
-                            // todo: this assert if failing because indexer is often behind
-                            // assert!(coin_changes.contains(&CoinChange::Add(CoinID::proposer_reward(bh))));
+                            log::debug!("testing proposer {reward_dest}");
+                            assert!(coin_changes
+                                .contains(&CoinChange::Add(CoinID::proposer_reward(bh))));
                         }
                     }
                 }
