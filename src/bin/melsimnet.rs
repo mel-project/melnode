@@ -1,7 +1,7 @@
-use std::net::{Ipv4Addr, SocketAddr};
-
 use clap::{Args, Parser, Subcommand};
 use melnode::args::StakerConfig;
+use std::fmt::Write;
+use std::net::{Ipv4Addr, SocketAddr};
 
 use stdcode::StdcodeSerializeExt;
 use themelio_stf::GenesisConfig;
@@ -76,10 +76,19 @@ fn main_create(create: CreateArgs) -> anyhow::Result<()> {
                     target_fee_multiplier: 10000,
                 }
             });
+
+    let mut run_all_script =
+        "#!/bin/sh\ntrap \"trap - SIGTERM && kill -- -$$\" SIGINT SIGTERM EXIT\n".to_string();
     for (i, config) in staker_configs.enumerate() {
         let yaml = serde_yaml::to_string(&config)?;
         std::fs::write(format!("staker-{i}.yaml"), yaml.as_bytes())?;
+        let run_cmd = format!("#!/bin/sh\nmelnode --bootstrap 127.0.0.1:2000 --listen 127.0.0.1:{} --advertise 127.0.0.1:{} --override-genesis genesis.yaml --staker-cfg staker-{i}.yaml --database .database-{}", 2000+i, 2000+i, i);
+        std::fs::write(format!("run-staker-{i}.sh"), run_cmd.as_bytes())?;
+
+        writeln!(&mut run_all_script, "sh run-staker-{i}.sh &")?;
     }
+    writeln!(&mut run_all_script, "wait")?;
+    std::fs::write("run-all.sh", run_all_script.as_bytes())?;
     std::fs::write("genesis.yaml", &serde_yaml::to_vec(&genesis_config)?)?;
     Ok(())
 }

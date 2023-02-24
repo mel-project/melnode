@@ -273,6 +273,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
     }
 
     async fn get_lz4_blocks(&self, height: BlockHeight, size_limit: usize) -> Option<String> {
+        log::debug!("get_lz4_blocks({height}, {size_limit})");
         let size_limit = size_limit.min(10_000_000);
         // TODO: limit the *compressed* size. But this is fine because compression makes stuff smoller
         let mut total_count = 0;
@@ -307,6 +308,8 @@ impl NodeRpcProtocol for NodeRpcImpl {
             } else if accum.is_empty() {
                 log::warn!("no stored block for height: {:?}", height);
                 return None;
+            } else {
+                break;
             }
         }
 

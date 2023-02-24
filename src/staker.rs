@@ -18,7 +18,7 @@ use smol::{
     prelude::*,
 };
 use smol_timeout::TimeoutExt;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, time::Instant};
 use std::{
     collections::HashMap,
     sync::Arc,
@@ -63,6 +63,7 @@ impl Staker {
 }
 
 type DiffReq = (
+    u128,
     HashMap<HashVal, HashVal>,
     async_oneshot::Sender<Vec<DiffMessage>>,
 );
@@ -70,7 +71,7 @@ type DiffReq = (
 async fn network_task(storage: Storage, cfg: StakerConfig) {
     loop {
         if let Err(err) = network_task_inner(storage.clone(), cfg.clone()).await {
-            log::warn!("staker failed: {:?}", err)
+            log::warn!("staker failed: {:?}", err);
         }
     }
 }
@@ -98,23 +99,25 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
                 sig_gather: sig_gather.clone(),
             }),
         )
-        .await?;
+        .await
+        .context("cannot start listen")?;
     // TODO better time calcs
     loop {
         let base_state = storage.highest_state().await;
         let next_height: BlockHeight = base_state.header().height + BlockHeight(1);
         let skip_round = async {
             storage.get_state_or_wait(next_height).await;
-            smol::Timer::after(Duration::from_secs(1)).await;
             log::warn!("skipping consensus for {next_height} since we already got it");
             anyhow::Ok(())
         };
-        log::debug!("starting consensus for {next_height}...");
         let next_time = height_to_time(base_state.header().network, next_height);
 
         while SystemTime::now() < next_time {
             smol::Timer::after(Duration::from_millis(100)).await;
         }
+
+        log::debug!("starting consensus for {next_height}...");
+        let consensus_start_time = Instant::now();
 
         let decide_round = async {
             let proposed_state = storage.mempool().to_state();
@@ -147,7 +150,11 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
                 };
                 let decider = streamlette::Decider::new(config);
                 let decision = decider.tick_to_end().await;
-                log::debug!("DECIDED on a block with {} bytes", decision.len());
+                log::debug!(
+                    "DECIDED on a block with {} bytes within {:?}",
+                    decision.len(),
+                    consensus_start_time.elapsed()
+                );
                 let decision: Block = stdcode::deserialize(&decision)
                     .expect("decision reached on an INVALID block?!?!?!?!?!?!");
 
@@ -182,19 +189,29 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
                     if let Some(result) = get_proof() {
                         let cproof: ConsensusProof =
                             result.into_iter().map(|(k, v)| (k, v)).collect();
-                        storage
-                            .apply_block(decision.clone(), cproof)
-                            .await
-                            .expect("could not apply just-decided block to storage");
-
+                        if let Err(err) = storage.apply_block(decision.clone(), cproof).await {
+                            log::error!("cannot commit newly decided block: {:?}", err)
+                        }
+                        log::debug!(
+                            "COMMITTED the newly decided block within {:?}",
+                            consensus_start_time.elapsed()
+                        );
                         break;
                     }
                     let random_neigh = swarm.routes().await.first().cloned();
                     if let Some(neigh) = random_neigh {
                         log::trace!("syncing with {} for consensus proof", neigh);
                         let fallible = async {
-                            let connection = swarm.connect(neigh.clone()).await?;
-                            let result = connection.get_sigs(next_height).await?;
+                            let connection = swarm
+                                .connect(neigh.clone())
+                                .timeout(Duration::from_secs(1))
+                                .await
+                                .context("timed out for connection")??;
+                            let result = connection
+                                .get_sigs(next_height)
+                                .timeout(Duration::from_secs(1))
+                                .await
+                                .context("timed out for getting")??;
                             anyhow::Ok(result)
                         };
                         match fallible.await {
@@ -273,7 +290,7 @@ impl DeciderConfig for StakerInner {
                             }
                         }
                         Err(err) => {
-                            log::warn!("could not sync with {route}: {:?}", err)
+                            log::trace!("could not sync with {route}: {:?}", err)
                         }
                     }
                 }
@@ -282,9 +299,13 @@ impl DeciderConfig for StakerInner {
         };
         let respond_loop = async {
             loop {
-                if let Ok((their_summary, mut send_resp)) = self.recv_diff_req.recv().await {
-                    let diff = core.read().get_diff(&their_summary);
-                    let _ = send_resp.send(diff);
+                if let Ok((nonce, their_summary, mut send_resp)) = self.recv_diff_req.recv().await {
+                    if nonce == self.nonce {
+                        let diff = core.read().get_diff(&their_summary);
+                        let _ = send_resp.send(diff);
+                    } else {
+                        let _ = send_resp.send(vec![]);
+                    }
                 } else {
                     smol::future::pending::<()>().await;
                 }
@@ -337,9 +358,9 @@ struct StakerNetProtocolImpl {
 
 #[async_trait]
 impl StakerNetProtocol for StakerNetProtocolImpl {
-    async fn get_diff(&self, _nonce: u128, summary: HashMap<HashVal, HashVal>) -> Vec<DiffMessage> {
+    async fn get_diff(&self, nonce: u128, summary: HashMap<HashVal, HashVal>) -> Vec<DiffMessage> {
         let (send_resp, recv_resp) = async_oneshot::oneshot();
-        let _ = self.send_diff_req.try_send((summary, send_resp));
+        let _ = self.send_diff_req.try_send((nonce, summary, send_resp));
 
         if let Ok(val) = recv_resp.await {
             val

@@ -40,7 +40,7 @@ pub async fn attempt_blksync(
     while height <= their_highest {
         let start = Instant::now();
 
-        log::debug!("gonna get compressed blocks...");
+        log::debug!("gonna get compressed blocks from {addr}...");
         let compressed_blocks = client
             .get_lz4_blocks(height, 500_000)
             .timeout(Duration::from_secs(30))
