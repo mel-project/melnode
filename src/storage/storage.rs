@@ -1,5 +1,3 @@
-use anyhow::Context;
-
 use event_listener::Event;
 use rusqlite::{params, OptionalExtension};
 use smol::channel::{Receiver, Sender};
@@ -61,7 +59,10 @@ impl Storage {
     }
 
     /// Opens a NodeStorage, given a meshanina and boringdb database.
-    pub async fn open(db_folder: PathBuf, genesis: GenesisConfig) -> anyhow::Result<Self> {
+    pub async fn open(mut db_folder: PathBuf, genesis: GenesisConfig) -> anyhow::Result<Self> {
+        let genesis_id = tmelcrypt::hash_single(stdcode::serialize(&genesis).unwrap());
+        db_folder.push(format!("{}/", hex::encode(genesis_id.0)));
+        std::fs::create_dir_all(&db_folder)?;
         let sqlite_path = db_folder.clone().tap_mut(|path| path.push("storage.db"));
         let mesha_path = db_folder.clone().tap_mut(|path| path.push("merkle.db"));
         let conn = rusqlite::Connection::open(&sqlite_path)?;
@@ -323,7 +324,7 @@ impl Storage {
             .await?
         }
         log::debug!(
-            "applied block {} / {} in {:.2}ms (insert {:.2}ms)",
+            "applied block {} / {} in {:.2}ms (history insertion {:.2}ms)",
             new_state.header().height,
             new_state.header().hash(),
             apply_time.as_secs_f64() * 1000.0,

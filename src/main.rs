@@ -1,19 +1,10 @@
-mod args;
-
-mod node;
-
-mod autoretry;
-mod staker;
-mod storage;
-
-use crate::{node::Node, staker::Staker, storage::Storage};
+use melnode::{args::MainArgs, node::Node, staker::Staker, storage::Storage};
 
 use anyhow::Context;
-use args::Args;
 
+use clap::Parser;
 use melnet2::{wire::http::HttpBackhaul, Swarm};
 use melprot::{Client, CoinChange, NodeRpcClient};
-use structopt::StructOpt;
 use themelio_structs::{BlockHeight, CoinID};
 
 #[cfg(feature = "dhat-heap")]
@@ -28,7 +19,7 @@ fn main() -> anyhow::Result<()> {
     let mut builder = env_logger::Builder::from_env("RUST_LOG");
 
     builder.init();
-    let opts = Args::from_args();
+    let opts = MainArgs::parse();
 
     smolscale::block_on(main_async(opts))
 }
@@ -36,7 +27,7 @@ fn main() -> anyhow::Result<()> {
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Runs the main function for a node.
-pub async fn main_async(opt: Args) -> anyhow::Result<()> {
+pub async fn main_async(opt: MainArgs) -> anyhow::Result<()> {
     #[cfg(feature = "dhat-heap")]
     let _profiler = dhat::Profiler::new_heap();
 

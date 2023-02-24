@@ -3,59 +3,61 @@ use crate::storage::Storage;
 use std::{net::SocketAddr, path::PathBuf};
 
 use anyhow::Context;
-use serde::Deserialize;
-use structopt::StructOpt;
+use clap::Parser;
+use serde::{Deserialize, Serialize};
+
 use tap::Tap;
 use themelio_stf::GenesisConfig;
 use themelio_structs::Address;
 use tmelcrypt::Ed25519SK;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
+#[command(author, version, about, long_about = None)]
 /// Command-line arguments.
-pub struct Args {
+pub struct MainArgs {
     /// Listen address
-    #[structopt(long, default_value = "0.0.0.0:41814")]
+    #[arg(long, default_value = "0.0.0.0:41814")]
     listen: SocketAddr,
 
     /// Optional listen address for nodes using the legacy melnet protocol.
-    #[structopt(long)]
+    #[arg(long)]
     legacy_listen: Option<SocketAddr>,
 
     /// Advertise address. Put your public IP address here.
-    #[structopt(long)]
+    #[arg(long)]
     advertise: Option<SocketAddr>,
 
     /// Override bootstrap addresses. May be given as a DNS name.
-    #[structopt(long, default_value = "mainnet-bootstrap.themelio.org:41814")]
+    #[arg(long, default_value = "mainnet-bootstrap.themelio.org:41814")]
     bootstrap: Vec<String>,
 
     /// Database path
-    #[structopt(long)]
+    #[arg(long)]
     database: Option<PathBuf>,
 
     /// Path to a YAML staker configuration
-    #[structopt(long)]
+    #[arg(long)]
     staker_cfg: Option<PathBuf>,
 
     /// If given, uses this JSON file to configure the network genesis rather than following the known testnet/mainnet genesis.
-    #[structopt(long)]
+    #[arg(long)]
     override_genesis: Option<PathBuf>,
 
     /// If set to true, default to the testnet. Otherwise, mainnet validation rules are used.
-    #[structopt(long)]
+    #[arg(long)]
     testnet: bool,
 
     /// If set to true, runs a self-test by replaying the history from genesis, ensuring that everything is correct
-    #[structopt(long)]
+    #[arg(long)]
     pub self_test: bool,
 
     /// Create an in-memory coin index.
-    #[structopt(long)]
+    #[arg(long)]
     pub index_coins: bool,
 }
 
 /// Staker configuration, YAML-deserializable.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct StakerConfig {
     /// ed25519 secret key of the staker
     #[serde(with = "serde_with::rust::display_fromstr")]
@@ -73,7 +75,7 @@ pub struct StakerConfig {
     pub target_fee_multiplier: u128,
 }
 
-impl Args {
+impl MainArgs {
     /// Gets the advertised IP.
     pub fn advertise_addr(&self) -> Option<SocketAddr> {
         self.advertise
@@ -96,10 +98,9 @@ impl Args {
 
     pub async fn storage(&self) -> anyhow::Result<Storage> {
         let genesis = self.genesis_config().await?;
-        let genesis_id = tmelcrypt::hash_single(stdcode::serialize(&genesis).unwrap());
+
         let database_default_path = dirs::home_dir().expect("no home dir?!").tap_mut(|p| {
-            p.push(".themelio-node/");
-            p.push(format!("{}/", hex::encode(genesis_id.0)))
+            p.push(".melnode/");
         });
         let database_base_path = self.database.clone().unwrap_or(database_default_path);
         let _history_path = database_base_path

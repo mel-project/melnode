@@ -1,6 +1,7 @@
+mod blksync;
 mod indexer;
 
-use crate::storage::Storage;
+use crate::{node::blksync::attempt_blksync, storage::Storage};
 
 use anyhow::Context;
 use async_trait::async_trait;
@@ -101,157 +102,6 @@ async fn blksync_loop(_netid: NetID, swarm: Swarm<HttpBackhaul, NodeRpcClient>, 
         }
         smol::Timer::after(gap_time).await;
     }
-}
-
-/// Attempts a sync using the given given node client.
-async fn attempt_blksync(
-    addr: SocketAddr,
-    client: &NodeRpcClient,
-    storage: &Storage,
-) -> anyhow::Result<usize> {
-    if std::env::var("MELNODE_OLD_BLKSYNC").is_ok() {
-        return attempt_blksync_legacy(addr, client, storage).await;
-    }
-    log::debug!("starting blksync");
-    let their_highest = client
-        .get_summary()
-        .timeout(Duration::from_secs(5))
-        .await
-        .context("timed out getting summary")?
-        .context("cannot get their highest block")?
-        .height;
-    log::debug!("their_highest = {their_highest}");
-    let my_highest = storage.highest_height().await;
-    if their_highest <= my_highest {
-        return Ok(0);
-    }
-
-    let mut num_blocks_applied: usize = 0;
-    let my_highest: u64 = my_highest.0 + 1;
-
-    let mut height = BlockHeight(my_highest);
-    while height <= their_highest {
-        let start = Instant::now();
-
-        log::debug!("gonna get compressed blocks...");
-        let compressed_blocks = client
-            .get_lz4_blocks(height, 500_000)
-            .timeout(Duration::from_secs(30))
-            .await
-            .context("timeout while getting compressed blocks")?
-            .context("failed to get compressed blocks")?;
-        log::debug!("got compressed blocks!");
-
-        let (blocks, cproofs): (Vec<Block>, Vec<ConsensusProof>) = match compressed_blocks {
-            Some(compressed) => {
-                // decode base64 first
-                let compressed_base64 = base64::engine::general_purpose::STANDARD_NO_PAD
-                    .decode(compressed.as_bytes())?;
-
-                // decompress
-                let decompressed = lz4_flex::decompress_size_prepended(&compressed_base64)?;
-
-                stdcode::deserialize::<(Vec<Block>, Vec<ConsensusProof>)>(&decompressed)?
-            }
-            _ => anyhow::bail!("missing block {height}"),
-        };
-
-        let mut last_applied_height = height;
-        log::info!(
-            "fully resolved blocks {}..{} from peer {} in {:.2}ms",
-            blocks.first().map(|b| b.header.height).unwrap_or_default(),
-            blocks.last().map(|b| b.header.height).unwrap_or_default(),
-            addr,
-            start.elapsed().as_secs_f64() * 1000.0
-        );
-        for (block, cproof) in blocks.iter().zip(cproofs) {
-            // validate before applying
-            if block.header.height != last_applied_height {
-                anyhow::bail!("wanted block {}, but got {}", height, block.header.height);
-            }
-
-            storage
-                .apply_block(block.clone(), cproof)
-                .await
-                .context("could not apply a resolved block")?;
-            num_blocks_applied += 1;
-
-            last_applied_height += BlockHeight(1);
-        }
-
-        height += BlockHeight(blocks.len() as u64);
-    }
-
-    Ok(num_blocks_applied)
-}
-
-/// Attempts a sync using the given given node client, in a legacy fashion.
-async fn attempt_blksync_legacy(
-    addr: SocketAddr,
-    client: &NodeRpcClient,
-    storage: &Storage,
-) -> anyhow::Result<usize> {
-    let their_highest = client
-        .get_summary()
-        .timeout(Duration::from_secs(5))
-        .await
-        .context("timed out getting summary")?
-        .context("cannot get their highest block")?
-        .height;
-    let my_highest = storage.highest_height().await;
-    if their_highest <= my_highest {
-        return Ok(0);
-    }
-    let height_stream = futures_util::stream::iter((my_highest.0..=their_highest.0).skip(1))
-        .map(BlockHeight)
-        .take(
-            std::env::var("THEMELIO_BLKSYNC_BATCH")
-                .ok()
-                .and_then(|d| d.parse().ok())
-                .unwrap_or(1000),
-        );
-    let lookup_tx = |tx| storage.mempool().lookup_recent_tx(tx);
-    let mut result_stream = height_stream
-        .map(Ok::<_, anyhow::Error>)
-        .try_filter_map(|height| async move {
-            Ok(Some(async move {
-                let start = Instant::now();
-
-                let (block, cproof): (Block, ConsensusProof) = match client
-                    .get_full_block(height, &lookup_tx)
-                    .timeout(Duration::from_secs(15))
-                    .await
-                    .context("timeout")??
-                {
-                    Some(v) => v,
-                    _ => anyhow::bail!("mysteriously missing block {}", height),
-                };
-
-                if block.header.height != height {
-                    anyhow::bail!("WANTED BLK {}, got {}", height, block.header.height);
-                }
-                log::trace!(
-                    "fully resolved block {} from peer {} in {:.2}ms",
-                    block.header.height,
-                    addr,
-                    start.elapsed().as_secs_f64() * 1000.0
-                );
-                Ok((block, cproof))
-            }))
-        })
-        .try_buffered(64)
-        .boxed();
-    let mut toret = 0;
-    while let Some(res) = result_stream.try_next().await? {
-        let (block, proof): (Block, ConsensusProof) = res;
-
-        storage
-            .apply_block(block, proof)
-            .await
-            .context("could not apply a resolved block")?;
-        toret += 1;
-    }
-    Ok(toret)
 }
 
 // This struct is responsible for obtaining any "state" needed for the implementation of the RPC business logic.
@@ -405,7 +255,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
                 .storage
                 .get_consensus(header.height)
                 .await
-                .expect("no consensus proof for highest height");
+                .unwrap_or_default();
             let summary = StateSummary {
                 netid: self.network,
                 height: header.height,
@@ -488,7 +338,6 @@ impl NodeRpcProtocol for NodeRpcImpl {
     }
 
     async fn get_stakers_raw(&self, height: BlockHeight) -> Option<BTreeMap<HashVal, Vec<u8>>> {
-        log::warn!("GETTING STAKERS FOR {height}");
         let state = self.storage.get_state(height).await?;
         // Note, the returned HashVal is >> HASHED AGAIN << because this is supposed to be compatible with the old SmtMapping encoding, where the key to the `stakes` SMT is the *hash of the transaction hash* due to a quirk.
         Some(
@@ -501,22 +350,18 @@ impl NodeRpcProtocol for NodeRpcImpl {
     }
 
     async fn get_some_coins(&self, height: BlockHeight, covhash: Address) -> Option<Vec<CoinID>> {
-        if let Some(indexer) = self.get_indexer().await {
-            let coins: Vec<CoinID> = indexer
-                .query_coins()
-                .covhash(covhash)
-                .create_height_range(0..=height.0)
-                .iter()
-                .map(|c| CoinID {
-                    txhash: c.create_txhash,
-                    index: c.create_index,
-                })
-                .collect();
-            Some(coins)
-        } else {
-            log::warn!("no coin indexer configured for current node");
-            None
-        }
+        let indexer = self.get_indexer().await?;
+        let coins: Vec<CoinID> = indexer
+            .query_coins()
+            .covhash(covhash)
+            .create_height_range(0..=height.0)
+            .iter()
+            .map(|c| CoinID {
+                txhash: c.create_txhash,
+                index: c.create_index,
+            })
+            .collect();
+        Some(coins)
     }
 
     async fn get_coin_changes(
@@ -525,66 +370,59 @@ impl NodeRpcProtocol for NodeRpcImpl {
         covhash: Address,
     ) -> Option<Vec<CoinChange>> {
         self.storage.get_block(height).await?;
-        if let Some(indexer) = self.get_indexer().await {
-            // get coins 1 block below the given height
-            let before_coins: Vec<CoinInfo> = indexer
-                .query_coins()
-                .covhash(covhash)
-                .unspent()
-                .create_height_range(0..height.0)
-                .iter()
-                .collect();
+        let indexer = self.get_indexer().await?;
+        // get coins 1 block below the given height
+        let before_coins: Vec<CoinInfo> = indexer
+            .query_coins()
+            .covhash(covhash)
+            .unspent()
+            .create_height_range(0..height.0)
+            .iter()
+            .collect();
 
-            // get coins at the given height
-            let after_coins: Vec<CoinInfo> = indexer
-                .query_coins()
-                .covhash(covhash)
-                .unspent()
-                .create_height_range(0..=height.0)
-                .iter()
-                .collect();
+        // get coins at the given height
+        let after_coins: Vec<CoinInfo> = indexer
+            .query_coins()
+            .covhash(covhash)
+            .unspent()
+            .create_height_range(0..=height.0)
+            .iter()
+            .collect();
 
-            // which coins got added in after_coins?
-            let added: Vec<CoinChange> = after_coins
-                .iter()
-                .filter(|after| !before_coins.contains(after))
-                .map(|coin| CoinChange::Add(CoinID::new(coin.create_txhash, coin.create_index)))
-                .collect();
+        // which coins got added in after_coins?
+        let added: Vec<CoinChange> = after_coins
+            .iter()
+            .filter(|after| !before_coins.contains(after))
+            .map(|coin| CoinChange::Add(CoinID::new(coin.create_txhash, coin.create_index)))
+            .collect();
 
-            // which coins got deleted in before coins?
-            let deleted: Vec<CoinChange> = before_coins
-                .iter()
-                .filter(|before| !after_coins.contains(before))
-                .map(|coin| {
-                    CoinChange::Delete(
-                        CoinID::new(coin.create_txhash, coin.create_index),
-                        coin.spend_info.unwrap().spend_txhash,
-                    )
-                })
-                .collect();
+        // which coins got deleted in before coins?
+        let deleted: Vec<CoinChange> = before_coins
+            .iter()
+            .filter(|before| !after_coins.contains(before))
+            .map(|coin| {
+                CoinChange::Delete(
+                    CoinID::new(coin.create_txhash, coin.create_index),
+                    coin.spend_info.unwrap().spend_txhash,
+                )
+            })
+            .collect();
 
-            Some([added, deleted].concat())
-        } else {
-            log::warn!("no coin indexer configured for current node");
-            None
-        }
+        Some([added, deleted].concat())
     }
 
     async fn get_coin_spend(&self, coin: CoinID) -> Option<CoinSpendStatus> {
-        if let Some(indexer) = self.get_indexer().await {
-            let coin_info: Vec<CoinInfo> = indexer
-                .query_coins()
-                .create_txhash(coin.txhash)
-                .create_index(coin.index)
-                .iter()
-                .collect();
+        let indexer = self.get_indexer().await?;
 
-            coin_info
-                .first()
-                .map(|coin| CoinSpendStatus::Spent((coin.create_txhash, coin.create_height)))
-        } else {
-            log::warn!("no coin indexer configured for current node");
-            None
-        }
+        let coin_info: Vec<CoinInfo> = indexer
+            .query_coins()
+            .create_txhash(coin.txhash)
+            .create_index(coin.index)
+            .iter()
+            .collect();
+
+        coin_info
+            .first()
+            .map(|coin| CoinSpendStatus::Spent((coin.create_txhash, coin.create_height)))
     }
 }

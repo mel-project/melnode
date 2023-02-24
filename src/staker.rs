@@ -28,7 +28,7 @@ use stdcode::StdcodeSerializeExt;
 use streamlette::{DeciderConfig, DiffMessage};
 use tap::Tap;
 use themelio_stf::SealedState;
-use themelio_structs::{Block, BlockHeight, ConsensusProof, ProposerAction, StakeDoc};
+use themelio_structs::{Block, BlockHeight, ConsensusProof, NetID, ProposerAction, StakeDoc};
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
 static MAINNET_START_TIME: Lazy<SystemTime> = Lazy::new(|| {
@@ -37,6 +37,14 @@ static MAINNET_START_TIME: Lazy<SystemTime> = Lazy::new(|| {
 
 static TESTNET_START_TIME: Lazy<SystemTime> =
     Lazy::new(|| std::time::UNIX_EPOCH + Duration::from_secs(1665123000));
+
+fn height_to_time(netid: NetID, height: BlockHeight) -> SystemTime {
+    match netid {
+        NetID::Testnet => *TESTNET_START_TIME,
+        NetID::Mainnet => *MAINNET_START_TIME,
+        _ => SystemTime::now(),
+    }
+}
 
 /// An actor that represents the background process that runs staker logic.
 ///
@@ -74,8 +82,11 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
     let swarm: Swarm<HttpBackhaul, StakerNetClient<DynRpcTransport>> = Swarm::new(
         HttpBackhaul::new(),
         |conn| StakerNetClient(DynRpcTransport::new(conn)),
-        "themelio-staker-2",
+        "melstaker-2",
     );
+    swarm
+        .add_route(cfg.bootstrap.to_string().into(), true)
+        .await;
     // a "consensus proof gatherer" (see description)
     let sig_gather: Arc<ConsensusProofGatherer> = Arc::new(Cache::new(10));
     swarm
@@ -89,9 +100,7 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
         )
         .await?;
     // TODO better time calcs
-    let mut timer = smol::Timer::interval(Duration::from_secs(30));
     loop {
-        timer.next().await;
         let base_state = storage.highest_state().await;
         let next_height: BlockHeight = base_state.header().height + BlockHeight(1);
         let skip_round = async {
@@ -100,6 +109,13 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
             log::warn!("skipping consensus for {next_height} since we already got it");
             anyhow::Ok(())
         };
+        log::debug!("starting consensus for {next_height}...");
+        let next_time = height_to_time(base_state.header().network, next_height);
+
+        while SystemTime::now() < next_time {
+            smol::Timer::after(Duration::from_millis(100)).await;
+        }
+
         let decide_round = async {
             let proposed_state = storage.mempool().to_state();
             let sealed_proposed_state = proposed_state.clone().seal(None);
@@ -175,7 +191,7 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
                     }
                     let random_neigh = swarm.routes().await.first().cloned();
                     if let Some(neigh) = random_neigh {
-                        log::debug!("syncing with {} for consensus proof", neigh);
+                        log::trace!("syncing with {} for consensus proof", neigh);
                         let fallible = async {
                             let connection = swarm.connect(neigh.clone()).await?;
                             let result = connection.get_sigs(next_height).await?;
@@ -192,6 +208,7 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
                             }
                         }
                     }
+                    smallsleep().await;
                 }
             }
             anyhow::Ok(())
@@ -260,7 +277,7 @@ impl DeciderConfig for StakerInner {
                         }
                     }
                 }
-                smol::Timer::after(Duration::from_millis(100)).await;
+                smallsleep().await;
             }
         };
         let respond_loop = async {
@@ -298,6 +315,10 @@ impl DeciderConfig for StakerInner {
     fn my_secret(&self) -> Ed25519SK {
         self.my_sk
     }
+}
+
+async fn smallsleep() {
+    smol::Timer::after(Duration::from_millis(fastrand::u64(100..200))).await;
 }
 
 #[nanorpc_derive]
