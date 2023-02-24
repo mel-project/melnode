@@ -77,6 +77,10 @@ async fn network_task(storage: Storage, cfg: StakerConfig) {
     }
 }
 
+// TODO: the current consensus has a very small chance of not reaching completion, especially when the number of nodes is small compared to the network latency (e.g. a localhost simnet).
+// This is because one could enter a situation where streamlette does decide, but less than 2/3 of the streamlette instances terminate properly, since the rest get stuck as 2/3 exit streamlette and no longer relay messages.
+// This *seems* kinda fundamental to "oneshot" consensus that clean everything up after decision. I wonder whether there's a "standard solution" to this.
+
 async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Result<()> {
     // A channel for sending requests for diffs
     let (send_diff_req, recv_diff_req) = smol::channel::bounded::<DiffReq>(100);

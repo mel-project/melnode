@@ -3395,9 +3395,9 @@ dependencies = [
 
 [[package]]
 name = "streamlette"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e9b2a538d79a17c3eb6a76307bc4f888b7609f7b77607d217c7fdc3b3b7859d"
+checksum = "8aee7908425d916dc8f3927b7a6012dfc70c42dda017ab4d05f4a555641df658"
 dependencies = [
  "anyhow",
  "arrayref",
