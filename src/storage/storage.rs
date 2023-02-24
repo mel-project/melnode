@@ -41,6 +41,8 @@ pub struct Storage {
 
     /// SQLite path
     sqlite_path: PathBuf,
+
+    lock: Arc<smol::lock::Mutex<()>>,
 }
 
 impl Storage {
@@ -107,6 +109,8 @@ impl Storage {
             new_block_notify: Arc::new(Event::new()),
             mempool,
             sqlite_path,
+
+            lock: Default::default(),
         })
     }
 
@@ -251,6 +255,8 @@ impl Storage {
 
     /// Consumes a block, applying it to the current state.
     pub async fn apply_block(&self, blk: Block, cproof: ConsensusProof) -> anyhow::Result<()> {
+        let _guard = self.lock.lock().await;
+
         let highest_state = self.highest_state().await;
         let header = blk.header;
         if header.height != highest_state.header().height + 1.into() {

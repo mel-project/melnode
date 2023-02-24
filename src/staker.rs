@@ -7,6 +7,7 @@ use anyhow::Context;
 use async_trait::async_trait;
 use bytes::Bytes;
 
+use dashmap::DashMap;
 use melnet2::{wire::http::HttpBackhaul, Swarm};
 use moka::sync::Cache;
 use nanorpc::{nanorpc_derive, DynRpcTransport};
@@ -89,7 +90,7 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
         .add_route(cfg.bootstrap.to_string().into(), true)
         .await;
     // a "consensus proof gatherer" (see description)
-    let sig_gather: Arc<ConsensusProofGatherer> = Arc::new(Cache::new(10));
+    let sig_gather: Arc<ConsensusProofGatherer> = Arc::new(DashMap::new());
     swarm
         .start_listen(
             cfg.listen.to_string().into(),
@@ -97,6 +98,7 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
             StakerNetService(StakerNetProtocolImpl {
                 send_diff_req,
                 sig_gather: sig_gather.clone(),
+                storage: storage.clone(),
             }),
         )
         .await
@@ -111,6 +113,9 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
             anyhow::Ok(())
         };
         let next_time = height_to_time(base_state.header().network, next_height);
+        if next_height.0 > 10 {
+            sig_gather.remove(&BlockHeight(next_height.0 - 10));
+        }
 
         while SystemTime::now() < next_time {
             smol::Timer::after(Duration::from_millis(100)).await;
@@ -118,6 +123,8 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
 
         log::debug!("starting consensus for {next_height}...");
         let consensus_start_time = Instant::now();
+
+        let log_key = format!("{next_height}/{}", cfg.listen);
 
         let decide_round = async {
             let proposed_state = storage.mempool().to_state();
@@ -151,7 +158,7 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
                 let decider = streamlette::Decider::new(config);
                 let decision = decider.tick_to_end().await;
                 log::debug!(
-                    "DECIDED on a block with {} bytes within {:?}",
+                    "{log_key} DECIDED on a block with {} bytes within {:?}",
                     decision.len(),
                     consensus_start_time.elapsed()
                 );
@@ -177,7 +184,7 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
                 let epoch = base_state.header().height.epoch();
                 let vote_threshold = stakes.total_votes(epoch) * 2 / 3;
                 let get_proof = || {
-                    let map = sig_gather.get(&decision.header.height).unwrap_or_default();
+                    let map = sig_gather.entry(decision.header.height).or_default();
                     if map.keys().map(|pk| stakes.votes(epoch, *pk)).sum::<u128>() > vote_threshold
                     {
                         Some(map)
@@ -188,12 +195,12 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
                 loop {
                     if let Some(result) = get_proof() {
                         let cproof: ConsensusProof =
-                            result.into_iter().map(|(k, v)| (k, v)).collect();
+                            result.clone().into_iter().map(|(k, v)| (k, v)).collect();
                         if let Err(err) = storage.apply_block(decision.clone(), cproof).await {
                             log::error!("cannot commit newly decided block: {:?}", err)
                         }
                         log::debug!(
-                            "COMMITTED the newly decided block within {:?}",
+                            "{log_key} COMMITTED the newly decided block within {:?}",
                             consensus_start_time.elapsed()
                         );
                         break;
@@ -217,11 +224,14 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
                         match fallible.await {
                             Err(err) => log::warn!("cannot sync with {neigh}: {:?}", err),
                             Ok(map) => {
-                                let mut existing = sig_gather.get(&next_height).unwrap_or_default();
+                                let mut existing = sig_gather.entry(next_height).or_default();
                                 for (k, v) in map {
                                     existing.insert(k, v);
                                 }
-                                sig_gather.insert(next_height, existing);
+                                log::debug!(
+                                    "{log_key}  now have {} votes in consensus proof after talking to {neigh}",
+                                    existing.len()
+                                );
                             }
                         }
                     }
@@ -354,6 +364,7 @@ pub trait StakerNetProtocol {
 struct StakerNetProtocolImpl {
     send_diff_req: Sender<DiffReq>,
     sig_gather: Arc<ConsensusProofGatherer>,
+    storage: Storage,
 }
 
 #[async_trait]
@@ -370,12 +381,17 @@ impl StakerNetProtocol for StakerNetProtocolImpl {
     }
 
     async fn get_sigs(&self, height: BlockHeight) -> HashMap<Ed25519PK, Bytes> {
-        self.sig_gather
-            .get(&height)
-            .unwrap_or_default()
-            .into_iter()
-            .collect() // convert from immutable to std
+        if let Some(val) = self.storage.get_consensus(height).await {
+            val.into_iter().collect()
+        } else {
+            self.sig_gather
+                .get(&height)
+                .map(|s| s.clone())
+                .unwrap_or_default()
+                .into_iter()
+                .collect() // convert from immutable to std
+        }
     }
 }
 
-type ConsensusProofGatherer = Cache<BlockHeight, imbl::HashMap<Ed25519PK, Bytes>>;
+type ConsensusProofGatherer = DashMap<BlockHeight, imbl::HashMap<Ed25519PK, Bytes>>;
