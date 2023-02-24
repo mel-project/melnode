@@ -159,7 +159,7 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
                     recv_diff_req: recv_diff_req.clone(),
                     swarm: swarm.clone(),
                 };
-                let decider = streamlette::Decider::new(config);
+                let mut decider = streamlette::Decider::new(config);
                 let decision = decider.tick_to_end().await;
                 log::debug!(
                     "{log_key} DECIDED on a block with {} bytes within {:?}",
@@ -182,6 +182,8 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
                         );
                     }),
                 );
+
+                let _spammer = smolscale::spawn(async move { decider.sync_state(None).await });
 
                 // then, until we finally have enough signatures, we spam our neighbors incessantly.
                 let stakes = base_state.raw_stakes();
