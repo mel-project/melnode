@@ -35,7 +35,7 @@ use tmelcrypt::{HashVal, Hashable};
 
 use self::indexer::WrappedIndexer;
 
-/// An actor implementing the node P2P protocol, common for both auditors and stakers..
+/// An actor implementing the node P2P protocol, common for both replicas and stakers..
 pub struct Node {
     _blksync_task: smol::Task<()>,
 }

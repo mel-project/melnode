@@ -8,7 +8,7 @@ use melvm::covenant_weight_from_bytes;
 
 const WEIGHT_LIMIT: u128 = 10_000_000;
 
-/// Mempool encapsulates a "mempool" --- a provisional state that is used to form new blocks by stakers, or provisionally validate transactions by auditors.
+/// Mempool encapsulates a "mempool" --- a provisional state that is used to form new blocks by stakers, or provisionally validate transactions by replicas.
 pub struct Mempool {
     provisional_state: UnsealedState<MeshaCas>,
     last_rebase: UnsealedState<MeshaCas>,

@@ -1,21 +1,21 @@
 # melnode: Mel's reference implementation
 
-[![](https://img.shields.io/crates/v/themelio-node)](https://crates.io/crates/themelio-node)
-![](https://img.shields.io/crates/l/themelio-node)
+[![](https://img.shields.io/crates/v/melnode)](https://crates.io/crates/melode)
+![](https://img.shields.io/crates/l/melnode)
 
-[Mel](https://themelio.org) is a new public blockchain focused on security, performance, and long-term stability. `themelio-node` is Mel's reference implementation in Rust.
+[Mel](https://themelio.org) is a new public blockchain focused on security, performance, and long-term stability. `melnode` is Mel's reference implementation in Rust.
 
 ## Installation
 
-For security reasons, until we have reliable reproducible build infrastructure, the only official distribution channel for `themelio-node` is its source code package on [crates.io](https://crates.io).
+For security reasons, until we have reliable reproducible build infrastructure, the only official distribution channel for `melnode` is its source code package on [crates.io](https://crates.io).
 
-Fortunately, installing `themelio-node` from source is extremely easy. First, make sure [cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html) is installed on your machine. Then, simply run
+Fortunately, installing `melnode` from source is extremely easy. First, make sure [cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html) is installed on your machine. Then, simply run
 
 ```
-$ cargo install --locked themelio-node
+$ cargo install --locked melnode
 ```
 
-This produces an executable `themelio-node` in `~/.cargo/bin/`, which should already be in your `$PATH`.
+This produces an executable `melnode` in `~/.cargo/bin/`, which should already be in your `$PATH`.
 
 ## Hardware Requirements
 
@@ -37,27 +37,27 @@ Full nodes replicate every consensus-confirmed block, validating its contents an
 
 There are two kinds of full nodes:
 
-- Auditor nodes comprise the vast majority of full nodes. They replicate and verify blocks but do not vote in consensus.
-- Staker nodes, the ultimate guardians of Mel security, have Sym locked up and participate in consensus. They are analogous to miners in proof-of-work blockchains like Bitcoin.
+- **Replica nodes** comprise the vast majority of full nodes. They replicate and verify blocks but do not vote in consensus.
+- **Staker nodes**, the ultimate guardians of Mel security, have SYM locked up and participate in consensus. They are analogous to miners in proof-of-work blockchains like Bitcoin.
 
 ## Auditor Full Node
 
 ### On the Mel Mainnet:
 
-To run an auditor on the “mainnet” (which at the moment is far from stable, but does have a persistent history), just run:
+To run an replica on the “mainnet” (which at the moment is far from stable, but does have a persistent history), just run:
 
 ```
-$ themelio-node
+$ melnode
 ```
 
-`themelio-node` will then beginning synchronizing all the blocks in the blockchain. This will take quite a while (a day or so) and store a bunch of data in in `~/.themelio-node/`.
+`melnode` will then beginning synchronizing all the blocks in the blockchain. This will take quite a while (a day or so) and store a bunch of data in in `~/.melnode/`.
 
 ### On the Mel Testnet:
 
-To run the auditor on the non-persistent testnet, where most covenant development and testing will happen during the betanet period, run instead
+To run the replica on the non-persistent testnet, where most covenant development and testing will happen during the betanet period, run instead
 
 ```
-$ themelio-node --bootstrap tm-1.themelio.org:11814 --testnet
+$ melnode --bootstrap tm-1.themelio.org:11814 --testnet
 ```
 
 Note that two things were needed to connect to the testnet:
@@ -67,7 +67,7 @@ Note that two things were needed to connect to the testnet:
 
 ### Configurations
 
-You can change the configuration of an auditor node with the following flags:
+You can change the configuration of an replica node with the following flags:
 
 ```
 --bootstrap <bootstrap>...
@@ -162,7 +162,7 @@ Finally, make sure your code adheres to the following guidelines:
 - Your code must be documented per the official Rust [documentation guidelines](https://rust-lang.github.io/api-guidelines/documentation.html)
 - Pull requests must be based on and opened against the `master` branch
 - Commit messages must be descriptive
-- Any protocol changes (whether consensus-breaking or not) must start as a TIP (e.g. [TIP-101](https://github.com/themeliolabs/themelio-node/issues/87))
+- Any protocol changes (whether consensus-breaking or not) must start as a TIP (e.g. [TIP-101](https://github.com/themeliolabs/melnode/issues/87))
 
 ## License
 
@@ -170,15 +170,16 @@ The license of the project is the Mozilla Public License, version 2.
 
 ---
 
+<!--
 ## Source code structure
 
-`themelio-node` is a highly concurrent program where different tasks are done by separate _actors_, which are "active" structs that own background async tasks or threads. They concurrently run and communicate both with other actors and with "plain data" types like `Mempool`. They are represented as green boxes in the following diagram illustrating the _data flows_ of the whole program:
+`melnode` is a highly concurrent program where different tasks are done by separate _actors_, which are "active" structs that own background async tasks or threads. They concurrently run and communicate both with other actors and with "plain data" types like `Mempool`. They are represented as green boxes in the following diagram illustrating the _data flows_ of the whole program:
 
 ![](diagram.png)
 
-There are the following primary types in themelio-node:
+There are the following primary types in melnode:
 
-- `NodeProtocol` is the **core node actor**. It implements the core auditor/full node logic: gossiping with other through the `melnet`-based auditor P2P network (via the `melprot` crate) to synchronize the latest blockchain state.
+- `NodeProtocol` is the **core node actor**. It implements the core replica/full node logic: gossiping with other through the `melnet`-based replica P2P network (via the `melprot` crate) to synchronize the latest blockchain state.
   - Pushes new blocks to `Storage`
   - Pushes new transactions to `Mempool`; they are only gossipped further if `Mempool` accepts them
   - Pulls data from `Storage` to gossip to other nodes
@@ -189,10 +190,10 @@ There are the following primary types in themelio-node:
   - `Mempool` is a non-persistent field that keeps track of _the most likely next block_. This is based on the existing blockchain state plus unconfirmed transactions seen in the network.
 - `StakerProtocol` is the **core staker actor**, which is only started in staker mode. It runs the Streamlet consensus protocol (implemented in the `novasymph` crate) over a separate melnet P2P.
   - Pushes freshly finalized blocks, with their consensus proofs (a quorum of signatures), into `Storage` (where `NodeProtocol` will pick them up and gossip them)
-  - When proposing a block, pulls a candidate from `Mempool`
+  - When proposing a block, pulls a candidate from `Mempool` -->
 
-## Metrics
+<!-- ## Metrics
 
-Mel Labs runs a worldwide network of Mel full nodes --- `themelio-node` can also be compiled to report metrics for this network.
+Mel Labs runs a worldwide network of Mel full nodes --- `melnode` can also be compiled to report metrics for this network.
 
-Read [here](Metrics.md).
+Read [here](Metrics.md). -->

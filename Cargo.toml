@@ -53,7 +53,7 @@ optional = true
 
 
 [dependencies]
-# melprot = { git = "https://github.com/themeliolabs/themelio-nodeprot", branch = "use-themelio-structs-0.3-beta" }
+# melprot = { git = "https://github.com/themeliolabs/melnodeprot", branch = "use-themelio-structs-0.3-beta" }
 # melprot = { git = "https://github.com/themeliolabs/melprot", branch = "master" }
 
 anyhow = "1.0.68"

@@ -41,7 +41,7 @@ pub async fn main_async(opt: MainArgs) -> anyhow::Result<()> {
     log::info!("bootstrapping with {:?}", bootstrap);
 
     let swarm: Swarm<HttpBackhaul, NodeRpcClient> =
-        Swarm::new(HttpBackhaul::new(), NodeRpcClient, "themelio-node");
+        Swarm::new(HttpBackhaul::new(), NodeRpcClient, "melnode");
 
     // we add the bootstrap routes as "sticky" routes that never expire
     for addr in bootstrap.iter() {

@@ -22,7 +22,7 @@ use crate::autoretry::autoretry;
 
 use super::{mempool::Mempool, MeshaCas};
 
-/// Storage encapsulates all storage used by a Mel full node (auditor or staker).
+/// Storage encapsulates all storage used by a Mel full node (replica or staker).
 #[derive(Clone)]
 pub struct Storage {
     send_pool: Sender<rusqlite::Connection>,
