@@ -41,8 +41,8 @@ static TESTNET_START_TIME: Lazy<SystemTime> =
 
 fn height_to_time(netid: NetID, height: BlockHeight) -> SystemTime {
     match netid {
-        NetID::Testnet => *TESTNET_START_TIME,
-        NetID::Mainnet => *MAINNET_START_TIME,
+        NetID::Testnet => *TESTNET_START_TIME + Duration::from_secs(height.0 * 30),
+        NetID::Mainnet => *MAINNET_START_TIME + Duration::from_secs(height.0 * 30),
         _ => SystemTime::now(),
     }
 }
