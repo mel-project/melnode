@@ -1,6 +1,0 @@
-[Unit]
-Description=Pull Latest Mel-Node Image And Restart The Service
-[Service]
-User=admin
-Environment="NETWORK=mainnet"
-ExecStart=/usr/local/bin/update-images-and-restart.sh
