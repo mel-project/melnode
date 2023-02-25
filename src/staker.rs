@@ -355,7 +355,7 @@ impl DeciderConfig for StakerInner {
 }
 
 async fn smallsleep() {
-    smol::Timer::after(Duration::from_millis(fastrand::u64(100..200))).await;
+    smol::Timer::after(Duration::from_millis(fastrand::u64(200..500))).await;
 }
 
 #[nanorpc_derive]

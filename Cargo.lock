@@ -3395,9 +3395,9 @@ dependencies = [
 
 [[package]]
 name = "streamlette"
-version = "0.2.0"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4786275c94db815a4e7184fdbaa779a4fadfbf64969f7ff7a390d40271bad0d6"
+checksum = "1d780a091f491c987411592855e721c7745a3e4452ded4914826ab7fc6ed4f63"
 dependencies = [
  "anyhow",
  "arrayref",
@@ -3657,9 +3657,9 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.3.19"
+version = "0.3.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53250a3b3fed8ff8fd988587d8925d26a83ac3845d9e03b220b37f34c2b8d6c2"
+checksum = "cd0cbfecb4d19b5ea75bb31ad904eb5b9fa13f21079c3b92017ebdf4999a5890"
 dependencies = [
  "serde",
  "time-core",
