@@ -15,10 +15,8 @@ use tmelcrypt::HashVal;
 use moka::sync::Cache;
 use parking_lot::RwLock;
 
-use themelio_stf::{GenesisConfig, SealedState};
-use themelio_structs::{
-    Block, BlockHeight, CoinValue, ConsensusProof, NetID, StakeDoc, TxHash, TxKind,
-};
+use melstf::{GenesisConfig, SealedState};
+use melstructs::{Block, BlockHeight, CoinValue, ConsensusProof, NetID, StakeDoc, TxHash, TxKind};
 
 use crate::autoretry::autoretry;
 

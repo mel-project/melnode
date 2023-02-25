@@ -1801,8 +1801,9 @@ checksum = "2532096657941c2fea9c289d370a250971c689d4f143798ff67113ec042024a5"
 
 [[package]]
 name = "melblkidx"
-version = "0.6.1"
-source = "git+https://github.com/themeliolabs/melblkidx?branch=master#a2b5f727e4452bd5f2efa418e66ac822be86065a"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2cc323b1221bc7f053074f98129148aa7b2c87fe8abb606c8f12633ebf004b12"
 dependencies = [
  "anyhow",
  "concurrent-queue 1.2.4",
@@ -1810,7 +1811,9 @@ dependencies = [
  "hex",
  "itertools",
  "log",
+ "melbootstrap",
  "melprot",
+ "melstructs",
  "once_cell",
  "parking_lot 0.12.1",
  "rusqlite",
@@ -1819,9 +1822,17 @@ dependencies = [
  "smolscale",
  "stdcode",
  "tap",
- "themelio-bootstrap",
- "themelio-structs",
  "tmelcrypt",
+]
+
+[[package]]
+name = "melbootstrap"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "78e360538ed3a2c2b816c15c8767a29c660a9982e5961e45783a2957b4e6029c"
+dependencies = [
+ "melstructs",
+ "once_cell",
 ]
 
 [[package]]
@@ -1885,13 +1896,16 @@ dependencies = [
  "lru",
  "lz4_flex",
  "melblkidx",
+ "melbootstrap",
  "melnet2",
  "melprot",
+ "melstf",
+ "melstructs",
  "melvm",
  "meshanina",
  "moka",
  "nanorpc",
- "novasmt 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
+ "novasmt",
  "once_cell",
  "parking_lot 0.12.1",
  "prometheus",
@@ -1909,9 +1923,6 @@ dependencies = [
  "stdcode",
  "streamlette",
  "tap",
- "themelio-bootstrap",
- "themelio-stf",
- "themelio-structs",
  "thiserror",
  "tip911-stakeset",
  "tmelcrypt",
@@ -1931,8 +1942,9 @@ dependencies = [
 
 [[package]]
 name = "melprot"
-version = "0.12.2"
-source = "git+https://github.com/themeliolabs/themelio-nodeprot?branch=use-themelio-structs-0.3-beta#74bfe1ed57e4faaf1f7ea6c4294a1808fbba370c"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "66a6a8bce22db86af9bb0c819558da5db21d1e305eccc0ec28ca54e8ac669a26"
 dependencies = [
  "anyhow",
  "arrayref",
@@ -1945,8 +1957,9 @@ dependencies = [
  "log",
  "lru",
  "melnet2",
+ "melstructs",
  "nanorpc",
- "novasmt 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
+ "novasmt",
  "once_cell",
  "parking_lot 0.12.1",
  "rustc-hash",
@@ -1956,7 +1969,75 @@ dependencies = [
  "smol_str",
  "smolscale",
  "stdcode",
- "themelio-structs",
+ "thiserror",
+ "tmelcrypt",
+]
+
+[[package]]
+name = "melstf"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f380d8e6198adb1aa6198a11967e9125076c3b3455af05cafa94ee6e92617cd"
+dependencies = [
+ "arbitrary",
+ "assoc",
+ "atomic_float",
+ "blake3",
+ "bytes",
+ "catvec",
+ "dashmap 4.0.2",
+ "defmac",
+ "derivative",
+ "derive_more",
+ "env_logger",
+ "ethnum",
+ "fastrand",
+ "genawaiter",
+ "hex",
+ "honggfuzz",
+ "imbl 2.0.0",
+ "jemallocator",
+ "log",
+ "melpow",
+ "melstructs",
+ "melvm",
+ "novasmt",
+ "num",
+ "num_enum",
+ "once_cell",
+ "parking_lot 0.11.2",
+ "rayon",
+ "rustc-hash",
+ "scopeguard",
+ "serde",
+ "serde_repr",
+ "serde_with",
+ "smallvec",
+ "stdcode",
+ "tap",
+ "thiserror",
+ "tip911-stakeset",
+ "tmelcrypt",
+]
+
+[[package]]
+name = "melstructs"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0daeea135fc23ad021124895bd92069b3f8cec13f45cb14b60e3387ea079f877"
+dependencies = [
+ "bytes",
+ "derivative",
+ "derive_more",
+ "hex",
+ "num",
+ "num_enum",
+ "parse-display",
+ "serde",
+ "serde_repr",
+ "serde_with",
+ "stdcode",
+ "tap",
  "thiserror",
  "tmelcrypt",
 ]
@@ -1964,17 +2045,18 @@ dependencies = [
 [[package]]
 name = "melvm"
 version = "0.1.0"
-source = "git+https://github.com/themeliolabs/themelio-stf?branch=applytx-refactors#18c33dcb6ae41b59aba99a7ca643f834fde16159"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a4c34965f76c9e4b003c0788a44998c23164fe632d7e01baabbde6af489ae2e"
 dependencies = [
  "bytes",
  "catvec",
  "ethnum",
  "hex",
  "log",
+ "melstructs",
  "serde",
  "stdcode",
  "tap",
- "themelio-structs",
  "thiserror",
  "tmelcrypt",
 ]
@@ -2186,31 +2268,6 @@ dependencies = [
  "backtrace",
  "bitvec",
  "blake3",
- "dashmap 4.0.2",
- "env_logger",
- "ethnum",
- "genawaiter",
- "hex",
- "honggfuzz",
- "itertools",
- "log",
- "lru",
- "rayon",
- "replace_with",
- "rustc-hash",
- "serde",
-]
-
-[[package]]
-name = "novasmt"
-version = "0.2.19"
-source = "git+https://github.com/themeliolabs/novasmt?branch=tip-911#83bba1dfce28f0a6470910fb250b685103052f07"
-dependencies = [
- "arrayref",
- "backtrace",
- "bitvec",
- "blake3",
- "bytes",
  "dashmap 4.0.2",
  "env_logger",
  "ethnum",
@@ -3543,83 +3600,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "themelio-bootstrap"
-version = "0.7.2"
-source = "git+https://github.com/themeliolabs/themelio-bootstrap?branch=use-themelio-structs-0.3-beta#266d52c2fbf4af34e6b157fd4c53fd230bebd2d0"
-dependencies = [
- "once_cell",
- "themelio-structs",
-]
-
-[[package]]
-name = "themelio-stf"
-version = "0.11.13"
-source = "git+https://github.com/themeliolabs/themelio-stf?branch=applytx-refactors#18c33dcb6ae41b59aba99a7ca643f834fde16159"
-dependencies = [
- "arbitrary",
- "assoc",
- "atomic_float",
- "blake3",
- "bytes",
- "catvec",
- "dashmap 4.0.2",
- "defmac",
- "derivative",
- "derive_more",
- "env_logger",
- "ethnum",
- "fastrand",
- "genawaiter",
- "hex",
- "honggfuzz",
- "imbl 2.0.0",
- "jemallocator",
- "log",
- "melpow",
- "melvm",
- "novasmt 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
- "num",
- "num_enum",
- "once_cell",
- "parking_lot 0.11.2",
- "rayon",
- "rustc-hash",
- "scopeguard",
- "serde",
- "serde_repr",
- "serde_with",
- "smallvec",
- "stdcode",
- "tap",
- "themelio-structs",
- "thiserror",
- "tip911-stakeset",
- "tmelcrypt",
-]
-
-[[package]]
-name = "themelio-structs"
-version = "0.3.0-beta.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38797c3e9043f8e23190de567dfdd512573283cb8a6ec9e0d98f9e792a072f5a"
-dependencies = [
- "bytes",
- "derivative",
- "derive_more",
- "hex",
- "num",
- "num_enum",
- "parse-display",
- "serde",
- "serde_repr",
- "serde_with",
- "stdcode",
- "tap",
- "thiserror",
- "tmelcrypt",
-]
-
-[[package]]
 name = "thiserror"
 version = "1.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3688,13 +3668,14 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tip911-stakeset"
-version = "0.1.0"
-source = "git+https://github.com/themeliolabs/themelio-stf?branch=applytx-refactors#18c33dcb6ae41b59aba99a7ca643f834fde16159"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9d2bdf9310e9b4d27f66ed1e1a9fadaec45f1e9a0bf3fe1bb13f12a5318e9381"
 dependencies = [
  "imbl 2.0.0",
- "novasmt 0.2.19 (git+https://github.com/themeliolabs/novasmt?branch=tip-911)",
+ "melstructs",
+ "novasmt",
  "stdcode",
- "themelio-structs",
  "tmelcrypt",
 ]
 

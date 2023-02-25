@@ -2,9 +2,9 @@ use crate::storage::MeshaCas;
 
 use std::collections::HashSet;
 
+use melstf::{SealedState, StateError, UnsealedState};
+use melstructs::{Transaction, TxHash};
 use melvm::covenant_weight_from_bytes;
-use themelio_stf::{SealedState, StateError, UnsealedState};
-use themelio_structs::{Transaction, TxHash};
 
 const WEIGHT_LIMIT: u128 = 10_000_000;
 

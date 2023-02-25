@@ -12,6 +12,8 @@ use melnet2::{wire::http::HttpBackhaul, Swarm};
 use moka::sync::Cache;
 use nanorpc::{nanorpc_derive, DynRpcTransport};
 
+use melstf::SealedState;
+use melstructs::{Block, BlockHeight, ConsensusProof, NetID, ProposerAction, StakeDoc};
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use smol::{
@@ -28,8 +30,6 @@ use std::{
 use stdcode::StdcodeSerializeExt;
 use streamlette::{DeciderConfig, DiffMessage};
 use tap::Tap;
-use themelio_stf::SealedState;
-use themelio_structs::{Block, BlockHeight, ConsensusProof, NetID, ProposerAction, StakeDoc};
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
 static MAINNET_START_TIME: Lazy<SystemTime> = Lazy::new(|| {

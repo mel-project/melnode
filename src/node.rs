@@ -14,16 +14,16 @@ use novasmt::{CompressedProof, Database, InMemoryCas, Tree};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
+use melstf::SmtMapping;
+use melstructs::{
+    AbbrBlock, Address, Block, BlockHeight, CoinID, ConsensusProof, NetID, Transaction, TxHash,
+};
 use std::{
     collections::BTreeMap,
     net::SocketAddr,
     time::{Duration, Instant},
 };
 use stdcode::StdcodeSerializeExt;
-use themelio_stf::SmtMapping;
-use themelio_structs::{
-    AbbrBlock, Address, Block, BlockHeight, CoinID, ConsensusProof, NetID, Transaction, TxHash,
-};
 
 use melprot::{
     CoinChange, CoinSpendStatus, NodeRpcClient, NodeRpcProtocol, NodeRpcService, StateSummary,

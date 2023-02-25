@@ -3,12 +3,12 @@ use anyhow::Context;
 use base64::Engine;
 use futures_util::stream::{StreamExt, TryStreamExt};
 use melprot::NodeRpcClient;
+use melstructs::{Block, BlockHeight, ConsensusProof};
 use smol_timeout::TimeoutExt;
 use std::{
     net::SocketAddr,
     time::{Duration, Instant},
 };
-use themelio_structs::{Block, BlockHeight, ConsensusProof};
 
 /// Attempts a sync using the given given node client.
 pub async fn attempt_blksync(

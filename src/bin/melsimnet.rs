@@ -3,9 +3,9 @@ use melnode::args::StakerConfig;
 use std::fmt::Write;
 use std::net::{Ipv4Addr, SocketAddr};
 
+use melstf::GenesisConfig;
+use melstructs::{Address, CoinData, CoinValue, Denom, NetID, StakeDoc, TxHash};
 use stdcode::StdcodeSerializeExt;
-use themelio_stf::GenesisConfig;
-use themelio_structs::{Address, CoinData, CoinValue, Denom, NetID, StakeDoc, TxHash};
 use tmelcrypt::{Ed25519SK, Hashable};
 
 #[derive(Parser)]

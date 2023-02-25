@@ -4,7 +4,7 @@ use anyhow::Context;
 use melblkidx::Indexer;
 use melprot::Client;
 
-use themelio_structs::{Checkpoint, NetID};
+use melstructs::{Checkpoint, NetID};
 
 use crate::storage::Storage;
 

@@ -6,9 +6,9 @@ use anyhow::Context;
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 
+use melstf::GenesisConfig;
+use melstructs::Address;
 use tap::Tap;
-use themelio_stf::GenesisConfig;
-use themelio_structs::Address;
 use tmelcrypt::Ed25519SK;
 
 #[derive(Debug, Parser)]
@@ -130,7 +130,7 @@ impl MainArgs {
             }
             Ok(bootstrap)
         } else {
-            Ok(themelio_bootstrap::bootstrap_routes(
+            Ok(melbootstrap::bootstrap_routes(
                 self.genesis_config().await?.network,
             ))
         }

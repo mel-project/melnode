@@ -5,7 +5,7 @@ use anyhow::Context;
 use clap::Parser;
 use melnet2::{wire::http::HttpBackhaul, Swarm};
 use melprot::{Client, CoinChange, NodeRpcClient};
-use themelio_structs::{BlockHeight, CoinID};
+use melstructs::{BlockHeight, CoinID};
 
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
@@ -71,9 +71,9 @@ pub async fn main_async(opt: MainArgs) -> anyhow::Result<()> {
             .await
             .unwrap();
         let client = Client::new(netid, rpc_client);
-        // Client.trust(themelio_bootstrap::checkpoint_height(netid).unwrap());
-        // let snapshot = Client.snapshot().await.unwrap();
-        let snapshot = client.insecure_latest_snapshot().await.unwrap();
+
+        client.dangerously_trust_latest().await.unwrap();
+        let snapshot = client.latest_snapshot().await.unwrap();
         smolscale::spawn::<anyhow::Result<()>>(async move {
             loop {
                 log::info!("*** SELF TEST STARTED! ***");
