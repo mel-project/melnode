@@ -1827,9 +1827,9 @@ dependencies = [
 
 [[package]]
 name = "melbootstrap"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78e360538ed3a2c2b816c15c8767a29c660a9982e5961e45783a2957b4e6029c"
+checksum = "8ae184effaf97fc5c4eba203012efc438bcebebdca697e3fcd45ec08ef4bc7e1"
 dependencies = [
  "melstructs",
  "once_cell",
@@ -2260,14 +2260,15 @@ dependencies = [
 
 [[package]]
 name = "novasmt"
-version = "0.2.19"
+version = "0.2.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b044639a0bcf51231391d325e432ffe04a293caee4f86154c3716e81fca2943e"
+checksum = "0ebb8938a493ec608abc6ab8d49155f6a29bf8b6e0af51dd827b2716dc6af0a0"
 dependencies = [
  "arrayref",
  "backtrace",
  "bitvec",
  "blake3",
+ "bytes",
  "dashmap 4.0.2",
  "env_logger",
  "ethnum",
@@ -2931,15 +2932,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "456c603be3e8d448b072f410900c09faf164fbce2d480456f50eea6e25f9c848"
 
 [[package]]
-name = "remove_dir_all"
-version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3acd125665422973a33ac9d3dd2df85edad0f4ae9b00dafb1a05e43a9f5ef8e7"
-dependencies = [
- "winapi",
-]
-
-[[package]]
 name = "replace_with"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3578,16 +3570,15 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "tempfile"
-version = "3.3.0"
+version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5cdb1ef4eaeeaddc8fbd371e5017057064af0911902ef36b39801f67cc6d79e4"
+checksum = "af18f7ae1acd354b992402e9ec5864359d693cd8a79dcbef59f76891701c1e95"
 dependencies = [
  "cfg-if 1.0.0",
  "fastrand",
- "libc",
  "redox_syscall",
- "remove_dir_all",
- "winapi",
+ "rustix",
+ "windows-sys 0.42.0",
 ]
 
 [[package]]

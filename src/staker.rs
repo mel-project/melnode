@@ -9,7 +9,7 @@ use bytes::Bytes;
 
 use dashmap::DashMap;
 use melnet2::{wire::http::HttpBackhaul, Swarm};
-use moka::sync::Cache;
+
 use nanorpc::{nanorpc_derive, DynRpcTransport};
 
 use melstf::SealedState;
@@ -33,7 +33,7 @@ use tap::Tap;
 use tmelcrypt::{Ed25519PK, Ed25519SK, HashVal};
 
 static MAINNET_START_TIME: Lazy<SystemTime> = Lazy::new(|| {
-    std::time::UNIX_EPOCH + Duration::from_secs(1618365600) + Duration::from_secs(30 * 7450)
+    std::time::UNIX_EPOCH + Duration::from_secs(1618365600) + Duration::from_secs(30 * 6000)
 }); // Apr 14 2021
 
 static TESTNET_START_TIME: Lazy<SystemTime> =

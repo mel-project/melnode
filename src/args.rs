@@ -28,7 +28,7 @@ pub struct MainArgs {
     advertise: Option<SocketAddr>,
 
     /// Override bootstrap addresses. May be given as a DNS name.
-    #[arg(long, default_value = "mainnet-bootstrap.themelio.org:41814")]
+    #[arg(long, default_value = "auto")]
     bootstrap: Vec<String>,
 
     /// Database path
@@ -123,9 +123,13 @@ impl MainArgs {
         if !self.bootstrap.is_empty() {
             let mut bootstrap = vec![];
             for name in self.bootstrap.iter() {
-                let addrs = smol::net::resolve(&name)
-                    .await
-                    .context("cannot resolve DNS bootstrap")?;
+                let addrs = if name == "auto" {
+                    melbootstrap::bootstrap_routes(self.genesis_config().await?.network)
+                } else {
+                    smol::net::resolve(&name)
+                        .await
+                        .context("cannot resolve DNS bootstrap")?
+                };
                 bootstrap.extend(addrs);
             }
             Ok(bootstrap)

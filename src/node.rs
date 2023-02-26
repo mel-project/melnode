@@ -357,7 +357,7 @@ impl NodeRpcProtocol for NodeRpcImpl {
         let coins: Vec<CoinID> = indexer
             .query_coins()
             .covhash(covhash)
-            .create_height_range(0..=height.0)
+            .unspent_by(height)
             .iter()
             .map(|c| CoinID {
                 txhash: c.create_txhash,
