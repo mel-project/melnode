@@ -254,7 +254,9 @@ impl Storage {
     /// Consumes a block, applying it to the current state.
     pub async fn apply_block(&self, blk: Block, cproof: ConsensusProof) -> anyhow::Result<()> {
         let _guard = self.lock.lock().await;
-
+        if blk.header.height.0 == 531 {
+            eprintln!("APPLY BLOCK: {:#?}", blk);
+        }
         let highest_state = self.highest_state().await;
         let header = blk.header;
         if header.height != highest_state.header().height + 1.into() {

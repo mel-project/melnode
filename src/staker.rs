@@ -120,7 +120,7 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
         if next_height.0 > 10 {
             sig_gather.remove(&BlockHeight(next_height.0 - 10));
         }
-
+        smol::Timer::after(Duration::from_secs(10)).await; // wait AT LEAST 1 second
         while SystemTime::now() < next_time {
             smol::Timer::after(Duration::from_millis(100)).await;
         }
@@ -149,6 +149,10 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
                 };
                 // create the config
                 let proposed_state = proposed_state.seal(Some(action));
+                log::debug!(
+                    "proposed state has {} transactions",
+                    proposed_state.to_block().transactions.len()
+                );
                 let config = StakerInner {
                     base_state: base_state.clone(),
                     my_proposal: proposed_state.to_block(),

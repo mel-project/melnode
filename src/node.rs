@@ -212,9 +212,9 @@ impl NodeRpcProtocol for NodeRpcImpl {
             start.elapsed(),
         );
 
-        // log::debug!("about to broadcast txhash {:?}", tx.hash_nosigs());
         let routes = self.swarm.routes().await;
         for neigh in routes.iter().take(16).cloned() {
+            log::debug!("about to broadcast txhash {} to {neigh}", tx.hash_nosigs());
             let tx = tx.clone();
             smolscale::spawn(async move {
                 let conn = TCP_BACKHAUL.connect(neigh).await?;

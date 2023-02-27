@@ -1801,9 +1801,9 @@ checksum = "2532096657941c2fea9c289d370a250971c689d4f143798ff67113ec042024a5"
 
 [[package]]
 name = "melblkidx"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2cc323b1221bc7f053074f98129148aa7b2c87fe8abb606c8f12633ebf004b12"
+checksum = "04f8fdcd4ce36abbd5d3bc78e6cee1629b07b1bbf402b732cfdcd0dd15ce86ab"
 dependencies = [
  "anyhow",
  "concurrent-queue 1.2.4",
@@ -1827,9 +1827,9 @@ dependencies = [
 
 [[package]]
 name = "melbootstrap"
-version = "0.8.1"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ae184effaf97fc5c4eba203012efc438bcebebdca697e3fcd45ec08ef4bc7e1"
+checksum = "3ccab4c676ee23968337eabfc495751dea30d67a1acf68bb9e62da2b9e111a26"
 dependencies = [
  "melstructs",
  "once_cell",
@@ -1916,7 +1916,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
- "serde_yaml",
+ "serde_yaml 0.8.26",
  "smol",
  "smol-timeout",
  "smolscale",
@@ -1942,9 +1942,9 @@ dependencies = [
 
 [[package]]
 name = "melprot"
-version = "0.13.0"
+version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66a6a8bce22db86af9bb0c819558da5db21d1e305eccc0ec28ca54e8ac669a26"
+checksum = "86c32ac173122ad0dd1e046c1c08c4c3fb593ef6d532f412eb69995f16ba37de"
 dependencies = [
  "anyhow",
  "arrayref",
@@ -1975,9 +1975,9 @@ dependencies = [
 
 [[package]]
 name = "melstf"
-version = "0.12.0"
+version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f380d8e6198adb1aa6198a11967e9125076c3b3455af05cafa94ee6e92617cd"
+checksum = "e4c3df8c7576e57ee99fa2b74e3ec7698ce67915835129fe6ce227c0f64e39ea"
 dependencies = [
  "arbitrary",
  "assoc",
@@ -2012,6 +2012,7 @@ dependencies = [
  "serde",
  "serde_repr",
  "serde_with",
+ "serde_yaml 0.9.17",
  "smallvec",
  "stdcode",
  "tap",
@@ -3226,6 +3227,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_yaml"
+version = "0.9.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8fb06d4b6cdaef0e0c51fa881acb721bed3c924cfaa71d9c94a3b771dfdf6567"
+dependencies = [
+ "indexmap",
+ "itoa",
+ "ryu",
+ "serde",
+ "unsafe-libyaml",
+]
+
+[[package]]
 name = "sha2"
 version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3936,6 +3950,12 @@ name = "unicode-width"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c0edd1e5b14653f783770bce4a4dabb4a5108a5370a5f5d8cfe8710c361f6c8b"
+
+[[package]]
+name = "unsafe-libyaml"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc7ed8ba44ca06be78ea1ad2c3682a43349126c8818054231ee6f4748012aed2"
 
 [[package]]
 name = "untrusted"
