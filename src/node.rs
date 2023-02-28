@@ -429,8 +429,13 @@ impl NodeRpcProtocol for NodeRpcImpl {
             .iter()
             .collect();
 
-        coin_info
-            .first()
-            .map(|coin| CoinSpendStatus::Spent((coin.create_txhash, coin.create_height)))
+        if let Some(coin) = coin_info.first() {
+            match coin.spend_info {
+                Some(info) => Some(CoinSpendStatus::Spent((info.spend_txhash, info.spend_height))),
+                None => Some(CoinSpendStatus::NotSpent),
+            }
+        } else {
+            None
+        }
     }
 }
