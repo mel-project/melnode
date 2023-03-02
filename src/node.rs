@@ -422,20 +422,19 @@ impl NodeRpcProtocol for NodeRpcImpl {
     async fn get_coin_spend(&self, coin: CoinID) -> Option<CoinSpendStatus> {
         let indexer = self.get_indexer().await?;
 
-        let coin_info: Vec<CoinInfo> = indexer
+        let spend_info = indexer
             .query_coins()
             .create_txhash(coin.txhash)
             .create_index(coin.index)
             .iter()
-            .collect();
-
-        if let Some(coin) = coin_info.first() {
-            match coin.spend_info {
-                Some(info) => Some(CoinSpendStatus::Spent((info.spend_txhash, info.spend_height))),
-                None => Some(CoinSpendStatus::NotSpent),
-            }
-        } else {
-            None
+            .next()?
+            .spend_info;
+        match spend_info {
+            Some(info) => Some(CoinSpendStatus::Spent((
+                info.spend_txhash,
+                info.spend_height,
+            ))),
+            None => Some(CoinSpendStatus::NotSpent),
         }
     }
 }
