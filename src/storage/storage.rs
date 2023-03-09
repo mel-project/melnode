@@ -91,7 +91,7 @@ impl Storage {
         }
 
         let (send_pool, recv_pool) = smol::channel::unbounded();
-        for _ in 0..128 {
+        for _ in 0..16 {
             let conn = rusqlite::Connection::open(&sqlite_path)?;
             conn.query_row("pragma journal_mode=WAL", params![], |_| Ok(()))?;
             conn.execute("pragma synchronous=normal", params![])?;
