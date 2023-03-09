@@ -80,6 +80,8 @@ impl Storage {
             params![],
         )?;
 
+        log::debug!("sqlite initted");
+
         // initialize the stakes
         for (txhash, stake) in genesis.stakes.iter() {
             conn.execute(
