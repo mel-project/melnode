@@ -111,7 +111,9 @@ impl MainArgs {
             .tap_mut(|path| path.push("smt.db"));
 
         std::fs::create_dir_all(&database_base_path)?;
-        let storage = Storage::open(database_base_path, genesis).await?;
+        let storage = Storage::open(database_base_path, genesis)
+            .await
+            .context("cannot make storage")?;
 
         log::debug!("node storage opened");
 

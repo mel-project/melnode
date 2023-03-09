@@ -1,3 +1,4 @@
+use anyhow::Context;
 use event_listener::Event;
 use rusqlite::{params, OptionalExtension};
 use smol::channel::{Receiver, Sender};
@@ -66,7 +67,7 @@ impl Storage {
         std::fs::create_dir_all(&db_folder)?;
         let sqlite_path = db_folder.clone().tap_mut(|path| path.push("storage.db"));
         let mesha_path = db_folder.clone().tap_mut(|path| path.push("merkle.db"));
-        let conn = rusqlite::Connection::open(&sqlite_path)?;
+        let conn = rusqlite::Connection::open(&sqlite_path).context("cannot make sqlite")?;
         conn.execute("create table if not exists history (height primary key not null, header not null, block not null)", params![])?;
         conn.execute("create table if not exists consensus_proofs (height primary key not null, proof not null)", params![])?;
         conn.execute(
@@ -94,7 +95,9 @@ impl Storage {
             send_pool.send(conn).await.unwrap();
         }
 
-        let forest = novasmt::Database::new(MeshaCas::new(meshanina::Mapping::open(&mesha_path)?));
+        let forest = novasmt::Database::new(MeshaCas::new(
+            meshanina::Mapping::open(&mesha_path).context("cannot open mesha")?,
+        ));
         let mempool = Arc::new(Mempool::new(genesis.clone().realize(&forest)).into());
         Ok(Self {
             send_pool,
