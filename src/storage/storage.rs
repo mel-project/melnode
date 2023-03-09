@@ -64,9 +64,10 @@ impl Storage {
     pub async fn open(mut db_folder: PathBuf, genesis: GenesisConfig) -> anyhow::Result<Self> {
         let genesis_id = tmelcrypt::hash_single(stdcode::serialize(&genesis).unwrap());
         db_folder.push(format!("{}/", hex::encode(genesis_id.0)));
-        std::fs::create_dir_all(&db_folder)?;
+        std::fs::create_dir_all(&db_folder).context("cannot make folder")?;
         let sqlite_path = db_folder.clone().tap_mut(|path| path.push("storage.db"));
         let mesha_path = db_folder.clone().tap_mut(|path| path.push("merkle.db"));
+        log::debug!("about to sqlite");
         let conn = rusqlite::Connection::open(&sqlite_path).context("cannot make sqlite")?;
         conn.execute("create table if not exists history (height primary key not null, header not null, block not null)", params![])?;
         conn.execute("create table if not exists consensus_proofs (height primary key not null, proof not null)", params![])?;
