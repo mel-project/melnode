@@ -96,6 +96,7 @@ impl Storage {
             send_pool.send(conn).await.unwrap();
         }
 
+        log::debug!("about to mesha");
         let forest = novasmt::Database::new(MeshaCas::new(
             meshanina::Mapping::open(&mesha_path).context("cannot open mesha")?,
         ));
