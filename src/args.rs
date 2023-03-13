@@ -51,7 +51,7 @@ pub struct MainArgs {
     #[arg(long)]
     pub self_test: bool,
 
-    /// Create an in-memory coin index.
+    /// Create an in-memory coin index. **RPC endpoints that rely on this will be disabled if this is not set!**
     #[arg(long)]
     pub index_coins: bool,
 }
