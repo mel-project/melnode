@@ -136,7 +136,7 @@ impl NodeRpcImpl {
             coin_smts: LruCache::new(100).into(),
             summary: LruCache::new(10).into(),
             swarm,
-            abbr_block_cache: moka::sync::Cache::new(100_000),
+            abbr_block_cache: moka::sync::Cache::new(1000),
             indexer,
         })
     }
@@ -298,7 +298,6 @@ impl NodeRpcProtocol for NodeRpcImpl {
                             }
                         }
 
-                        // only increment here
                         height += BlockHeight(1);
                     }
                     _ => {

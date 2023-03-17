@@ -106,7 +106,7 @@ impl Storage {
         Ok(Self {
             send_pool,
             recv_pool,
-            old_cache: Arc::new(Cache::new(100_000)),
+            old_cache: Arc::new(Cache::new(1000)),
             forest: Arc::new(forest),
 
             genesis,
