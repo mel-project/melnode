@@ -1,6 +1,6 @@
 [package]
 name = "melnode"
-version = "0.20.4"
+version = "0.20.5"
 repository ="https://github.com/mel-project/melnode"
 license = "MPL-2.0"
 description = "Reference implementation of Mel"

@@ -1866,7 +1866,7 @@ dependencies = [
 
 [[package]]
 name = "melnode"
-version = "0.20.4"
+version = "0.20.5"
 dependencies = [
  "anyhow",
  "arc-swap",
