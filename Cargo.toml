@@ -122,7 +122,7 @@ base64 = "0.21.0"
 clap = { version = "4.1.6", features = ["derive", "cargo", "unicode"] }
 melbootstrap = "0.8.3"
 melstructs = "0.3.2"
-melblkidx = "0.7.1"
+melblkidx = "0.7.2"
 melstf = "0.12.3"
 tip911-stakeset = "0.0.2"
 melvm = "0.1.0"

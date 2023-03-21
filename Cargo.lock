@@ -1801,9 +1801,9 @@ checksum = "2532096657941c2fea9c289d370a250971c689d4f143798ff67113ec042024a5"
 
 [[package]]
 name = "melblkidx"
-version = "0.7.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04f8fdcd4ce36abbd5d3bc78e6cee1629b07b1bbf402b732cfdcd0dd15ce86ab"
+checksum = "e1f209ca2c1ae47c5821d0441f14d69d0bc879ed6beea900ad3dd3f5cc1c1614"
 dependencies = [
  "anyhow",
  "concurrent-queue 1.2.4",

@@ -6,7 +6,6 @@ use crate::{node::blksync::attempt_blksync, storage::Storage};
 use anyhow::Context;
 use async_trait::async_trait;
 use base64::Engine;
-use futures_util::{StreamExt, TryStreamExt};
 use lru::LruCache;
 use melblkidx::{CoinInfo, Indexer};
 use melnet2::{wire::http::HttpBackhaul, Backhaul, Swarm};

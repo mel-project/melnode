@@ -66,7 +66,7 @@ fn main_create(create: CreateArgs) -> anyhow::Result<()> {
             .iter()
             .zip(secrets.iter())
             .enumerate()
-            .map(|(i, (amount, key))| {
+            .map(|(i, (_amount, key))| {
                 let addr = SocketAddr::new(Ipv4Addr::new(127, 0, 0, 1).into(), (i + 5000) as u16);
                 StakerConfig {
                     signing_secret: *key,
