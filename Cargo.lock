@@ -1889,7 +1889,7 @@ dependencies = [
 
 [[package]]
 name = "melnode"
-version = "0.20.6"
+version = "0.20.7"
 dependencies = [
  "anyhow",
  "arc-swap",
