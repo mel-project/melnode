@@ -120,7 +120,7 @@ async fn network_task_inner(storage: Storage, cfg: StakerConfig) -> anyhow::Resu
         if next_height.0 > 10 {
             sig_gather.remove(&BlockHeight(next_height.0 - 10));
         }
-        smol::Timer::after(Duration::from_secs(10)).await; // wait AT LEAST 1 second
+        smol::Timer::after(Duration::from_secs(10)).await; // wait AT LEAST for a while
         while SystemTime::now() < next_time {
             smol::Timer::after(Duration::from_millis(100)).await;
         }
