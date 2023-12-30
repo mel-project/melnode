@@ -1924,7 +1924,7 @@ dependencies = [
  "melprot",
  "melstf",
  "melstructs",
- "melvm",
+ "melvm 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "meshanina",
  "moka",
  "nanorpc",
@@ -2000,8 +2000,6 @@ dependencies = [
 [[package]]
 name = "melstf"
 version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4c3df8c7576e57ee99fa2b74e3ec7698ce67915835129fe6ce227c0f64e39ea"
 dependencies = [
  "arbitrary",
  "assoc",
@@ -2024,7 +2022,7 @@ dependencies = [
  "log",
  "melpow",
  "melstructs",
- "melvm",
+ "melvm 0.1.0",
  "novasmt",
  "num",
  "num_enum",
@@ -2048,8 +2046,6 @@ dependencies = [
 [[package]]
 name = "melstructs"
 version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0daeea135fc23ad021124895bd92069b3f8cec13f45cb14b60e3387ea079f877"
 dependencies = [
  "bytes",
  "derivative",
@@ -2061,6 +2057,23 @@ dependencies = [
  "serde",
  "serde_repr",
  "serde_with",
+ "stdcode",
+ "tap",
+ "thiserror",
+ "tmelcrypt",
+]
+
+[[package]]
+name = "melvm"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "catvec",
+ "ethnum",
+ "hex",
+ "log",
+ "melstructs",
+ "serde",
  "stdcode",
  "tap",
  "thiserror",
@@ -3686,8 +3699,6 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 [[package]]
 name = "tip911-stakeset"
 version = "0.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d2bdf9310e9b4d27f66ed1e1a9fadaec45f1e9a0bf3fe1bb13f12a5318e9381"
 dependencies = [
  "imbl 2.0.0",
  "melstructs",

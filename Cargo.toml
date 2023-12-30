@@ -21,8 +21,9 @@ debug = 0
 # codegen-units = 1 
 
 [patch.crates-io]
-# melstf={path="../melstf"}
-# tip911-stakeset={path="../melstf/lib/tip911-stakeset"}
+melstructs={path="../melstructs"}
+melstf={path="../melstf"}
+tip911-stakeset={path="../melstf/lib/tip911-stakeset"}
 # # melnet={path="../melnet"}  
 # melprot={path="../melprot"} 
 

@@ -146,7 +146,7 @@ pub async fn attempt_blksync_legacy(
                 Ok((block, cproof))
             }))
         })
-        .try_buffered(64)
+        .try_buffered(1)
         .boxed();
     let mut toret = 0;
     while let Some(res) = result_stream.try_next().await? {
